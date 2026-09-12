@@ -531,7 +531,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fill();
     ctx.fillStyle = "#fff";
     if (g.rules === "solo") {
-      ctx.fillText("Drag back, release to fling.", W / 2, viewH - 113);
+      ctx.fillText("Drag back anywhere, release to fling.", W / 2, viewH - 113);
       ctx.fillText("Stick to steel. Outrun the red line.", W / 2, viewH - 91);
     } else {
       ctx.fillText("Drag back from a climber, release to fling.", W / 2, viewH - 124);

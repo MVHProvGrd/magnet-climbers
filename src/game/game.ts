@@ -166,6 +166,12 @@ export class Game {
       const d = Math.hypot(c.x - p.x, c.y - p.y);
       if (d < bd) { bd = d; best = c; }
     }
+    // solo: one climber, so a drag anywhere aims it
+    if (!best && this.rules === "solo") {
+      const only = this.anchored[0];
+      if (only) { this.selectedId = only.id; this.freeCam = false; this.drag = { start: p, cur: p }; }
+      return;
+    }
     if (best) {
       this.selectedId = best.id;
       if (this.isLadder(best)) {
