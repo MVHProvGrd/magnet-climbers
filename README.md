@@ -55,4 +55,8 @@ src/game/audio.ts     tiny WebAudio synth for feedback
    - Gems purchase → StoreKit / Play Billing via `@capgo/capacitor-purchases` or RevenueCat.
 4. Add a release workflow that builds the Capacitor project (the imageweaver-workbench repo has a Build Release AAB workflow to crib from).
 
+## Scoreboard
+
+Global highest-climb board, per mode (crew / solo). Backend is a Cloudflare Worker + D1 in `worker/`; setup steps in `worker/README.md`. Without `VITE_LEADERBOARD_URL` the game still runs and shows local bests only.
+
 See `DESIGN.md` for mechanics, economy, and the F2P research.

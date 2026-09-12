@@ -6,6 +6,7 @@ import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
 import { setSound } from "./game/audio";
+import { leaderboard, leaderboardEnabled } from "./game/leaderboard";
 
 registerSW({ immediate: true });
 
@@ -81,6 +82,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.skin = key; persist();
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
+  onSetName: (name) => { save.name = name; persist(); },
 });
 
 let rulesNow: "solo" | "crew" = "crew";
@@ -113,7 +115,8 @@ function startRun(rules: "solo" | "crew") {
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord });
+      submitScore(cm, panel);
     },
   }, { rules });
   game.reserves = save.reserves;
@@ -121,6 +124,24 @@ function startRun(rules: "solo" | "crew") {
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
   game.viewH = viewH;
   ui.setInRun(true);
+}
+
+/** Push the run to the global board (best per player is kept server-side). */
+function submitScore(cm: number, panel: HTMLElement) {
+  if (!leaderboardEnabled || cm <= 0) return;
+  const send = () => {
+    void leaderboard.submit(save.playerId, save.name || "anonymous", rulesNow, cm).then(async (r) => {
+      if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
+      const rank = await leaderboard.rank(rulesNow, save.playerId);
+      ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
+    });
+  };
+  if (!save.name) {
+    // first time on the board: ask for a name, then send. Keep the game-over panel underneath.
+    ui.showNamePrompt(() => { ui.showGameOver; send(); });
+    return;
+  }
+  send();
 }
 
 function endRun() {

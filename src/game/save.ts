@@ -15,6 +15,8 @@ export interface SaveData {
   skins: string[];
   /** placeholder until real accounts exist */
   playerId: string;
+  /** display name for the leaderboard; empty until the player picks one */
+  name: string;
 }
 
 const KEY = "magnet-climbers:save:v1";
@@ -35,7 +37,8 @@ function defaults(): SaveData {
     reserves: 0,
     skin: "classic",
     skins: ["classic"],
-    playerId: "local-" + Math.random().toString(36).slice(2, 10),
+    playerId: "p-" + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8),
+    name: "",
   };
 }
 

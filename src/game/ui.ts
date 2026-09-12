@@ -1,5 +1,6 @@
 import { RESERVE_COST, SKINS, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import type { SaveData } from "./save";
+import { leaderboard, leaderboardEnabled, type Mode, type ScoreRow } from "./leaderboard";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -10,7 +11,10 @@ export interface UiHandlers {
   onBuySkin(key: string): void;
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
+  onSetName(name: string): void;
 }
+
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 const el = (tag: string, cls: string, html = "") => {
   const e = document.createElement(tag);
@@ -67,6 +71,7 @@ export class Ui {
       <button class="primary alt" data-a="solo">SOLO CLIMB</button>
       <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
       <button data-a="shop">UPGRADES</button>
+      <button data-a="board">SCOREBOARD</button>
       <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
       <p class="fine">Runs: ${s.runs} · Total climbed: ${(s.totalCm / 100).toFixed(1)} m</p>
     `;
@@ -75,6 +80,7 @@ export class Ui {
       if (a === "crew") this.h.onPlay("crew");
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
+      if (a === "board") this.showBoard("crew");
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     this.show(p);
@@ -135,6 +141,71 @@ export class Ui {
     this.show(p);
   }
 
+  showBoard(mode: Mode) {
+    const s = this.save();
+    const p = el("div", "panel board");
+    const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
+      const list = rows && rows.length
+        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${r.cm} cm</span></div>`).join("")
+        : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
+      const mine = leaderboardEnabled
+        ? rank?.rank ? `You: #${rank.rank} · ${rank.cm} cm` : "You: not on the board yet"
+        : `You: ${mode === "crew" ? s.bestCm : s.bestSolo} cm`;
+      p.innerHTML = `
+        <h2>Highest climbs</h2>
+        <div class="tabs">
+          <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
+          <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
+        </div>
+        <div class="srows">${list}</div>
+        <p class="tag">${mine} · playing as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
+        <button class="ghost" data-a="back">BACK</button>`;
+    };
+    render(null, null);
+    p.querySelector(".srows")!.innerHTML = `<p class="tag">Loading…</p>`;
+    p.addEventListener("click", (e) => {
+      const t = e.target as HTMLElement;
+      const m = t.dataset.m as Mode | undefined;
+      if (m) { this.showBoard(m); return; }
+      if (t.dataset.a === "back") this.showMenu();
+      if (t.dataset.a === "name") this.showNamePrompt(() => this.showBoard(mode));
+    });
+    this.show(p);
+    if (leaderboardEnabled) {
+      void Promise.all([leaderboard.top(mode), leaderboard.rank(mode, s.playerId)]).then(([rows, rank]) => {
+        if (this.panel === p) render(rows, rank);
+      });
+    } else {
+      render([], null);
+    }
+  }
+
+  /** Ask for a display name (first submit, or from the board). */
+  showNamePrompt(done: () => void) {
+    const s = this.save();
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Your climber name</h2>
+      <p class="tag">Shown on the global scoreboard. 12 characters max.</p>
+      <input id="name-in" maxlength="12" placeholder="e.g. FridgeKing" value="${esc(s.name)}" autocomplete="off" />
+      <button class="primary" data-a="ok">SAVE</button>
+      <button class="ghost" data-a="skip">SKIP</button>`;
+    const input = p.querySelector<HTMLInputElement>("#name-in")!;
+    const finish = (save: boolean) => {
+      if (save) this.h.onSetName(input.value.trim().slice(0, 12));
+      this.clear();
+      done();
+    };
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "ok") finish(true);
+      if (a === "skip") finish(false);
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") finish(true); });
+    this.show(p);
+    setTimeout(() => input.focus(), 50);
+  }
+
   showPause() {
     const p = el("div", "panel small");
     p.innerHTML = `
@@ -157,6 +228,7 @@ export class Ui {
       <h2>${o.isRecord ? "New record!" : "All climbers lost"}</h2>
       <div class="big">${o.cm} cm</div>
       <p class="tag">Best ${o.best} cm · earned <span class="coin">$${o.coins}</span></p>
+      <p class="tag rank" hidden></p>
       <div class="revive">
         ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
         ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
@@ -170,6 +242,14 @@ export class Ui {
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
     });
     this.show(p);
+    return p;
+  }
+
+  /** Update the rank line on an open game-over panel. */
+  setGameOverRank(panel: HTMLElement, text: string) {
+    if (this.panel !== panel) return;
+    const r = panel.querySelector<HTMLElement>(".rank");
+    if (r) { r.textContent = text; r.hidden = false; }
   }
 
   /** Placeholder for a rewarded video: a short countdown. Swapped for AdMob / Unity Ads in the native builds. */

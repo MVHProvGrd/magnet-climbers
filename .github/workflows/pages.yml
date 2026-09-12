@@ -25,6 +25,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Repo → Settings → Secrets and variables → Actions → Variables → LEADERBOARD_URL
+          VITE_LEADERBOARD_URL: ${{ vars.LEADERBOARD_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
