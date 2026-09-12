@@ -39,6 +39,8 @@ export class Game {
   panning: { lastY: number } | null = null;
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /** flying climbers latch onto teammates they pass; disabled, see stepFlying */
+  autoGrab = false;
   private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
   /** solo = one climber that flings itself (arcade); crew = teammates fling each other */
   rules: "solo" | "crew" = "crew";
@@ -543,8 +545,9 @@ export class Game {
         return;
       }
     }
-    // teammate grab: after apex, within reach of an anchored teammate with chain room
-    if (c.vy > -60 && c.leftLauncher && c.airTime > 0.15) {
+    // teammate grab: after apex, within reach of an anchored teammate with chain room.
+    // Off by default: it made flings unpredictable. CLIMB is the deliberate way to chain.
+    if (this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) {
       const a = this.nearestAnchor(c, null);
       if (a) {
         c.state = "linked";

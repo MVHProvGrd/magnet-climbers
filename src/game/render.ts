@@ -535,7 +535,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
       ctx.fillText("Stick to steel. Outrun the red line.", W / 2, viewH - 91);
     } else {
       ctx.fillText("Drag back from a climber, release to fling.", W / 2, viewH - 124);
-      ctx.fillText("Land near a teammate to hang on. Stack a ladder for big gaps.", W / 2, viewH - 102);
+      ctx.fillText("SYNC flings the whole crew. CLIMB crawls onto a teammate.", W / 2, viewH - 102);
       ctx.fillText("Tap dots to switch. Drag empty steel to look around.", W / 2, viewH - 80);
     }
   }
