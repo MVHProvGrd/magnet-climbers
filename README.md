@@ -9,7 +9,7 @@ Built as a PWA first (installable, offline). The renderer is plain Canvas 2D and
 the menus are plain DOM, so the same bundle drops into a Capacitor WebView for
 Android and iOS without changes.
 
-Live: https://mvhprovgrd.github.io/magnet-climbers/ (deployed from `main` by the Pages workflow).
+Live: https://magnetclimbers.com (deployed from `main` by the Pages workflow).
 
 ## Run
 
