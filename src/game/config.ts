@@ -1,0 +1,99 @@
+/** Logical canvas width. Height scales with the device aspect ratio. */
+export const W = 400;
+
+export const CFG = {
+  gravity: 950,
+  maxDrag: 130,
+  /** launch speed per px of drag. 5.3 → max vertical jump ≈ 250px; the widest gaps need ladders */
+  launchScale: 5.3,
+  minDrag: 14,
+  segmentH: 340,
+  climberRadius: 18,
+  /** floor (danger line) speed in px/s at height 0 and growth per 1000px climbed */
+  floorBase: 22,
+  /** stepped ramp: +15% per 50cm, capped at 2.5x base */
+  floorStepCm: 50,
+  floorStepMult: 0.15,
+  floorCapMult: 2.5,
+  /** catch-up: if the lowest climber is more than this many px above the wall, the wall hurries */
+  floorCatchupGap: 900,
+  floorCatchupMult: 2.2,
+  floorStartOffset: 320,
+  powerRadius: 30,
+  bumperKnock: 420,
+  effectDurations: { superMagnet: 8, slowmo: 6, reach: 14 },
+  coinValue: 5,
+  /** 10px of fridge = 1cm of score */
+  pxPerCm: 10,
+};
+
+export const CLIMBER_COLORS = [
+  "#ff8a3d", // orange
+  "#ff5c8a", // pink
+  "#ffd23f", // yellow
+  "#4fc3f7", // blue
+  "#9be15d", // green
+  "#c77dff", // purple
+  "#f4f4f4", // white
+  "#ff4d4d", // red
+];
+
+/** Upgrade table for the meta-progression shop (soft currency). */
+export interface UpgradeDef {
+  key: UpgradeKey;
+  name: string;
+  desc: string;
+  max: number;
+  baseCost: number;
+  costGrowth: number;
+}
+
+export type UpgradeKey =
+  | "team"
+  | "magnet"
+  | "reach"
+  | "links"
+  | "power"
+  | "floor"
+  | "revive";
+
+export const UPGRADES: UpgradeDef[] = [
+  { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9 },
+  { key: "magnet", name: "Magnet strength", desc: "Stick sooner and closer to the edges of metal", max: 6, baseCost: 40, costGrowth: 1.7 },
+  { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7 },
+  { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0 },
+  { key: "power", name: "Slingshot power", desc: "Launch further", max: 5, baseCost: 50, costGrowth: 1.8 },
+  { key: "floor", name: "Sticky floor", desc: "The danger line rises slower", max: 5, baseCost: 70, costGrowth: 1.9 },
+  { key: "revive", name: "Spare tokens", desc: "+1 free revive per run", max: 3, baseCost: 150, costGrowth: 2.5 },
+];
+
+export function upgradeCost(def: UpgradeDef, level: number): number {
+  return Math.round(def.baseCost * Math.pow(def.costGrowth, level));
+}
+
+/** Derived run stats from upgrade levels. */
+export function statsFor(levels: Record<UpgradeKey, number>) {
+  return {
+    teamSize: 3 + levels.team,
+    /** px the climber may be outside metal and still snap */
+    magnetRadius: 4 + levels.magnet * 5,
+    /** max upward velocity at which the magnet can still catch (px/s) */
+    magnetCatch: 40 + levels.magnet * 55,
+    reach: 70 + levels.reach * 9,
+    maxLinks: 1 + levels.links,
+    launchMult: 1 + levels.power * 0.09,
+    floorMult: 1 - levels.floor * 0.09,
+    revives: levels.revive,
+  };
+}
+
+/** A consumable extra climber, dropped in mid-run from the HUD. */
+export const RESERVE_COST = 35;
+
+export interface SkinDef { key: string; name: string; cost: number; colors: string[] }
+export const SKINS: SkinDef[] = [
+  { key: "classic", name: "Classic", cost: 0, colors: CLIMBER_COLORS },
+  { key: "glow", name: "Glow in the dark", cost: 250, colors: ["#c8ff5a", "#9bff8a", "#e6ffb0", "#7cf0c8", "#d4ff3d", "#b8ffe0"] },
+  { key: "candy", name: "Candy", cost: 400, colors: ["#ff9ad5", "#ffd1a1", "#a1e3ff", "#d3a1ff", "#a1ffb8", "#fff3a1"] },
+  { key: "stealth", name: "Stealth", cost: 600, colors: ["#3a3f47", "#5b6470", "#8a94a1", "#2c3036", "#b0b8c2", "#6f7986"] },
+];
