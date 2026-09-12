@@ -29,13 +29,29 @@ export class World {
   private topY: number;
   private index = 0;
 
+  readonly seed: number;
+
   constructor(seed: number, startY: number) {
+    this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
     // first segment: solid metal so the team has a home
     this.segments.push({ y: startY - CFG.segmentH, h: CFG.segmentH, zones: [], powerUps: [], bumpers: [] });
     this.topY = startY - CFG.segmentH;
     this.index = 1;
+  }
+
+  /** Number of segments generated so far (deterministic given the seed). */
+  get generated(): number {
+    return this.index;
+  }
+
+  /** Regenerate forward until `count` segments exist. Used when restoring a snapshot. */
+  generateTo(count: number): void {
+    while (this.index < count) {
+      this.segments.push(this.generate(this.index++));
+      this.topY -= CFG.segmentH;
+    }
   }
 
   /** Make sure terrain exists up to (and beyond) the given y. */

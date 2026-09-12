@@ -1,6 +1,6 @@
 import "./style.css";
 import { registerSW } from "virtual:pwa-register";
-import { Game } from "./game/game";
+import { Game, type RunSnapshot } from "./game/game";
 import { render, hudButtons, teamDots } from "./game/render";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
@@ -99,21 +99,39 @@ const ui = new Ui(uiRoot, () => save, {
   onUpdate: () => { void checkForUpdate(); },
 });
 
+const SNAP_KEY = "magnet-climbers:run:v1";
+function saveSnapshot() {
+  if (!game) return;
+  const snap = game.snapshot();
+  try {
+    if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted }));
+    else localStorage.removeItem(SNAP_KEY);
+  } catch { /* storage unavailable */ }
+}
+function clearSnapshot() {
+  try { localStorage.removeItem(SNAP_KEY); } catch { /* ignore */ }
+}
+function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: number; runCounted: boolean } | null {
+  try {
+    const raw = localStorage.getItem(SNAP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.snap?.v === 1 ? parsed : null;
+  } catch { return null; }
+}
+setInterval(saveSnapshot, 2000);
+window.addEventListener("pagehide", saveSnapshot);
+
 let rulesNow: "solo" | "crew" = "crew";
-function startRun(rules: "solo" | "crew") {
-  rulesNow = rules;
-  ui.clear();
-  adUsedThisRun = false;
-  bankedCm = 0;
-  runCounted = false;
-  paused = false;
-  game = new Game(save.upgrades, {
+function runEvents() {
+  return {
     onPower: () => {},
     onCoins: () => {},
     onGems: () => {},
     onGameOver: () => {
       if (!game) return;
       paused = true;
+      clearSnapshot();
       const cm = game.heightCm;
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
       const isRecord = cm > save[bestKey];
@@ -124,7 +142,6 @@ function startRun(rules: "solo" | "crew") {
       save[bestKey] = Math.max(save[bestKey], cm);
       save.totalCm += newCm;
       if (!runCounted) { save.runs += 1; runCounted = true; }
-      // bank this run's pick-ups and height so a revive does not pay them twice
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
@@ -132,7 +149,33 @@ function startRun(rules: "solo" | "crew") {
       const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord });
       submitScore(cm, panel);
     },
-  }, { rules });
+  };
+}
+
+function resumeRun() {
+  const r = loadSnapshot();
+  if (!r) { ui.showMenu(); return; }
+  rulesNow = r.snap.rules;
+  adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted;
+  ui.clear();
+  paused = false;
+  const palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
+  game = Game.restore(save.upgrades, runEvents(), r.snap, palette);
+  game.viewH = viewH;
+  game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
+  ui.setInRun(true);
+  ui.toast("Run resumed");
+}
+
+function startRun(rules: "solo" | "crew") {
+  rulesNow = rules;
+  ui.clear();
+  clearSnapshot();
+  adUsedThisRun = false;
+  bankedCm = 0;
+  runCounted = false;
+  paused = false;
+  game = new Game(save.upgrades, runEvents(), { rules });
   game.reserves = save.reserves;
   game.palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
@@ -151,14 +194,15 @@ function submitScore(cm: number, panel: HTMLElement) {
     });
   };
   if (!save.name) {
-    // first time on the board: ask for a name, then send. Keep the game-over panel underneath.
-    ui.showNamePrompt(() => { ui.showGameOver; send(); });
+    // first time on the board: ask for a name, then send
+    ui.showNamePrompt(() => send());
     return;
   }
   send();
 }
 
 function endRun() {
+  clearSnapshot();
   game = null;
   paused = false;
   ui.setInRun(false);
@@ -194,6 +238,13 @@ canvas.addEventListener("pointerdown", (e) => {
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
 canvas.addEventListener("pointerup", () => { if (game && !paused) game.pointerUp(); });
 canvas.addEventListener("pointercancel", () => { if (game) game.drag = null; });
+// Android back gesture / browser back: open the pause menu instead of leaving the run
+history.replaceState({ mc: "root" }, "");
+history.pushState({ mc: "trap" }, "");
+window.addEventListener("popstate", () => {
+  history.pushState({ mc: "trap" }, "");
+  if (game && !paused && game.phase !== "dead") { paused = true; ui.showPause(); }
+});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && game && !paused && game.phase !== "dead") { paused = true; ui.showPause(); }
 });
@@ -220,7 +271,7 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-ui.showMenu();
+if (loadSnapshot()) resumeRun(); else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
 declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown } } }

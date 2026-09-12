@@ -5,6 +5,30 @@ import { World, inRect } from "./world";
 
 export type Phase = "idle" | "running" | "dead";
 
+/** Everything needed to resume a run after the page is closed or reloaded. */
+export interface RunSnapshot {
+  v: 1;
+  rules: "solo" | "crew";
+  seed: number;
+  generated: number;
+  climbers: Climber[];
+  nextId: number;
+  floorY: number;
+  highestY: number;
+  camY: number;
+  coins: number;
+  gems: number;
+  reserves: number;
+  revivesLeft: number;
+  effects: ActiveEffects;
+  time: number;
+  sync: boolean;
+  selectedId: number | null;
+  /** power-ups already taken, keyed by segment y and index */
+  taken: string[];
+  bumpers: { y: number; i: number; x: number; vx: number }[];
+}
+
 export interface RunEvents {
   onPower(kind: PowerUp["kind"], at: Vec): void;
   onGameOver(): void;
@@ -28,7 +52,7 @@ export class Game {
   revivesLeft: number;
   time = 0;
   shake = 0;
-  private nextId = 1;
+  nextId = 1;
   /** id of the climber the player will launch next */
   selectedId: number | null = null;
   drag: { start: Vec; cur: Vec } | null = null;
@@ -407,6 +431,41 @@ export class Game {
       if (this.floorY - lowest > CFG.floorCatchupGap) mult *= CFG.floorCatchupMult;
     }
     return CFG.floorBase * mult * this.stats.floorMult;
+  }
+
+  snapshot(): RunSnapshot | null {
+    if (this.phase !== "running") return null;
+    const taken: string[] = [];
+    const bumpers: RunSnapshot["bumpers"] = [];
+    for (const seg of this.world.segments) {
+      seg.powerUps.forEach((p, i) => { if (p.taken) taken.push(`${seg.y}:${i}`); });
+      seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx }));
+    }
+    return {
+      v: 1, rules: this.rules, seed: this.world.seed, generated: this.world.generated,
+      climbers: this.climbers.map((c) => ({ ...c })), nextId: this.nextId,
+      floorY: this.floorY, highestY: this.highestY, camY: this.camY,
+      coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
+      effects: { ...this.effects }, time: this.time, sync: this.sync, selectedId: this.selectedId,
+      taken, bumpers,
+    };
+  }
+
+  static restore(levels: Record<UpgradeKey, number>, events: RunEvents, snap: RunSnapshot, palette?: string[]): Game {
+    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette });
+    g.world.generateTo(snap.generated);
+    for (const seg of g.world.segments) {
+      seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
+      for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { seg.bumpers[b.i].x = b.x; seg.bumpers[b.i].vx = b.vx; }
+    }
+    g.climbers = snap.climbers.map((c) => ({ ...c }));
+    g.nextId = snap.nextId;
+    g.floorY = snap.floorY; g.highestY = snap.highestY; g.camY = snap.camY;
+    g.coins = snap.coins; g.gems = snap.gems; g.reserves = snap.reserves; g.revivesLeft = snap.revivesLeft;
+    g.effects = { ...snap.effects }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
+    g.phase = "running";
+    g.world.ensure(g.camY - g.viewH);
+    return g;
   }
 
   currentReach(): number {
