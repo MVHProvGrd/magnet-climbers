@@ -525,7 +525,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   }
 
   if (g.phase === "idle") {
-    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.font = "bold 12px system-ui, sans-serif";
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     roundRect(ctx, 20, viewH - 150, W - 40, 82, 12);
     ctx.fill();
@@ -534,9 +534,9 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
       ctx.fillText("Drag back, release to fling.", W / 2, viewH - 113);
       ctx.fillText("Stick to steel. Outrun the red line.", W / 2, viewH - 91);
     } else {
-      ctx.fillText("Drag back from a climber to fling it. Tap dots to switch.", W / 2, viewH - 124);
-      ctx.fillText("Big gaps: land near a teammate to hang on and build a ladder.", W / 2, viewH - 102);
-      ctx.fillText("Drag empty steel to look around. CLIMB = crawl over a teammate.", W / 2, viewH - 80);
+      ctx.fillText("Drag back from a climber, release to fling.", W / 2, viewH - 124);
+      ctx.fillText("Land near a teammate to hang on. Stack a ladder for big gaps.", W / 2, viewH - 102);
+      ctx.fillText("Tap dots to switch. Drag empty steel to look around.", W / 2, viewH - 80);
     }
   }
 }
