@@ -33,7 +33,7 @@ export class Ui {
     this.root = root;
     this.pauseBtn = document.createElement("button");
     this.pauseBtn.className = "pause-btn";
-    this.pauseBtn.textContent = "II";
+    this.pauseBtn.textContent = "☰ MENU";
     this.pauseBtn.hidden = true;
     this.pauseBtn.addEventListener("click", () => this.showPause());
     root.appendChild(this.pauseBtn);
@@ -211,7 +211,8 @@ export class Ui {
     p.innerHTML = `
       <h2>Paused</h2>
       <button class="primary" data-a="resume">RESUME</button>
-      <button class="ghost" data-a="quit">QUIT RUN</button>
+      <button data-a="quit">HOME SCREEN</button>
+      <p class="fine">Quitting ends the run. Coins collected so far are kept.</p>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;

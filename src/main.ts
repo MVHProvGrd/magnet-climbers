@@ -43,7 +43,10 @@ resize();
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
   onResume: () => { paused = false; },
-  onQuitRun: () => { endRun(); ui.showMenu(); },
+  onQuitRun: () => {
+    if (game && game.phase !== "dead") { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
+    endRun(); ui.showMenu();
+  },
   onBuy: (key: UpgradeKey) => {
     const def = UPGRADES.find((u) => u.key === key)!;
     const lvl = save.upgrades[key];

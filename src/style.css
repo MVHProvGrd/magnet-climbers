@@ -17,8 +17,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 
 .pause-btn {
   position: absolute; top: calc(env(safe-area-inset-top, 0px) + 54px); right: 12px;
-  width: 40px; height: 40px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.45); color: #fff;
-  font-weight: 800; font-size: 14px; letter-spacing: -2px; cursor: pointer;
+  height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.55); color: #fff;
+  font-weight: 800; font-size: 13px; cursor: pointer;
 }
 .panel {
   width: min(92vw, 380px); max-height: 92vh; overflow: auto; padding: 24px 20px; border-radius: 20px;
