@@ -8,7 +8,17 @@ import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "
 import { setSound } from "./game/audio";
 import { leaderboard, leaderboardEnabled } from "./game/leaderboard";
 
-registerSW({ immediate: true });
+const updateSW = registerSW({ immediate: true });
+/** Manual update check from the menu; reloads if a new build is waiting. */
+async function checkForUpdate() {
+  ui.toast("Checking for update…");
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await reg?.update();
+    if (reg?.waiting) { await updateSW(true); return; }
+  } catch { /* fall through */ }
+  setTimeout(() => location.reload(), 600);
+}
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -86,6 +96,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onSetName: (name) => { save.name = name; persist(); },
+  onUpdate: () => { void checkForUpdate(); },
 });
 
 let rulesNow: "solo" | "crew" = "crew";

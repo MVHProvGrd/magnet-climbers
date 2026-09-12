@@ -12,6 +12,7 @@ export interface UiHandlers {
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
   onSetName(name: string): void;
+  onUpdate(): void;
 }
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -74,6 +75,7 @@ export class Ui {
       <button data-a="board">SCOREBOARD</button>
       <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
       <p class="fine">Runs: ${s.runs} · Total climbed: ${(s.totalCm / 100).toFixed(1)} m</p>
+      <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
@@ -81,6 +83,7 @@ export class Ui {
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
       if (a === "board") this.showBoard("crew");
+      if (a === "update") this.h.onUpdate();
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     this.show(p);

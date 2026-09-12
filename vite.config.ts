@@ -5,6 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // (GitHub Pages, a Capacitor webview, or a CDN) without rebuilding.
 export default defineConfig({
   base: "./",
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC") },
   server: { host: true, port: 5180 },
   build: { target: "es2020", sourcemap: false },
   // Stop Vite walking up to the parent repo's Tailwind postcss.config.js
