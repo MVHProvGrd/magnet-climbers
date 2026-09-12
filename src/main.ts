@@ -171,6 +171,7 @@ canvas.addEventListener("pointerdown", (e) => {
     if (Math.hypot(d.x - sp.x, d.y - sp.y) < 17) { game.select(d.id); return; }
   }
   if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
+  if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
   if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
   if (game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
   canvas.setPointerCapture(e.pointerId);

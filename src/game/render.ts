@@ -132,6 +132,12 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.strokeStyle = sel.color; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(sel.x, sel.y); ctx.lineTo(sel.x - v.x / k, sel.y - v.y / k); ctx.stroke();
     }
+    if (v && g.sync && g.rules === "crew") {
+      for (const t of g.syncTargets()) {
+        if (t.id === sel.id) continue;
+        drawArc(ctx, t.x, t.y, v, "rgba(255,255,255,0.5)");
+      }
+    }
     if (v) {
       let x = sel.x, y = sel.y, vx = v.x, vy = v.y;
       const dt = 1 / 60;
@@ -496,6 +502,13 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#1a1d24";
     ctx.fillText(g.mode === "fling" ? "FLING" : "CLIMB", b.mode.x + b.mode.w / 2, b.mode.y + 27);
   }
+  if (g.rules === "crew") {
+    ctx.fillStyle = g.sync ? "#c77dff" : "rgba(0,0,0,0.45)";
+    roundRect(ctx, b.sync.x, b.sync.y, b.sync.w, b.sync.h, 12);
+    ctx.fill();
+    ctx.fillStyle = g.sync ? "#1a1d24" : "#fff";
+    ctx.fillText(g.sync ? "SYNC ON" : "SYNC", b.sync.x + b.sync.w / 2, b.sync.y + 27);
+  }
   if (g.freeCam) {
     ctx.fillStyle = "#fff";
     roundRect(ctx, b.recenter.x, b.recenter.y, b.recenter.w, b.recenter.h, 12);
@@ -531,8 +544,9 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
 /** Screen-space rects for the canvas buttons; shared with the input code. */
 export function hudButtons(viewH: number) {
   return {
-    mode: { x: 12, y: viewH - 56, w: 90, h: 42 },
-    recenter: { x: 112, y: viewH - 56, w: 120, h: 42 },
+    mode: { x: 12, y: viewH - 56, w: 84, h: 42 },
+    sync: { x: 104, y: viewH - 56, w: 90, h: 42 },
+    recenter: { x: W - 132, y: 100, w: 120, h: 42 },
     reserve: { x: W - 152, y: viewH - 56, w: 140, h: 42 },
   };
 }
@@ -547,6 +561,19 @@ export function teamDots(g: Game): { id: number; x: number; y: number }[] {
     x += 32;
   }
   return out;
+}
+
+function drawArc(ctx: CanvasRenderingContext2D, x: number, y: number, v: { x: number; y: number }, color: string) {
+  let vx = v.x, vy = v.y;
+  const dt = 1 / 60;
+  ctx.fillStyle = color;
+  for (let i = 0; i < 70; i++) {
+    vy += CFG.gravity * dt;
+    x += vx * dt;
+    y += vy * dt;
+    if (x < CFG.climberRadius || x > W - CFG.climberRadius) vx = -vx * 0.5;
+    if (i % 5 === 0) { ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill(); }
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

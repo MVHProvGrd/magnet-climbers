@@ -37,6 +37,9 @@ export class Game {
   /** true after the player pans by hand; the camera stops following until recentered */
   freeCam = false;
   panning: { lastY: number } | null = null;
+  /** SYNC: one drag flings every free climber with the same vector */
+  sync = false;
+  private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
   /** solo = one climber that flings itself (arcade); crew = teammates fling each other */
   rules: "solo" | "crew" = "crew";
   reserves = 0;
@@ -65,7 +68,8 @@ export class Game {
     // spawn bunched so everyone is within arm reach of a neighbour
     const gap = Math.min(46, this.stats.reach - 12);
     for (let i = 0; i < n; i++) {
-      const x = W / 2 + (i - (n - 1) / 2) * gap;
+      // start on the left door, clear of the non-stick seam down the middle
+      const x = W * 0.27 + (i - (n - 1) / 2) * gap;
       this.climbers.push(this.makeClimber(x, y - 40, "stuck"));
     }
     this.pickDefaultSelection();
@@ -187,8 +191,16 @@ export class Game {
     const v = this.launchVector();
     this.drag = null;
     if (!v) return;
-    if (this.powerMult(c) === 0) {
-      this.floats.push({ x: c.x, y: c.y - 30, text: "STRANDED — no one to fling you", life: 1.2, color: "#ff6b6b" });
+    if (this.sync && this.rules === "crew") {
+      const targets = this.syncTargets();
+      if (targets.length === 0) return;
+      // the dragged one goes first; the rest follow, staggered
+      targets.sort((a, b) => (a.id === c.id ? -1 : b.id === c.id ? 1 : a.y - b.y));
+      targets.forEach((t, i) => {
+        if (i === 0) this.launch(t, v);
+        else this.pendingLaunches.push({ id: t.id, v, at: this.time + i * 0.08 });
+      });
+      this.selectedId = c.id;
       return;
     }
     this.launch(c, v);
@@ -294,6 +306,11 @@ export class Game {
   /** Everyone flings themselves now; kept as a hook for per-colour abilities. */
   powerMult(_c: Climber): number {
     return 1;
+  }
+
+  /** Climbers a SYNC fling moves: anchored on steel, nobody hanging on them, not hanging themselves. */
+  syncTargets(): Climber[] {
+    return this.climbers.filter((c) => c.state === "stuck" && !this.isLadder(c));
   }
 
   /** Someone is hanging off this climber, so it is a ladder rung and cannot fling. */
@@ -405,6 +422,17 @@ export class Game {
     }
 
     if (this.phase === "running") this.floorY -= this.wallSpeed() * sdt;
+
+    if (this.pendingLaunches.length) {
+      const due = this.pendingLaunches.filter((p) => p.at <= this.time);
+      this.pendingLaunches = this.pendingLaunches.filter((p) => p.at > this.time);
+      const keep = this.selectedId;
+      for (const p of due) {
+        const c = this.byId(p.id);
+        if (c && c.state === "stuck" && !this.isLadder(c)) this.launch(c, p.v);
+      }
+      this.selectedId = keep;
+    }
 
     // bumpers
     for (const s of this.world.segments) {
