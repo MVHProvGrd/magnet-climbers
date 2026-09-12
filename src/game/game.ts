@@ -38,7 +38,7 @@ export class Game {
   freeCam = false;
   panning: { lastY: number } | null = null;
   /** SYNC: one drag flings every free climber with the same vector */
-  sync = false;
+  sync = true;
   private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
   /** solo = one climber that flings itself (arcade); crew = teammates fling each other */
   rules: "solo" | "crew" = "crew";
