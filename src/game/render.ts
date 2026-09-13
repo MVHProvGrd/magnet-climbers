@@ -1,7 +1,8 @@
 import { CFG, W } from "./config";
 import type { Game } from "./game";
-import type { Bumper, Climber, NoStickZone, PowerUp } from "./types";
+import type { Bumper, NoStickZone, PowerUp } from "./types";
 import { DOOR_SEAM } from "./world";
+import { drawClimber, drawClimberShadow } from "./climber-render";
 
 /** Cached brushed-steel pattern so the background is cheap to draw each frame. */
 let steelPattern: CanvasPattern | null = null;
@@ -118,7 +119,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.lineTo(t.x, t.y);
       ctx.stroke();
       ctx.globalAlpha = 0.55;
-      drawClimber(ctx, { ...sel, x: t.x, y: t.y, angle: 0, squash: 0 }, false, g.time);
+      drawClimber(ctx, { ...sel, x: t.x, y: t.y, angle: 0, squash: 0, grip: undefined }, false, g.time);
       ctx.globalAlpha = 1;
     } else {
       ctx.fillStyle = "rgba(255,80,80,0.9)";
@@ -169,6 +170,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
 
   // climbers (lost ones are gone)
+  for (const c of g.climbers) if (c.state !== "lost") drawClimberShadow(ctx, c);
   for (const c of g.climbers) if (c.state !== "lost") drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time);
 
   // particles
@@ -372,78 +374,6 @@ function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, t: number) {
   ctx.font = "bold 13px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(st.glyph, p.x, y + 5);
-}
-
-/** The rubbery magnet man: ball head, tube body, four limbs with silver magnet caps. */
-function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number) {
-  ctx.save();
-  ctx.translate(c.x, c.y);
-  ctx.rotate(c.angle);
-  const sq = c.squash;
-  ctx.scale(1 + sq * 0.15, 1 - sq * 0.15);
-
-  if (selected) {
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([3, 4]);
-    ctx.lineDashOffset = -t * 30;
-    ctx.beginPath();
-    ctx.arc(0, 0, 28, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // shadow on the surface
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(3, 4, 16, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const flying = c.state === "flying";
-  const spread = flying ? 0.55 : 1;
-  const limbs: [number, number][] = [
-    [-0.75 * spread - 0.2, -1], // left arm
-    [0.75 * spread + 0.2, -1], // right arm
-    [-0.5 * spread - 0.15, 1], // left leg
-    [0.5 * spread + 0.15, 1], // right leg
-  ];
-  ctx.lineCap = "round";
-  for (const [dx, dy] of limbs) {
-    const ex = dx * 22;
-    const ey = dy * 20;
-    ctx.strokeStyle = c.color;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(0, dy * 4);
-    ctx.quadraticCurveTo(ex * 0.5, ey * 0.2, ex, ey);
-    ctx.stroke();
-    // silver magnet cap
-    ctx.fillStyle = "#cfd4da";
-    ctx.beginPath();
-    ctx.arc(ex, ey, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.beginPath();
-    ctx.arc(ex - 1, ey - 1, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // body
-  ctx.strokeStyle = c.color;
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.moveTo(0, -6);
-  ctx.lineTo(0, 8);
-  ctx.stroke();
-  // head
-  ctx.fillStyle = c.color;
-  ctx.beginPath();
-  ctx.arc(0, -13, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.beginPath();
-  ctx.arc(-3, -16, 2.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
 }
 
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {

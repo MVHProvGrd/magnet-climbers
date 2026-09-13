@@ -25,6 +25,16 @@ export const CFG = {
   coinValue: 5,
   /** 10px of fridge = 1cm of score */
   pxPerCm: 10,
+  magnetism: {
+    attractionRange: 13,
+    attractionAccel: 260,
+    snapDistance: 4,
+    swingGravity: 380,
+    swingDamping: 5,
+    maxSwingSpeed: 5,
+    standingLift: 15,
+    singleLift: 9,
+  },
 };
 
 export const CLIMBER_COLORS = [

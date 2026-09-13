@@ -186,6 +186,30 @@ export class World {
     return true;
   }
 
+  /** Closest legal point from rectangle edge candidates, including narrow metal islands. */
+  nearestMetal(x: number, y: number, radius: number): { x: number; y: number } | null {
+    if (this.isMetal(x, y)) return { x, y };
+    const xs = [x, 0, W], ys = [y];
+    const edges = (r: Rect) => {
+      xs.push(r.x - 0.1, r.x + 0.1, r.x + r.w - 0.1, r.x + r.w + 0.1);
+      ys.push(r.y - 0.1, r.y + 0.1, r.y + r.h - 0.1, r.y + r.h + 0.1);
+    };
+    edges(DOOR_SEAM);
+    for (const s of this.segments) {
+      if (y + radius < s.y - 60 || y - radius > s.y + s.h + 60) continue;
+      for (const z of s.zones) edges(z);
+    }
+    let best: { x: number; y: number } | null = null;
+    let distance = radius + 0.001;
+    for (const cx of xs.filter((v) => Math.abs(v - x) <= radius)) {
+      for (const cy of ys.filter((v) => Math.abs(v - y) <= radius)) {
+        const d = Math.hypot(cx - x, cy - y);
+        if (d <= radius && d < distance && this.isMetal(cx, cy)) { best = { x: cx, y: cy }; distance = d; }
+      }
+    }
+    return best;
+  }
+
   repelAt(x: number, y: number): NoStickZone | null {
     for (const s of this.segments) {
       if (y < s.y - 60 || y > s.y + s.h + 60) continue;

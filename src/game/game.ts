@@ -2,6 +2,7 @@ import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, PowerUp, Vec } from "./types";
 import { World, inRect } from "./world";
+import { attachGrip, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
 
 export type Phase = "idle" | "running" | "dead";
 
@@ -27,6 +28,7 @@ export interface RunSnapshot {
   /** power-ups already taken, keyed by segment y and index */
   taken: string[];
   bumpers: { y: number; i: number; x: number; vx: number }[];
+  pendingLaunches?: { id: number; v: Vec; at: number }[];
 }
 
 export interface RunEvents {
@@ -105,11 +107,15 @@ export class Game {
 
   private makeClimber(x: number, y: number, state: Climber["state"]): Climber {
     const id = this.nextId++;
-    return {
+    const c: Climber = {
       id, x, y, vx: 0, vy: 0, angle: 0, spin: 0, state,
       color: this.palette[(id - 1) % this.palette.length],
       parent: null, leftLauncher: true, launcherId: null, airTime: 0, squash: 0,
     };
+    if (state === "stuck") attachGrip(c, findContacts(c, this.world, CFG.magnetism.snapDistance), true);
+    // Revives can request a point beside an obstacle: fall until a real tip catches.
+    if (state === "stuck" && !c.grip) c.state = "flying";
+    return c;
   }
 
   get heightCm(): number {
@@ -264,10 +270,11 @@ export class Game {
       if (o.parent === c.id && o.state === "linked") this.detach(o);
     }
     c.state = "flying";
+    c.grip = undefined;
     c.parent = null;
     c.vx = v.x;
     c.vy = v.y;
-    c.spin = (Math.random() - 0.5) * 14;
+    c.spin = v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 8;
     c.leftLauncher = false;
     c.launcherId = this.launcherFor(c)?.id ?? null;
     c.airTime = 0;
@@ -286,6 +293,7 @@ export class Game {
       return;
     }
     o.state = "flying";
+    o.grip = undefined;
     o.parent = null;
     o.vx = 0;
     o.vy = 0;
@@ -370,7 +378,10 @@ export class Game {
     if (d > range) { tx = c.x + ((p.x - c.x) / d) * range; ty = c.y + ((p.y - c.y) / d) * range; }
     tx = Math.max(CFG.climberRadius, Math.min(W - CFG.climberRadius, tx));
     // short shuffle on bare metal
-    if (Math.hypot(tx - c.x, ty - c.y) <= this.currentReach() * 1.1 && this.world.isMetal(tx, ty, this.stats.magnetRadius)) {
+    if (Math.hypot(tx - c.x, ty - c.y) <= this.currentReach() * 1.1 && findContacts(
+      { ...c, x: tx, y: ty, angle: 0, state: "flying", grip: undefined },
+      this.world, CFG.magnetism.snapDistance + this.stats.magnetRadius,
+    ).length > 0) {
       return { x: tx, y: ty, parent: null };
     }
     // otherwise hang on an anchored teammate near the drop point
@@ -403,7 +414,11 @@ export class Game {
     c.x = t.x; c.y = t.y;
     c.vx = 0; c.vy = 0;
     c.squash = 1;
-    if (t.parent == null) { c.state = "stuck"; c.parent = null; c.angle = 0; sfx.stick(); }
+    c.grip = undefined;
+    if (t.parent == null) {
+      c.angle = 0;
+      if (!this.stick(c, true)) { c.state = "flying"; c.airTime = 0; c.parent = null; }
+    }
     else {
       const a = this.byId(t.parent)!;
       c.state = "linked"; c.parent = a.id;
@@ -451,11 +466,11 @@ export class Game {
     }
     return {
       v: 1, rules: this.rules, seed: this.world.seed, generated: this.world.generated,
-      climbers: this.climbers.map((c) => ({ ...c })), nextId: this.nextId,
+      climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
       effects: { ...this.effects }, time: this.time, sync: this.sync, selectedId: this.selectedId,
-      taken, bumpers,
+      taken, bumpers, pendingLaunches: this.pendingLaunches.map((p) => ({ ...p, v: { ...p.v } })),
     };
   }
 
@@ -466,7 +481,15 @@ export class Game {
       seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
       for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { seg.bumpers[b.i].x = b.x; seg.bumpers[b.i].vx = b.vx; }
     }
-    g.climbers = snap.climbers.map((c) => ({ ...c }));
+    g.climbers = snap.climbers.map((c) => {
+      const restored = { ...c, grip: cloneGrip(c.grip) };
+      if (restored.state === "stuck" && !restored.grip) {
+        attachGrip(restored, findContacts(restored, g.world, CFG.magnetism.snapDistance), true);
+        if (!restored.grip) { restored.state = "flying"; restored.airTime = 0; }
+      }
+      return restored;
+    });
+    g.pendingLaunches = (snap.pendingLaunches ?? []).map((p) => ({ ...p, v: { ...p.v } }));
     g.nextId = snap.nextId;
     g.floorY = snap.floorY; g.highestY = snap.highestY; g.camY = snap.camY;
     g.coins = snap.coins; g.gems = snap.gems; g.reserves = snap.reserves; g.revivesLeft = snap.revivesLeft;
@@ -606,10 +629,18 @@ export class Game {
     // magnet catch: on/after apex (or super magnet: any time) over metal
     const catchUp = this.effects.superMagnet > 0 ? 9999 : this.stats.magnetCatch;
     if (c.vy > -catchUp && c.airTime > 0.08) {
-      const pad = this.stats.magnetRadius + (this.effects.superMagnet > 0 ? 30 : 0);
-      if (this.world.isMetal(c.x, c.y, pad)) {
-        this.stick(c);
-        return;
+      if (this.stick(c)) return;
+      // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
+      const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
+      const closest = candidates.map((p) => {
+        const tip = limbTip(c, p.limb);
+        return { dx: p.x - tip.x, dy: p.y - tip.y };
+      }).sort((a, b) => Math.hypot(a.dx, a.dy) - Math.hypot(b.dx, b.dy))[0];
+      if (closest) {
+        const distance = Math.hypot(closest.dx, closest.dy) || 1;
+        const force = CFG.magnetism.attractionAccel * dt;
+        c.vx += closest.dx / distance * force;
+        c.vy += closest.dy / distance * force;
       }
     }
     // teammate grab: after apex, within reach of an anchored teammate with chain room.
@@ -618,6 +649,7 @@ export class Game {
       const a = this.nearestAnchor(c, null);
       if (a) {
         c.state = "linked";
+        c.grip = undefined;
         c.parent = a.id;
         c.vx = 0; c.vy = 0;
         // clamp to reach
@@ -644,6 +676,7 @@ export class Game {
         for (const b of s.bumpers) {
           if (inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
             c.state = "flying";
+            c.grip = undefined;
             c.vx = (b.vx > 0 ? 1 : -1) * 200;
             c.vy = 120;
             c.leftLauncher = true;
@@ -654,12 +687,12 @@ export class Game {
         }
       }
     }
-    // ease angle toward the resting pose
-    const target = c.state === "stuck" ? 0 : c.angle;
-    c.angle += (target - c.angle) * Math.min(1, dt * 8);
+    if (c.state === "stuck") stepGrip(c, dt);
   }
 
-  private stick(c: Climber) {
+  private stick(c: Climber, flat = false): boolean {
+    const radius = CFG.magnetism.snapDistance + this.stats.magnetRadius + (this.effects.superMagnet > 0 ? 30 : 0);
+    if (!attachGrip(c, findContacts(c, this.world, radius), flat)) return false;
     c.state = "stuck";
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;
@@ -667,6 +700,7 @@ export class Game {
     sfx.stick();
     this.burst(c.x, c.y, "#dfe6ee", 5);
     this.markHeight(c);
+    return true;
   }
 
   private markHeight(c: Climber) {
@@ -682,6 +716,7 @@ export class Game {
   private lose(c: Climber) {
     if (c.state === "lost") return;
     c.state = "lost";
+    c.grip = undefined;
     c.parent = null;
     sfx.lost();
     this.floats.push({ x: c.x, y: Math.min(c.y, this.camY + this.viewH - 40), text: "lost!", life: 1, color: "#ff6b6b" });
@@ -698,7 +733,7 @@ export class Game {
       case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
       case "extra": {
         const n = this.makeClimber(p.x, p.y, "flying");
-        n.vx = (Math.random() - 0.5) * 100; n.vy = -80; n.airTime = 0; n.leftLauncher = true;
+        n.vx = (this.simNoise(n.id) - 0.5) * 100; n.vy = -80; n.airTime = 0; n.leftLauncher = true;
         this.climbers.push(n);
         sfx.power();
         this.floats.push({ x: p.x, y: p.y, text: "+1 FRIEND", life: 1.2, color: n.color });
@@ -708,6 +743,13 @@ export class Game {
     this.burst(p.x, p.y, "#ffffff", 8);
     this.events.onPower(p.kind, { x: p.x, y: p.y });
     void c;
+  }
+
+  /** Stateless seeded noise: independent of rendering and preserved by run snapshots. */
+  private simNoise(id: number): number {
+    let n = (this.world.seed ^ Math.imul(id, 374761393) ^ Math.round(this.time * 120)) | 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
   }
 
   private burst(x: number, y: number, color: string, n: number) {

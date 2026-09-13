@@ -2,6 +2,7 @@ import "./style.css";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
 import { render, hudButtons, teamDots } from "./game/render";
+import { renderMenuBackground } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
@@ -323,9 +324,7 @@ function frame(now: number) {
     }
     render(ctx, game, viewH, dpr);
   } else {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "#1a1d24";
-    ctx.fillRect(0, 0, W, viewH);
+    renderMenuBackground(ctx, viewH, dpr, now / 1000);
   }
   requestAnimationFrame(frame);
 }

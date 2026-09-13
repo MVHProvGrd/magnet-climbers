@@ -18,6 +18,7 @@ npm install
 npm run dev        # http://localhost:5180
 npm run build      # dist/ — static, relative paths, service worker + manifest
 npm run preview
+npm test           # magnetic landing, pendulum, collision and save regressions
 ```
 
 Best played on a phone or in a mobile-emulation viewport (portrait).
@@ -26,9 +27,9 @@ Best played on a phone or in a mobile-emulation viewport (portrait).
 
 - Drag back from anywhere and release to fling the selected climber (dashed ring).
 - Tap an anchored climber to select it. Default selection is the lowest free one (leap-frog).
-- A flying climber sticks to steel once it has passed its apex (stronger magnets catch earlier).
-- A flying climber falling within arm reach of an anchored teammate grabs on and hangs there. Chains have a max depth (Chain length upgrade).
-- Launching a climber that others are hanging on drops them; they re-grab a neighbour if one is in reach.
+- Near the apex, magnetic hands and feet catch steel. Rotation and approach direction produce feet, hands, mixed, single-tip or flat landings. A single tip lets the body swing beneath it.
+- SYNC flings free crew members together, staggered. CLIMB deliberately builds teammate chains; automatic midair teammate grabbing is currently disabled.
+- A climber supporting a teammate is a ladder rung and cannot launch. A bumper can knock it loose and drop the chain.
 - The red danger line rises faster the higher you go. Anything below it is lost. Lose everyone and the run ends.
 
 ## Layout
@@ -60,3 +61,14 @@ src/game/audio.ts     tiny WebAudio synth for feedback
 Global highest-climb board, per mode (crew / solo). Backend is a Cloudflare Worker + D1 in `worker/`; setup steps in `worker/README.md`. Without `VITE_LEADERBOARD_URL` the game still runs and shows local bests only.
 
 See `DESIGN.md` for mechanics, economy, and the F2P research.
+
+## Magnetic landing prototype and art handoff
+
+`src/game/magnetism.ts` owns tip contacts and single-grip swinging;
+`src/game/climber-render.ts` draws the flexible toys and side-window shadows.
+This is a frontal Canvas game with visual depth, not a full 3D ragdoll.
+
+The title screen uses the supplied wordmark and fridge illustration, with falling
+toys and reduced-motion support. The supplied orange toy is the new app icon.
+
+See `CLAUDE_HANDOFF.md` for the scoped environment-art task and remaining phone QA.

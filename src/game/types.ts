@@ -50,6 +50,16 @@ export interface Segment {
 
 export type ClimberState = "stuck" | "flying" | "linked" | "lost";
 
+export type LimbId = 0 | 1 | 2 | 3; // left hand, right hand, left foot, right foot
+export interface MagneticContact extends Vec { limb: LimbId }
+export interface MagneticGrip {
+  contacts: MagneticContact[];
+  pose: "flat" | "feet" | "hands" | "mixed" | "single";
+  lift: number;
+  age: number;
+  angularVelocity: number;
+}
+
 export interface Climber {
   id: number;
   x: number;
@@ -67,6 +77,8 @@ export interface Climber {
   launcherId: number | null;
   airTime: number;
   squash: number;
+  /** World-space magnetic tips. Optional so v1 saves remain readable. */
+  grip?: MagneticGrip;
 }
 
 export interface ActiveEffects {
