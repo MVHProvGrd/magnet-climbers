@@ -80,7 +80,7 @@ export class Ui {
       <button class="primary alt" data-a="solo">SOLO CLIMB</button>
       <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
       <button class="chip ${s.chill ? "on" : ""}" data-a="chill">😌 Chill mode: ${s.chill ? "ON" : "off"}</button>
-      <p class="fine">${s.chill ? "No red line. Take your time. Nothing is scored or earned." : "Turn on to climb with no red line. Nothing is scored or earned."}</p>
+      <p class="fine">${s.chill ? "No red line. Take your time. No coins or records, but your metres add to the world total." : "Turn on to climb with no red line. No coins or records, but metres count for the world total."}</p>
       <button data-a="shop">UPGRADES</button>
       <button data-a="board">SCOREBOARD</button>
       <div class="pair">
@@ -334,7 +334,7 @@ export class Ui {
     p.innerHTML = `
       <h2>${o.isRecord ? "New record!" : o.chill ? "Chill run done" : o.ended ? "Run banked" : "All climbers lost"}</h2>
       <div class="big">${o.cm} cm</div>
-      <p class="tag">${o.chill ? "Chill mode: nothing scored or earned" : `Best ${o.best} cm · earned <span class="coin">$${o.coins}</span>`}</p>
+      <p class="tag">${o.chill ? "Chill mode: no coins or records. Metres added to the world total." : `Best ${o.best} cm · earned <span class="coin">$${o.coins}</span>`}</p>
       <p class="tag rank" hidden></p>
       <div class="revive" ${o.ended ? "hidden" : ""}>
         ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}

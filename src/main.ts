@@ -169,20 +169,20 @@ function runEvents() {
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
       const isRecord = !chill && cm > save[bestKey];
       const newCm = Math.max(0, cm - bankedCm);
-      // chill runs earn nothing: no coins, gems, records, board or global total
+      // chill runs earn no coins, gems or records; distance still counts toward the totals
       const earned = chill ? 0 : game.coins + Math.floor(newCm / 4);
+      save.totalCm += newCm;
       if (!chill) {
         save.coins += earned;
         save.gems += game.gems;
         save[bestKey] = Math.max(save[bestKey], cm);
-        save.totalCm += newCm;
         if (!runCounted) { save.runs += 1; runCounted = true; }
       }
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      if (!chill && leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
+      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
       const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill });
       if (!chill) submitScore(cm, panel);
     },
