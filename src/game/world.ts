@@ -85,13 +85,13 @@ export class World {
       }
       case "band": {
         // horizontal non-stick band across the full width. Tall bands need a chain ladder.
-        // solo jump clears ~220px; anything taller needs a ladder of climbers
-        const bandH = rangeOf(r, 120, 170 + difficulty * 210);
+        // a solo jump clears ~250px of height; bands stay under that, and the tall ones
+        // always carry a metal handle as a stepping stone
+        const bandH = rangeOf(r, 110, 150 + difficulty * 60);
         const by = y + rangeOf(r, 40, h - bandH - 40);
         const bandKind = pick(r, ["trim", "glass", "void"] as const);
         zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
-        // a little metal handle floating in the band sometimes, as a stepping stone
-        if (r() < 0.45) {
+        if (bandH > 165 || r() < 0.45) {
           const hw = rangeOf(r, 40, 70);
           const hx = rangeOf(r, 20, W - hw - 20);
           zones.push({ x: hx, y: by + bandH * 0.35, w: hw, h: 24, kind: "trim" });
@@ -103,15 +103,21 @@ export class World {
       }
       case "window": {
         // big glass panel, metal only on the sides (or one side)
-        const gw = rangeOf(r, 180, 220 + difficulty * 100);
-        const gx = r() < 0.5 ? rangeOf(r, 30, W - gw - 30) : r() < 0.5 ? 0 : W - gw;
+        // glass panel with a usable steel strip (≥ 56px) on at least one side
+        const gw = rangeOf(r, 180, 220 + difficulty * 60);
+        const gx = r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
+        // a handle across the glass now and then, as a mid-way hold
+        if (r() < 0.5) {
+          const hw = rangeOf(r, 50, 80);
+          zones.push({ x: gx + rangeOf(r, 10, gw - hw - 10), y: y + rangeOf(r, 90, h - 120), w: hw, h: 24, kind: "void", hue: -1 });
+        }
         break;
       }
       case "pillar": {
         // whole segment is plastic trim except one or two vertical metal strips
         const strips = r() < 0.5 + difficulty * 0.3 ? 1 : 2;
-        const sw = rangeOf(r, 48, 70 - difficulty * 15);
+        const sw = rangeOf(r, 56, 80 - difficulty * 14);
         const xs = strips === 1 ? [rangeOf(r, 40, W - sw - 40)] : [rangeOf(r, 20, W / 2 - sw - 20), rangeOf(r, W / 2 + 20, W - sw - 20)];
         // trim on left of first strip, between, and right of last
         let cursor = 0;
