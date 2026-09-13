@@ -245,7 +245,7 @@ const ui = new Ui(uiRoot, () => save, {
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
   onShare: (c) => {
-    const go = () => void shareChallenge({ ...c, name: save.name || "a friend" }).then((r) => {
+    const go = () => void shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId }).then((r) => {
       if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
       if (r === "failed") ui.toast("Could not share on this device");
     });

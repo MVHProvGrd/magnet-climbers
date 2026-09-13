@@ -11,7 +11,8 @@
  *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
  *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
  *   GET  /stats                                → { total_cm, runs, players }
- *   GET  /c/<mode>.<cm>.<name>[.png]           → challenge share page (Open Graph) / score card PNG
+ *   GET  /c/<mode>.<cm>.<name>[/<playerId>][.png] → challenge share page (Open Graph) / score card PNG; the
+ *        height is checked against that player's scoreboard best, else the card says "unverified"
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
  * so a later version can submit the input log and have the server replay it.
@@ -66,7 +67,11 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
     if (req.method === "GET" && (url.pathname.startsWith("/c/") || url.hostname.startsWith("share."))) {
-      const share = await handleShare(req, url, (c: Challenge) => nameIsProfane(c.name));
+      const share = await handleShare(req, url, (c: Challenge) => nameIsProfane(c.name), async (c, playerId) => {
+        if (!playerId) return { ok: false };
+        const row = await env.DB.prepare("SELECT name, cm FROM scores WHERE player_id = ? AND mode = ?").bind(playerId, c.mode).first<{ name: string; cm: number }>();
+        return row && row.cm >= c.cm ? { ok: true, name: row.name } : { ok: false };
+      });
       if (share) return share;
     }
 

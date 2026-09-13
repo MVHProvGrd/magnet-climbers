@@ -38,7 +38,7 @@ export default defineConfig({
       workbox: {
         // Icon revisions trigger manifest refreshes; serve the same cached PNG offline.
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^icon-v$/],
-        globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2,mp3}"],
         navigateFallback: "index.html",
       },
     }),

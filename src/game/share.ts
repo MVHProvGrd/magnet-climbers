@@ -3,6 +3,8 @@ export interface Challenge {
   mode: "solo" | "crew";
   cm: number;
   name: string;
+  /** Sharer's scoreboard id; the share card checks the number against their recorded best. */
+  playerId?: string;
 }
 
 /** Share links go through the Worker so chat apps unfurl a score card; it redirects people to the game. */
@@ -16,7 +18,7 @@ export function buildChallengeUrl(c: Challenge): string {
     u.searchParams.set("c", code);
     return u.toString();
   }
-  return `${SHARE_BASE}/c/${encodeURIComponent(code)}`;
+  return `${SHARE_BASE}/c/${encodeURIComponent(code)}${c.playerId ? `/${encodeURIComponent(c.playerId)}` : ""}`;
 }
 
 export function parseChallenge(): Challenge | null {

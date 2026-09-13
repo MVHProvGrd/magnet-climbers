@@ -60,6 +60,29 @@ function effect(name: string) {
   lastEffect.set(name, c.currentTime);
   for (const voice of EFFECTS[name]) playVoice(c, voice, c.currentTime, fxBus);
 }
+/**
+ * Looped music tracks (public/audio/*.mp3): "theme" under runs and the menu, "chill" in Chill mode.
+ * Both loop continuously once decoded and are mixed by gain, so switching modes is a crossfade.
+ * Until they load (or if they fail, e.g. offline before the first cache) the generative score plays.
+ */
+const TRACKS = { theme: "theme.mp3", chill: "chill.mp3" } as const;
+const LOOP_SECONDS = 60 / 112 * 4 * 16, MP3_DELAY = 1105 / 48000;
+const trackGain: Partial<Record<keyof typeof TRACKS, GainNode>> = {};
+let tracksState: "idle" | "loading" | "ready" | "failed" = "idle", trackMix: keyof typeof TRACKS | null = null;
+function loadTracks(c: AudioContext) {
+  if (tracksState !== "idle" || typeof fetch !== "function" || typeof c.decodeAudioData !== "function") return;
+  tracksState = "loading";
+  const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
+  Promise.all((Object.keys(TRACKS) as (keyof typeof TRACKS)[]).map(async (name) => {
+    const res = await fetch(`${base}audio/${TRACKS[name]}`); if (!res.ok) throw new Error(String(res.status));
+    const buffer = await c.decodeAudioData(await res.arrayBuffer());
+    const source = c.createBufferSource(); source.buffer = buffer; source.loop = true;
+    source.loopStart = Math.min(MP3_DELAY, buffer.duration); source.loopEnd = Math.min(buffer.duration, MP3_DELAY + LOOP_SECONDS);
+    const gain = c.createGain(); gain.gain.value = 0; source.connect(gain).connect(musicBus);
+    trackGain[name] = gain; return source;
+  })).then((sources) => { const t = c.currentTime + 0.05; for (const s of sources) s.start(t, MP3_DELAY); tracksState = "ready"; })
+    .catch(() => { tracksState = "failed"; });
+}
 /** Existing render loop supplies a short scheduling horizon; no hidden timers. */
 export function updateAudio(playing: boolean, danger = 0, chill = false) {
   active = playing; const c = context(); if (!c || c.state !== "running") return;
@@ -67,6 +90,15 @@ export function updateAudio(playing: boolean, danger = 0, chill = false) {
   if (m !== masterTarget) { target(master, m, c.currentTime, .025); masterTarget = m; }
   if (music !== musicTarget) { target(musicBus, music, c.currentTime, .05); musicTarget = music; }
   if (!playing || !musicEnabled) { nextNote = c.currentTime; return; }
+  if (musicEnabled) loadTracks(c);
+  if (tracksState === "ready") {
+    const want: keyof typeof TRACKS = chill ? "chill" : "theme";
+    if (want !== trackMix) {
+      trackMix = want;
+      for (const name of Object.keys(trackGain) as (keyof typeof TRACKS)[]) target(trackGain[name]!, name === want ? 0.9 : 0, c.currentTime, 0.4);
+    }
+    nextNote = c.currentTime; return;
+  }
   if (nextNote < c.currentTime - 0.2) nextNote = c.currentTime;
   while (nextNote < c.currentTime + 0.12) {
     for (const voice of musicStep(step++, Math.max(0, Math.min(1, danger)), chill)) playVoice(c, voice, nextNote, musicBus);

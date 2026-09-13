@@ -72,7 +72,9 @@ Scores are honour-system with a 2 km cap. Runs are seeded and deterministic (120
 ## Challenge share cards
 
 `GET /c/<mode>.<cm>.<name>` serves Open Graph tags (Discord, iMessage, Slack, X) with a
-generated 1200x630 score card at `/c/<code>.png`, and 302s real browsers to
+generated 1200x630 score card at `/c/<code>.png`. The game appends `/<playerId>`; the Worker only
+prints the height when that player's scoreboard best in the mode covers it, otherwise the card reads
+"Unverified climb" so edited links give themselves away. It also and 302s real browsers to
 `https://magnetclimbers.com/?c=<code>`. The Worker is also bound to the custom domain
 `share.magnetclimbers.com` (see `wrangler.toml`); the game builds its share links against it
 (`VITE_SHARE_URL` overrides, `off` falls back to plain `?c=` links). Cards are rendered from SVG

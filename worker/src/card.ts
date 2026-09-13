@@ -8,7 +8,9 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
 import cardFont from "../assets/card-font.ttf";
 import cardBase from "../assets/card-base.jpg";
 
-export interface Challenge { mode: "solo" | "crew"; cm: number; name: string; code: string }
+export interface Challenge { mode: "solo" | "crew"; cm: number; name: string; code: string; verified: boolean }
+/** Looks the sharer up on the scoreboard: their best in that mode must cover the claimed height. */
+export type Verify = (c: Challenge, playerId: string | null) => Promise<{ ok: boolean; name?: string }>;
 
 export const GAME_URL = "https://magnetclimbers.com/";
 
@@ -19,7 +21,7 @@ export function parseCode(raw: string): Challenge | null {
   const cm = Math.floor(Number(cmS));
   if ((mode !== "solo" && mode !== "crew") || !Number.isFinite(cm) || cm <= 0 || cm > 200_000) return null;
   const name = (rest.join(".") || "a friend").replace(/[^\p{L}\p{N} _.\-!?]/gu, "").slice(0, 12).trim() || "a friend";
-  return { mode, cm, name, code: `${mode}.${cm}.${name}` };
+  return { mode, cm, name, code: `${mode}.${cm}.${name}`, verified: false };
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -29,10 +31,12 @@ export function isUnfurler(ua: string): boolean {
   return /bot|crawler|spider|preview|facebookexternalhit|discord|slack|telegram|whatsapp|twitter|imessage|skype|linkedin|pinterest|embed|fetch|curl|wget|http/i.test(ua);
 }
 
-export function cardHtml(c: Challenge, origin: string): string {
-  const title = `${c.name} climbed ${fmt(c.cm)} cm`;
-  const desc = `${c.mode === "crew" ? "Crew" : "Solo"} climb in Magnet Climbers. Can you get higher? Slingshot rubbery magnet people up an endless fridge.`;
-  const img = `${origin.replace(/^http:/, "https:")}/c/${encodeURIComponent(c.code)}.png`;
+export function cardHtml(c: Challenge, origin: string, playerId: string | null = null): string {
+  const title = c.verified ? `${c.name} climbed ${fmt(c.cm)} cm` : `${c.name} shared an unverified climb`;
+  const desc = c.verified
+    ? `${c.mode === "crew" ? "Crew" : "Solo"} climb in Magnet Climbers. Can you get higher? Slingshot rubbery magnet people up an endless fridge.`
+    : "This link's height does not match the scoreboard. Slingshot rubbery magnet people up an endless fridge in Magnet Climbers.";
+  const img = `${origin.replace(/^http:/, "https:")}/c/${encodeURIComponent(c.code)}${playerId ? `/${encodeURIComponent(playerId)}` : ""}.png`;
   const play = `${GAME_URL}?c=${encodeURIComponent(c.code)}`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>${esc(title)} · Magnet Climbers</title>
@@ -71,11 +75,16 @@ export function cardSvg(c: Challenge): string {
   const glow = 'stroke="#000" stroke-opacity="0.55" stroke-width="10" stroke-linejoin="round" paint-order="stroke"';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Liberation Sans" font-weight="700">
 <image href="${baseUri}" x="0" y="0" width="1200" height="630"/>
-<text x="${cx}" y="330" text-anchor="middle" font-size="46" fill="#ffffff" ${glow}>${esc(c.name)} climbed</text>
+${c.verified ? `<text x="${cx}" y="330" text-anchor="middle" font-size="46" fill="#ffffff" ${glow}>${esc(c.name)} climbed</text>
 <text x="${cx}" y="460" text-anchor="middle" font-size="${big}" fill="#ffd54a" ${glow}>${fmt(c.cm)}<tspan font-size="56" fill="#ffffff" dx="10">cm</tspan></text>
 <rect x="${cx - 118}" y="492" width="236" height="46" rx="23" fill="${c.mode === "crew" ? "#3d7bff" : "#f26d1d"}"/>
 <text x="${cx}" y="524" text-anchor="middle" font-size="25" fill="#fff" letter-spacing="3">${mode}</text>
-<text x="${cx}" y="590" text-anchor="middle" font-size="34" fill="#ffffff" ${glow}>Can you get higher?</text>
+<text x="${cx}" y="590" text-anchor="middle" font-size="34" fill="#ffffff" ${glow}>Can you get higher?</text>`
+: `<text x="${cx}" y="345" text-anchor="middle" font-size="46" fill="#ffffff" ${glow}>${esc(c.name)} shared</text>
+<text x="${cx}" y="430" text-anchor="middle" font-size="64" fill="#9aa3ad" ${glow}>Unverified climb</text>
+<rect x="${cx - 190}" y="470" width="380" height="46" rx="23" fill="#555c66"/>
+<text x="${cx}" y="502" text-anchor="middle" font-size="22" fill="#fff" letter-spacing="2">NOT ON THE SCOREBOARD</text>
+<text x="${cx}" y="590" text-anchor="middle" font-size="34" fill="#ffffff" ${glow}>Come climb for real</text>`}
 </svg>`;
 }
 
@@ -94,20 +103,25 @@ export async function cardPng(c: Challenge): Promise<Uint8Array> {
 }
 
 /** Handles /c/... routes; returns null for anything else. */
-export async function handleShare(req: Request, url: URL, profane: (c: Challenge) => boolean): Promise<Response | null> {
+export async function handleShare(req: Request, url: URL, profane: (c: Challenge) => boolean, verify: Verify): Promise<Response | null> {
   if (url.pathname === "/" && url.hostname.startsWith("share.")) return Response.redirect(GAME_URL, 302);
-  const m = url.pathname.match(/^\/c\/([^/]+?)(\.png)?$/);
+  const m = url.pathname.match(/^\/c\/([^/]+?)(?:\/([^/]+?))?(\.png)?$/);
   if (!m) return null;
   const c = parseCode(m[1]);
+  const playerId = m[2] ? decodeURIComponent(m[2]).slice(0, 40) : null;
+  const png = m[3];
   if (!c) return Response.redirect(GAME_URL, 302);
+  const v = await verify(c, playerId);
+  c.verified = v.ok;
+  if (v.ok && v.name) c.name = v.name;
   if (profane(c)) { c.name = "A climber"; c.code = `${c.mode}.${c.cm}.A climber`; }
-  const cache = "public, max-age=86400";
-  if (m[2]) {
+  const cache = v.ok ? "public, max-age=86400" : "public, max-age=300";
+  if (png) {
     const png = await cardPng(c);
     return new Response(png as BodyInit, { headers: { "Content-Type": "image/png", "Cache-Control": cache, "Content-Length": String(png.byteLength) } });
   }
   if (!isUnfurler(req.headers.get("User-Agent") ?? "")) {
     return Response.redirect(`${GAME_URL}?c=${encodeURIComponent(c.code)}`, 302);
   }
-  return new Response(cardHtml(c, url.origin), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
+  return new Response(cardHtml(c, url.origin, playerId), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
 }
