@@ -172,7 +172,7 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
   // Keep Claude's handles, vents, gaps and glowing repel plates; mix both glass
   // treatments, and retain his four card styles alongside the 12 new drawings.
   const variant = artVariant(z.x, z.y, seed, 16);
-  const material = z.hue === -1 || z.kind === "trim" || z.kind === "void" || z.kind === "repel"
+  const material = z.hue === -1 || z.kind === "trim" || z.kind === "void" || z.kind === "repel" || z.kind === "attract"
     || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && !z.itemId && variant >= 12);
   if (material) {
     ctx.save(); drawMaterialZone(ctx, z, time);
@@ -180,6 +180,13 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
       const travel = (time * 14) % 14;
       ctx.globalAlpha = (1 - travel / 14) * 0.4;
       ctx.strokeStyle = "#ff687d"; ctx.lineWidth = 1.3;
+      ctx.strokeRect(z.x - travel, z.y - travel, z.w + travel * 2, z.h + travel * 2);
+    }
+    if (z.kind === "attract") {
+      // field rings travel inward: this one pulls
+      const travel = 14 - ((time * 14) % 14);
+      ctx.globalAlpha = (travel / 14) * 0.4;
+      ctx.strokeStyle = "#6fb6ff"; ctx.lineWidth = 1.3;
       ctx.strokeRect(z.x - travel, z.y - travel, z.w + travel * 2, z.h + travel * 2);
     }
     ctx.restore();

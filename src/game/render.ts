@@ -420,6 +420,8 @@ export function teamDots(g: Game): { id: number; x: number; y: number }[] {
   return out;
 }
 
+const inRectPlain = (x: number, y: number, r: { x: number; y: number; w: number; h: number }) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+
 /**
  * Aim preview. Integrates the same forces the flyer feels (gravity, repel plates,
  * wall bounce) at 1/60 s so the dotted path bends where the real path bends.
@@ -438,6 +440,16 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
       const d = Math.max(20, Math.hypot(dx, dy));
       vx += (dx / d) * 1400 * dt;
       vy += (dy / d) * 1400 * dt;
+    }
+    const az = g.world.attractAt(x, y);
+    if (az) {
+      const cx = az.x + az.w / 2, cy = az.y + az.h / 2;
+      const dx = cx - x, dy = cy - y;
+      const d = Math.max(20, Math.hypot(dx, dy));
+      vx += (dx / d) * 1500 * dt;
+      vy += (dy / d) * 1500 * dt;
+      // the preview ends where the plate would catch the climber
+      if (inRectPlain(x, y, az)) { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); break; }
     }
     x += vx * dt;
     y += vy * dt;

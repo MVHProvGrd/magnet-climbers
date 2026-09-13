@@ -643,6 +643,15 @@ export class Game {
       c.vx += (dx / d) * 1400 * dt;
       c.vy += (dy / d) * 1400 * dt;
     }
+    // blue plates pull the other way; the plate itself is steel so it catches you
+    const az = this.world.attractAt(c.x, c.y);
+    if (az && !(c.noStick && c.noStick > 0)) {
+      const cx = az.x + az.w / 2, cy = az.y + az.h / 2;
+      const dx = cx - c.x, dy = cy - c.y;
+      const d = Math.max(20, Math.hypot(dx, dy));
+      c.vx += (dx / d) * 1500 * dt;
+      c.vy += (dy / d) * 1500 * dt;
+    }
     c.x += c.vx * dt;
     c.y += c.vy * dt;
     c.angle += c.spin * dt;

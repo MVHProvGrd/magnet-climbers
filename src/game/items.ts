@@ -44,6 +44,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
   { id: "repel", name: "Wrong Pole", family: "surface", kind: "repel", description: "Pushes airborne climbers away. Watch the red magnetic field." },
+  { id: "attract", name: "Right Pole", family: "surface", kind: "attract", metal: true, description: "Pulls airborne climbers in, and it is steel, so it catches them. Blue field, safe landing." },
   { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Jump across or use the steel sides." },
   ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL"].map((label, i): FridgeItem => ({
     id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser"][i],

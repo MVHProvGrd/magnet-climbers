@@ -11,7 +11,7 @@ export interface Rect {
 }
 
 /** Areas a magnet cannot stick to. Drawn on top of the stainless surface. */
-export type NoStickKind = "glass" | "trim" | "sticker" | "void" | "repel";
+export type NoStickKind = "glass" | "trim" | "sticker" | "void" | "repel" | "attract";
 
 export interface NoStickZone extends Rect {
   itemId?: string;

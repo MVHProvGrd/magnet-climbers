@@ -38,7 +38,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 4) {
+  constructor(seed: number, startY: number, readonly version = 5) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -149,6 +149,15 @@ export class World {
       zones.push({ x: rangeOf(r, 10, W - rw - 10), y: y + rangeOf(r, 10, h - rh - 10), w: rw, h: rh, kind: "repel" });
     }
 
+    // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
+    if (this.version >= 5 && i > 5 && r() < 0.22 + difficulty * 0.25) {
+      const aw = rangeOf(r, 64, 100);
+      const ah = rangeOf(r, 64, 96);
+      const ax = rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, 10, h - ah - 10);
+      const clash = zones.some((o) => ax < o.x + o.w + 16 && ax + aw > o.x - 16 && ay < o.y + o.h + 16 && ay + ah > o.y - 16);
+      if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract" });
+    }
+
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
       const bw = rangeOf(r, 44, 64);
@@ -227,7 +236,7 @@ export class World {
         if (z.hue === -1 && inRect(x, y, z, pad)) return true;
       }
       for (const z of s.zones) {
-        if (z.hue === -1) continue;
+        if (z.hue === -1 || z.kind === "attract") continue;
         if (inRect(x, y, z, -pad)) return false;
       }
     }
@@ -267,6 +276,15 @@ export class World {
     for (const s of this.segments) {
       if (y < s.y - 60 || y > s.y + s.h + 60) continue;
       for (const z of s.zones) if (z.kind === "repel" && inRect(x, y, z, 20)) return z;
+    }
+    return null;
+  }
+
+  /** Nearest blue attract plate whose field (rect + 110px) covers the point. */
+  attractAt(x: number, y: number): NoStickZone | null {
+    for (const s of this.segments) {
+      if (y < s.y - 160 || y > s.y + s.h + 160) continue;
+      for (const z of s.zones) if (z.kind === "attract" && inRect(x, y, z, 110)) return z;
     }
     return null;
   }
