@@ -1,10 +1,20 @@
 import { CFG, W } from "./config";
 import type { Game } from "./game";
-import { drawClimber, drawClimberShadow } from "./climber-render";
+import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
 
+let lastRenderTime = 0;
+
 export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dpr: number) {
+  // ease the visual arm stretch toward its target while LONG ARMS is active
+  {
+    const dt = Math.min(0.05, Math.max(0, g.time - lastRenderTime));
+    lastRenderTime = g.time;
+    const target = g.effects.reach > 0 ? 1.7 : 1;
+    const cur = getArmStretch();
+    setArmStretch(cur + (target - cur) * Math.min(1, dt * 6));
+  }
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const sx = g.shake > 0 ? (Math.random() - 0.5) * 8 * g.shake : 0;

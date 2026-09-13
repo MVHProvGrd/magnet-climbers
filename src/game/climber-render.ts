@@ -3,6 +3,15 @@ import type { Climber, Vec } from "./types";
 
 interface Point extends Vec { z: number }
 
+/** Visual arm stretch (1 = normal). Set by the renderer while LONG ARMS is active; eased there. */
+let armStretch = 1;
+export function setArmStretch(v: number) {
+  armStretch = v;
+}
+export function getArmStretch(): number {
+  return armStretch;
+}
+
 function geometry(c: Climber) {
   const lift = bodyLift(c);
   const bodyPoint = (x: number, y: number, z = lift): Point => {
@@ -13,10 +22,15 @@ function geometry(c: Climber) {
   const limbs = [0, 1, 2, 3].map((limb) => {
     const tip = limbTip(c, limb);
     const attached = c.state === "stuck" && c.grip?.contacts.some((p) => p.limb === limb);
-    const end: Point = { ...tip, z: attached ? 0 : lift + 3 };
     const start = limb < 2 ? shoulder : hip;
+    const stretch = limb < 2 ? armStretch : 1;
+    // free arms reach further under LONG ARMS; pinned hands stay on their steel and the tube bows out instead
+    const end: Point = attached || stretch === 1
+      ? { ...tip, z: attached ? 0 : lift + 3 }
+      : { x: start.x + (tip.x - start.x) * stretch, y: start.y + (tip.y - start.y) * stretch, z: lift + 3 };
+    const slack = attached ? 1 + (stretch - 1) * 5 : 1;
     // Curved rubber tube; contact endpoints stay fixed even during the landing wobble.
-    const bend = rotate({ x: limb % 2 === 0 ? -4 : 4, y: limb < 2 ? 5 : -2 }, c.angle);
+    const bend = rotate({ x: (limb % 2 === 0 ? -4 : 4) * slack, y: (limb < 2 ? 5 : -2) * slack }, c.angle);
     const middle: Point = { x: (start.x + end.x) / 2 + bend.x, y: (start.y + end.y) / 2 + bend.y, z: (start.z + end.z) / 2 + 3 };
     return { start, middle, end, attached };
   });
