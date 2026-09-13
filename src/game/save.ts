@@ -18,6 +18,8 @@ export interface SaveData {
   /** display name for the leaderboard; empty until the player picks one */
   name: string;
   introSeen: boolean;
+  /** the one-time name offer has been shown */
+  namePrompted: boolean;
   tutorialDone: boolean;
   chill: boolean;
 }
@@ -43,25 +45,35 @@ function defaults(): SaveData {
     playerId: "p-" + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8),
     name: "",
     introSeen: false,
+    namePrompted: false,
     tutorialDone: false,
     chill: false,
   };
 }
 
+/** Guest name so every score has a label even when the player skips naming. */
+export function guestName(): string {
+  return "Climber" + String(1000 + Math.floor(Math.random() * 9000));
+}
+
 export function loadSave(): SaveData {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return defaults();
+    if (!raw) return { ...defaults(), name: guestName() };
     const parsed = JSON.parse(raw) as Partial<SaveData>;
     const d = defaults();
-    return {
+    const merged = {
       ...d,
       ...parsed,
       upgrades: { ...d.upgrades, ...(parsed.upgrades ?? {}) },
-      version: 1,
+      version: 1 as const,
     };
+    // players who already chose a name never see the one-time offer
+    if (parsed.name && parsed.namePrompted === undefined) merged.namePrompted = true;
+    if (!merged.name) merged.name = guestName();
+    return merged;
   } catch {
-    return defaults();
+    return { ...defaults(), name: guestName() };
   }
 }
 

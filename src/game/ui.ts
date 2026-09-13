@@ -358,11 +358,11 @@ export class Ui {
     const p = el("div", "panel small");
     p.innerHTML = `
       <h2>${required ? "Pick your climber name" : "Your climber name"}</h2>
-      <p class="tag">Shown on the global scoreboard. 3–12 characters.</p>
+      <p class="tag">Shown on the global scoreboard. 3–12 characters. You can change it any time in Settings.</p>
       <input id="name-in" maxlength="12" placeholder="e.g. FridgeKing" value="${esc(s.name)}" autocomplete="off" autocapitalize="off" />
       <p class="fine err" hidden></p>
       <button class="primary" data-a="ok">${required ? "LET'S CLIMB" : "SAVE"}</button>
-      ${required ? "" : `<button class="ghost" data-a="skip">SKIP</button>`}`;
+      <button class="ghost" data-a="skip">${required ? `KEEP "${esc(s.name)}"` : "CANCEL"}</button>`;
     const input = p.querySelector<HTMLInputElement>("#name-in")!;
     const err = p.querySelector<HTMLElement>(".err")!;
     const finish = (save: boolean) => {

@@ -191,7 +191,7 @@ function runEvents() {
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       persist();
-      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name || "anonymous", rulesNow, newCm);
+      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
       const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill });
       if (!chill) submitScore(cm, panel);
     },
@@ -267,17 +267,13 @@ function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name || "anonymous", rulesNow, cm).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, rulesNow, cm).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
       ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
     });
   };
-  if (!save.name) {
-    // first time on the board: ask for a name, then send
-    ui.showNamePrompt(() => { const again = ui.reshowGameOver(); if (again) send(again); });
-    return;
-  }
+  // every finished run posts; the name is whatever the player has (a guest name if they skipped)
   send();
 }
 
@@ -361,9 +357,9 @@ else if (!save.introSeen) {
   ui.showStory(() => {
     save.introSeen = true; persist();
     const next = () => (!save.tutorialDone ? startRun("solo", true) : ui.showMenu());
-    if (!save.name) ui.showNamePrompt(next, true); else next();
+    if (!save.namePrompted) { save.namePrompted = true; persist(); ui.showNamePrompt(next, true); } else next();
   });
-} else if (!save.name) ui.showNamePrompt(() => ui.showMenu(), true);
+} else if (!save.namePrompted) { save.namePrompted = true; persist(); ui.showNamePrompt(() => ui.showMenu(), true); }
 else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
