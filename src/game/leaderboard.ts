@@ -10,7 +10,8 @@ export type Mode = "crew" | "solo";
 
 const DEFAULT_API = "https://magnet-climbers-api.magnetclimbers.workers.dev";
 /** Override with VITE_LEADERBOARD_URL; set it to "off" to disable the board. */
-const raw = (import.meta.env.VITE_LEADERBOARD_URL as string | undefined) ?? DEFAULT_API;
+const envUrl = ((import.meta.env.VITE_LEADERBOARD_URL as string | undefined) ?? "").trim();
+const raw = envUrl || DEFAULT_API;
 const API = raw === "off" ? "" : raw.replace(/\/$/, "");
 
 export const leaderboardEnabled = API.length > 0;
