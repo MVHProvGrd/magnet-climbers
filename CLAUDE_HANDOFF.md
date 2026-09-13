@@ -1,5 +1,25 @@
 # Claude handoff: scenery and material art
 
+## Update: combined scenery pass integrated by Codex
+
+Michael subsequently requested that Codex also implement and push the in-game art.
+Claude's concurrent commit arrived while Codex was finishing. Both passes are now
+combined: `src/game/scenery-materials.ts` preserves Claude's material renderer,
+steel/window lighting, handles, trim, gaps, glowing N plates, original cards and
+alphabet/souvenir magnets. `src/game/scenery.ts` adds 12 cached illustrations and
+notes, an alternate glass treatment with shelves, additional glossy/smiley magnets,
+repulsion field animation and illustrated pickups. `render.ts` calls this module.
+Collision geometry and World.rng are unchanged. Claude's WebP assets, properly
+sized/maskable icons and the subsequent stats fix are preserved.
+
+Review `artifacts/scenery-gallery.png` and `artifacts/fridge-sticker-collection.png`.
+The original task below is now a reference for further polish, not an unstarted
+assignment. Claude should focus on real-phone art/performance QA and refinements
+to this implementation, rather than creating a competing scenery module.
+The new art is procedural Canvas, so it remains sharp and offline without extra
+downloaded image assets. `node tests/scenery-visual.mjs` regenerates the previews
+using the optional Canvas QA dependency documented in `tests/visual.mjs`.
+
 ## Current direction
 
 The real inspiration is the flexible, translucent magnet people on Michael's fridge.

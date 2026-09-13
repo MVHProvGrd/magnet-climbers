@@ -72,3 +72,17 @@ The title screen uses the supplied wordmark and fridge illustration, with fallin
 toys and reduced-motion support. The supplied orange toy is the new app icon.
 
 See `CLAUDE_HANDOFF.md` for the scoped environment-art task and remaining phone QA.
+
+## Fridge art
+
+`src/game/scenery.ts` combines Claude's material renderer in `scenery-materials.ts`
+with 12 new seeded paper illustrations: pizza, cats, rainbows, rockets, mountains,
+flowers, penguins and notes. The original polaroids, souvenir cards and alphabet
+magnets remain in the mix. Sliding magnets have extra glossy and smiley styles;
+pickups use distinct illustrated symbols. New static paper/material layers and
+steel grain are cached. Visual randomness is independent of the simulation RNG.
+
+Art previews: `artifacts/scenery-gallery.png` and
+`artifacts/fridge-sticker-collection.png`. Run `node tests/scenery-visual.mjs`
+with the optional Canvas dependency to regenerate them and check that rendering
+does not mutate the simulation.
