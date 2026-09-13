@@ -392,3 +392,28 @@ test("original music is deterministic, bounded and layers percussion only outsid
   const voices = [...Object.values(EFFECTS).flat(), ...Array.from({ length: 32 }, (_, i) => musicStep(i, 1)).flat()];
   for (const v of voices) { assert.ok(v.frequency > 0 && v.frequency < 20000); assert.ok(v.duration > .006 && v.duration < 1); assert.ok(v.gain > 0 && v.gain <= .25); }
 });
+
+test("moving grips carry an entire linked crew without stretching the chain", () => {
+  const g = game("crew"); g.phase = "running"; g.nextHandAt = 999;
+  const [root, child, grandchild] = g.climbers;
+  const gadget = { id: "chain", itemId: "swing-snack", kind: "swing" as const, x: 100, y: -100, phase: 0 };
+  g.world.segments[0].gadgets = [gadget];
+  const hold = gadgetPose(gadget, 0).hold;
+  Object.assign(root, { x: hold.x + 21, y: hold.y + 20, angle: 0, grip: undefined, ragdoll: undefined, state: "flying" });
+  attachGrip(root, findContacts(root, g.world, 0).filter((p) => p.limb === 0)); root.state = "stuck";
+  Object.assign(child, { x: root.x, y: root.y + 50, parent: root.id, state: "linked", grip: undefined });
+  Object.assign(grandchild, { x: root.x, y: root.y + 100, parent: child.id, state: "linked", grip: undefined });
+  for (let i = 0; i < 120; i++) {
+    g.update(1 / 120);
+    assert.ok(Math.abs(child.x - root.x) < 1e-7); assert.ok(Math.abs(child.y - root.y - 50) < 1e-7);
+    assert.ok(Math.abs(grandchild.x - root.x) < 1e-7); assert.ok(Math.abs(grandchild.y - root.y - 100) < 1e-7);
+  }
+});
+
+test("Claude's super magnet protection survives the articulated swipe integration", () => {
+  const g = game(), c = g.climbers[0]; g.phase = "running"; g.effects.superMagnet = 10;
+  g.hand = { side: -1, y: -100, x: 0, phase: "sweep", t: .35, hit: new Set() };
+  Object.assign(c, handWorldPoint(g.hand, { x: 0, y: 0 }));
+  g.update(1 / 120);
+  assert.equal(c.hp, 3); assert.equal(c.state, "stuck"); assert.ok(c.grip); assert.ok(g.hand.hit.has(c.id));
+});
