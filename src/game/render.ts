@@ -223,12 +223,20 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   ctx.font = "bold 15px system-ui, sans-serif";
   ctx.textAlign = "right";
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, W - 130, 10, 120, 34, 10);
+  roundRect(ctx, W - 130, 10, 120, (!g.chill && (g.coins > 0 || g.gems > 0)) ? 46 : 34, 10);
   ctx.fill();
+  // wallet + this run's pickups (chill runs bank nothing, so show only the wallet there)
+  const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
   ctx.fillStyle = "#ffd23f";
-  ctx.fillText(`$${g.coins}`, W - 72, 32);
+  ctx.fillText(`$${g.walletCoins + runCoins}`, W - 72, 32);
   ctx.fillStyle = "#7ef0ff";
-  ctx.fillText(`◆${g.gems}`, W - 20, 32);
+  ctx.fillText(`◆${g.walletGems + runGems}`, W - 20, 32);
+  if (runCoins > 0 || runGems > 0) {
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillText(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`, W - 20, 46);
+    ctx.font = "bold 15px system-ui, sans-serif";
+  }
 
   // team dots double as the active-climber selector
   for (const d of teamDots(g)) {

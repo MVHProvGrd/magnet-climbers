@@ -81,6 +81,9 @@ export class Game {
   chill = false;
   reserves = 0;
   palette: string[];
+  /** banked totals from the save, so the HUD can show wallet + this run */
+  walletCoins = 0;
+  walletGems = 0;
   particles: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [];
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;

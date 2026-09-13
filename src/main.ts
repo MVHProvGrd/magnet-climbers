@@ -188,6 +188,7 @@ function runEvents() {
       }
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
+      game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name || "anonymous", rulesNow, newCm);
@@ -206,6 +207,7 @@ function resumeRun() {
   paused = false;
   const palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
   game = Game.restore(save.upgrades, runEvents(), r.snap, palette);
+  game.walletCoins = save.coins; game.walletGems = save.gems;
   game.viewH = viewH;
   game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
   ui.setInRun(true);
@@ -253,6 +255,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   ui.hideTip();
   if (withTutorial) ui.showTip(tutorialSteps[0].tip);
   game.reserves = save.reserves;
+  game.walletCoins = save.coins; game.walletGems = save.gems;
   game.palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
   game.viewH = viewH;
