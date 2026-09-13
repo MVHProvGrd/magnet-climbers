@@ -1,5 +1,6 @@
 import { bodyLift, limbTip, rotate } from "./magnetism";
 import type { Climber, Vec } from "./types";
+import { flightLimb, LIMB_ROOTS, plantedJoint } from "./ragdoll";
 
 interface Point extends Vec { z: number }
 
@@ -22,16 +23,16 @@ function geometry(c: Climber) {
   const limbs = [0, 1, 2, 3].map((limb) => {
     const tip = limbTip(c, limb);
     const attached = c.state === "stuck" && c.grip?.contacts.some((p) => p.limb === limb);
-    const start = limb < 2 ? shoulder : hip;
+    const root = LIMB_ROOTS[limb];
+    const start = bodyPoint(root.x, root.y);
     const stretch = limb < 2 ? armStretch : 1;
-    // free arms reach further under LONG ARMS; pinned hands stay on their steel and the tube bows out instead
     const end: Point = attached || stretch === 1
       ? { ...tip, z: attached ? 0 : lift + 3 }
       : { x: start.x + (tip.x - start.x) * stretch, y: start.y + (tip.y - start.y) * stretch, z: lift + 3 };
-    const slack = attached ? 1 + (stretch - 1) * 5 : 1;
-    // Curved rubber tube; contact endpoints stay fixed even during the landing wobble.
-    const bend = rotate({ x: (limb % 2 === 0 ? -4 : 4) * slack, y: (limb < 2 ? 5 : -2) * slack }, c.angle);
-    const middle: Point = { x: (start.x + end.x) / 2 + bend.x, y: (start.y + end.y) / 2 + bend.y, z: (start.z + end.z) / 2 + 3 };
+    const flight = flightLimb(c, limb);
+    const localTip = rotate({ x: end.x - c.x, y: end.y - c.y }, -c.angle);
+    const joint = flight && stretch === 1 ? flight.joint : plantedJoint(root, localTip, limb);
+    const middle = bodyPoint(joint.x, joint.y, (start.z + end.z) / 2 + 3 + (attached ? (stretch - 1) * 10 : 0));
     return { start, middle, end, attached };
   });
   return { shoulder, hip, head, limbs, lift };
@@ -45,7 +46,9 @@ function project(p: Point, shadow: boolean): Vec {
 
 function tube(ctx: CanvasRenderingContext2D, start: Vec, middle: Vec, end: Vec) {
   ctx.beginPath(); ctx.moveTo(start.x, start.y);
-  ctx.quadraticCurveTo(middle.x, middle.y, end.x, end.y); ctx.stroke();
+  ctx.lineTo((start.x + middle.x) / 2, (start.y + middle.y) / 2);
+  ctx.quadraticCurveTo(middle.x, middle.y, (middle.x + end.x) / 2, (middle.y + end.y) / 2);
+  ctx.lineTo(end.x, end.y); ctx.stroke();
 }
 
 export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber) {

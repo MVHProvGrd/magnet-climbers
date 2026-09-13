@@ -2,7 +2,8 @@ import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, PowerUp, Vec } from "./types";
 import { World, inRect, makeRng } from "./world";
-import { attachGrip, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
+import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
+import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 
 export type Phase = "idle" | "running" | "dead";
 
@@ -12,6 +13,7 @@ export interface RunSnapshot {
   rules: "solo" | "crew";
   chill?: boolean;
   seed: number;
+  worldVersion?: number;
   generated: number;
   climbers: Climber[];
   nextId: number;
@@ -85,7 +87,7 @@ export class Game {
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean } = {}) {
+  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
@@ -95,7 +97,7 @@ export class Game {
     this.stats = statsFor(levels);
     this.revivesLeft = this.stats.revives;
     this.startY = 0;
-    this.world = new World(seed, 0);
+    this.world = new World(seed, 0, opts.worldVersion);
     this.floorY = CFG.floorStartOffset;
     this.highestY = 0;
     this.camY = -this.viewH * 0.55;
@@ -121,8 +123,9 @@ export class Game {
       color: this.palette[(id - 1) % this.palette.length],
       parent: null, leftLauncher: true, launcherId: null, airTime: 0, squash: 0,
       hp: CFG.maxHp, iframes: 0,
+      ragdoll: undefined,
     };
-    if (state === "stuck") attachGrip(c, findContacts(c, this.world, CFG.magnetism.snapDistance), true);
+    if (state === "stuck" && !braceLanding(c, this.world)) attachGrip(c, findContacts(c, this.world, CFG.magnetism.snapDistance), true);
     // Revives can request a point beside an obstacle: fall until a real tip catches.
     if (state === "stuck" && !c.grip) c.state = "flying";
     return c;
@@ -285,6 +288,7 @@ export class Game {
     c.vx = v.x;
     c.vy = v.y;
     c.spin = v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 8;
+    resetRagdoll(c);
     c.leftLauncher = false;
     c.launcherId = this.launcherFor(c)?.id ?? null;
     c.airTime = 0;
@@ -476,8 +480,8 @@ export class Game {
       seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx, by: b.y, vy: b.vy }));
     }
     return {
-      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, generated: this.world.generated,
-      climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip) })), nextId: this.nextId,
+      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated,
+      climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip), ragdoll: cloneRagdoll(c.ragdoll) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
       effects: { ...this.effects }, time: this.time, sync: this.sync, selectedId: this.selectedId,
@@ -486,14 +490,14 @@ export class Game {
   }
 
   static restore(levels: Record<UpgradeKey, number>, events: RunEvents, snap: RunSnapshot, palette?: string[]): Game {
-    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, chill: snap.chill ?? false });
+    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? 1 });
     g.world.generateTo(snap.generated);
     for (const seg of g.world.segments) {
       seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
       for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { const t = seg.bumpers[b.i]; t.x = b.x; t.vx = b.vx; if (b.by != null) t.y = b.by; if (b.vy != null) t.vy = b.vy; }
     }
     g.climbers = snap.climbers.map((c) => {
-      const restored = { ...c, grip: cloneGrip(c.grip) };
+      const restored = { ...c, grip: cloneGrip(c.grip), ragdoll: cloneRagdoll(c.ragdoll) };
       if (restored.state === "stuck" && !restored.grip) {
         attachGrip(restored, findContacts(restored, g.world, CFG.magnetism.snapDistance), true);
         if (!restored.grip) { restored.state = "flying"; restored.airTime = 0; }
@@ -633,6 +637,8 @@ export class Game {
       }
     }
 
+    stepRagdoll(c, dt);
+
     // power-ups
     for (const s of this.world.segments) {
       for (const p of s.powerUps) {
@@ -698,10 +704,11 @@ export class Game {
           if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
             c.state = "flying";
             c.grip = undefined;
-            // knock clear of the bumper: away from its centre, plus its own motion
+            // Knock clear of the bumper, retaining Claude's no-stick grace window.
             const away = c.x < b.x + b.w / 2 ? -1 : 1;
             c.vx = away * 260 + b.vx * 0.6;
             c.vy = (c.y < b.y + b.h / 2 ? -180 : 180) + b.vy * 0.6;
+            resetRagdoll(c);
             c.leftLauncher = true;
             c.airTime = 0;
             c.noStick = 0.35;
@@ -715,7 +722,9 @@ export class Game {
 
   private stick(c: Climber, flat = false): boolean {
     const radius = CFG.magnetism.snapDistance + this.stats.magnetRadius + (this.effects.superMagnet > 0 ? 30 : 0);
-    if (!attachGrip(c, findContacts(c, this.world, radius), flat)) return false;
+    const contacts = findContacts(c, this.world, radius);
+    if (!contacts.length) return false;
+    if ((flat || !braceLanding(c, this.world)) && !attachGrip(c, contacts, flat)) return false;
     c.state = "stuck";
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;

@@ -1,6 +1,7 @@
 import { CFG } from "./config";
 import type { Climber, LimbId, MagneticContact, MagneticGrip, Vec } from "./types";
 import type { World } from "./world";
+import { flightLimb } from "./ragdoll";
 
 /** Shared by collision and drawing: changing the art cannot move a magnetic tip. */
 export const LIMB_TIPS: readonly Vec[] = [
@@ -16,12 +17,17 @@ export function rotate(p: Vec, angle: number): Vec {
 export function limbTip(c: Climber, limb: number): Vec {
   const pinned = c.grip?.contacts.find((p) => p.limb === limb);
   if (pinned && c.state === "stuck") return pinned;
-  const p = rotate(LIMB_TIPS[limb], c.angle);
+  let local = flightLimb(c, limb)?.tip ?? LIMB_TIPS[limb];
+  if (c.state === "stuck" && c.grip?.pose === "feet" && limb < 2) {
+    local = { x: limb === 0 ? -15 : 15, y: 4 };
+  }
+  const p = rotate(local, c.angle);
   return { x: c.x + p.x, y: c.y + p.y };
 }
 
 export function cloneGrip(grip?: MagneticGrip): MagneticGrip | undefined {
-  return grip ? { ...grip, contacts: grip.contacts.map((p) => ({ ...p })) } : undefined;
+  return grip ? { ...grip, contacts: grip.contacts.map((p) => ({ ...p })),
+    pivotLocal: grip.pivotLocal ? { ...grip.pivotLocal } : undefined } : undefined;
 }
 
 /** Each tip searches for real steel; magnet upgrades extend reach, not the surface. */
@@ -38,31 +44,55 @@ export function attachGrip(c: Climber, available: MagneticContact[], flat = fals
   // A low-spin landing splats flat. Otherwise the edge facing the motion lands first.
   // Only real available tips participate, so narrow ledges can produce one-hand catches.
   const speed = Math.hypot(c.vx, c.vy);
+  const offsetFor = (limb: number) => rotate(flightLimb(c, limb)?.tip ?? LIMB_TIPS[limb], c.angle);
   const direction = speed > 15 ? { x: c.vx / speed, y: c.vy / speed } : { x: 0, y: 1 };
   const ordered = [...available].sort((a, b) => {
-    const pa = rotate(LIMB_TIPS[a.limb], c.angle), pb = rotate(LIMB_TIPS[b.limb], c.angle);
+    const pa = offsetFor(a.limb), pb = offsetFor(b.limb);
     return (pb.x - pa.x) * direction.x + (pb.y - pa.y) * direction.y || a.limb - b.limb;
   });
-  const leading = rotate(LIMB_TIPS[ordered[0].limb], c.angle);
+  const leading = offsetFor(ordered[0].limb);
   const maxDot = leading.x * direction.x + leading.y * direction.y;
   const contacts = flat || Math.abs(c.spin) < 1.8 ? ordered : ordered.filter((p) => {
-    const offset = rotate(LIMB_TIPS[p.limb], c.angle);
+    const offset = offsetFor(p.limb);
     return maxDot - offset.x * direction.x - offset.y * direction.y < 12;
   });
   const hands = contacts.filter((p) => p.limb < 2).length;
   const pose = contacts.length === 4 ? "flat" : contacts.length === 1 ? "single"
     : hands === contacts.length ? "hands" : hands === 0 ? "feet" : "mixed";
   const pivot = contacts[0];
+  const pivotLocal = flightLimb(c, pivot.limb)?.tip ?? LIMB_TIPS[pivot.limb];
   const rx = c.x - pivot.x, ry = c.y - pivot.y;
   const angularVelocity = (rx * c.vy - ry * c.vx) / Math.max(1, rx * rx + ry * ry);
   c.grip = {
-    contacts: contacts.map((p) => ({ ...p })), pose, age: 0,
+    contacts: contacts.map((p) => ({ ...p })), pose, age: 0, pivotLocal: { ...pivotLocal },
     lift: pose === "flat" ? 2 : pose === "single" ? CFG.magnetism.singleLift : CFG.magnetism.standingLift,
     angularVelocity: Math.max(-CFG.magnetism.maxSwingSpeed, Math.min(CFG.magnetism.maxSwingSpeed, angularVelocity)),
   };
   // Snap the body by the primary tip displacement. Other limbs flex to their contacts.
-  const offset = rotate(LIMB_TIPS[pivot.limb], c.angle);
+  const offset = rotate(pivotLocal, c.angle);
   c.x = pivot.x - offset.x; c.y = pivot.y - offset.y;
+  return true;
+}
+
+/** Catch with the actual flying tips first, then brace an obvious upright stance
+ * only when both desired magnets have real steel within a small settling reach.
+ */
+export function braceLanding(c: Climber, world: World): boolean {
+  const angle = Math.atan2(Math.sin(c.angle), Math.cos(c.angle));
+  const upsideDown = Math.abs(angle) > Math.PI * 0.66;
+  const target = upsideDown ? (angle < 0 ? -Math.PI : Math.PI) : 0;
+  if (Math.abs(target - angle) > 1.15 || !world.isMetal(c.x, c.y)) return false;
+  const limbs = upsideDown ? [0, 1] : [2, 3];
+  const contacts: MagneticContact[] = [];
+  for (const limb of limbs) {
+    const p = rotate(LIMB_TIPS[limb], target);
+    const metal = world.nearestMetal(c.x + p.x, c.y + p.y, 3);
+    if (!metal) return false;
+    contacts.push({ ...metal, limb: limb as LimbId });
+  }
+  c.grip = { contacts, pose: upsideDown ? "hands" : "feet", lift: CFG.magnetism.standingLift,
+    age: 0, angularVelocity: c.spin * 0.2,
+    targetAngle: c.angle + (target - angle) };
   return true;
 }
 
@@ -71,9 +101,16 @@ export function stepGrip(c: Climber, dt: number): void {
   const grip = c.grip;
   if (!grip) return;
   grip.age += dt;
-  if (grip.contacts.length !== 1) return;
+  if (grip.contacts.length !== 1) {
+    if (grip.targetAngle != null) {
+      grip.angularVelocity += ((grip.targetAngle - c.angle) * CFG.magnetism.uprightSpring
+        - grip.angularVelocity * CFG.magnetism.uprightDamping) * dt;
+      c.angle += grip.angularVelocity * dt;
+    }
+    return;
+  }
   const contact = grip.contacts[0];
-  const local = LIMB_TIPS[contact.limb];
+  const local = grip.pivotLocal ?? LIMB_TIPS[contact.limb];
   const offset = rotate(local, c.angle);
   const radiusSquared = local.x * local.x + local.y * local.y;
   grip.angularVelocity += (-CFG.magnetism.swingGravity * offset.x / radiusSquared

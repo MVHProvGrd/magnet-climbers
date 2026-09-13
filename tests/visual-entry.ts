@@ -1,7 +1,10 @@
 export { Game } from "../src/game/game";
 export { UPGRADES } from "../src/game/config";
-export { attachGrip, findContacts, stepGrip } from "../src/game/magnetism";
+export { attachGrip, braceLanding, findContacts, stepGrip } from "../src/game/magnetism";
+export { resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
+export { FRIDGE_ITEMS } from "../src/game/items";
+export { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 export { drawClimber, drawClimberShadow } from "../src/game/climber-render";
 export { render } from "../src/game/render";
 export { setSound } from "../src/game/audio";
-export { drawSurface, drawZone, drawBumper, drawPower, artVariant } from "../src/game/scenery";
+export { drawSurface, drawZone, drawBumper, drawPower, artVariant, drawItemPreview } from "../src/game/scenery";

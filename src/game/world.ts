@@ -1,5 +1,7 @@
 import { CFG, W } from "./config";
 import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
+import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
+import { populateSetPiece, SET_PIECES } from "./world-patterns";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -31,7 +33,7 @@ export class World {
 
   readonly seed: number;
 
-  constructor(seed: number, startY: number) {
+  constructor(seed: number, startY: number, readonly version = 2) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -171,7 +173,18 @@ export class World {
       powerUps.push({ x: rangeOf(r, 30, W - 30), y: y + rangeOf(r, 30, h - 30), kind: kindP, taken: false, bob: r() * 6 });
     }
 
-    return { y, h, zones, powerUps, bumpers };
+    const segment = { y, h, zones, powerUps, bumpers };
+    if (this.version >= 2) {
+      // Separate stream keeps the original world RNG and old saved runs intact.
+      const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
+      for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, PAPER_ITEMS).id;
+      for (const bumper of bumpers) {
+        const item = pick(art, BUMPER_ITEMS);
+        bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
+      }
+      if (i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5);
+    }
+    return segment;
   }
 
   /** Whether a point is on stickable stainless steel. */

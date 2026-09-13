@@ -44,6 +44,8 @@ export const CFG = {
     maxSwingSpeed: 5,
     standingLift: 15,
     singleLift: 9,
+    uprightSpring: 48,
+    uprightDamping: 12,
   },
 };
 
