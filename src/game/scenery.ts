@@ -191,11 +191,11 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 }
 
 export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
-  if (b.label.length <= 1 || artVariant(b.minX, b.y, b.hue, 7) >= 5) {
+  if (b.label.length <= 1 || artVariant(b.minX, b.minY, b.hue, 7) >= 5) {
     ctx.save(); drawMaterialBumper(ctx, b); ctx.restore(); return;
   }
   ctx.save(); ctx.translate(b.x, b.y);
-  const variant = artVariant(b.minX, b.y, b.hue, 5);
+  const variant = artVariant(b.minX, b.minY, b.hue, 5);
   ctx.shadowColor = "rgba(25,35,49,0.3)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
   const enamel = ctx.createLinearGradient(0, 0, b.w, b.h);
   enamel.addColorStop(0, `hsl(${b.hue} 65% 82%)`); enamel.addColorStop(0.4, `hsl(${b.hue} 65% 60%)`); enamel.addColorStop(1, `hsl(${b.hue} 50% 39%)`);
