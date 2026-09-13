@@ -83,11 +83,11 @@ export class Ui {
       <p class="fine">${s.chill ? "No red line. Take your time. No coins or records, but your metres add to the world total." : "Turn on to climb with no red line. No coins or records, but metres count for the world total."}</p>
       <button data-a="shop">UPGRADES</button>
       <button data-a="board">SCOREBOARD</button>
+      <button data-a="settings">⚙ SETTINGS</button>
       <div class="pair">
         <button class="ghost" data-a="tutorial">HOW TO PLAY</button>
         <button class="ghost" data-a="story">STORY</button>
       </div>
-      <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
       <p class="fine">Runs: ${s.runs} · Lifetime climbed: ${(s.totalCm / 100).toFixed(1)} m (all runs added up)</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
@@ -98,6 +98,7 @@ export class Ui {
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
       if (a === "board") this.showBoard("crew");
+      if (a === "settings") this.showSettings();
       if (a === "update") this.h.onUpdate();
       if (a === "tutorial") this.h.onTutorial();
       if (a === "story") this.showStory(() => this.showMenu());
@@ -113,6 +114,57 @@ export class Ui {
         g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
       });
     }
+  }
+
+  /** Profile, preferences and appearance in one place. */
+  showSettings() {
+    const s = this.save();
+    const p = el("div", "panel shop");
+    p.innerHTML = `
+      <h2>Settings</h2>
+      <h3>Profile</h3>
+      <div class="rows">
+        <div class="row">
+          <div class="info"><b>Climber name</b><span>${esc(s.name || "not set")} · shown on the scoreboard</span></div>
+          <button class="buy" data-a="name">CHANGE</button>
+        </div>
+      </div>
+      <h3>Preferences</h3>
+      <div class="rows">
+        <div class="row">
+          <div class="info"><b>Sound</b><span>Fling, stick and coin blips</span></div>
+          <button class="buy" data-a="sound">${s.sound ? "ON" : "OFF"}</button>
+        </div>
+        <div class="row">
+          <div class="info"><b>Chill mode</b><span>No red line. No coins or records; metres still count for the world total</span></div>
+          <button class="buy ${s.chill ? "" : ""}" data-a="chill">${s.chill ? "ON" : "OFF"}</button>
+        </div>
+      </div>
+      <h3>Skins</h3>
+      <div class="rows">${SKINS.map((k) => {
+        const owned = s.skins.includes(k.key);
+        const active = s.skin === k.key;
+        const can = owned || s.coins >= k.cost;
+        return `<div class="row">
+          <div class="info"><b>${k.name}</b><span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span></div>
+          <button class="buy ${can ? "" : "disabled"}" data-s="${k.key}" ${can ? "" : "disabled"}>${active ? "ON" : owned ? "USE" : `$${k.cost}`}</button>
+        </div>`;
+      }).join("")}</div>
+      <button data-a="shop">UPGRADES &amp; RESERVES</button>
+      <p class="fine">Player id ${esc(s.playerId.slice(0, 10))}… · scores are tied to this device until accounts arrive</p>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const t = e.target as HTMLElement;
+      const a = t.dataset.a;
+      const sk = t.closest<HTMLElement>("[data-s]")?.dataset.s;
+      if (sk) { this.h.onBuySkin(sk); this.showSettings(); return; }
+      if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
+      if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
+      if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
+      if (a === "shop") { this.showShop(); return; }
+      if (a === "back") this.showMenu();
+    });
+    this.show(p);
   }
 
   showShop() {

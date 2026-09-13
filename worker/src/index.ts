@@ -4,6 +4,7 @@
  *   GET  /rank?mode=crew&player=<id>        → { rank, cm } or { rank: null }
  *   POST /score  { playerId, name, mode, cm } → { ok, best }
  *   POST /run    { playerId, mode, cm }       → { ok }   adds to the global total
+ *   POST /rename { playerId, name }           → { ok, name }  renames every board row for that player
  *   GET  /stats                                → { total_cm, runs, players }
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
@@ -99,6 +100,17 @@ export default {
       ).bind(playerId, name, body.mode, cm, now).run();
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/rename") {
+      let body: { playerId?: unknown; name?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12);
+      if (!playerId || name.length < 3) return json({ error: "bad name" }, h, 400);
+      if (nameIsProfane(name)) name = "climber";
+      await env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId).run();
+      return json({ ok: true, name }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/run") {

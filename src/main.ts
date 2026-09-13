@@ -118,7 +118,15 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
-  onSetName: (name) => { save.name = name; persist(); },
+  onSetName: (name) => {
+    const changed = name !== save.name;
+    save.name = name; persist();
+    if (changed && leaderboardEnabled) {
+      void leaderboard.rename(save.playerId, name).then((r) => {
+        if (r?.ok) ui.toast(r.name === name ? "Scoreboard name updated" : `Scoreboard shows "${r.name}"`);
+      });
+    }
+  },
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
   onShare: (c) => {

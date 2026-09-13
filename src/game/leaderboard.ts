@@ -31,6 +31,8 @@ export interface GlobalStats { total_cm: number; runs: number; players: number }
 
 export const leaderboard = {
   stats: () => call<GlobalStats>("/stats"),
+  rename: (playerId: string, name: string) =>
+    call<{ ok: boolean; name: string }>("/rename", { method: "POST", body: JSON.stringify({ playerId, name }) }),
   /** Adds one finished run's height to the global total. */
   run: (playerId: string, mode: Mode, cm: number) =>
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, mode, cm }) }),

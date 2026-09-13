@@ -53,6 +53,7 @@ Cloudflare dashboard → Workers & Pages → magnet-climbers-api → Settings �
 | GET | `/rank?mode=crew&player=<id>` | | `{ rank, cm }` |
 | POST | `/score` | `{ playerId, name, mode, cm }` | `{ ok, best }` |
 | POST | `/run` | `{ playerId, mode, cm }` | adds to the global total |
+| POST | `/rename` | `{ playerId, name }` | renames the player's board rows |
 | GET | `/stats` | | `{ total_cm, runs, players }` |
 
 Schema changes: re-run `npm run db:init` (it is idempotent) then `npm run deploy`.
