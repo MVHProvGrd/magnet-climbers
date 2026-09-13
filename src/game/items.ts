@@ -1,6 +1,6 @@
 import type { NoStickKind, NoStickZone, PowerKind } from "./types";
 
-export type ItemFamily = "pickup" | "paper" | "surface" | "bumper";
+export type ItemFamily = "pickup" | "paper" | "surface" | "bumper" | "gadget";
 export interface FridgeItem {
   id: string;
   name: string;
@@ -12,6 +12,8 @@ export interface FridgeItem {
   metal?: boolean;
   label?: string;
   hue?: number;
+  behavior?: "swing" | "rotor" | "clip" | "polarity";
+  theme?: "snack" | "travel" | "doodle";
 }
 
 const paperNames = ["Slice of Life", "Cat Nap Club", "Higher Together", "Scenic Route", "Space Cadet", "Home Sweet Fridge", "Grow Your Own Way", "Stay Cool", "Snack List", "You Got This", "Don't Let Go", "More Magnets", "Donut Worry", "Avo Good Climb", "Tiny Dinosaur", "Rain Check", "Lucky Duck", "Sundae Summit", "Gone Fishing", "Beep Boop"];
@@ -24,6 +26,11 @@ const papers: FridgeItem[] = paperNames.map((name, art) => ({
  * Cosmetic additions must never consume the gameplay RNG or change a collider.
  */
 export const FRIDGE_ITEMS: readonly FridgeItem[] = [
+  ...(["swing", "rotor", "clip", "polarity"] as const).flatMap((behavior, i) => (["snack", "travel", "doodle"] as const).map((theme, j): FridgeItem => ({
+    id: `${behavior}-${theme}`, family: "gadget", behavior, theme,
+    name: [["Donut Keyring", "Trail Keyring", "Star Keyring"], ["Alphabet A", "Alphabet B", "Alphabet C"], ["Snack Clip", "Postcard Clip", "Art Class Clip"], ["Candy Poles", "Compass Poles", "Crayon Poles"]][i][j],
+    description: ["Swinging silver grip carries you. Fling from it to cross the panel.", "A rotating letter carries a silver grip around its face. Time your launch.", "A dangling clip carries you above the paper. Only its silver top grips.", "Blue steel holds for three seconds; red repels for three. The countdown warns before it releases you."][i],
+  }))),
   ...papers,
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },
   { id: "coin", name: "Pocket Change", family: "pickup", power: "coin", description: "Collect coins for upgrades. Chill mode doesn't award currency." },

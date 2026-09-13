@@ -9,6 +9,7 @@ export interface KidHand {
   phase: "warn" | "sweep" | "retract";
   t: number;
   hit: Set<number>;
+  near?: number[];
 }
 export const SWIPE_DURATION = 0.82;
 export const RECOIL_DURATION = 0.46;
@@ -30,11 +31,33 @@ export function handPose(h: KidHand) {
   else point = bezier({ x: 325, y: h.y + 105 }, { x: 220, y: h.y + 230 }, { x: -35, y: h.y + 230 }, { x: -155, y: h.y + 160 }, ease(clamp(h.t / RECOIL_DURATION)));
   const anchor = { x: -110, y: h.y + 245 };
   const angle = Math.atan2(point.y - anchor.y, point.x - anchor.x) + (h.phase === "sweep" ? Math.sin(sweep * Math.PI) * 0.25 : 0);
-  return { point, anchor, angle, mirror: -h.side, curl: h.phase === "warn" ? 0.5 : h.phase === "retract" ? 0.8 : Math.sin(sweep * Math.PI) * 0.35 };
+  const curl = h.phase === "warn" ? 1.1 * (1 - ease(clamp(h.t / CFG.handWarn)))
+    : h.phase === "retract" ? 1.35 - ease(clamp(h.t / RECOIL_DURATION)) * 0.45
+    : ease(clamp((sweep - 0.35) / 0.65)) * 1.35;
+  return { point, anchor, angle, mirror: -h.side, curl };
 }
 
 // Four short, rounded fingers with distinct lengths; the thumb is separate.
 const FINGERS = [{ y: -23, length: 34 }, { y: -8, length: 44 }, { y: 8, length: 39 }, { y: 23, length: 29 }];
+/** Shared three-bone fingers and two-bone thumb, with staggered knuckle flexion. */
+export function fingerJoints(h: KidHand): { points: Vec[]; radius: number; thumb: boolean }[] {
+  const { curl } = handPose(h);
+  const fingers = FINGERS.map((finger, index) => {
+    const flex = Math.max(0, curl - (3 - index) * 0.09);
+    let angle = (index - 1.5) * 0.08 - flex * 0.18;
+    const points = [{ x: 18, y: finger.y }];
+    for (const [joint, fraction] of [0.44, 0.32, 0.24].entries()) {
+      angle += joint === 0 ? 0 : flex * (joint === 1 ? 0.85 : 1.05);
+      const prev = points[points.length - 1];
+      points.push({ x: prev.x + Math.cos(angle) * finger.length * fraction, y: prev.y + Math.sin(angle) * finger.length * fraction });
+    }
+    return { points, radius: 7.2, thumb: false };
+  });
+  const root = { x: -22, y: 17 }, a = 0.95 - curl * 0.15;
+  const joint = { x: root.x + Math.cos(a) * 21, y: root.y + Math.sin(a) * 21 };
+  fingers.push({ points: [root, joint, { x: joint.x + Math.cos(a + curl * 0.75) * 16, y: joint.y + Math.sin(a + curl * 0.75) * 16 }], radius: 9, thumb: true });
+  return fingers;
+}
 export function handWorldPoint(h: KidHand, local: Vec): Vec {
   const pose = handPose(h), cos = Math.cos(pose.angle), sin = Math.sin(pose.angle);
   const x = pose.point.x + local.x * cos - local.y * sin;
@@ -54,8 +77,10 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
     const t = clamp(((q.x - a.x) * dx + (q.y - a.y) * dy) / (dx*dx + dy*dy));
     return Math.hypot(q.x - a.x - dx*t, q.y - a.y - dy*t) <= radius + pad;
   };
-  for (const finger of FINGERS) if (capsule({ x: 18, y: finger.y }, { x: 18 + finger.length - pose.curl * 9, y: finger.y + pose.curl * 8 }, 7.2)) return true;
-  return capsule({ x: -18, y: 20 }, { x: -2, y: 48 }, 10);
+  for (const finger of fingerJoints(h)) for (let i = 1; i < finger.points.length; i++) {
+    if (capsule(finger.points[i - 1], finger.points[i], finger.radius)) return true;
+  }
+  return false;
 }
 
 export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
@@ -110,21 +135,23 @@ export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
   const palm = ctx.createLinearGradient(-15, -35, 30, 44);
   palm.addColorStop(0, "#ffe3c4"); palm.addColorStop(0.52, "#f3bb98"); palm.addColorStop(1, "#d79276");
   ctx.strokeStyle = "#b77961"; ctx.lineJoin = "round"; ctx.lineCap = "round";
-  // Finger shapes are individually bent and overlap the palm without black seams.
-  for (const finger of FINGERS) {
-    const end = { x: 18 + finger.length - pose.curl * 9, y: finger.y + pose.curl * 8 };
-    const fingerPath = () => { ctx.beginPath(); ctx.moveTo(16, finger.y); ctx.quadraticCurveTo(end.x - 12, finger.y - 3, end.x, end.y); };
-    ctx.strokeStyle = "#b77961"; ctx.lineWidth = 16; fingerPath(); ctx.stroke();
-    ctx.strokeStyle = palm; ctx.lineWidth = 13.5; fingerPath(); ctx.stroke();
-    ctx.fillStyle = "#ffe7d4"; ctx.beginPath(); ctx.ellipse(end.x - 3, end.y - 1, 4.7, 4, 0.15, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(167,96,75,0.34)"; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(end.x - 15, end.y - 4); ctx.quadraticCurveTo(end.x - 18, end.y, end.x - 15, end.y + 3); ctx.stroke();
-  }
+  // Rounded, jointed chains: identical bones drive the hit-test.
+  const drawFinger = (finger: ReturnType<typeof fingerJoints>[number]) => {
+    const points = finger.points, end = points[points.length - 1], prev = points[points.length - 2];
+    const path = () => { ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y); for (const p of points.slice(1)) ctx.lineTo(p.x, p.y); };
+    ctx.strokeStyle = "#b77961"; ctx.lineWidth = finger.radius * 2 + 2; path(); ctx.stroke();
+    ctx.strokeStyle = palm; ctx.lineWidth = finger.radius * 2; path(); ctx.stroke();
+    ctx.fillStyle = "#ffe7d4"; ctx.beginPath(); ctx.ellipse(end.x, end.y, 4.7, 3.7, Math.atan2(end.y - prev.y, end.x - prev.x), 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(167,96,75,0.34)"; ctx.lineWidth = 0.9;
+    for (const p of points.slice(1, -1)) { ctx.beginPath(); ctx.moveTo(p.x, p.y - 3); ctx.quadraticCurveTo(p.x - 2, p.y, p.x, p.y + 3); ctx.stroke(); }
+  };
+  const fingers = fingerJoints(h);
+  for (const finger of fingers.filter((f) => !f.thumb)) drawFinger(finger);
   ctx.fillStyle = palm; ctx.strokeStyle = "#b77961"; ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(-34, -18); ctx.bezierCurveTo(-22, -30, 2, -36, 22, -30);
   ctx.bezierCurveTo(31, -14, 31, 15, 22, 30); ctx.bezierCurveTo(10, 36, -14, 34, -33, 20); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-34, -18); ctx.bezierCurveTo(-22, -30, 2, -36, 22, -30); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-22, 17); ctx.bezierCurveTo(-16, 30, -16, 48, -3, 51); ctx.bezierCurveTo(8, 54, 13, 43, 6, 35); ctx.lineTo(0, 25); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#ffe7d4"; ctx.beginPath(); ctx.ellipse(0, 45, 4, 5, -0.5, 0, Math.PI * 2); ctx.fill();
+  drawFinger(fingers[4]);
   ctx.strokeStyle = "rgba(171,100,77,0.26)"; ctx.lineWidth = 1.3;
   ctx.beginPath(); ctx.moveTo(-19, -10); ctx.quadraticCurveTo(-9, 2, -16, 16); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-29, -12); ctx.quadraticCurveTo(-24, 2, -29, 13); ctx.stroke();

@@ -6,7 +6,7 @@ import { renderMenuBackground } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
-import { setSound } from "./game/audio";
+import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
@@ -54,6 +54,9 @@ const uiRoot = document.getElementById("ui")!;
 
 let save = loadSave();
 setSound(save.sound);
+setMusic(save.music);
+document.addEventListener("pointerdown", unlockAudio, { passive: true });
+document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
@@ -192,6 +195,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.skin = key; persist();
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
+  onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
   onOpenBoard: () => resubmitBests(),
   onLinkDevice: () => {
@@ -448,6 +452,7 @@ window.addEventListener("popstate", () => {
   if (game && !paused && game.phase !== "dead") { paused = true; ui.showPause(); }
 });
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) silenceAudio();
   if (document.hidden && game && !paused && game.phase !== "dead") { paused = true; ui.showPause(); }
 });
 
@@ -456,6 +461,7 @@ let last = performance.now();
 let acc = 0;
 const STEP = 1 / 120;
 function frame(now: number) {
+  updateAudio(!document.hidden && !paused, game && !game.chill ? Math.max(0, 1 - (game.floorY - Math.max(game.highestY, ...game.alive.map((c) => c.y))) / 400) : 0, game?.chill ?? true);
   resize();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;

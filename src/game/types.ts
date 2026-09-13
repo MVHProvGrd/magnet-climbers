@@ -49,6 +49,7 @@ export interface Bumper {
 }
 
 export interface Segment {
+  gadgets?: Gadget[];
   /** top of segment (smaller y = higher up the fridge) */
   y: number;
   h: number;
@@ -60,7 +61,8 @@ export interface Segment {
 export type ClimberState = "stuck" | "flying" | "linked" | "lost";
 
 export type LimbId = 0 | 1 | 2 | 3; // left hand, right hand, left foot, right foot
-export interface MagneticContact extends Vec { limb: LimbId }
+export interface MagneticContact extends Vec { limb: LimbId; carrierId?: string; carrierOffset?: Vec }
+export interface Gadget extends Vec { id: string; itemId: string; kind: "swing" | "rotor" | "clip" | "polarity"; phase: number }
 export interface MagneticGrip {
   contacts: MagneticContact[];
   pose: "flat" | "feet" | "hands" | "mixed" | "single";

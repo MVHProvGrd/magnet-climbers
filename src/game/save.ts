@@ -10,6 +10,7 @@ export interface SaveData {
   totalCm: number;
   upgrades: Record<UpgradeKey, number>;
   sound: boolean;
+  music: boolean;
   reserves: number;
   skin: string;
   skins: string[];
@@ -43,6 +44,7 @@ function defaults(): SaveData {
     totalCm: 0,
     upgrades,
     sound: true,
+    music: true,
     reserves: 0,
     skin: "classic",
     skins: ["classic"],
@@ -77,6 +79,7 @@ export function loadSave(): SaveData {
     const merged = {
       ...d,
       ...parsed,
+      music: parsed.music ?? parsed.sound ?? d.music,
       upgrades: { ...d.upgrades, ...(parsed.upgrades ?? {}) },
       version: 1 as const,
     };

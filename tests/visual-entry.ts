@@ -1,4 +1,7 @@
 export { Game } from "../src/game/game";
+export { drawGadget, setGadgetArt } from "../src/game/gadget-art";
+export { gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "../src/game/gadgets";
+export { MUSIC_STEP, musicStep, EFFECTS } from "../src/game/music-score";
 export { drawKidHand, handPose, handTouches, handWorldPoint, SWIPE_DURATION, RECOIL_DURATION } from "../src/game/kid-hand";
 export { UPGRADES } from "../src/game/config";
 export { attachGrip, braceLanding, findContacts, stepGrip } from "../src/game/magnetism";

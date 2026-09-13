@@ -5,6 +5,7 @@ import { World, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
+import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
 
 export type Phase = "idle" | "running" | "dead";
 
@@ -15,6 +16,8 @@ export interface RunSnapshot {
   chill?: boolean;
   seed: number;
   worldVersion?: number;
+  gadgetTime?: number;
+  tricks?: TrickState;
   hand?: Omit<KidHand, "hit"> & { hit: number[] };
   handCount?: number;
   nextHandAt?: number;
@@ -47,6 +50,7 @@ export interface RunEvents {
 
 /** One run of the game: world, team, physics, camera, slingshot input. */
 export class Game {
+  tricks = freshTricks();
   world: World;
   climbers: Climber[] = [];
   stats: ReturnType<typeof statsFor>;
@@ -212,7 +216,11 @@ export class Game {
   }
 
   pointerMove(p: Vec) {
-    if (this.drag) { this.drag.cur = p; return; }
+    if (this.drag) {
+      const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
+      if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) sfx.stretch();
+      this.drag.cur = p; return;
+    }
     if (this.panning) {
       const dy = p.y - this.panning.lastY;
       this.camY -= dy;
@@ -444,6 +452,7 @@ export class Game {
       c.state = "linked"; c.parent = a.id;
       c.angle = Math.atan2(c.y - a.y, c.x - a.x) + Math.PI / 2;
       sfx.link();
+      this.awardNewHeight(c, "CHAIN BUILDER", 25);
     }
     this.markHeight(c);
     this.pickDefaultSelection();
@@ -492,8 +501,9 @@ export class Game {
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
       effects: { ...this.effects }, time: this.time, sync: this.sync, selectedId: this.selectedId,
       taken, bumpers, pendingLaunches: this.pendingLaunches.map((p) => ({ ...p, v: { ...p.v } })),
-      hand: this.hand ? { ...this.hand, hit: [...this.hand.hit] } : undefined,
+      hand: this.hand ? { ...this.hand, hit: [...this.hand.hit], ...(this.hand.near ? { near: [...this.hand.near] } : {}) } : undefined,
       handCount: this.handCount, nextHandAt: this.nextHandAt,
+      gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks),
     };
   }
 
@@ -501,6 +511,9 @@ export class Game {
     const legacyVersion = snap.climbers.some((c) => c.hp != null) ? 1 : 0;
     const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
     g.world.generateTo(snap.generated);
+    g.world.gadgetTime = snap.gadgetTime ?? 0;
+    g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();
+    if (!snap.tricks) g.tricks.frontierY = snap.highestY;
     for (const seg of g.world.segments) {
       seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
       for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { const t = seg.bumpers[b.i]; t.x = b.x; t.vx = b.vx; if (b.by != null) t.y = b.by; if (b.vy != null) t.vy = b.vy; }
@@ -516,7 +529,7 @@ export class Game {
     });
     g.pendingLaunches = (snap.pendingLaunches ?? []).map((p) => ({ ...p, v: { ...p.v } }));
     g.nextId = snap.nextId;
-    g.hand = snap.hand ? { ...snap.hand, hit: new Set(snap.hand.hit) } : null;
+    g.hand = snap.hand ? { ...snap.hand, hit: new Set(snap.hand.hit), ...(snap.hand.near ? { near: [...snap.hand.near] } : {}) } : null;
     g.handCount = snap.handCount ?? 0;
     g.nextHandAt = snap.nextHandAt ?? snap.time + CFG.handFirstAfter;
     g.floorY = snap.floorY; g.highestY = snap.highestY; g.camY = snap.camY;
@@ -537,6 +550,7 @@ export class Game {
     this.time += dt;
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
+    if (this.phase === "running") this.world.gadgetTime += sdt;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }
@@ -702,6 +716,7 @@ export class Game {
         c.angle = Math.atan2(dy, dx) + Math.PI / 2;
         c.squash = 1;
         sfx.link();
+        this.awardNewHeight(c, "CHAIN CATCH", 40);
         this.burst(c.x, c.y, a.color, 5);
         this.markHeight(c);
         this.floats.push({ x: c.x, y: c.y - 30, text: "GRAB!", life: 0.8, color: "#fff" });
@@ -711,6 +726,24 @@ export class Game {
   }
 
   private stepAnchored(c: Climber, dt: number) {
+    const oldX = c.x, oldY = c.y;
+    if (c.state === "stuck" && c.grip) {
+      const moving = c.grip.contacts.filter((p) => p.carrierId && p.carrierOffset);
+      let dx = 0, dy = 0, released = false;
+      for (const p of moving) {
+        const next = this.world.carrierPoint(p.carrierId!, p.carrierOffset!);
+        if (!next) { released = true; break; }
+        dx += next.x - p.x; dy += next.y - p.y; p.x = next.x; p.y = next.y;
+      }
+      if (moving.length && !released) {
+        c.x += dx / c.grip.contacts.length; c.y += dy / c.grip.contacts.length;
+        released = c.grip.contacts.some((p) => Math.hypot(p.x - c.x, p.y - c.y) > 65);
+      }
+      if (released) {
+        c.state = "flying"; c.grip = undefined; c.vx = dx / Math.max(dt, 0.001); c.vy = 35;
+        c.airTime = 0; c.noStick = 0.18; resetRagdoll(c); return;
+      }
+    }
     // a stuck climber hit by a bumper is knocked loose
     if (c.state === "stuck") {
       for (const s of this.world.segments) {
@@ -731,7 +764,20 @@ export class Game {
         }
       }
     }
-    if (c.state === "stuck") stepGrip(c, dt);
+    if (c.state === "stuck") {
+      stepGrip(c, dt);
+      // A moving grip carries the whole hanging chain, not only its root climber.
+      const dx = c.x - oldX, dy = c.y - oldY;
+      if (dx || dy) {
+        const pending = [c.id], seen = new Set<number>();
+        while (pending.length) {
+          const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id);
+          for (const child of this.climbers) if (child.state === "linked" && child.parent === id && !seen.has(child.id)) {
+            child.x += dx; child.y += dy; pending.push(child.id);
+          }
+        }
+      }
+    }
   }
 
   private stick(c: Climber, flat = false): boolean {
@@ -744,6 +790,11 @@ export class Game {
     c.vx = 0; c.vy = 0; c.spin = 0;
     c.squash = 1;
     sfx.stick();
+    if (!flat && c.airTime > 0.18) {
+      const pose = c.grip!.pose;
+      const name = pose === "single" ? (c.grip!.contacts[0].limb < 2 ? "ONE-HAND SAVE" : "ONE-FOOT SAVE") : pose === "hands" ? "HANDSTAND" : pose === "mixed" ? "TWIST CATCH" : pose === "feet" ? "STOOD IT!" : "SPLAT!";
+      this.awardNewHeight(c, name, pose === "single" ? 50 : pose === "hands" ? 35 : 20);
+    }
     this.burst(c.x, c.y, "#dfe6ee", 5);
     this.markHeight(c);
     return true;
@@ -757,6 +808,20 @@ export class Game {
       this.floats.push({ x: c.x, y: c.y - 40, text: `BEAT ${this.target.name.toUpperCase()}!`, life: 1.6, color: "#ffd23f" });
       this.burst(c.x, c.y, "#ffd23f", 14);
     }
+  }
+
+  private awardTrick(c: Climber, name: string, points: number) {
+    const score = registerTrick(this.tricks, name, points, this.time);
+    const bonus = this.chill ? 0 : Math.min(3, this.tricks.combo);
+    this.coins += bonus; if (bonus) this.events.onCoins(bonus);
+    sfx.trick();
+    this.floats.push({ x: c.x, y: c.y - 43, text: `${name} +${score}${this.tricks.combo > 1 ? `  x${this.tricks.combo}` : ""}`, life: 1.3, color: "#ffe393" });
+  }
+
+  private awardNewHeight(c: Climber, name: string, points: number) {
+    if (c.y >= this.tricks.frontierY - 45) return;
+    this.tricks.frontierY = c.y;
+    this.awardTrick(c, name, points);
   }
 
   private lose(c: Climber) {
@@ -779,13 +844,13 @@ export class Game {
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
-      sfx.lost();
+      sfx.warning();
       return;
     }
     const h = this.hand, previousT = h.t;
     h.t += dt;
     if (h.phase === "warn") {
-      if (h.t >= CFG.handWarn) { h.phase = "sweep"; h.t = 0; }
+      if (h.t >= CFG.handWarn) { h.phase = "sweep"; h.t = 0; sfx.swipe(); }
       return;
     }
     if (h.phase === "sweep") {
@@ -798,7 +863,10 @@ export class Game {
         for (let i = 0; i <= samples; i++) {
           if (handTouches({ ...h, t: previousT + dt * i / samples }, c)) { touched = true; break; }
         }
-        if (!touched) continue;
+        if (!touched) {
+          if (handTouches(h, c, 27) && !(h.near ?? []).includes(c.id)) (h.near ??= []).push(c.id);
+          continue;
+        }
         h.hit.add(c.id);
         // super magnet: too strong for the kid. Stuck climbers hold on, take no damage.
         if (this.effects.superMagnet > 0 && c.state !== "flying") {
@@ -815,7 +883,10 @@ export class Game {
         this.damage(c, true);
         if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED  -1 ♥", life: 1, color: "#ffd23f" });
       }
-      if (h.t >= SWIPE_DURATION) { h.phase = "retract"; h.t = 0; }
+      if (h.t >= SWIPE_DURATION) {
+        for (const id of h.near ?? []) { const c = this.byId(id); if (c && c.state !== "lost" && !h.hit.has(id)) this.awardTrick(c, "CLOSE CALL", 60); }
+        h.phase = "retract"; h.t = 0;
+      }
     } else if (h.t >= RECOIL_DURATION) {
       this.hand = null;
       const climbed = Math.max(0, this.startY - this.highestY) / 1000;

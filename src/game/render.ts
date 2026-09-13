@@ -2,6 +2,7 @@ import { CFG, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { drawKidHand } from "./kid-hand";
+import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
 
@@ -31,6 +32,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     if (s.y + s.h < top || s.y > bottom) continue;
     drawPanelJoint(ctx, s.y + s.h);
     for (const z of s.zones) drawZone(ctx, z, g.time, g.world.seed);
+    for (const gadget of s.gadgets ?? []) drawGadget(ctx, gadget, g.world.gadgetTime);
     for (const b of s.bumpers) drawBumper(ctx, b);
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
@@ -207,6 +209,13 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
 
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
+  if (g.tricks.score > 0) {
+    ctx.fillStyle = "rgba(22,34,43,.8)";
+    roundRect(ctx, 10, 96, 138, 23, 7); ctx.fill();
+    ctx.fillStyle = "#ffe393"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
+    const combo = g.time - g.tricks.lastAt <= 4.5 && g.tricks.combo > 1 ? `  ×${g.tricks.combo}` : "";
+    ctx.fillText(`STYLE ${g.tricks.score}${combo}`, 19, 112);
+  }
   ctx.font = "bold 22px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(0,0,0,0.45)";

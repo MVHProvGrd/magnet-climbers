@@ -1,0 +1,33 @@
+/** Original 96 BPM toy-box score; pure data also used by offline audio QA. */
+export interface Voice { frequency: number; duration: number; gain: number; type: "sine" | "triangle" | "noise"; endFrequency?: number; delay?: number }
+export const MUSIC_STEP = 60 / 96 / 2;
+const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+const melody = [12, 16, 19, -1, 16, 14, 12, -1, 19, 21, 19, 16, 14, -1, 16, 19];
+export function musicStep(step: number, danger: number, chill = false): Voice[] {
+  const root = [48, 45, 41, 43][Math.floor(step / 8) % 4], beat = step % 8;
+  const notes: Voice[] = [];
+  if (beat % 4 === 0) notes.push({ frequency: hz(root), duration: 0.45, gain: 0.25, type: "triangle" });
+  const pitch = melody[step % 16];
+  if (pitch >= 0) {
+    notes.push({ frequency: hz(root + pitch), duration: 0.23, gain: 0.24, type: "sine" });
+    notes.push({ frequency: hz(root + pitch + 12), duration: 0.055, gain: 0.035, type: "sine" });
+  }
+  if (!chill && danger > 0.3 && beat % 2 === 1) notes.push({ frequency: 3800, duration: 0.045, gain: 0.025 + danger * 0.025, type: "noise" });
+  if (!chill && danger > 0.65 && beat % 2 === 0) notes.push({ frequency: 100, endFrequency: 45, duration: 0.11, gain: 0.18, type: "sine" });
+  if (!chill && danger > 0.75 && beat === 7) notes.push({ frequency: hz(root + 31), duration: 0.1, gain: 0.07, type: "triangle" });
+  return notes;
+}
+export const EFFECTS: Record<string, readonly Voice[]> = {
+  launch: [{ frequency: 145, endFrequency: 510, duration: 0.22, gain: 0.12, type: "triangle" }, { frequency: 900, endFrequency: 2400, duration: 0.12, gain: 0.035, type: "noise" }],
+  stretch: [{ frequency: 180, endFrequency: 320, duration: 0.1, gain: 0.035, type: "triangle" }],
+  stick: [{ frequency: 1850, duration: 0.045, gain: 0.07, type: "sine" }, { frequency: 2700, duration: 0.065, gain: 0.025, type: "sine" }, { frequency: 130, endFrequency: 65, duration: 0.065, gain: 0.11, type: "triangle" }],
+  link: [{ frequency: 660, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 990, duration: 0.13, delay: 0.07, gain: 0.06, type: "sine" }],
+  coin: [{ frequency: 1050, duration: 0.07, gain: 0.07, type: "sine" }, { frequency: 1575, duration: 0.16, delay: 0.055, gain: 0.055, type: "sine" }],
+  power: [{ frequency: 523, duration: 0.15, gain: 0.08, type: "triangle" }, { frequency: 659, duration: 0.17, delay: 0.07, gain: 0.07, type: "sine" }, { frequency: 784, duration: 0.25, delay: 0.14, gain: 0.06, type: "sine" }],
+  bump: [{ frequency: 115, endFrequency: 45, duration: 0.16, gain: 0.16, type: "sine" }, { frequency: 700, duration: 0.045, gain: 0.05, type: "noise" }],
+  lost: [{ frequency: 390, endFrequency: 110, duration: 0.3, gain: 0.07, type: "triangle" }],
+  over: [{ frequency: 330, duration: 0.25, gain: 0.07, type: "triangle" }, { frequency: 261, duration: 0.3, delay: 0.16, gain: 0.07, type: "triangle" }, { frequency: 196, duration: 0.45, delay: 0.33, gain: 0.07, type: "sine" }],
+  warning: [{ frequency: 740, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 988, duration: 0.12, delay: 0.18, gain: 0.08, type: "sine" }],
+  swipe: [{ frequency: 550, endFrequency: 3200, duration: 0.30, gain: 0.11, type: "noise" }],
+  trick: [{ frequency: 784, duration: 0.1, gain: 0.07, type: "sine" }, { frequency: 1175, duration: 0.16, delay: 0.08, gain: 0.06, type: "sine" }, { frequency: 1568, duration: 0.2, delay: 0.14, gain: 0.04, type: "sine" }],
+};

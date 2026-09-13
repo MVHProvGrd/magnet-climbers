@@ -1,5 +1,21 @@
 # Claude handoff: scenery and material art
 
+## Shipped feature pass — September 13, 2026
+
+This section supersedes the older updates below. Codex finished the implementation and merged Claude's `3ba22ce` (off-screen climber markers, super-magnet swat protection, and leaderboard reposting) and `9bc08d9` (world v3 sticker spacing/variety).
+
+- 51-item Field Guide, including 12 interactive gadgets in snack/travel/doodle themes. New runs use world version 4; old versions, including Claude's already-deployed v3, retain their original terrain.
+- Swinging keyring grips, rotating alphabet grips, dangling paper clips, and blue/red polarity plates. Bright grip geometry and collision share one pose function. Red plates release climbers; three-second countdowns warn before switching. Side routes remain bare steel. Hanging chains follow their moving root.
+- Three detailed generated alpha sprites in `public/art/gadgets/{snack,travel,doodle}.png`. Created with built-in image generation (not API/CLI generation); final prompts and processing QC are in `artifacts/gadgets/<theme>/prompt-used.txt` and `pipeline-meta.json`. All are 256px with no edge-touch frames. Raw sheets remain local, outside deployment.
+- `kid-hand.ts`: three-bone fingers and two-bone thumb, staggered curl on follow-through, shared render/hit geometry. Near-miss bookkeeping is deep-copied in saves.
+- `music-score.ts` / `sound-engine.ts`: original 96 BPM toy-box score, danger-dependent percussion, metallic catches, rubber launches, swishes and trick chimes. Separate music/SFX preferences, gesture-only unlock, pause/hidden silencing, capped voices, no background scheduler. Previously muted saves stay muted.
+- `tricks.ts`: handstands, one-hand/one-foot saves, mixed catches, crew chains, close calls, capped/expiring combos, style HUD and small coin bonuses. New-height gates prevent repeated landing farming; Chill earns no trick coins. Height leaderboards are unchanged.
+- Worker/database deployment already completed: version `67f4c7f7-188b-4f4c-8649-3031470c3381`; live `/stats` returned HTTP 200. This pass needs no additional database migration.
+
+Validation: `npm test`, `npm run build`, and native Canvas visual checks. Deployment workflow now runs tests before building. Updated previews: `artifacts/fridge-field-guide.png`, `kid-hand-swipe.png`, and `gadget-gameplay.png`. Run `node tests/library-visual.mjs`, `node tests/hand-visual.mjs`, and `node tests/gadget-visual.mjs` (optional Canvas dependency setup in `tests/visual.mjs`). Gadget QA verifies alpha, dimensions, non-clipped edges and read-only rendering.
+
+Remaining QA, not unfinished implementation: real-phone feel/performance, audible mix on phone speakers, and installed-PWA refresh/offline checks. No enabled browser was available in this Codex session. Do not replace the title with branded/dispenser artwork. Existing four-door unbranded title and PWA icons are preserved. Optional next tuning: pace gadget sections earlier/later and adjust trick/hand difficulty after playtesting.
+
 ## Latest Codex update — September 13, 2026
 
 This section supersedes the historical assignments below.

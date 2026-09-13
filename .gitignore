@@ -1,3 +1,9 @@
 node_modules
 dist
 dev-dist
+# Local high-resolution generation intermediates; final art, prompts and QC are tracked.
+artifacts/gadgets/*/raw-sheet*.png
+artifacts/gadgets/*/sheet-transparent.png
+artifacts/gadgets/*/single-1.png
+artifacts/gadgets/*/animation.gif
+worker/.wrangler
