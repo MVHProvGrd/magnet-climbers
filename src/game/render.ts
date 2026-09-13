@@ -135,8 +135,9 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
   ctx.globalAlpha = 1;
 
-  // floor / danger line: the kid's reach, rendered as a rising shadow
+  // floor / danger line: the kid's reach, rendered as a rising shadow (absent in chill)
   const fy = g.floorY;
+  if (g.chill) { /* no wall */ } else {
   const grad = ctx.createLinearGradient(0, fy - 60, 0, fy + 40);
   grad.addColorStop(0, "rgba(120,20,40,0)");
   grad.addColorStop(1, "rgba(120,20,40,0.85)");
@@ -151,6 +152,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.lineTo(W, fy);
   ctx.stroke();
   ctx.setLineDash([]);
+  }
 
   // challenge target line
   if (g.target) {
@@ -223,9 +225,19 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     if (g.isLadder(c)) { ctx.fillStyle = "#1a1d24"; ctx.fillRect(d.x - 5, d.y - 1, 10, 2); ctx.fillRect(d.x - 5, d.y + 3, 10, 2); ctx.fillRect(d.x - 5, d.y - 5, 10, 2); }
   }
 
+  if (g.chill) {
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    roundRect(ctx, W / 2 - 34, 10, 68, 22, 8);
+    ctx.fill();
+    ctx.fillStyle = "#9be15d";
+    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("😌 CHILL", W / 2, 25);
+  }
+
   // wall indicator when the danger line is off the bottom of the screen
   const wallScreen = g.floorY - g.camY;
-  if (wallScreen > viewH) {
+  if (!g.chill && wallScreen > viewH) {
     const dist = Math.round((g.floorY - Math.max(...g.alive.map((c) => c.y), g.camY)) / CFG.pxPerCm);
     ctx.fillStyle = "rgba(255,80,110,0.9)";
     const wy = g.phase === "idle" ? viewH - 150 - safeBottom : viewH - 72 - safeBottom;

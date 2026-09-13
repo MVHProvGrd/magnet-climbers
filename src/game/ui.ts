@@ -13,6 +13,7 @@ export interface UiHandlers {
   onBuySkin(key: string): void;
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
+  onToggleChill(): void;
   onSetName(name: string): void;
   onUpdate(): void;
   onTutorial(): void;
@@ -78,6 +79,8 @@ export class Ui {
       <p class="fine">Whole crew flings at once. Spares are lives. Leave no one below the line.</p>
       <button class="primary alt" data-a="solo">SOLO CLIMB</button>
       <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
+      <button class="chip ${s.chill ? "on" : ""}" data-a="chill">😌 Chill mode: ${s.chill ? "ON" : "off"}</button>
+      <p class="fine">${s.chill ? "No red line. Take your time. Coins count, scores don't." : "Turn on to climb with no red line. Coins count, scores don't."}</p>
       <button data-a="shop">UPGRADES</button>
       <button data-a="board">SCOREBOARD</button>
       <div class="pair">
@@ -99,6 +102,7 @@ export class Ui {
       if (a === "tutorial") this.h.onTutorial();
       if (a === "story") this.showStory(() => this.showMenu());
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
+      if (a === "chill") { this.h.onToggleChill(); this.showMenu(); }
     });
     this.show(p);
     if (leaderboardEnabled) {
@@ -324,20 +328,20 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean }) {
     this.lastGameOver = o;
     const p = el("div", "panel small");
     p.innerHTML = `
-      <h2>${o.isRecord ? "New record!" : o.ended ? "Run banked" : "All climbers lost"}</h2>
+      <h2>${o.isRecord ? "New record!" : o.chill ? "Chill run done" : o.ended ? "Run banked" : "All climbers lost"}</h2>
       <div class="big">${o.cm} cm</div>
-      <p class="tag">Best ${o.best} cm · earned <span class="coin">$${o.coins}</span></p>
+      <p class="tag">${o.chill ? "Chill mode: not scored" : `Best ${o.best} cm`} · earned <span class="coin">$${o.coins}</span></p>
       <p class="tag rank" hidden></p>
       <div class="revive" ${o.ended ? "hidden" : ""}>
         ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
         ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
         <button class="${o.gems >= 5 ? "" : "disabled"}" data-a="gems" ${o.gems >= 5 ? "" : "disabled"}>REVIVE · ◆5</button>
       </div>
-      <button data-a="share">📣 CHALLENGE A FRIEND</button>
+      ${o.chill ? "" : `<button data-a="share">📣 CHALLENGE A FRIEND</button>`}
       <button class="ghost" data-a="quit">BACK TO MENU</button>
     `;
     p.addEventListener("click", (e) => {

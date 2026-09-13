@@ -10,6 +10,7 @@ export type Phase = "idle" | "running" | "dead";
 export interface RunSnapshot {
   v: 1;
   rules: "solo" | "crew";
+  chill?: boolean;
   seed: number;
   generated: number;
   climbers: Climber[];
@@ -72,15 +73,18 @@ export class Game {
   private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
   /** solo = one climber that flings itself (arcade); crew = teammates fling each other */
   rules: "solo" | "crew" = "crew";
+  /** chill: no rising wall. Falling off the bottom still loses a climber. */
+  chill = false;
   reserves = 0;
   palette: string[];
   particles: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [];
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; seed?: number; rules?: "solo" | "crew" } = {}) {
+  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
+    this.chill = opts.chill ?? false;
     this.palette = opts.palette ?? CLIMBER_COLORS;
     this.reserves = opts.reserves ?? 0;
     this.stats = statsFor(levels);
@@ -446,6 +450,7 @@ export class Game {
 
   /** Stepped ramp per 50cm, capped, with a catch-up nudge when the crew is far ahead. */
   wallSpeed(): number {
+    if (this.chill) return 0;
     const steps = Math.floor(this.heightCm / CFG.floorStepCm);
     let mult = Math.min(CFG.floorCapMult, 1 + steps * CFG.floorStepMult);
     const alive = this.alive;
@@ -465,7 +470,7 @@ export class Game {
       seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx }));
     }
     return {
-      v: 1, rules: this.rules, seed: this.world.seed, generated: this.world.generated,
+      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, generated: this.world.generated,
       climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
@@ -475,7 +480,7 @@ export class Game {
   }
 
   static restore(levels: Record<UpgradeKey, number>, events: RunEvents, snap: RunSnapshot, palette?: string[]): Game {
-    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette });
+    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, chill: snap.chill ?? false });
     g.world.generateTo(snap.generated);
     for (const seg of g.world.segments) {
       seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
@@ -514,6 +519,7 @@ export class Game {
     }
 
     if (this.phase === "running") this.floorY -= this.wallSpeed() * sdt;
+    if (this.chill) this.floorY = this.camY + this.viewH + 1e6;
 
     if (this.pendingLaunches.length) {
       const due = this.pendingLaunches.filter((p) => p.at <= this.time);
@@ -545,6 +551,8 @@ export class Game {
     for (const c of this.climbers) {
       if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c);
       if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c);
+      // chill has no wall, so a long fall below the high point is the only way to lose one
+      if (this.chill && c.state === "flying" && c.y > this.highestY + this.viewH * 1.6 + 300) this.lose(c);
     }
     // hanging chains whose parent vanished
     for (const c of this.climbers) {

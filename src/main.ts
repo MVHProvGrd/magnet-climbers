@@ -117,6 +117,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.skin = key; persist();
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
+  onToggleChill: () => { save.chill = !save.chill; persist(); },
   onSetName: (name) => { save.name = name; persist(); },
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
@@ -164,22 +165,25 @@ function runEvents() {
       paused = true;
       clearSnapshot();
       const cm = game.heightCm;
+      const chill = game.chill;
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
-      const isRecord = cm > save[bestKey];
+      const isRecord = !chill && cm > save[bestKey];
       const newCm = Math.max(0, cm - bankedCm);
       const earned = game.coins + Math.floor(newCm / 4);
       save.coins += earned;
       save.gems += game.gems;
-      save[bestKey] = Math.max(save[bestKey], cm);
-      save.totalCm += newCm;
-      if (!runCounted) { save.runs += 1; runCounted = true; }
+      if (!chill) {
+        save[bestKey] = Math.max(save[bestKey], cm);
+        save.totalCm += newCm;
+        if (!runCounted) { save.runs += 1; runCounted = true; }
+      }
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended });
-      submitScore(cm, panel);
+      if (!chill && leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill });
+      if (!chill) submitScore(cm, panel);
     },
   };
 }
@@ -231,7 +235,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   bankedCm = 0;
   runCounted = false;
   paused = false;
-  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED } : { rules });
+  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED } : { rules, chill: save.chill });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   if (pendingChallenge && pendingChallenge.mode === rules) {
     game.target = { cm: pendingChallenge.cm, name: pendingChallenge.name, beaten: false };

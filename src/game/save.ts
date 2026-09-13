@@ -19,6 +19,7 @@ export interface SaveData {
   name: string;
   introSeen: boolean;
   tutorialDone: boolean;
+  chill: boolean;
 }
 
 const KEY = "magnet-climbers:save:v1";
@@ -43,6 +44,7 @@ function defaults(): SaveData {
     name: "",
     introSeen: false,
     tutorialDone: false,
+    chill: false,
   };
 }
 
