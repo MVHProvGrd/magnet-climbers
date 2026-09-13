@@ -20,12 +20,14 @@ html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); tou
 @media (max-aspect-ratio: 9/16) { #ui { max-width: none; } }
 #ui > * { pointer-events: auto; }
 
+/* the game column is 400 logical px wide; --px is one of those in CSS px so DOM HUD scales with the canvas */
+#ui { --px: calc(min(100vw, 100dvh * 9 / 16) / 400); }
 .pause-btn {
-  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 54px); right: 12px;
-  height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.55); color: #fff;
-  font-weight: 800; font-size: 13px; cursor: pointer;
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 62 * var(--px)); right: calc(12 * var(--px));
+  height: calc(34 * var(--px)); padding: 0 calc(12 * var(--px)); border-radius: calc(11 * var(--px)); border: 0;
+  background: rgba(0,0,0,0.55); color: #fff; font-weight: 800; font-size: calc(13 * var(--px)); cursor: pointer;
 }
-.mute-btn { right: 96px; width: 36px; padding: 0; font-size: 17px; }
+.mute-btn { right: calc(98 * var(--px)); width: calc(34 * var(--px)); padding: 0; font-size: calc(16 * var(--px)); }
 .panel {
   width: min(92vw, 380px); max-height: 92vh; overflow: auto; padding: 24px 20px; border-radius: 20px;
   background: var(--panel); backdrop-filter: blur(6px); box-shadow: 0 20px 60px rgba(0,0,0,0.5);

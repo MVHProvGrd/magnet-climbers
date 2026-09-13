@@ -191,11 +191,14 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.font = "bold 16px system-ui, sans-serif";
   ctx.textAlign = "center";
   for (const f of g.floats) {
+    // keep the text on the fridge even when the event happened near an edge
+    const half = ctx.measureText(f.text).width / 2 + 6;
+    const fx = Math.max(half, Math.min(W - half, f.x));
     ctx.globalAlpha = Math.min(1, f.life);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillText(f.text, f.x + 1, f.y + 1);
+    ctx.fillText(f.text, fx + 1, f.y + 1);
     ctx.fillStyle = f.color;
-    ctx.fillText(f.text, f.x, f.y);
+    ctx.fillText(f.text, fx, f.y);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -308,13 +311,15 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   }
 
   // active effects
-  let ey = 80;
+  // below the height box, team dots and the STYLE readout
+  let ey = 126;
   const eff: [string, number, string][] = [
     ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
     ["SLOW-MO", g.effects.slowmo, "#c77dff"],
     ["LONG ARMS", g.effects.reach, "#9be15d"],
   ];
   ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textAlign = "left";
   for (const [name, left, color] of eff) {
     if (left <= 0) continue;
     ctx.fillStyle = "rgba(0,0,0,0.45)";
