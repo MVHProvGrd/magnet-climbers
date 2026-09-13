@@ -7,6 +7,7 @@ export interface ScoreRow {
 }
 
 export type Mode = "crew" | "solo";
+export type BoardMode = Mode | "lifetime";
 
 const DEFAULT_API = "https://magnet-climbers-api.magnetclimbers.workers.dev";
 /** Override with VITE_LEADERBOARD_URL; set it to "off" to disable the board. */
@@ -34,10 +35,10 @@ export const leaderboard = {
   rename: (playerId: string, name: string) =>
     call<{ ok: boolean; name: string }>("/rename", { method: "POST", body: JSON.stringify({ playerId, name }) }),
   /** Adds one finished run's height to the global total. */
-  run: (playerId: string, mode: Mode, cm: number) =>
-    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, mode, cm }) }),
-  top: (mode: Mode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
-  rank: (mode: Mode, playerId: string) => call<{ rank: number | null; cm?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
+  run: (playerId: string, name: string, mode: Mode, cm: number) =>
+    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
+  top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
+  rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   submit: (playerId: string, name: string, mode: Mode, cm: number) =>
     call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
 };

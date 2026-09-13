@@ -24,3 +24,17 @@ UPDATE stats SET
   total_cm = (SELECT COALESCE(SUM(cm), 0) FROM scores WHERE player_id NOT LIKE 'smoke-%'),
   runs = (SELECT COUNT(*) FROM scores WHERE player_id NOT LIKE 'smoke-%')
 WHERE id = 1 AND runs = 0;
+
+-- lifetime distance per player, every run and every mode, chill included
+CREATE TABLE IF NOT EXISTS lifetime (
+  player_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  cm INTEGER NOT NULL DEFAULT 0,
+  runs INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS lifetime_cm ON lifetime(cm DESC);
+-- one-time seed from the bests already on the board (only for players not yet in lifetime)
+INSERT OR IGNORE INTO lifetime (player_id, name, cm, runs, updated_at)
+  SELECT player_id, MAX(name), SUM(cm), COUNT(*), MAX(created_at) FROM scores
+  WHERE player_id NOT LIKE 'smoke-%' GROUP BY player_id;

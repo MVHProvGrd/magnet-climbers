@@ -49,7 +49,7 @@ Cloudflare dashboard → Workers & Pages → magnet-climbers-api → Settings �
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/top?mode=crew&limit=25` | | top scores |
+| GET | `/top?mode=crew&limit=25` | mode: crew, solo, lifetime | top scores |
 | GET | `/rank?mode=crew&player=<id>` | | `{ rank, cm }` |
 | POST | `/score` | `{ playerId, name, mode, cm }` | `{ ok, best }` |
 | POST | `/run` | `{ playerId, mode, cm }` | adds to the global total |

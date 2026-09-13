@@ -190,7 +190,7 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
+      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name || "anonymous", rulesNow, newCm);
       const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill });
       if (!chill) submitScore(cm, panel);
     },

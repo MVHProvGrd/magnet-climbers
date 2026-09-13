@@ -1,6 +1,6 @@
 import { RESERVE_COST, SKINS, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import type { SaveData } from "./save";
-import { leaderboard, leaderboardEnabled, type Mode, type ScoreRow } from "./leaderboard";
+import { leaderboard, leaderboardEnabled, type BoardMode, type ScoreRow } from "./leaderboard";
 import { nameReason } from "./profanity";
 
 export interface UiHandlers {
@@ -283,35 +283,38 @@ export class Ui {
     this.tip = null;
   }
 
-  showBoard(mode: Mode) {
+  showBoard(mode: BoardMode) {
     const s = this.save();
     const p = el("div", "panel board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
-        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${r.cm} cm</span></div>`).join("")
+        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : `${r.cm} cm`}</span></div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
+      const localMine = mode === "lifetime" ? s.totalCm : mode === "crew" ? s.bestCm : s.bestSolo;
       const mine = leaderboardEnabled
-        ? rank?.rank ? `You: #${rank.rank} · ${rank.cm} cm` : "You: not on the board yet"
-        : `You: ${mode === "crew" ? s.bestCm : s.bestSolo} cm`;
+        ? rank?.rank ? `You: #${rank.rank} · ${fmtDistance(rank.cm ?? 0)}` : "You: not on the board yet"
+        : `You: ${fmtDistance(localMine)}`;
       p.innerHTML = `
-        <h2>Highest climbs</h2>
+        <h2>${mode === "lifetime" ? "Lifetime climbed" : "Highest climbs"}</h2>
         <div class="tabs">
           <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
           <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
+          <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
         </div>
+        ${mode === "lifetime" ? `<p class="fine">Every centimetre ever climbed, all modes, chill included. Pure dedication.</p>` : ""}
         <div class="srows">${list}</div>
         <p class="tag">${mine} · playing as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
-        ${(mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
+        ${mode !== "lifetime" && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
         <button class="ghost" data-a="back">BACK</button>`;
     };
     render(null, null);
     p.querySelector(".srows")!.innerHTML = `<p class="tag">Loading…</p>`;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
-      const m = t.dataset.m as Mode | undefined;
+      const m = t.dataset.m as BoardMode | undefined;
       if (m) { this.showBoard(m); return; }
       if (t.dataset.a === "back") this.showMenu();
-      if (t.dataset.a === "share") this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
+      if (t.dataset.a === "share" && mode !== "lifetime") this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
       if (t.dataset.a === "name") this.showNamePrompt(() => this.showBoard(mode));
     });
     this.show(p);

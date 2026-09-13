@@ -1,9 +1,9 @@
 /**
  * Magnet Climbers leaderboard API.
- *   GET  /top?mode=crew|solo&limit=25       → [{ name, cm, player_id, created_at }]
+ *   GET  /top?mode=crew|solo|lifetime&limit=25 → [{ name, cm, player_id, created_at }]
  *   GET  /rank?mode=crew&player=<id>        → { rank, cm } or { rank: null }
  *   POST /score  { playerId, name, mode, cm } → { ok, best }
- *   POST /run    { playerId, mode, cm }       → { ok }   adds to the global total
+ *   POST /run    { playerId, name?, mode, cm } → { ok }   adds to the global and the player's lifetime totals
  *   POST /rename { playerId, name }           → { ok, name }  renames every board row for that player
  *   GET  /stats                                → { total_cm, runs, players }
  *
@@ -61,8 +61,14 @@ export default {
 
     if (req.method === "GET" && url.pathname === "/top") {
       const mode = url.searchParams.get("mode") ?? "crew";
-      if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 25)));
+      if (mode === "lifetime") {
+        const rows = await env.DB.prepare(
+          "SELECT name, cm, player_id, updated_at AS created_at FROM lifetime WHERE player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, updated_at ASC LIMIT ?",
+        ).bind(limit).all();
+        return json(rows.results, h);
+      }
+      if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       const rows = await env.DB.prepare(
         "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
       ).bind(mode, limit).all();
@@ -72,6 +78,12 @@ export default {
     if (req.method === "GET" && url.pathname === "/rank") {
       const mode = url.searchParams.get("mode") ?? "crew";
       const player = url.searchParams.get("player") ?? "";
+      if (mode === "lifetime" && player) {
+        const me = await env.DB.prepare("SELECT cm FROM lifetime WHERE player_id = ?").bind(player).first<{ cm: number }>();
+        if (!me) return json({ rank: null }, h);
+        const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM lifetime WHERE cm > ? AND player_id NOT LIKE 'smoke-%'").bind(me.cm).first<{ n: number }>();
+        return json({ rank: (above?.n ?? 0) + 1, cm: me.cm }, h);
+      }
       if (!validMode(mode) || !player) return json({ error: "bad request" }, h, 400);
       const me = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(mode, player).first<{ cm: number }>();
       if (!me) return json({ rank: null }, h);
@@ -109,7 +121,10 @@ export default {
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12);
       if (!playerId || name.length < 3) return json({ error: "bad name" }, h, 400);
       if (nameIsProfane(name)) name = "climber";
-      await env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId).run();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId),
+        env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, playerId),
+      ]);
       return json({ ok: true, name }, h);
     }
 
@@ -122,7 +137,16 @@ export default {
         return json({ error: "bad run" }, h, 400);
       }
       if (pid.startsWith("smoke-")) return json({ ok: true }, h);
-      await env.DB.prepare("UPDATE stats SET total_cm = total_cm + ?, runs = runs + 1 WHERE id = 1").bind(cm).run();
+      let name = String((body as { name?: unknown }).name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
+      if (nameIsProfane(name)) name = "climber";
+      const now = Date.now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE stats SET total_cm = total_cm + ?, runs = runs + 1 WHERE id = 1").bind(cm),
+        env.DB.prepare(
+          `INSERT INTO lifetime (player_id, name, cm, runs, updated_at) VALUES (?, ?, ?, 1, ?)
+           ON CONFLICT(player_id) DO UPDATE SET cm = lifetime.cm + excluded.cm, runs = lifetime.runs + 1, name = excluded.name, updated_at = excluded.updated_at`,
+        ).bind(pid, name, cm, now),
+      ]);
       return json({ ok: true }, h);
     }
 
