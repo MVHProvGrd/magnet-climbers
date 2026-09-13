@@ -18,8 +18,9 @@ export function parseCode(raw: string): Challenge | null {
   let code: string;
   try { code = decodeURIComponent(raw); } catch { return null; }
   const [mode, cmS, ...rest] = code.split(".");
-  const cm = Math.floor(Number(cmS));
-  if ((mode !== "solo" && mode !== "crew") || !Number.isFinite(cm) || cm <= 0 || cm > 200_000) return null;
+  // absurd heights still get a card: verification fails and it reads "Unverified climb"
+  const cm = Math.min(Math.floor(Number(cmS)), 999_999_999);
+  if ((mode !== "solo" && mode !== "crew") || !Number.isFinite(cm) || cm <= 0) return null;
   const name = (rest.join(".") || "a friend").replace(/[^\p{L}\p{N} _.\-!?]/gu, "").slice(0, 12).trim() || "a friend";
   return { mode, cm, name, code: `${mode}.${cm}.${name}`, verified: false };
 }
