@@ -10,19 +10,45 @@ import { setSound } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
-const updateSW = registerSW({ immediate: true });
-/** Manual update check from the menu; reloads if a new build is waiting. */
+/**
+ * Update flow: the service worker checks for a new build every 5 minutes and whenever
+ * the app returns to the foreground. A ready update applies immediately on the menu;
+ * during a run it waits (with a small banner) and applies when the run ends.
+ * Run snapshots make the reload safe either way.
+ */
+let updateReady = false;
+let swReg: ServiceWorkerRegistration | undefined;
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    updateReady = true;
+    if (!game) applyUpdate(); else ui.showUpdateBanner(() => applyUpdate());
+  },
+  onRegisteredSW(_url, r) {
+    swReg = r;
+    setInterval(() => void r?.update(), 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) void r?.update(); });
+  },
+});
+function applyUpdate() {
+  if (game) saveSnapshot();
+  ui.toast("Updating…");
+  setTimeout(() => void updateSW(true), 300);
+}
+/** Manual update check from the menu. */
 async function checkForUpdate() {
   ui.toast("Checking for update…");
   try {
-    const reg = await navigator.serviceWorker?.getRegistration();
-    await reg?.update();
-    if (reg?.waiting) { await updateSW(true); return; }
+    await swReg?.update();
+    if (swReg?.waiting || updateReady) { applyUpdate(); return; }
   } catch { /* fall through */ }
   setTimeout(() => location.reload(), 600);
 }
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
+const menubg = document.getElementById("menubg") as HTMLCanvasElement;
+const menubgCtx = menubg.getContext("2d")!;
+const appEl = document.getElementById("app")!;
 const ctx = canvas.getContext("2d")!;
 const uiRoot = document.getElementById("ui")!;
 
@@ -281,6 +307,7 @@ function resumeRun() {
   game.viewH = viewH;
   game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
   ui.setInRun(true);
+  menubg.hidden = true; appEl.classList.add("in-run");
   ui.toast("Run resumed");
 }
 
@@ -330,6 +357,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
   game.viewH = viewH;
   ui.setInRun(true);
+  menubg.hidden = true; appEl.classList.add("in-run");
 }
 
 /** Re-post local bests; the server keeps the max, so a lost post heals itself. */
@@ -356,11 +384,13 @@ function submitScore(cm: number, panel: HTMLElement) {
 
 function endRun() {
   clearSnapshot();
+  if (updateReady) setTimeout(applyUpdate, 400);
   tutorial = null;
   ui.hideTip();
   game = null;
   paused = false;
   ui.setInRun(false);
+  menubg.hidden = false; appEl.classList.remove("in-run");
 }
 
 // ---------- input ----------
@@ -423,7 +453,14 @@ function frame(now: number) {
     }
     render(ctx, game, viewH, dpr);
   } else {
-    renderMenuBackground(ctx, viewH, dpr, now / 1000);
+    // draw the title scene across the whole window (behind the centred game column)
+    const bw = window.innerWidth, bh = window.innerHeight;
+    if (menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
+      menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
+    }
+    renderMenuBackground(menubgCtx, bh, dpr, now / 1000, bw);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, viewH);
   }
   requestAnimationFrame(frame);
 }

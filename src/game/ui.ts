@@ -509,6 +509,15 @@ export class Ui {
     }, 1000);
   }
 
+  private banner: HTMLElement | null = null;
+  showUpdateBanner(apply: () => void) {
+    if (this.banner) return;
+    const b = el("div", "update-banner", "⬆ Update ready · applies after this run · tap to apply now");
+    b.addEventListener("click", () => { b.remove(); this.banner = null; apply(); });
+    this.root.appendChild(b);
+    this.banner = b;
+  }
+
   toast(text: string) {
     const t = el("div", "toast", text);
     this.root.appendChild(t);

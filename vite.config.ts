@@ -12,7 +12,7 @@ export default defineConfig({
   css: { postcss: { plugins: [] } },
   plugins: [
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["icons/*.png", "icons/*.svg"],
       manifest: {
         name: "Magnet Climbers",
