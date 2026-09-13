@@ -2,6 +2,7 @@ import { CFG, W } from "./config";
 import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
+import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -25,6 +26,7 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 
 export class World {
+  gadgetTime = 0;
   segments: Segment[] = [];
   rng: Rng;
   /** y of the top-most generated segment */
@@ -33,7 +35,7 @@ export class World {
 
   readonly seed: number;
 
-  constructor(seed: number, startY: number, readonly version = 2) {
+  constructor(seed: number, startY: number, readonly version = 3) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -174,7 +176,7 @@ export class World {
       powerUps.push({ x: rangeOf(r, 30, W - 30), y: y + rangeOf(r, 30, h - 30), kind: kindP, taken: false, bob: r() * 6 });
     }
 
-    const segment = { y, h, zones, powerUps, bumpers };
+    const segment: Segment = { y, h, zones, powerUps, bumpers };
     if (this.version >= 2) {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
@@ -184,6 +186,16 @@ export class World {
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
       if (i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5);
+      if (this.version >= 3 && i >= 4 && i % 4 === 0) {
+        const kind = GADGET_KINDS[(i / 4 - 1) % 4];
+        segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
+        segment.bumpers = [];
+        segment.gadgets = [0, 1].map((n) => {
+          const theme = pick(art, [...THEMES]);
+          return { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+        });
+        if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }
+      }
     }
     return segment;
   }
@@ -192,6 +204,7 @@ export class World {
   isMetal(x: number, y: number, pad = 0): boolean {
     if (x < -pad || x > W + pad) return false;
     if (inRect(x, y, DOOR_SEAM, -pad)) return false;
+    for (const g of this.gadgets) if (gadgetContains(g, this.gadgetTime, { x, y })) return !gadgetPose(g, this.gadgetTime).active;
     for (const s of this.segments) {
       if (y < s.y - 60 || y > s.y + s.h + 60) continue;
       // islands (hue -1) are metal and override everything in that segment
@@ -215,6 +228,7 @@ export class World {
       ys.push(r.y - 0.1, r.y + 0.1, r.y + r.h - 0.1, r.y + r.h + 0.1);
     };
     edges(DOOR_SEAM);
+    for (const g of this.gadgets) if (Math.abs(g.y - y) <= radius + 80) edges(gadgetZone(g, this.gadgetTime));
     for (const s of this.segments) {
       if (y + radius < s.y - 60 || y - radius > s.y + s.h + 60) continue;
       for (const z of s.zones) edges(z);
@@ -231,11 +245,28 @@ export class World {
   }
 
   repelAt(x: number, y: number): NoStickZone | null {
+    for (const g of this.gadgets) {
+      const zone = gadgetZone(g, this.gadgetTime);
+      if (zone.kind === "repel" && inRect(x, y, zone, 20)) return zone;
+    }
     for (const s of this.segments) {
       if (y < s.y - 60 || y > s.y + s.h + 60) continue;
       for (const z of s.zones) if (z.kind === "repel" && inRect(x, y, z, 20)) return z;
     }
     return null;
+  }
+
+  get gadgets() { return this.segments.flatMap((s) => s.gadgets ?? []); }
+  carrierAt(p: { x: number; y: number }) {
+    const g = this.gadgets.find((g) => gadgetContains(g, this.gadgetTime, p) && !gadgetPose(g, this.gadgetTime).active);
+    if (!g) return {};
+    const hold = gadgetPose(g, this.gadgetTime).hold;
+    return { carrierId: g.id, carrierOffset: { x: p.x - hold.x, y: p.y - hold.y } };
+  }
+  carrierPoint(id: string, offset: { x: number; y: number }) {
+    const g = this.gadgets.find((g) => g.id === id); if (!g) return null;
+    const p = gadgetPose(g, this.gadgetTime); if (p.active) return null;
+    return { x: p.hold.x + offset.x, y: p.hold.y + offset.y };
   }
 }
 

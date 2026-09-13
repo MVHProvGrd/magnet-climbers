@@ -27,7 +27,7 @@ export function limbTip(c: Climber, limb: number): Vec {
 
 export function cloneGrip(grip?: MagneticGrip): MagneticGrip | undefined {
   if (!grip) return undefined;
-  const copy = { ...grip, contacts: grip.contacts.map((p) => ({ ...p })) };
+  const copy = { ...grip, contacts: grip.contacts.map((p) => ({ ...p, ...(p.carrierOffset ? { carrierOffset: { ...p.carrierOffset } } : {}) })) };
   if (grip.pivotLocal) copy.pivotLocal = { ...grip.pivotLocal };
   return copy;
 }
@@ -37,7 +37,7 @@ export function findContacts(c: Climber, world: World, radius: number): Magnetic
   return LIMB_TIPS.flatMap((_, limb) => {
     const tip = limbTip(c, limb);
     const metal = world.nearestMetal(tip.x, tip.y, radius);
-    return metal ? [{ ...metal, limb: limb as LimbId }] : [];
+    return metal ? [{ ...metal, limb: limb as LimbId, ...world.carrierAt(metal) }] : [];
   });
 }
 
@@ -90,7 +90,7 @@ export function braceLanding(c: Climber, world: World): boolean {
     const p = rotate(LIMB_TIPS[limb], target);
     const metal = world.nearestMetal(c.x + p.x, c.y + p.y, 3);
     if (!metal) return false;
-    contacts.push({ ...metal, limb: limb as LimbId });
+    contacts.push({ ...metal, limb: limb as LimbId, ...world.carrierAt(metal) });
   }
   c.grip = { contacts, pose: upsideDown ? "hands" : "feet", lift: CFG.magnetism.standingLift,
     age: 0, angularVelocity: c.spin * 0.2,

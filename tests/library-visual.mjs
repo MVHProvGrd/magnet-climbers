@@ -1,7 +1,7 @@
 // Optional isolated @napi-rs/canvas dependency, as documented in visual.mjs.
 import assert from "node:assert/strict";
 import { build } from "vite";
-import { createCanvas, GlobalFonts } from "../node_modules/.cache/magnet-climbers-visual/node_modules/@napi-rs/canvas/index.js";
+import { createCanvas, GlobalFonts, loadImage } from "../node_modules/.cache/magnet-climbers-visual/node_modules/@napi-rs/canvas/index.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -9,13 +9,14 @@ import { pathToFileURL } from "node:url";
 if (existsSync("C:/Windows/Fonts/segoeui.ttf")) GlobalFonts.registerFromPath("C:/Windows/Fonts/segoeui.ttf", "system-ui");
 await build({ configFile: false, logLevel: "warn", build: { lib: { entry: "tests/visual-entry.ts", formats: ["es"], fileName: () => "visual.mjs" }, outDir: "node_modules/.cache/magnet-climbers-render", minify: false } });
 const api = await import(pathToFileURL(resolve("node_modules/.cache/magnet-climbers-render/visual.mjs")).href);
+for (const theme of api.THEMES) api.setGadgetArt(theme, await loadImage(`public/art/gadgets/${theme}.png`));
 const { Game, UPGRADES, FRIDGE_ITEMS, drawItemPreview, drawClimber, drawClimberShadow, resetRagdoll, stepRagdoll, braceLanding, stepGrip, SET_PIECES, populateSetPiece, drawSurface, drawZone, drawPower, setSound } = api;
 globalThis.document = { createElement: () => createCanvas(256, 256) }; setSound(false);
 const levels = Object.fromEntries(UPGRADES.map((u) => [u.key, 0]));
 const events = { onPower() {}, onGameOver() {}, onCoins() {}, onGems() {} };
 const game = new Game(levels, events, { seed: 12345, rules: "solo" });
-const library = createCanvas(1000, 1180), ctx = library.getContext("2d");
-ctx.fillStyle = "#192733"; ctx.fillRect(0, 0, 1000, 1180);
+const library = createCanvas(1000, 60 + Math.ceil(FRIDGE_ITEMS.length / 7) * 184), ctx = library.getContext("2d");
+ctx.fillStyle = "#192733"; ctx.fillRect(0, 0, 1000, library.height);
 ctx.fillStyle = "#fff4d7"; ctx.font = "bold 25px system-ui"; ctx.fillText(`THE FRIDGE FIELD GUIDE / ${FRIDGE_ITEMS.length} ITEMS`, 24, 39);
 for (let i = 0; i < FRIDGE_ITEMS.length; i++) {
   const x = 10 + i % 7 * 142, y = 60 + Math.floor(i / 7) * 184;

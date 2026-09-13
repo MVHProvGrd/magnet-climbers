@@ -4,6 +4,7 @@ import { leaderboard, leaderboardEnabled, type BoardMode, type ScoreRow } from "
 import { nameReason } from "./profanity";
 import { FRIDGE_ITEMS, type ItemFamily } from "./items";
 import { drawItemPreview } from "./scenery";
+import { gadgetArtReady } from "./gadget-art";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -15,6 +16,7 @@ export interface UiHandlers {
   onBuySkin(key: string): void;
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
+  onToggleMusic(): void;
   onToggleChill(): void;
   onSetName(name: string): void;
   onUpdate(): void;
@@ -124,16 +126,18 @@ export class Ui {
 
   showFieldGuide(family: ItemFamily = "surface") {
     const p = el("div", "panel field-guide");
-    const categories: [ItemFamily, string][] = [["surface", "Obstacles"], ["bumper", "Movers"], ["pickup", "Pickups"], ["paper", "Paper art"]];
+    const categories: [ItemFamily, string][] = [["surface", "Obstacles"], ["gadget", "Gadgets"], ["bumper", "Movers"], ["pickup", "Pickups"], ["paper", "Paper art"]];
     const items = FRIDGE_ITEMS.filter((item) => item.family === family);
     p.innerHTML = `<h2>Fridge Field Guide</h2>
       <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${items.map((item) => `<article class="guide-card"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
-    p.querySelectorAll("canvas").forEach((canvas, i) => {
-      const ctx = canvas.getContext("2d")!; ctx.scale(2, 2); drawItemPreview(ctx, items[i]);
+    const drawCards = () => p.querySelectorAll("canvas").forEach((canvas, i) => {
+      const ctx = canvas.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100); drawItemPreview(ctx, items[i]);
     });
+    drawCards();
+    void gadgetArtReady.then(() => { if (p.isConnected) drawCards(); });
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       const category = target?.dataset.category;
@@ -170,9 +174,10 @@ export class Ui {
       <h3>Preferences</h3>
       <div class="rows">
         <div class="row">
-          <div class="info"><b>Sound</b><span>Fling, stick and coin blips</span></div>
+          <div class="info"><b>Sound effects</b><span>Rubber twangs, steel clicks and hand swishes</span></div>
           <button class="buy" data-a="sound">${s.sound ? "ON" : "OFF"}</button>
         </div>
+        <div class="row"><div class="info"><b>Music</b><span>Original toy-box groove; builds as danger approaches</span></div><button class="buy" data-a="music">${s.music ? "ON" : "OFF"}</button></div>
         <div class="row">
           <div class="info"><b>Chill mode</b><span>No red line. No coins or records; metres still count for the world total</span></div>
           <button class="buy ${s.chill ? "" : ""}" data-a="chill">${s.chill ? "ON" : "OFF"}</button>
@@ -200,6 +205,7 @@ export class Ui {
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
       if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
+      if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
       if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
       if (a === "shop") { this.showShop(); return; }
       if (a === "back") this.showMenu();

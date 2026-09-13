@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./audio.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { World } from "../src/game/world";
@@ -7,7 +8,10 @@ import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, ste
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, itemZone } from "../src/game/items";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
-import { handPose, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
+import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
+import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
+import { cloneTricks, freshTricks, registerTrick } from "../src/game/tricks";
+import { EFFECTS, MUSIC_STEP, musicStep } from "../src/game/music-score";
 import { setSound } from "../src/game/audio";
 import type { Climber, NoStickZone } from "../src/game/types";
 
@@ -173,7 +177,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 39);
+  assert.equal(FRIDGE_ITEMS.length, 51);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -201,7 +205,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 2);
+  assert.equal(modern.snapshot()!.worldVersion, 3);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -214,8 +218,7 @@ test("kid hand follows a curved, mirrored route; palm and fingertips share the v
     assert.ok(Math.abs(l.x + r.x - 400) < 1e-8); assert.equal(l.y, r.y); ys.push(l.y);
     for (const h of [left, right]) {
       assert.ok(handTouches(h, handWorldPoint(h, { x: 0, y: 0 })));
-      const curl = handPose(h).curl;
-      assert.ok(handTouches(h, handWorldPoint(h, { x: 62 - curl * 9, y: -8 + curl * 8 })));
+      for (const finger of fingerJoints(h)) for (const point of finger.points) assert.ok(handTouches(h, handWorldPoint(h, point), 0));
       assert.equal(handTouches(h, handWorldPoint(h, { x: -95, y: 0 })), false, "forearm cannot hit");
       assert.equal(handTouches({ ...h, phase: "warn" }, l), false);
       assert.equal(handTouches({ ...h, phase: "retract" }, l), false);
@@ -263,4 +266,129 @@ test("a lethal airborne bumper hit cannot re-stick the lost climber", () => {
   g.world.segments[0].bumpers.push({ x: c.x - 10, y: c.y - 10, w: 20, h: 20, vx: 0, minX: 0, maxX: 400, label: "test", hue: 0, motion: "slide", vy: 0, minY: c.y - 10, maxY: c.y - 10 });
   g.update(1 / 120);
   assert.equal(c.hp, 0); assert.equal(c.state, "lost"); assert.equal(c.grip, undefined);
+});
+
+test("three knuckles flex without changing finger lengths or collision tips", () => {
+  const base: KidHand = { side: -1, y: 0, x: 0, phase: "sweep", t: 0, hit: new Set() };
+  const open = fingerJoints(base), closed = fingerJoints({ ...base, t: SWIPE_DURATION });
+  assert.equal(open.length, 5);
+  for (let f = 0; f < 5; f++) {
+    assert.equal(open[f].points.length, f === 4 ? 3 : 4);
+    for (let i = 1; i < open[f].points.length; i++) {
+      const length = (points: { x: number; y: number }[]) => Math.hypot(points[i].x - points[i-1].x, points[i].y - points[i-1].y);
+      assert.ok(Math.abs(length(open[f].points) - length(closed[f].points)) < 1e-8);
+    }
+    assert.notDeepEqual(open[f].points, closed[f].points);
+  }
+});
+
+test("all gadget themes spawn deterministically; v2 terrain stays gadget-free", () => {
+  const ids = new Set<string>();
+  for (let seed = 1; seed <= 12; seed++) {
+    const a = new World(seed, 0), b = new World(seed, 0), legacy = new World(seed, 0, 2);
+    a.generateTo(33); b.generateTo(33); legacy.generateTo(33);
+    assert.deepEqual(a.segments, b.segments); assert.equal(legacy.gadgets.length, 0);
+    for (const g of a.gadgets) ids.add(g.itemId);
+    for (const seg of a.segments.filter((s) => s.gadgets?.length)) {
+      for (const time of [0, 1.5, 3, 4.5, 6]) {
+        a.gadgetTime = time;
+        for (let y = seg.y + 1; y < seg.y + seg.h; y += 12) for (const x of [0, 32, 63, 336, 367, 399]) assert.ok(a.isMetal(x, y), `safe lane ${x},${y}`);
+      }
+    }
+  }
+  assert.equal(ids.size, 12);
+});
+
+test("gadget holds are real steel, decorative plastic is not, and polarity switches", () => {
+  for (const kind of GADGET_KINDS) {
+    const w = surface([{ x: 0, y: -1000, w: 190, h: 2000, kind: "trim" }]);
+    const gadget = { id: "test", itemId: `${kind}-snack`, kind, x: 100, y: -100, phase: 0 };
+    w.segments[0].gadgets = [gadget];
+    for (let t = 0; t < 6; t += .25) {
+      w.gadgetTime = t; const pose = gadgetPose(gadget, t), z = gadgetZone(gadget, t);
+      assert.equal(w.isMetal(pose.hold.x, pose.hold.y), !pose.active);
+      assert.equal(!!w.repelAt(pose.hold.x, pose.hold.y), pose.active);
+      if (!pose.active) {
+        const carrier = w.carrierAt(pose.hold); assert.equal(carrier.carrierId, "test");
+        assert.deepEqual(w.carrierPoint(carrier.carrierId!, carrier.carrierOffset!), pose.hold);
+        assert.ok(w.nearestMetal(z.x - 1, z.y + z.h / 2, 2));
+      }
+      assert.equal(w.isMetal(z.x - 3, z.y + z.h / 2), false);
+    }
+  }
+});
+
+test("moving contacts carry climbers and polarity releases them without phantom grips", () => {
+  for (const kind of GADGET_KINDS) {
+    const g = game(), c = g.climbers[0]; g.phase = "running"; g.nextHandAt = 999;
+    const gadget = { id: "carry", itemId: `${kind}-travel`, kind, x: 100, y: -100, phase: 0 };
+    g.world.segments = [{ y: -1000, h: 2000, zones: [{ x: 0, y: -1000, w: 190, h: 2000, kind: "trim" }], bumpers: [], powerUps: [], gadgets: [gadget] }];
+    const hold = gadgetPose(gadget, 0).hold;
+    c.x = hold.x + 21; c.y = hold.y + 20; c.angle = 0; c.grip = undefined; c.ragdoll = undefined; c.state = "flying";
+    const contacts = findContacts(c, g.world, 0).filter((p) => p.limb === 0);
+    assert.ok(attachGrip(c, contacts)); c.state = "stuck";
+    const initial = c.x;
+    for (let i = 0; i < 120; i++) {
+      g.update(1 / 120); assert.equal(c.state, "stuck");
+      const p = c.grip!.contacts[0]; assert.deepEqual({ x: p.x, y: p.y }, gadgetPose(gadget, g.world.gadgetTime).hold);
+      assert.ok(Math.hypot(p.x - c.x, p.y - c.y) < 40);
+    }
+    if (kind !== "polarity") assert.notEqual(c.x, initial);
+    if (kind === "polarity") {
+      g.world.gadgetTime = 2.999; g.update(1 / 120);
+      assert.equal(c.state, "flying"); assert.equal(c.grip, undefined); assert.ok(c.noStick! > 0);
+    }
+  }
+});
+
+test("gadget clocks, carrier offsets, trick counters and near-misses deep-copy on save", () => {
+  const g = game(); g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
+  const gadget = g.world.gadgets[0], hold = gadgetPose(gadget, g.world.gadgetTime).hold, c = g.climbers[0];
+  Object.assign(c, { x: hold.x + 21, y: hold.y + 20, angle: 0, grip: undefined, ragdoll: undefined, state: "flying" });
+  attachGrip(c, findContacts(c, g.world, 0).filter((p) => p.limb === 0)); c.state = "stuck";
+  g.camY = c.y - 240; g.highestY = c.y; g.floorY = c.y + 800;
+  g.hand = { side: -1, y: 500, x: 0, phase: "warn", t: .2, hit: new Set(), near: [99] };
+  registerTrick(g.tricks, "HANDSTAND", 35, g.time);
+  const snap = g.snapshot()!, saved = JSON.stringify(snap), restored = Game.restore(levels, events, JSON.parse(saved));
+  for (let i = 0; i < 120; i++) { g.update(1 / 120); restored.update(1 / 120); }
+  assert.deepEqual(g.climbers, restored.climbers); assert.deepEqual(g.tricks, restored.tricks);
+  assert.equal(g.world.gadgetTime, restored.world.gadgetTime); assert.equal(JSON.stringify(snap), saved);
+  restored.hand?.near?.push(3); assert.deepEqual(snap.hand?.near, [99]);
+});
+
+test("trick combos expire, cap at eight, and landing rewards cannot farm the same height", () => {
+  const s = freshTricks(); assert.equal(registerTrick(s, "SAVE", 50, 0), 50);
+  assert.equal(registerTrick(s, "SAVE", 50, 2), 100);
+  for (let i = 0; i < 20; i++) registerTrick(s, "SAVE", 50, 3 + i);
+  assert.equal(s.combo, 8); assert.equal(s.bestCombo, 8);
+  registerTrick(s, "SAVE", 50, 30); assert.equal(s.combo, 1);
+  const copy = cloneTricks(s); copy.counts.SAVE++; assert.notDeepEqual(copy.counts, s.counts);
+  for (const chill of [false, true]) {
+    const g = new Game(levels, events, { seed: 12345, chill });
+    const c = g.climbers[0]; c.x = 100; c.y = -120; c.airTime = .5; c.grip = undefined; c.ragdoll = undefined; c.state = "flying";
+    assert.ok(g["stick"](c)); assert.ok(g.tricks.score > 0); assert.equal(g.coins, chill ? 0 : 1);
+    const score = g.tricks.score;
+    for (let i = 0; i < 10; i++) { c.grip = undefined; c.state = "flying"; g["stick"](c); }
+    assert.equal(g.tricks.score, score); assert.equal(g.coins, chill ? 0 : 1);
+  }
+});
+
+test("near misses reward once at swipe completion, but actual swats never do", () => {
+  for (const hit of [false, true]) {
+    const g = game(), c = g.climbers[0]; g.phase = "running";
+    g.hand = { side: -1, y: 900, x: 0, phase: "sweep", t: SWIPE_DURATION - .004, hit: new Set(hit ? [c.id] : []), near: [c.id] };
+    g.update(1 / 120); assert.equal(g.tricks.counts["CLOSE CALL"] ?? 0, hit ? 0 : 1);
+    const score = g.tricks.score; g.update(1 / 120); assert.equal(g.tricks.score, score);
+  }
+});
+
+test("original music is deterministic, bounded and layers percussion only outside Chill", () => {
+  assert.equal(MUSIC_STEP, .3125);
+  for (let i = 0; i < 128; i++) {
+    assert.deepEqual(musicStep(i, 0), musicStep(i + 32, 0));
+    assert.deepEqual(musicStep(i, 1, true), musicStep(i, 0));
+    assert.ok(musicStep(i, 1).length >= musicStep(i, 0).length);
+  }
+  const voices = [...Object.values(EFFECTS).flat(), ...Array.from({ length: 32 }, (_, i) => musicStep(i, 1)).flat()];
+  for (const v of voices) { assert.ok(v.frequency > 0 && v.frequency < 20000); assert.ok(v.duration > .006 && v.duration < 1); assert.ok(v.gain > 0 && v.gain <= .25); }
 });
