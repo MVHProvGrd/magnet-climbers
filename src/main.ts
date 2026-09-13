@@ -76,7 +76,7 @@ const ui = new Ui(uiRoot, () => save, {
   onResume: () => { paused = false; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
-    if (game && game.phase !== "dead") { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
+    if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
     endRun(); ui.showMenu();
   },
   onBuy: (key: UpgradeKey) => {
@@ -169,10 +169,11 @@ function runEvents() {
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
       const isRecord = !chill && cm > save[bestKey];
       const newCm = Math.max(0, cm - bankedCm);
-      const earned = game.coins + Math.floor(newCm / 4);
-      save.coins += earned;
-      save.gems += game.gems;
+      // chill runs earn nothing: no coins, gems, records, board or global total
+      const earned = chill ? 0 : game.coins + Math.floor(newCm / 4);
       if (!chill) {
+        save.coins += earned;
+        save.gems += game.gems;
         save[bestKey] = Math.max(save[bestKey], cm);
         save.totalCm += newCm;
         if (!runCounted) { save.runs += 1; runCounted = true; }
