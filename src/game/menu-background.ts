@@ -40,3 +40,20 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
   }
   ctx.restore();
 }
+
+/** Static blurred kitchen behind the game column, for windows wider than 9:16 (tablets, desktops). */
+export function renderRunBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number, dpr: number): boolean {
+  ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#0e1014"; ctx.fillRect(0, 0, width, height);
+  const ready = scene.complete && scene.naturalWidth > 0;
+  if (ready) {
+    const scale = Math.max(width / scene.naturalWidth, height / scene.naturalHeight) * 1.12;
+    const w = scene.naturalWidth * scale, h = scene.naturalHeight * scale;
+    ctx.filter = "blur(12px)";
+    ctx.drawImage(scene, (width - w) / 2, (height - h) / 2, w, h);
+    ctx.filter = "none";
+    ctx.fillStyle = "rgba(8,12,18,0.62)"; ctx.fillRect(0, 0, width, height);
+  }
+  ctx.restore();
+  return ready;
+}

@@ -2,7 +2,7 @@ import "./style.css";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
 import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
-import { renderMenuBackground } from "./game/menu-background";
+import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
@@ -48,6 +48,8 @@ async function checkForUpdate() {
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const menubg = document.getElementById("menubg") as HTMLCanvasElement;
 const menubgCtx = menubg.getContext("2d")!;
+/** The in-run backdrop is static: redrawn only after a resize or once the art loads. */
+let backdropDrawn = false;
 const appEl = document.getElementById("app")!;
 const ctx = canvas.getContext("2d")!;
 const uiRoot = document.getElementById("ui")!;
@@ -324,7 +326,7 @@ function resumeRun() {
   game.viewH = viewH;
   game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
   ui.setInRun(true);
-  menubg.hidden = true; appEl.classList.add("in-run");
+  backdropDrawn = false; appEl.classList.add("in-run");
   ui.toast("Run resumed");
 }
 
@@ -375,7 +377,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
   game.viewH = viewH;
   ui.setInRun(true);
-  menubg.hidden = true; appEl.classList.add("in-run");
+  backdropDrawn = false; appEl.classList.add("in-run");
 }
 
 /** Re-post local bests; the server keeps the max, so a lost post heals itself. */
@@ -472,6 +474,11 @@ function frame(now: number) {
       tickTutorial(dt);
     }
     render(ctx, game, viewH, dpr);
+    const bw = window.innerWidth, bh = window.innerHeight;
+    if (!backdropDrawn || menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
+      menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
+      backdropDrawn = renderRunBackdrop(menubgCtx, bw, bh, dpr);
+    }
   } else {
     // draw the title scene across the whole window (behind the centred game column)
     const bw = window.innerWidth, bh = window.innerHeight;

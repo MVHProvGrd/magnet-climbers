@@ -63,7 +63,7 @@ function effect(name: string) {
 /** Existing render loop supplies a short scheduling horizon; no hidden timers. */
 export function updateAudio(playing: boolean, danger = 0, chill = false) {
   active = playing; const c = context(); if (!c || c.state !== "running") return;
-  const m = playing ? .8 : 0, music = playing && musicEnabled ? .24 : 0;
+  const m = playing ? .8 : 0, music = playing && musicEnabled ? .6 : 0;
   if (m !== masterTarget) { target(master, m, c.currentTime, .025); masterTarget = m; }
   if (music !== musicTarget) { target(musicBus, music, c.currentTime, .05); musicTarget = music; }
   if (!playing || !musicEnabled) { nextNote = c.currentTime; return; }
