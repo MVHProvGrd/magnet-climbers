@@ -50,7 +50,7 @@ game.launch(game.climbers[0], { x: 80, y: -580 });
 for (let i = 0; i < 110; i++) game.update(1 / 120);
 render(phone.getContext("2d"), game, 700, 2);
 await writeFile("artifacts/magnetism-game.png", phone.toBuffer("image/png"));
-for (const file of ["public/art/title-logo.png", "public/art/title-fridge.png", "public/icons/toy-icon.png"]) {
+for (const file of ["public/art/title-logo.webp", "public/art/title-fridge.webp", "public/icons/toy-icon-512.png"]) {
   const img = await loadImage(file);
   console.log(`${file}: ${img.width}x${img.height}`);
 }

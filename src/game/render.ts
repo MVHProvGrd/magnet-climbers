@@ -1,41 +1,8 @@
 import { CFG, W } from "./config";
 import type { Game } from "./game";
-import type { Bumper, NoStickZone, PowerUp } from "./types";
-import { DOOR_SEAM } from "./world";
+import type { PowerUp } from "./types";
+import { drawSteel, drawSeam, drawPanelJoint, drawZone, drawBumper } from "./scenery";
 import { drawClimber, drawClimberShadow } from "./climber-render";
-
-/** Cached brushed-steel pattern so the background is cheap to draw each frame. */
-let steelPattern: CanvasPattern | null = null;
-
-function steel(ctx: CanvasRenderingContext2D): CanvasPattern {
-  if (steelPattern) return steelPattern;
-  const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 256;
-  const g = c.getContext("2d")!;
-  const grad = g.createLinearGradient(0, 0, 256, 0);
-  grad.addColorStop(0, "#b9c0c8");
-  grad.addColorStop(0.35, "#dfe4e9");
-  grad.addColorStop(0.55, "#c4cbd3");
-  grad.addColorStop(0.8, "#e4e8ec");
-  grad.addColorStop(1, "#b5bcc4");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 256, 256);
-  // vertical brush streaks
-  for (let i = 0; i < 900; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 256;
-    const l = 6 + Math.random() * 40;
-    g.strokeStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.18)" : "rgba(40,50,60,0.10)";
-    g.lineWidth = Math.random() < 0.8 ? 1 : 2;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x, y + l);
-    g.stroke();
-  }
-  steelPattern = ctx.createPattern(c, "repeat")!;
-  return steelPattern;
-}
 
 export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dpr: number) {
   ctx.save();
@@ -47,24 +14,13 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   const top = g.camY - 50;
   const bottom = g.camY + viewH + 50;
 
-  // stainless surface
-  ctx.fillStyle = steel(ctx);
-  ctx.save();
-  ctx.translate(0, Math.floor(g.camY / 256) * 256);
-  ctx.fillRect(0, top - Math.floor(g.camY / 256) * 256 - 256, W, viewH + 700);
-  ctx.restore();
-
-  // door seam
-  ctx.fillStyle = "#2a2e33";
-  ctx.fillRect(DOOR_SEAM.x, top, DOOR_SEAM.w, bottom - top);
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
-  ctx.fillRect(DOOR_SEAM.x + DOOR_SEAM.w, top, 1.5, bottom - top);
+  // stainless surface, seam, panel joints (scenery.ts owns the materials)
+  drawSteel(ctx, g.camY, viewH);
+  drawSeam(ctx, top, bottom);
 
   for (const s of g.world.segments) {
     if (s.y + s.h < top || s.y > bottom) continue;
-    // faint panel line between segments
-    ctx.fillStyle = "rgba(0,0,0,0.06)";
-    ctx.fillRect(0, s.y + s.h - 1, W, 2);
+    drawPanelJoint(ctx, s.y + s.h);
     for (const z of s.zones) drawZone(ctx, z, g.time);
     for (const b of s.bumpers) drawBumper(ctx, b);
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
@@ -235,116 +191,6 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawHud(ctx, g, viewH);
   ctx.restore();
-}
-
-function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  if (z.hue === -1) {
-    // metal island: a stainless handle
-    ctx.fillStyle = "#cfd6dd";
-    roundRect(ctx, z.x, z.y, z.w, z.h, 8);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.35)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.fillRect(z.x + 6, z.y + 4, z.w - 12, 3);
-    return;
-  }
-  switch (z.kind) {
-    case "glass": {
-      const gr = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-      gr.addColorStop(0, "rgba(170,215,235,0.95)");
-      gr.addColorStop(0.5, "rgba(120,170,200,0.95)");
-      gr.addColorStop(1, "rgba(60,90,120,0.95)");
-      ctx.fillStyle = gr;
-      ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.strokeStyle = "#5b6470";
-      ctx.lineWidth = 6;
-      ctx.strokeRect(z.x, z.y, z.w, z.h);
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(z.x + 10, z.y + z.h - 10);
-      ctx.lineTo(z.x + z.w - 10, z.y + 10);
-      ctx.stroke();
-      label(ctx, "glass", z);
-      break;
-    }
-    case "trim": {
-      ctx.fillStyle = "#23262b";
-      ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      for (let y = z.y + 6; y < z.y + z.h; y += 12) ctx.fillRect(z.x, y, z.w, 2);
-      label(ctx, "plastic", z);
-      break;
-    }
-    case "void": {
-      ctx.fillStyle = "#101216";
-      ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.fillStyle = "rgba(255,255,255,0.05)";
-      ctx.fillRect(z.x, z.y, z.w, 3);
-      label(ctx, "gap", z);
-      break;
-    }
-    case "sticker": {
-      ctx.save();
-      ctx.translate(z.x + z.w / 2, z.y + z.h / 2);
-      ctx.rotate(((z.hue ?? 0) % 10 - 5) * 0.02);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(-z.w / 2, -z.h / 2, z.w, z.h);
-      ctx.fillStyle = `hsl(${z.hue ?? 0} 70% 60%)`;
-      ctx.fillRect(-z.w / 2 + 6, -z.h / 2 + 6, z.w - 12, z.h - 22);
-      ctx.fillStyle = `hsl(${(z.hue ?? 0) + 40} 60% 40%)`;
-      ctx.beginPath();
-      ctx.arc(-z.w / 6, -z.h / 8, Math.min(z.w, z.h) / 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#333";
-      ctx.font = "bold 9px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("photo", 0, z.h / 2 - 6);
-      ctx.restore();
-      break;
-    }
-    case "repel": {
-      const pulse = 0.5 + 0.5 * Math.sin(t * 6);
-      ctx.fillStyle = `rgba(255,60,60,${0.35 + pulse * 0.25})`;
-      ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.strokeStyle = "#ff3b3b";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(z.x, z.y, z.w, z.h);
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 26px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("N", z.x + z.w / 2, z.y + z.h / 2 + 9);
-      ctx.font = "bold 9px system-ui, sans-serif";
-      ctx.fillText("REPELS", z.x + z.w / 2, z.y + z.h - 6);
-      break;
-    }
-  }
-}
-
-function label(ctx: CanvasRenderingContext2D, text: string, z: NoStickZone) {
-  if (z.w < 50 || z.h < 30) return;
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "bold 10px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(text.toUpperCase(), z.x + z.w / 2, z.y + z.h / 2 + 4);
-}
-
-function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  roundRect(ctx, b.x + 3, b.y + 4, b.w, b.h, 6);
-  ctx.fill();
-  ctx.fillStyle = `hsl(${b.hue} 80% 55%)`;
-  roundRect(ctx, b.x, b.y, b.w, b.h, 6);
-  ctx.fill();
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 4);
 }
 
 const POWER_STYLE: Record<PowerUp["kind"], { color: string; glyph: string }> = {

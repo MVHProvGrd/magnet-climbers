@@ -66,7 +66,7 @@ export class Ui {
     const s = this.save();
     const p = el("div", "panel menu");
     p.innerHTML = `
-      <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.png" alt="Magnet Climbers" width="1870" height="841" fetchpriority="high" /></h1>
+      <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
       <p class="tag">Fling your rubbery magnet crew up an endless fridge.<br/>Stick to steel. Outrun the kid.</p>
       <div class="stats">
         <div><span>Best crew</span><b>${s.bestCm} cm</b></div>

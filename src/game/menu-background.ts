@@ -3,7 +3,7 @@ import { CLIMBER_COLORS, W } from "./config";
 import type { Climber } from "./types";
 
 const scene = new Image();
-scene.src = `${import.meta.env.BASE_URL}art/title-fridge.png`;
+scene.src = `${import.meta.env.BASE_URL}art/title-fridge.webp`;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 /** Decorative falling toys over the user's kitchen artwork; never touches run state. */

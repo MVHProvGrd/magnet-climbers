@@ -98,3 +98,67 @@ installed-icon appearance and real-phone feel still need manual verification.
 
 There was already an untracked `worker/package-lock.json` when work began. It
 belongs to the user; do not remove or fold it into an unrelated change.
+
+---
+
+# Claude pass: scenery and materials (2026-09-13)
+
+## Changed files
+
+- `src/game/scenery.ts` (new): all environment materials. `drawSteel`, `drawSeam`,
+  `drawPanelJoint`, `drawZone`, `drawBumper`. Deterministic decoration via a small
+  hash of zone position/hue, so nothing flickers between frames. Brushed grain is a
+  single cached 512px tile (neutral gray under `overlay`, so it adds grain only);
+  lighting is four gradients per frame in screen space (window from upper-left,
+  a sliding reflection band, warm bounce low-left, cool sky upper-right).
+- `src/game/render.ts`: removed the old inline steel/zone/bumper drawing; now calls
+  scenery. HUD, aim preview, links, particles, floor, target line and all character
+  calls are untouched.
+- `public/art/title-fridge.webp` (77 KB, 720 wide), `public/art/title-logo.webp`
+  (128 KB, 1100 wide), `public/icons/toy-icon-192.png`, `toy-icon-512.png`,
+  `toy-icon-maskable-512.png` (12% padding on a `#1a1d24` ground): web-sized
+  versions of the user's chosen art, produced with headless Chromium canvas.
+  The 1.9–2 MB originals are removed from the repo (they stay in the user's
+  OneDrive). Precache went from 5.9 MB to 1.3 MB.
+- `index.html`, `vite.config.ts` (manifest icons incl. a real maskable entry,
+  `webp` added to the Workbox glob), `src/game/ui.ts`, `src/game/menu-background.ts`,
+  `tests/visual.mjs`: updated references only.
+
+## Materials
+
+- Steel: subtle grain, lit from upper-left, restrained warm/cool tints. Panel
+  joints are a dark hairline with a lit lower edge. Door seam is a real groove
+  with a lit right lip.
+- Glass: light metal bezel, recess shadow, teal frosted pane, soft leaf/sky blobs
+  from the window, two slow-drifting reflection streaks. The bezel is part of the
+  non-stick rect, so nothing looks like a foothold.
+- Plastic trim: matte black, molded ribs, faint sheen, lit top edge.
+- Gap: dark recess, shadow thrown down from the upper panel lip, cold light on
+  the far wall near the bottom lip, a vent slot per 130px.
+- Stickers: four deterministic styles from the hue: polaroid snapshot with a
+  heart magnet, souvenir plate (LAKE/BEACH/CAMP/HOME/ZOO/SKI), sticky note with
+  checkboxes, kid's drawing pinned by a round magnet. Card is inset 4px and
+  rotated so no tilted corner leaves the collider.
+- Repel: glossy red enamel tile with a bevel, inner dark window and a pulsing
+  glowing N, matching the title art. REPELS caption kept.
+- Bumpers: PIZZA/VEG/24/7 themed plaques with a pizza-slice icon; single letters
+  are chunky alphabet magnets on a white tile.
+- Steel handle islands: pill with a vertical gradient and end caps.
+- All shadows fall down/right (`castShadow`), same direction as the characters.
+  No baked climbers or character shadows in the terrain.
+
+## Checks run
+
+- `npm test` 9/9, `npm run build` clean, Workbox precache lists every asset.
+- Headless Chromium at 400x800 @2x: menu, solo start, camera panned through five
+  segment types. Before/after screenshots were sent to Michael in chat.
+- Not verified here: real phone frame rate, installed icon appearance, reduced
+  motion, offline reload. The browser was headless.
+
+## Physics notes for Codex (observations, nothing changed)
+
+- Stickers overlap each other and the seam in "stickers" segments; purely visual,
+  but they also overlap power-ups, which can hide a coin behind a polaroid.
+  Consider keeping power-up spawns off sticker rects in world gen.
+- Handles inside glass windows sit visually "on" the pane. The solver treats the
+  handle rect as steel, so this matches gameplay.
