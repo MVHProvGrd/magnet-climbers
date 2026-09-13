@@ -52,6 +52,10 @@ Cloudflare dashboard → Workers & Pages → magnet-climbers-api → Settings �
 | GET | `/top?mode=crew&limit=25` | | top scores |
 | GET | `/rank?mode=crew&player=<id>` | | `{ rank, cm }` |
 | POST | `/score` | `{ playerId, name, mode, cm }` | `{ ok, best }` |
+| POST | `/run` | `{ playerId, mode, cm }` | adds to the global total |
+| GET | `/stats` | | `{ total_cm, runs, players }` |
+
+Schema changes: re-run `npm run db:init` (it is idempotent) then `npm run deploy`.
 
 One row per player per mode; a submit only ever raises the stored best. Names are trimmed to 12 chars and stripped of markup.
 

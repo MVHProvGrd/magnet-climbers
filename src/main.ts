@@ -169,6 +169,7 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
+      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, rulesNow, newCm);
       const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended });
       submitScore(cm, panel);
     },
@@ -337,9 +338,11 @@ else if (loadSnapshot()) resumeRun();
 else if (!save.introSeen) {
   ui.showStory(() => {
     save.introSeen = true; persist();
-    if (!save.tutorialDone) startRun("solo", true); else ui.showMenu();
+    const next = () => (!save.tutorialDone ? startRun("solo", true) : ui.showMenu());
+    if (!save.name) ui.showNamePrompt(next, true); else next();
   });
-} else ui.showMenu();
+} else if (!save.name) ui.showNamePrompt(() => ui.showMenu(), true);
+else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
 declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown } } }

@@ -27,7 +27,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
   }
 }
 
+export interface GlobalStats { total_cm: number; runs: number; players: number }
+
 export const leaderboard = {
+  stats: () => call<GlobalStats>("/stats"),
+  /** Adds one finished run's height to the global total. */
+  run: (playerId: string, mode: Mode, cm: number) =>
+    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, mode, cm }) }),
   top: (mode: Mode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: Mode, playerId: string) => call<{ rank: number | null; cm?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   submit: (playerId: string, name: string, mode: Mode, cm: number) =>

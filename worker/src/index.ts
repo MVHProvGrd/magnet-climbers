@@ -3,10 +3,28 @@
  *   GET  /top?mode=crew|solo&limit=25       → [{ name, cm, player_id, created_at }]
  *   GET  /rank?mode=crew&player=<id>        → { rank, cm } or { rank: null }
  *   POST /score  { playerId, name, mode, cm } → { ok, best }
+ *   POST /run    { playerId, mode, cm }       → { ok }   adds to the global total
+ *   GET  /stats                                → { total_cm, runs, players }
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
  * so a later version can submit the input log and have the server replay it.
  */
+import PROFANITY from "../../src/game/data/profanity.json";
+
+const BLOCKED = new Set((PROFANITY as string[]).map((w) => w.toLowerCase()));
+const deleet = (t: string) => t.replace(/[0]/g, "o").replace(/[1|]/g, "i").replace(/3/g, "e").replace(/[4@]/g, "a").replace(/[5$]/g, "s").replace(/[7+]/g, "t").replace(/8/g, "b").replace(/9/g, "g");
+/** Server-side mirror of the client name filter: substring match on 5+ letter words, whole-token on shorter. */
+function nameIsProfane(name: string): boolean {
+  const whole = deleet(name.toLowerCase()).replace(/[^a-z]/g, "");
+  const tokens = name.toLowerCase().split(/[^a-z0-9]+/).map((t) => deleet(t).replace(/[^a-z]/g, "")).filter(Boolean);
+  for (const bad of BLOCKED) {
+    if (bad.length < 3) continue;
+    if (bad.length <= 4) { if (whole === bad || tokens.some((t) => t === bad || (bad.length === 4 && t.startsWith(bad)))) return true; }
+    else if (whole.includes(bad)) return true;
+  }
+  return false;
+}
+
 export interface Env {
   DB: D1Database;
   ALLOWED_ORIGINS: string;
@@ -64,7 +82,8 @@ export default {
       let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
-      const name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
+      let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
+      if (nameIsProfane(name)) name = "climber";
       const cm = Math.floor(Number(body.cm));
       if (!playerId || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
         return json({ error: "bad score" }, h, 400);
@@ -80,6 +99,23 @@ export default {
       ).bind(playerId, name, body.mode, cm, now).run();
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/run") {
+      let body: { playerId?: unknown; mode?: unknown; cm?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const cm = Math.floor(Number(body.cm));
+      if (!String(body.playerId ?? "") || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
+        return json({ error: "bad run" }, h, 400);
+      }
+      await env.DB.prepare("UPDATE stats SET total_cm = total_cm + ?, runs = runs + 1 WHERE id = 1").bind(cm).run();
+      return json({ ok: true }, h);
+    }
+
+    if (req.method === "GET" && url.pathname === "/stats") {
+      const st = await env.DB.prepare("SELECT total_cm, runs FROM stats WHERE id = 1").first<{ total_cm: number; runs: number }>();
+      const pl = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM scores").first<{ n: number }>();
+      return json({ total_cm: st?.total_cm ?? 0, runs: st?.runs ?? 0, players: pl?.n ?? 0 }, h);
     }
 
     return json({ error: "not found" }, h, 404);

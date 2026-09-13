@@ -1,6 +1,7 @@
 import { RESERVE_COST, SKINS, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, type Mode, type ScoreRow } from "./leaderboard";
+import { nameReason } from "./profanity";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -18,6 +19,8 @@ export interface UiHandlers {
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
 }
+
+const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -83,6 +86,7 @@ export class Ui {
       </div>
       <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
       <p class="fine">Runs: ${s.runs} · Lifetime climbed: ${(s.totalCm / 100).toFixed(1)} m (all runs added up)</p>
+      <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
     `;
     p.addEventListener("click", (e) => {
@@ -97,6 +101,13 @@ export class Ui {
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     this.show(p);
+    if (leaderboardEnabled) {
+      void leaderboard.stats().then((st) => {
+        if (!st || this.panel !== p) return;
+        const g = p.querySelector<HTMLElement>(".global");
+        if (g) { g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${st.runs.toLocaleString()} runs by ${st.players.toLocaleString()} climbers`; g.hidden = false; }
+      });
+    }
   }
 
   showShop() {
@@ -256,19 +267,26 @@ export class Ui {
     }
   }
 
-  /** Ask for a display name (first submit, or from the board). */
-  showNamePrompt(done: () => void) {
+  /** Ask for a display name. `required` hides SKIP (first launch) so scores always post under a name. */
+  showNamePrompt(done: () => void, required = false) {
     const s = this.save();
     const p = el("div", "panel small");
     p.innerHTML = `
-      <h2>Your climber name</h2>
-      <p class="tag">Shown on the global scoreboard. 12 characters max.</p>
-      <input id="name-in" maxlength="12" placeholder="e.g. FridgeKing" value="${esc(s.name)}" autocomplete="off" />
-      <button class="primary" data-a="ok">SAVE</button>
-      <button class="ghost" data-a="skip">SKIP</button>`;
+      <h2>${required ? "Pick your climber name" : "Your climber name"}</h2>
+      <p class="tag">Shown on the global scoreboard. 3–12 characters.</p>
+      <input id="name-in" maxlength="12" placeholder="e.g. FridgeKing" value="${esc(s.name)}" autocomplete="off" autocapitalize="off" />
+      <p class="fine err" hidden></p>
+      <button class="primary" data-a="ok">${required ? "LET'S CLIMB" : "SAVE"}</button>
+      ${required ? "" : `<button class="ghost" data-a="skip">SKIP</button>`}`;
     const input = p.querySelector<HTMLInputElement>("#name-in")!;
+    const err = p.querySelector<HTMLElement>(".err")!;
     const finish = (save: boolean) => {
-      if (save) this.h.onSetName(input.value.trim().slice(0, 12));
+      if (save) {
+        const v = input.value.trim().slice(0, 12);
+        const why = v.length < 3 ? "At least 3 characters." : nameReason(v);
+        if (why) { err.textContent = why; err.hidden = false; input.focus(); return; }
+        this.h.onSetName(v);
+      }
       this.clear();
       done();
     };
