@@ -1,4 +1,6 @@
 import type { Bumper, NoStickZone, PowerUp } from "./types";
+import { fridgeItem, type FridgeItem } from "./items";
+import { drawObject } from "./item-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
 
@@ -42,6 +44,7 @@ export function drawSurface(ctx: CanvasRenderingContext2D, top: number, bottom: 
 
 /** Small cartoon illustrations are drawn in a 100x100 square inside the real paper collider. */
 function doodle(ctx: CanvasRenderingContext2D, variant: number) {
+  if (variant >= 12) { drawObject(ctx, variant); return; }
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   switch (variant % 8) {
     case 0: { // Pizza postcard
@@ -120,10 +123,10 @@ function doodle(ctx: CanvasRenderingContext2D, variant: number) {
 
 function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) {
   const w = z.w, h = z.h;
-  const variant = artVariant(z.x, z.y, seed ^ (z.hue ?? 0), 12);
+  const variant = fridgeItem(z.itemId)?.art ?? artVariant(z.x, z.y, seed ^ (z.hue ?? 0), 12);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
   if (z.kind === "sticker") {
-    const note = variant >= 8;
+    const note = variant >= 8 && variant < 12;
     box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
     if (note) {
       const lines = [["TO DO", "climb fridge", "find snacks", "repeat"], ["YOU GOT", "THIS!", "", "keep climbing"], ["DON'T", "LET", "GO!", ""], ["MILK", "EGGS", "MORE", "MAGNETS"]][variant - 8];
@@ -160,11 +163,16 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
 }
 
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
+  if (["dispenser", "calendar", "ice-tray"].includes(z.itemId ?? "")) {
+    ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
+    drawObject(ctx, z.itemId === "dispenser" ? 20 : z.itemId === "calendar" ? 21 : 22);
+    ctx.restore(); return;
+  }
   // Keep Claude's handles, vents, gaps and glowing repel plates; mix both glass
   // treatments, and retain his four card styles alongside the 12 new drawings.
   const variant = artVariant(z.x, z.y, seed, 16);
   const material = z.hue === -1 || z.kind === "trim" || z.kind === "void" || z.kind === "repel"
-    || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && variant >= 12);
+    || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && !z.itemId && variant >= 12);
   if (material) {
     ctx.save(); drawMaterialZone(ctx, z, time);
     if (z.kind === "repel") {
@@ -191,7 +199,8 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 }
 
 export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
-  if (b.label.length <= 1 || artVariant(b.minX, b.minY, b.hue, 7) >= 5) {
+  const item = fridgeItem(b.itemId);
+  if (!item && (b.label.length <= 1 || artVariant(b.minX, b.minY, b.hue, 7) >= 5)) {
     ctx.save(); drawMaterialBumper(ctx, b); ctx.restore(); return;
   }
   ctx.save(); ctx.translate(b.x, b.y);
@@ -201,7 +210,10 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
   enamel.addColorStop(0, `hsl(${b.hue} 65% 82%)`); enamel.addColorStop(0.4, `hsl(${b.hue} 65% 60%)`); enamel.addColorStop(1, `hsl(${b.hue} 50% 39%)`);
   ctx.fillStyle = enamel; ctx.beginPath(); ctx.roundRect(0, 0, b.w, b.h, 5); ctx.fill();
   ctx.shadowColor = "transparent"; ctx.strokeStyle = "rgba(255,255,255,0.65)"; ctx.lineWidth = 1.3; ctx.stroke();
-  if (variant === 0) {
+  if (item?.art != null) {
+    ctx.save(); ctx.translate(3, 3); ctx.scale((b.h - 6) / 100, (b.h - 6) / 100); doodle(ctx, item.art); ctx.restore();
+    text(ctx, b.label, b.w * 0.76, b.h * 0.58, Math.min(9, b.w * 0.4 / b.label.length * 1.5), "#fffbea");
+  } else if (variant === 0) {
     // Pizza delivery magnet.
     ctx.save(); ctx.translate(4, 3); ctx.scale(0.28, 0.28); doodle(ctx, 0); ctx.restore();
     text(ctx, "YUM", b.w * 0.74, b.h * 0.6, 9, "#fff8dd");
@@ -258,4 +270,11 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
     line(ctx, [-5, -4, -9, 0, -5, 4], "#245c7b", 2); line(ctx, [5, -4, 9, 0, 5, 4], "#245c7b", 2);
   }
   ctx.restore();
+}
+
+/** Actual game artwork, also used for field-guide thumbnails and QA. */
+export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
+  if (item.power) { ctx.save(); ctx.translate(50, 48); ctx.scale(2.2, 2.2); drawPower(ctx, { x: 0, y: 0, kind: item.power, taken: false, bob: 0 }, 0); ctx.restore(); }
+  else if (item.family === "bumper") drawBumper(ctx, { x: 5, y: 25, w: 90, h: 50, vx: 0, minX: 0, maxX: 100, label: item.label!, hue: item.hue!, itemId: item.id, motion: "slide", vy: 0, minY: 25, maxY: 25 });
+  else if (item.kind) drawZone(ctx, { x: 6, y: 6, w: 88, h: 88, kind: item.kind, hue: item.metal ? -1 : 0, itemId: item.id }, 0, 42);
 }

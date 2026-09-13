@@ -2,6 +2,8 @@ import { RESERVE_COST, SKINS, UPGRADES, statsFor, upgradeCost, type UpgradeKey }
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, type BoardMode, type ScoreRow } from "./leaderboard";
 import { nameReason } from "./profanity";
+import { FRIDGE_ITEMS, type ItemFamily } from "./items";
+import { drawItemPreview } from "./scenery";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -84,6 +86,7 @@ export class Ui {
       <button data-a="shop">UPGRADES</button>
       <button data-a="board">SCOREBOARD</button>
       <button data-a="settings">⚙ SETTINGS</button>
+      <button data-a="guide">FRIDGE FIELD GUIDE</button>
       <div class="pair">
         <button class="ghost" data-a="tutorial">HOW TO PLAY</button>
         <button class="ghost" data-a="story">STORY</button>
@@ -99,6 +102,7 @@ export class Ui {
       if (a === "shop") this.showShop();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
+      if (a === "guide") this.showFieldGuide();
       if (a === "update") this.h.onUpdate();
       if (a === "tutorial") this.h.onTutorial();
       if (a === "story") this.showStory(() => this.showMenu());
@@ -114,6 +118,27 @@ export class Ui {
         g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
       });
     }
+  }
+
+  showFieldGuide(family: ItemFamily = "surface") {
+    const p = el("div", "panel field-guide");
+    const categories: [ItemFamily, string][] = [["surface", "Obstacles"], ["bumper", "Movers"], ["pickup", "Pickups"], ["paper", "Paper art"]];
+    const items = FRIDGE_ITEMS.filter((item) => item.family === family);
+    p.innerHTML = `<h2>Fridge Field Guide</h2>
+      <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
+      <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
+      <div class="guide-grid">${items.map((item) => `<article class="guide-card"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`).join("")}</div>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.querySelectorAll("canvas").forEach((canvas, i) => {
+      const ctx = canvas.getContext("2d")!; ctx.scale(2, 2); drawItemPreview(ctx, items[i]);
+    });
+    p.addEventListener("click", (e) => {
+      const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+      const category = target?.dataset.category;
+      if (category && categories.some(([key]) => key === category)) this.showFieldGuide(category as ItemFamily);
+      if (target?.dataset.a === "back") this.showMenu();
+    });
+    this.show(p);
   }
 
   /** Profile, preferences and appearance in one place. */

@@ -1,5 +1,7 @@
 import { CFG, W } from "./config";
 import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
+import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
+import { populateSetPiece, SET_PIECES } from "./world-patterns";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -31,7 +33,7 @@ export class World {
 
   readonly seed: number;
 
-  constructor(seed: number, startY: number) {
+  constructor(seed: number, startY: number, readonly version = 2) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -149,9 +151,9 @@ export class World {
       const by = y + rangeOf(r, 30, h - 60);
       const speed = rangeOf(r, 60, 90 + difficulty * 120) * (r() < 0.5 ? 1 : -1);
       // motion: sideways early; lifts and zig-zags appear as difficulty rises
-      const roll = r();
+      const roll = this.version > 0 ? r() : 0;
       const motion = roll < 0.55 - difficulty * 0.25 ? "slide" : roll < 0.8 ? "lift" : "zigzag";
-      const span = rangeOf(r, 90, 160);
+      const span = this.version > 0 ? rangeOf(r, 90, 160) : 0;
       const minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
       const vy = motion === "slide" ? 0 : rangeOf(r, 50, 70 + difficulty * 80) * (r() < 0.5 ? 1 : -1);
       bumpers.push({
@@ -164,14 +166,26 @@ export class World {
 
     // power-ups: 1-2 per segment
     const pn = 1 + (r() < 0.45 ? 1 : 0);
-    const table: PowerKind[] = ["coin", "coin", "coin", "coin", "magnet", "extra", "slowmo", "reach", "coin", "gem", "heart"];
+    const table: PowerKind[] = ["coin", "coin", "coin", "coin", "magnet", "extra", "slowmo", "reach", "coin", "gem"];
+    if (this.version > 0) table.push("heart");
     for (let k = 0; k < pn; k++) {
       let kindP = pick(r, table);
       if (kindP === "gem" && r() < 0.6) kindP = "coin";
       powerUps.push({ x: rangeOf(r, 30, W - 30), y: y + rangeOf(r, 30, h - 30), kind: kindP, taken: false, bob: r() * 6 });
     }
 
-    return { y, h, zones, powerUps, bumpers };
+    const segment = { y, h, zones, powerUps, bumpers };
+    if (this.version >= 2) {
+      // Separate stream keeps the original world RNG and old saved runs intact.
+      const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
+      for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, PAPER_ITEMS).id;
+      for (const bumper of bumpers) {
+        const item = pick(art, BUMPER_ITEMS);
+        bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
+      }
+      if (i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5);
+    }
+    return segment;
   }
 
   /** Whether a point is on stickable stainless steel. */

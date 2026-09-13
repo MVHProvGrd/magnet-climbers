@@ -29,7 +29,6 @@ export const CFG = {
   handIntervalBase: 22,
   handIntervalMin: 9,
   handWarn: 1.1,
-  handSpeed: 520,
   handShove: 560,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14 },
   coinValue: 5,
@@ -44,6 +43,8 @@ export const CFG = {
     maxSwingSpeed: 5,
     standingLift: 15,
     singleLift: 9,
+    uprightSpring: 48,
+    uprightDamping: 12,
   },
 };
 

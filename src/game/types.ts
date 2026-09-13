@@ -14,6 +14,7 @@ export interface Rect {
 export type NoStickKind = "glass" | "trim" | "sticker" | "void" | "repel";
 
 export interface NoStickZone extends Rect {
+  itemId?: string;
   kind: NoStickKind;
   /** sticker colour / photo hue */
   hue?: number;
@@ -30,6 +31,7 @@ export interface PowerUp extends Vec {
 export type BumperMotion = "slide" | "lift" | "zigzag";
 
 export interface Bumper {
+  itemId?: string;
   x: number;
   y: number;
   w: number;
@@ -65,6 +67,20 @@ export interface MagneticGrip {
   lift: number;
   age: number;
   angularVelocity: number;
+  targetAngle?: number;
+  pivotLocal?: Vec;
+}
+
+export interface LimbJoint {
+  angle: number;
+  bend: number;
+  velocity: number;
+  bendVelocity: number;
+}
+export interface Ragdoll {
+  limbs: LimbJoint[];
+  lastVx: number;
+  lastVy: number;
 }
 
 export interface Climber {
@@ -92,6 +108,7 @@ export interface Climber {
   noStick?: number;
   /** World-space magnetic tips. Optional so v1 saves remain readable. */
   grip?: MagneticGrip;
+  ragdoll?: Ragdoll;
 }
 
 export interface ActiveEffects {

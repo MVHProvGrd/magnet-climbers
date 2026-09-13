@@ -1,6 +1,7 @@
 import { drawClimber, drawClimberShadow } from "./climber-render";
 import { CLIMBER_COLORS, W } from "./config";
 import type { Climber } from "./types";
+import { resetRagdoll } from "./ragdoll";
 
 const scene = new Image();
 scene.src = `${import.meta.env.BASE_URL}art/title-fridge.webp`;
@@ -27,6 +28,11 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
       spin: 0, state: "flying", color: CLIMBER_COLORS[i], parent: null,
       leftLauncher: true, launcherId: null, airTime: 0.5, squash: 0, hp: 3, iframes: 0,
     };
+    resetRagdoll(c);
+    for (const [limb, joint] of c.ragdoll!.limbs.entries()) {
+      joint.angle += Math.sin(time * 1.8 + i + limb * 1.7) * 0.55;
+      joint.bend += Math.sin(time * 2.1 + i * 2 + limb) * 0.7;
+    }
     ctx.globalAlpha = 0.8;
     drawClimberShadow(ctx, c); drawClimber(ctx, c, false, time);
   }

@@ -1,5 +1,23 @@
 # Claude handoff: scenery and material art
 
+## Latest Codex update — September 13, 2026
+
+This section supersedes the historical assignments below.
+
+- `ragdoll.ts`: bounded, independent arm/leg joints driven by flight inertia and drag. Actual moving tips catch steel. Torso keeps its ballistic arc; not a full rigid-body engine.
+- `magnetism.ts`: feet-first and handstand bracing, spring-settled upright angles, fixed contacts, single-tip pendulums and mixed/flat landings.
+- `items.ts`: 39 stable definitions (20 paper cards, 7 pickups, 6 surfaces, 6 moving magnets). Main menu includes an illustrated Fridge Field Guide.
+- `world-patterns.ts`: four layouts with tested 64px continuous steel side lanes. Versioned terrain preserves pre-health and pre-library saves.
+- `kid-hand.ts`: connected forearm, detailed fingers/thumb, angled curved reach, warning arc, follow-through and safe recoil. Collision follows the art. Attack state/timing survives saves; no attacks in Chill.
+- Title regenerated with built-in image generation: four stainless doors, original low angle, NO manufacturer logo, NO exterior dispenser, NO odd handle. Asset: `public/art/title-fridge.webp`. Prompts: `artifacts/title-fridge.prompt.md`. Existing wordmark and PWA icons retained.
+- Claude's health, heart pickup, lift/zigzag bumper mechanics and settings preserved.
+
+Checks before final sync: 20 simulation tests and production/PWA build passed. Canvas previews: `artifacts/ragdoll-flight.png`, `fridge-field-guide.png`, `obstacle-layouts.png`, `kid-hand-swipe.png`. Scripts under `tests/`, optional Canvas dependency described in `tests/visual.mjs`.
+
+Next for Claude: real-phone playtesting and frame-rate/menu-scroll QA; tune swipe dodge feel and upright catch frequency from play. Verify installed-PWA refresh/offline behavior. Do not reintroduce branding or an exterior dispenser in title art. Live browser/phone QA was unavailable to Codex.
+
+## Historical notes
+
 ## Update: combined scenery pass integrated by Codex
 
 Michael subsequently requested that Codex also implement and push the in-game art.
