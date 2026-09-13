@@ -266,6 +266,24 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillText("😌 CHILL", W / 2, 25);
   }
 
+  // off-screen climbers: coloured arrows at the edge, tappable
+  for (const m of offscreenMarkers(g, viewH)) {
+    const c = g.byId(m.id)!;
+    const dist = Math.round(Math.abs(c.y - g.camY - viewH / 2) / CFG.pxPerCm);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    roundRect(ctx, m.x - 26, m.y - 16, 52, 32, 10);
+    ctx.fill();
+    ctx.fillStyle = c.color;
+    ctx.beginPath();
+    if (m.dir === "down") { ctx.moveTo(m.x - 8, m.y - 8); ctx.lineTo(m.x + 8, m.y - 8); ctx.lineTo(m.x, m.y + 2); }
+    else { ctx.moveTo(m.x - 8, m.y + 2); ctx.lineTo(m.x + 8, m.y + 2); ctx.lineTo(m.x, m.y - 8); }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 9px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${dist} cm`, m.x, m.y + 13);
+  }
+
   // wall indicator when the danger line is off the bottom of the screen
   const wallScreen = g.floorY - g.camY;
   if (!g.chill && wallScreen > viewH) {
@@ -366,6 +384,19 @@ export function hudButtons(viewH: number) {
     recenter: { x: W - 132, y: 100, w: 120, h: 42 },
     reserve: { x: W - 152, y: by, w: 140, h: 42 },
   };
+}
+
+/** Edge markers for living climbers that are off screen; tap to select and recenter. */
+export function offscreenMarkers(g: Game, viewH: number): { id: number; x: number; y: number; dir: "up" | "down" }[] {
+  const out: { id: number; x: number; y: number; dir: "up" | "down" }[] = [];
+  for (const c of g.climbers) {
+    if (c.state === "lost") continue;
+    const sy = c.y - g.camY;
+    if (sy > -40 && sy < viewH + 40) continue;
+    const x = Math.max(28, Math.min(W - 28, c.x));
+    out.push({ id: c.id, x, y: sy < 0 ? 118 : viewH - 128, dir: sy < 0 ? "up" : "down" });
+  }
+  return out;
 }
 
 /** Screen-space positions of the HUD team dots (tap to select). */
