@@ -1,8 +1,8 @@
 import { CFG, W } from "./config";
 import type { Game } from "./game";
-import type { PowerUp } from "./types";
-import { drawSteel, drawSeam, drawPanelJoint, drawZone, drawBumper } from "./scenery";
 import { drawClimber, drawClimberShadow } from "./climber-render";
+import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
+
 
 export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dpr: number) {
   ctx.save();
@@ -14,14 +14,12 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   const top = g.camY - 50;
   const bottom = g.camY + viewH + 50;
 
-  // stainless surface, seam, panel joints (scenery.ts owns the materials)
-  drawSteel(ctx, g.camY, viewH);
-  drawSeam(ctx, top, bottom);
+  drawSurface(ctx, top, bottom);
 
   for (const s of g.world.segments) {
     if (s.y + s.h < top || s.y > bottom) continue;
     drawPanelJoint(ctx, s.y + s.h);
-    for (const z of s.zones) drawZone(ctx, z, g.time);
+    for (const z of s.zones) drawZone(ctx, z, g.time, g.world.seed);
     for (const b of s.bumpers) drawBumper(ctx, b);
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
@@ -193,34 +191,6 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.restore();
 }
 
-const POWER_STYLE: Record<PowerUp["kind"], { color: string; glyph: string }> = {
-  coin: { color: "#ffd23f", glyph: "$" },
-  gem: { color: "#7ef0ff", glyph: "◆" },
-  magnet: { color: "#ff4d4d", glyph: "U" },
-  extra: { color: "#9be15d", glyph: "+1" },
-  slowmo: { color: "#c77dff", glyph: "⏱" },
-  reach: { color: "#4fc3f7", glyph: "↔" },
-};
-
-function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, t: number) {
-  const st = POWER_STYLE[p.kind];
-  const y = p.y + Math.sin(t * 3 + p.bob) * 4;
-  ctx.fillStyle = "rgba(0,0,0,0.2)";
-  ctx.beginPath();
-  ctx.arc(p.x + 2, y + 3, 15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = st.color;
-  ctx.beginPath();
-  ctx.arc(p.x, y, 15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "#1a1d24";
-  ctx.font = "bold 13px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(st.glyph, p.x, y + 5);
-}
 
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   ctx.font = "bold 22px system-ui, sans-serif";

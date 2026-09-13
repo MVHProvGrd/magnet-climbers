@@ -1,612 +1,255 @@
-/**
- * Environment materials: brushed steel, door seam, glass, plastic trim, gaps,
- * stickers/souvenir magnets, repel plates, bumpers and steel handles.
- *
- * Rules: every collider keeps its exact rect (art may only add shadow/bevel
- * *outside* a non-stick zone, never suggest steel inside one). Static textures
- * are cached once; per-frame work is gradients and a few primitives.
- * Nothing here touches simulation state.
- */
-import { W } from "./config";
-import type { Bumper, NoStickZone } from "./types";
-import { DOOR_SEAM } from "./world";
+import type { Bumper, NoStickZone, PowerUp } from "./types";
+import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
+export { drawPanelJoint } from "./scenery-materials";
 
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-/** Deterministic 0..1 from a few numbers, so decoration never flickers. */
-function hash(...n: number[]): number {
-  let h = 2166136261;
-  for (const v of n) {
-    h ^= Math.floor(v * 1000) & 0xffffffff;
-    h = Math.imul(h, 16777619);
-  }
-  h ^= h >>> 13;
-  h = Math.imul(h, 0x5bd1e995);
-  h ^= h >>> 15;
-  return (h >>> 0) / 4294967296;
+// This RNG is art-only. Never consume World.rng while rendering.
+export function artVariant(x: number, y: number, seed: number, count: number): number {
+  let hash = Math.imul(Math.round(x * 10) ^ seed, 374761393) ^ Math.imul(Math.round(y * 10), 668265263);
+  hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
+  return ((hash ^ (hash >>> 16)) >>> 0) % count;
 }
 
-export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
+const cards = new WeakMap<NoStickZone, { seed: number; image: HTMLCanvasElement }>();
+const TAU = Math.PI * 2;
+
+function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
 }
-
-/** Soft contact shadow cast down/right, matching the character shadows. */
-function castShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, lift = 1) {
-  ctx.save();
-  ctx.fillStyle = `rgba(20,26,34,${0.16 + lift * 0.06})`;
-  roundRectPath(ctx, x + 2.5 * lift, y + 3.5 * lift, w, h, r);
-  ctx.fill();
-  ctx.fillStyle = "rgba(20,26,34,0.08)";
-  roundRectPath(ctx, x + 5 * lift, y + 7 * lift, w, h, r);
-  ctx.fill();
-  ctx.restore();
-}
-
-// ---------------------------------------------------------------------------
-// brushed steel
-// ---------------------------------------------------------------------------
-
-const TILE = 512;
-let grainTile: HTMLCanvasElement | null = null;
-let grainPattern: CanvasPattern | null = null;
-
-/** Fine vertical grain, low contrast, built once from a fixed seed. */
-function grain(ctx: CanvasRenderingContext2D): CanvasPattern {
-  if (grainPattern) return grainPattern;
-  const c = document.createElement("canvas");
-  c.width = TILE;
-  c.height = TILE;
-  const g = c.getContext("2d")!;
-  g.fillStyle = "#808080"; // neutral under "overlay": contributes grain only, no lift
-  g.fillRect(0, 0, TILE, TILE);
-  // thousands of faint hairlines, varying length, both lighter and darker
-  for (let i = 0; i < 6000; i++) {
-    const x = hash(i, 1) * TILE;
-    const y = hash(i, 2) * TILE;
-    const len = 14 + hash(i, 3) * 120;
-    const light = hash(i, 4) < 0.5;
-    const a = 0.03 + hash(i, 5) * 0.07;
-    g.strokeStyle = light ? `rgba(255,255,255,${a * 1.6})` : `rgba(20,26,34,${a * 1.6})`;
-    g.lineWidth = hash(i, 6) < 0.85 ? 1 : 1.5;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x, y + len);
-    g.stroke();
-    // wrap so the tile seams vertically
-    if (y + len > TILE) {
-      g.beginPath();
-      g.moveTo(x, y - TILE);
-      g.lineTo(x, y - TILE + len);
-      g.stroke();
-    }
-  }
-  // a few slightly broader, softer streaks for that swirl-free brushed look
-  for (let i = 0; i < 90; i++) {
-    const x = hash(i, 7) * TILE;
-    const w = 3 + hash(i, 8) * 9;
-    const a = 0.025 + hash(i, 9) * 0.03;
-    g.fillStyle = hash(i, 10) < 0.5 ? `rgba(255,255,255,${a})` : `rgba(30,38,50,${a})`;
-    g.fillRect(x, 0, w, TILE);
-  }
-  grainTile = c;
-  grainPattern = ctx.createPattern(c, "repeat")!;
-  return grainPattern;
-}
-
-/**
- * Stainless door surface. Grain is a cached tile; lighting is a few gradients:
- * broad window light from upper-left, a cooler right door, and a faint warm
- * kitchen bounce low-left. Lighting is fixed in screen space so it reads as a
- * window in the room, not something painted on the door.
- */
-export function drawSteel(ctx: CanvasRenderingContext2D, camY: number, viewH: number) {
-  const top = camY - 60;
-  const h = viewH + 120;
-  // base tone with slight horizontal curvature per door
-  const base = ctx.createLinearGradient(0, 0, W, 0);
-  base.addColorStop(0, "#aab3bc");
-  base.addColorStop(0.18, "#c9d0d7");
-  base.addColorStop(0.47, "#b7bfc7");
-  base.addColorStop(0.53, "#bdc5cd");
-  base.addColorStop(0.8, "#d0d6dc");
-  base.addColorStop(1, "#a5aeb8");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, top, W, h);
-
-  // grain, tiled and locked to world space
-  ctx.save();
-  const off = Math.floor(camY / TILE) * TILE;
-  ctx.translate(0, off);
-  ctx.fillStyle = grain(ctx);
-  ctx.globalCompositeOperation = "overlay";
-  ctx.fillRect(0, top - off, W, h);
-  ctx.restore();
-
-  // window light: big soft diagonal from upper-left (screen space)
-  const wl = ctx.createLinearGradient(0, camY, W, camY + viewH);
-  wl.addColorStop(0, "rgba(255,248,235,0.22)");
-  wl.addColorStop(0.35, "rgba(255,248,235,0.07)");
-  wl.addColorStop(0.7, "rgba(90,110,140,0.06)");
-  wl.addColorStop(1, "rgba(60,80,110,0.16)");
-  ctx.fillStyle = wl;
-  ctx.fillRect(0, top, W, h);
-
-  // a soft highlight band, like the window's reflection sliding down the door
-  const band = ctx.createLinearGradient(0, camY + viewH * 0.1, 0, camY + viewH * 0.55);
-  band.addColorStop(0, "rgba(255,255,255,0)");
-  band.addColorStop(0.5, "rgba(255,255,255,0.10)");
-  band.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = band;
-  ctx.fillRect(0, top, W, h);
-
-  // warm bounce low-left, cool sky upper-right, both restrained
-  const warm = ctx.createRadialGradient(0, camY + viewH, 0, 0, camY + viewH, W * 0.9);
-  warm.addColorStop(0, "rgba(255,170,90,0.10)");
-  warm.addColorStop(1, "rgba(255,170,90,0)");
-  ctx.fillStyle = warm;
-  ctx.fillRect(0, top, W, h);
-  const cool = ctx.createRadialGradient(W, camY, 0, W, camY, W * 0.8);
-  cool.addColorStop(0, "rgba(120,170,230,0.10)");
-  cool.addColorStop(1, "rgba(120,170,230,0)");
-  ctx.fillStyle = cool;
-  ctx.fillRect(0, top, W, h);
-}
-
-/** The groove between the two doors: a real recess with a lit right lip. */
-export function drawSeam(ctx: CanvasRenderingContext2D, top: number, bottom: number) {
-  const { x, w } = DOOR_SEAM;
-  // shadow the left door edge casts into the groove
-  const g = ctx.createLinearGradient(x - 6, 0, x + w + 4, 0);
-  g.addColorStop(0, "rgba(0,0,0,0)");
-  g.addColorStop(0.35, "rgba(0,0,0,0.28)");
-  g.addColorStop(0.6, "rgba(14,17,22,1)");
-  g.addColorStop(0.9, "rgba(40,46,54,1)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(x - 6, top, w + 10, bottom - top);
-  // bright rolled edge on the right door
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.fillRect(x + w, top, 1.5, bottom - top);
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(x + w + 1.5, top, 2, bottom - top);
-}
-
-/** Faint horizontal panel joint between generated segments. */
-export function drawPanelJoint(ctx: CanvasRenderingContext2D, y: number) {
-  ctx.fillStyle = "rgba(0,0,0,0.07)";
-  ctx.fillRect(0, y - 1, W, 1.5);
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  ctx.fillRect(0, y + 0.5, W, 1);
-}
-
-// ---------------------------------------------------------------------------
-// zones
-// ---------------------------------------------------------------------------
-
-export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  if (z.hue === -1) return drawHandle(ctx, z);
-  switch (z.kind) {
-    case "glass": return drawGlass(ctx, z, t);
-    case "trim": return drawTrim(ctx, z);
-    case "void": return drawGap(ctx, z);
-    case "sticker": return drawSticker(ctx, z);
-    case "repel": return drawRepel(ctx, z, t);
-  }
-}
-
-/** Steel island: a pull handle standing off the door. Fully inside the collider. */
-function drawHandle(ctx: CanvasRenderingContext2D, z: NoStickZone) {
-  const r = z.h / 2;
-  castShadow(ctx, z.x, z.y, z.w, z.h, r, 1.6);
-  const g = ctx.createLinearGradient(0, z.y, 0, z.y + z.h);
-  g.addColorStop(0, "#f2f5f8");
-  g.addColorStop(0.35, "#c9d0d8");
-  g.addColorStop(0.65, "#aeb7c1");
-  g.addColorStop(1, "#7c8592");
-  ctx.fillStyle = g;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, r);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(40,48,60,0.45)";
-  ctx.lineWidth = 1.2;
+function line(ctx: CanvasRenderingContext2D, points: number[], color: string, width = 2) {
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+  ctx.moveTo(points[0], points[1]);
+  for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
   ctx.stroke();
-  // end caps + top highlight
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.fillRect(z.x + r, z.y + 3, z.w - 2 * r, 2);
-  ctx.fillStyle = "rgba(40,48,60,0.35)";
-  ctx.fillRect(z.x + r * 0.9, z.y + 2, 1.5, z.h - 4);
-  ctx.fillRect(z.x + z.w - r * 0.9 - 1.5, z.y + 2, 1.5, z.h - 4);
+}
+function polygon(ctx: CanvasRenderingContext2D, points: number[], color: string) {
+  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(points[0], points[1]);
+  for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
+  ctx.closePath(); ctx.fill();
+}
+function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, color = "#384b59") {
+  ctx.fillStyle = color; ctx.font = `800 ${size}px system-ui, sans-serif`; ctx.textAlign = "center";
+  ctx.fillText(value, x, y);
+}
+function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string) {
+  ctx.fillStyle = color; ctx.fillRect(x, y, w, h);
 }
 
-/** Frosted display glass in a light bezel. Tree/sky reflection reads as glass, not steel. */
-function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const bez = Math.min(7, z.w * 0.06, z.h * 0.06);
-  // bezel (part of the non-stick rect)
-  const bg = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-  bg.addColorStop(0, "#e9eef2");
-  bg.addColorStop(0.5, "#b7c0c9");
-  bg.addColorStop(1, "#8a939d");
-  ctx.fillStyle = bg;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 6);
-  ctx.fill();
-  // recess shadow inside bezel
-  ctx.fillStyle = "rgba(20,30,40,0.35)";
-  roundRectPath(ctx, z.x + bez, z.y + bez, z.w - 2 * bez, z.h - 2 * bez, 4);
-  ctx.fill();
-  // glass body: teal frosted with depth
-  const ix = z.x + bez + 1.5, iy = z.y + bez + 1.5, iw = z.w - 2 * bez - 3, ih = z.h - 2 * bez - 3;
-  const gg = ctx.createLinearGradient(ix, iy, ix + iw, iy + ih);
-  gg.addColorStop(0, "#bfe7ee");
-  gg.addColorStop(0.45, "#7fbfd0");
-  gg.addColorStop(1, "#3d6f8a");
-  ctx.fillStyle = gg;
-  ctx.fillRect(ix, iy, iw, ih);
-  // soft blobs: leaves / sky reflected from the window
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(ix, iy, iw, ih);
-  ctx.clip();
-  for (let i = 0; i < 5; i++) {
-    const bx = ix + hash(z.x, z.y, i, 1) * iw;
-    const by = iy + hash(z.x, z.y, i, 2) * ih;
-    const br = 10 + hash(z.x, z.y, i, 3) * Math.min(iw, ih) * 0.35;
-    const rg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
-    const leafy = hash(z.x, z.y, i, 4) < 0.5;
-    rg.addColorStop(0, leafy ? "rgba(120,190,120,0.35)" : "rgba(255,255,255,0.30)");
-    rg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = rg;
-    ctx.fillRect(bx - br, by - br, br * 2, br * 2);
-  }
-  // two diagonal reflection streaks that drift very slowly
-  const drift = Math.sin(t * 0.25 + z.x * 0.01) * 6;
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(ix + 6 + drift, iy + ih - 6);
-  ctx.lineTo(ix + iw - 6 + drift, iy + 6);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
-  ctx.lineWidth = 9;
-  ctx.beginPath();
-  ctx.moveTo(ix + 18 + drift, iy + ih - 6);
-  ctx.lineTo(ix + iw + 6 + drift, iy + 6);
-  ctx.stroke();
-  // top-left inner edge light, bottom-right inner shade
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.fillRect(ix, iy, iw, 1.5);
-  ctx.fillRect(ix, iy, 1.5, ih);
-  ctx.fillStyle = "rgba(0,20,40,0.25)";
-  ctx.fillRect(ix, iy + ih - 2, iw, 2);
-  ctx.fillRect(ix + iw - 2, iy, 2, ih);
-  ctx.restore();
-  zoneLabel(ctx, "GLASS", z, "rgba(10,40,60,0.45)");
+/** Claude's material lighting under the expanded collection of fridge art. */
+export function drawSurface(ctx: CanvasRenderingContext2D, top: number, bottom: number) {
+  drawSteel(ctx, top + 50, bottom - top - 100);
+  drawSeam(ctx, top, bottom);
 }
 
-/** Molded black plastic trim: matte, horizontal ribs, a soft top sheen. */
-function drawTrim(ctx: CanvasRenderingContext2D, z: NoStickZone) {
-  const g = ctx.createLinearGradient(z.x, 0, z.x + z.w, 0);
-  g.addColorStop(0, "#2a2e34");
-  g.addColorStop(0.5, "#1f2328");
-  g.addColorStop(1, "#262a30");
-  ctx.fillStyle = g;
-  ctx.fillRect(z.x, z.y, z.w, z.h);
-  // ribs
-  for (let y = z.y + 7; y < z.y + z.h - 3; y += 11) {
-    ctx.fillStyle = "rgba(255,255,255,0.055)";
-    ctx.fillRect(z.x, y, z.w, 1.5);
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillRect(z.x, y + 1.5, z.w, 1.5);
-  }
-  // window sheen upper-left
-  const sheen = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h);
-  sheen.addColorStop(0, "rgba(255,255,255,0.10)");
-  sheen.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = sheen;
-  ctx.fillRect(z.x, z.y, z.w, z.h);
-  // edges: top lit, bottom dark
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  ctx.fillRect(z.x, z.y, z.w, 1.5);
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fillRect(z.x, z.y + z.h - 2, z.w, 2);
-  zoneLabel(ctx, "PLASTIC", z, "rgba(255,255,255,0.28)");
-}
-
-/** Open gap between panels: a dark recess with depth at the top lip. */
-function drawGap(ctx: CanvasRenderingContext2D, z: NoStickZone) {
-  ctx.fillStyle = "#0f1216";
-  ctx.fillRect(z.x, z.y, z.w, z.h);
-  // depth: the upper panel throws a shadow down into the gap
-  const top = ctx.createLinearGradient(0, z.y, 0, z.y + Math.min(40, z.h * 0.4));
-  top.addColorStop(0, "rgba(0,0,0,0.9)");
-  top.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = top;
-  ctx.fillRect(z.x, z.y, z.w, Math.min(40, z.h * 0.4));
-  // faint cold light catching the far inner wall near the bottom lip
-  const bot = ctx.createLinearGradient(0, z.y + z.h - Math.min(28, z.h * 0.3), 0, z.y + z.h);
-  bot.addColorStop(0, "rgba(90,110,130,0)");
-  bot.addColorStop(1, "rgba(90,110,130,0.25)");
-  ctx.fillStyle = bot;
-  ctx.fillRect(z.x, z.y + z.h - Math.min(28, z.h * 0.3), z.w, Math.min(28, z.h * 0.3));
-  // a couple of screws/vents so it is a real fridge gap, not a void
-  const n = Math.max(1, Math.floor(z.w / 130));
-  for (let i = 0; i < n; i++) {
-    const vx = z.x + ((i + 0.5) * z.w) / n;
-    const vy = z.y + z.h * 0.5;
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
-    for (let k = -2; k <= 2; k++) ctx.fillRect(vx - 14, vy + k * 5, 28, 1.5);
-  }
-  zoneLabel(ctx, "GAP", z, "rgba(255,255,255,0.22)");
-}
-
-/**
- * Stickers and souvenir magnets. Style chosen deterministically from the hue so a
- * given sticker never changes. All drawing stays inside the collider rect
- * (rotation is applied around the center with a slight inset so the corners
- * of a tilted card do not poke outside it).
- */
-function drawSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
-  const hue = z.hue ?? 0;
-  const kind = Math.floor(hash(hue, z.x, z.y) * 4); // 0 polaroid, 1 souvenir plate, 2 sticky note, 3 kid's drawing
-  const tilt = ((hue % 10) - 5) * 0.018;
-  const inset = 4;
-  const w = z.w - inset * 2, h = z.h - inset * 2;
-  ctx.save();
-  ctx.translate(z.x + z.w / 2, z.y + z.h / 2);
-  castShadow(ctx, -w / 2, -h / 2, w, h, 3, 1);
-  ctx.rotate(tilt);
-  const x = -w / 2, y = -h / 2;
-  switch (kind) {
-    case 0: { // polaroid
-      ctx.fillStyle = "#fbfbf7";
-      roundRectPath(ctx, x, y, w, h, 2);
-      ctx.fill();
-      const px = x + 5, py = y + 5, pw = w - 10, ph = h - 20;
-      const sky = ctx.createLinearGradient(0, py, 0, py + ph);
-      sky.addColorStop(0, `hsl(${(hue + 190) % 360} 60% 72%)`);
-      sky.addColorStop(1, `hsl(${(hue + 190) % 360} 55% 88%)`);
-      ctx.fillStyle = sky;
-      ctx.fillRect(px, py, pw, ph);
-      // ground + sun + a tiny house, a snapshot from a trip
-      ctx.fillStyle = `hsl(${(hue + 90) % 360} 45% 55%)`;
-      ctx.fillRect(px, py + ph * 0.68, pw, ph * 0.32);
-      ctx.fillStyle = "#ffd85a";
-      ctx.beginPath(); ctx.arc(px + pw * 0.78, py + ph * 0.28, Math.min(pw, ph) * 0.13, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `hsl(${hue} 60% 55%)`;
-      ctx.fillRect(px + pw * 0.2, py + ph * 0.45, pw * 0.28, ph * 0.28);
-      ctx.fillStyle = "#7a3b2e";
-      ctx.beginPath(); ctx.moveTo(px + pw * 0.16, py + ph * 0.46); ctx.lineTo(px + pw * 0.34, py + ph * 0.25); ctx.lineTo(px + pw * 0.52, py + ph * 0.46); ctx.closePath(); ctx.fill();
-      // handwritten caption line
-      ctx.strokeStyle = "rgba(60,60,80,0.55)";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(x + 8, y + h - 7);
-      ctx.bezierCurveTo(x + w * 0.3, y + h - 11, x + w * 0.5, y + h - 4, x + w * 0.7, y + h - 8);
-      ctx.stroke();
-      // a heart-shaped magnet pinning the corner
-      ctx.fillStyle = "#ff5c8a";
-      const hx = x + w - 7, hy = y + 7;
-      ctx.beginPath();
-      ctx.arc(hx - 2.2, hy - 1, 2.6, 0, Math.PI * 2);
-      ctx.arc(hx + 2.2, hy - 1, 2.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath(); ctx.moveTo(hx - 4.6, hy); ctx.lineTo(hx, hy + 5.5); ctx.lineTo(hx + 4.6, hy); ctx.closePath(); ctx.fill();
-      break;
+/** Small cartoon illustrations are drawn in a 100x100 square inside the real paper collider. */
+function doodle(ctx: CanvasRenderingContext2D, variant: number) {
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  switch (variant % 8) {
+    case 0: { // Pizza postcard
+      box(ctx, 0, 0, 100, 100, "#ffd6aa");
+      polygon(ctx, [23, 21, 82, 28, 48, 78], "#b95c35");
+      polygon(ctx, [24, 27, 77, 32, 48, 73], "#ffcb4f");
+      line(ctx, [23, 22, 49, 20, 81, 28], "#e8954e", 10);
+      for (const [x, y] of [[39, 36], [63, 39], [49, 56]]) circle(ctx, x, y, 6, "#e15a4e");
+      text(ctx, "SLICE OF LIFE", 50, 93, 10, "#853d36"); break;
     }
-    case 1: { // souvenir plate magnet
-      const g = ctx.createLinearGradient(x, y, x, y + h);
-      g.addColorStop(0, `hsl(${hue} 70% 62%)`);
-      g.addColorStop(1, `hsl(${hue} 70% 45%)`);
-      ctx.fillStyle = g;
-      roundRectPath(ctx, x, y, w, h, 7);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.85)";
-      ctx.lineWidth = 2.5;
-      roundRectPath(ctx, x + 3, y + 3, w - 6, h - 6, 5);
-      ctx.stroke();
-      // gloss
-      const gl = ctx.createLinearGradient(x, y, x + w * 0.5, y + h);
-      gl.addColorStop(0, "rgba(255,255,255,0.35)");
-      gl.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = gl;
-      roundRectPath(ctx, x, y, w, h, 7);
-      ctx.fill();
-      // a little landmark: mountain + wave banner
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.beginPath(); ctx.moveTo(x + w * 0.25, y + h * 0.62); ctx.lineTo(x + w * 0.45, y + h * 0.3); ctx.lineTo(x + w * 0.62, y + h * 0.62); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      roundRectPath(ctx, x + w * 0.15, y + h * 0.68, w * 0.7, Math.max(8, h * 0.16), 3);
-      ctx.fill();
-      ctx.fillStyle = `hsl(${hue} 70% 35%)`;
-      ctx.font = `bold ${Math.max(7, Math.min(10, h * 0.14))}px system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.fillText(["LAKE", "BEACH", "CAMP", "HOME", "ZOO", "SKI"][Math.floor(hash(hue, 9) * 6)], x + w / 2, y + h * 0.68 + Math.max(8, h * 0.16) * 0.78);
-      break;
+    case 1: { // Cat drawing
+      box(ctx, 0, 0, 100, 100, "#e7daf8");
+      polygon(ctx, [22, 44, 20, 15, 44, 32, 58, 31, 81, 15, 78, 49], "#e59d65");
+      circle(ctx, 50, 52, 28, "#eeb57f");
+      polygon(ctx, [25, 31, 25, 22, 36, 32], "#e58593");
+      polygon(ctx, [66, 32, 77, 22, 75, 34], "#e58593");
+      circle(ctx, 39, 49, 2.5, "#44333b"); circle(ctx, 61, 49, 2.5, "#44333b");
+      polygon(ctx, [46, 57, 54, 57, 50, 61], "#b65762");
+      line(ctx, [23, 56, 7, 53], "#745266", 1.5); line(ctx, [24, 62, 9, 65], "#745266", 1.5);
+      line(ctx, [76, 56, 92, 53], "#745266", 1.5); line(ctx, [76, 62, 90, 65], "#745266", 1.5);
+      text(ctx, "CAT NAP CLUB", 50, 94, 10); break;
     }
-    case 2: { // sticky note with a to-do doodle
-      ctx.fillStyle = `hsl(${(hue + 40) % 360} 85% 78%)`;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = "rgba(0,0,0,0.06)";
-      ctx.fillRect(x, y, w, 6);
-      ctx.strokeStyle = "rgba(40,40,60,0.6)";
-      ctx.lineWidth = 1.3;
-      const lines = Math.max(2, Math.floor((h - 16) / 13));
-      for (let i = 0; i < lines; i++) {
-        const ly = y + 14 + i * 13;
-        // checkbox
-        ctx.strokeRect(x + 7, ly - 6, 7, 7);
-        if (hash(hue, i, 3) < 0.5) { ctx.beginPath(); ctx.moveTo(x + 8, ly - 3); ctx.lineTo(x + 11, ly); ctx.lineTo(x + 14, ly - 6); ctx.stroke(); }
-        // scribble text
-        ctx.beginPath();
-        const len = w - 24 - hash(hue, i, 4) * (w * 0.4);
-        ctx.moveTo(x + 18, ly - 2);
-        for (let k = 1; k <= 6; k++) ctx.lineTo(x + 18 + (len * k) / 6, ly - 2 + (hash(hue, i, k) - 0.5) * 3);
-        ctx.stroke();
+    case 2: { // Crayon rainbow
+      box(ctx, 0, 0, 100, 100, "#fff5d6");
+      for (const [i, color] of ["#f27380", "#ffb555", "#f6d95c", "#7ac8a3", "#71b8dc"].entries()) {
+        ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(50, 62, 36 - i * 6, Math.PI, TAU); ctx.stroke();
       }
-      break;
+      for (const x of [14, 78]) { circle(ctx, x, 63, 9, "#fff"); circle(ctx, x + 9, 60, 11, "#fff"); }
+      text(ctx, "HIGHER TOGETHER", 50, 91, 8.5); break;
     }
-    default: { // kid's drawing on paper, pinned with a round magnet
-      ctx.fillStyle = "#f7f6f0";
-      ctx.fillRect(x, y, w, h);
-      ctx.lineCap = "round";
-      ctx.lineWidth = 2.2;
-      // sun
-      ctx.strokeStyle = "#f4b400";
-      ctx.beginPath(); ctx.arc(x + w * 0.22, y + h * 0.24, Math.min(w, h) * 0.1, 0, Math.PI * 2); ctx.stroke();
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2;
-        const r0 = Math.min(w, h) * 0.13, r1 = Math.min(w, h) * 0.2;
-        ctx.beginPath(); ctx.moveTo(x + w * 0.22 + Math.cos(a) * r0, y + h * 0.24 + Math.sin(a) * r0); ctx.lineTo(x + w * 0.22 + Math.cos(a) * r1, y + h * 0.24 + Math.sin(a) * r1); ctx.stroke();
+    case 3: { // Mountain souvenir
+      box(ctx, 0, 0, 100, 100, "#b8d9d5"); circle(ctx, 75, 23, 12, "#fff0b2");
+      polygon(ctx, [0, 75, 36, 21, 76, 75], "#61818e");
+      polygon(ctx, [29, 33, 36, 21, 47, 36, 37, 32], "#f1eee4");
+      polygon(ctx, [37, 76, 70, 37, 100, 74, 100, 100, 0, 100, 0, 74], "#416d69");
+      text(ctx, "TAKE THE SCENIC ROUTE", 50, 92, 7, "#fff9e8"); break;
+    }
+    case 4: { // Rocket / space club
+      box(ctx, 0, 0, 100, 100, "#3b4a78");
+      for (const [x, y] of [[16, 24], [79, 14], [84, 57], [19, 66], [68, 77]]) {
+        line(ctx, [x - 3, y, x + 3, y], "#fff1a8", 1.5); line(ctx, [x, y - 3, x, y + 3], "#fff1a8", 1.5);
       }
-      // a stick person (the kid drew us!) and grass
-      ctx.strokeStyle = `hsl(${hue} 70% 45%)`;
-      const cx = x + w * 0.62, cy = y + h * 0.42, s = Math.min(w, h) * 0.11;
-      ctx.beginPath(); ctx.arc(cx, cy - s * 1.2, s * 0.55, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.65); ctx.lineTo(cx, cy + s); ctx.moveTo(cx - s, cy); ctx.lineTo(cx + s, cy);
-      ctx.moveTo(cx, cy + s); ctx.lineTo(cx - s * 0.8, cy + s * 2.1); ctx.moveTo(cx, cy + s); ctx.lineTo(cx + s * 0.8, cy + s * 2.1); ctx.stroke();
-      ctx.strokeStyle = "#5fb04a";
-      ctx.beginPath();
-      for (let gx = x + 6; gx < x + w - 6; gx += 6) { ctx.moveTo(gx, y + h - 6); ctx.lineTo(gx + 2, y + h - 12); }
-      ctx.stroke();
-      // round magnet pin
-      const pg = ctx.createRadialGradient(x + w / 2 - 2, y + 6, 1, x + w / 2, y + 8, 7);
-      pg.addColorStop(0, "#ffffff");
-      pg.addColorStop(0.4, `hsl(${(hue + 180) % 360} 80% 60%)`);
-      pg.addColorStop(1, `hsl(${(hue + 180) % 360} 80% 35%)`);
-      ctx.fillStyle = pg;
-      ctx.beginPath(); ctx.arc(x + w / 2, y + 8, 6, 0, Math.PI * 2); ctx.fill();
-      break;
+      polygon(ctx, [39, 62, 50, 88, 60, 62], "#ffbc54");
+      polygon(ctx, [36, 44, 26, 66, 40, 61, 60, 61, 75, 66, 63, 44], "#f0838b");
+      ctx.fillStyle = "#edf1e5"; ctx.beginPath(); ctx.ellipse(50, 42, 15, 28, 0, 0, TAU); ctx.fill();
+      circle(ctx, 50, 39, 8, "#78c5dd"); circle(ctx, 47, 36, 2, "#e5faff");
+      text(ctx, "SPACE CADET", 50, 97, 8, "#fff"); break;
     }
+    case 5: { // House doodle
+      box(ctx, 0, 0, 100, 100, "#fff9e7"); circle(ctx, 80, 18, 10, "#f3ca54");
+      line(ctx, [7, 78, 31, 75, 56, 79, 92, 74], "#85b779", 4);
+      box(ctx, 29, 43, 41, 34, "#eea77e"); polygon(ctx, [23, 45, 50, 19, 77, 45], "#d97576");
+      box(ctx, 44, 56, 13, 21, "#91b8bc"); box(ctx, 33, 50, 8, 9, "#e7eee3");
+      text(ctx, "HOME SWEET FRIDGE", 50, 95, 8); break;
+    }
+    case 6: { // Flower
+      box(ctx, 0, 0, 100, 100, "#d5ecd4");
+      line(ctx, [50, 48, 48, 78], "#57896b", 4);
+      ctx.fillStyle = "#7aaf79"; ctx.beginPath(); ctx.ellipse(38, 66, 12, 5, 0.4, 0, TAU); ctx.fill();
+      for (let i = 0; i < 6; i++) circle(ctx, 50 + Math.cos(i * TAU / 6) * 16, 38 + Math.sin(i * TAU / 6) * 16, 11, "#ee96a8");
+      circle(ctx, 50, 38, 12, "#ffdd72"); circle(ctx, 46, 36, 1.5, "#775c42"); circle(ctx, 54, 36, 1.5, "#775c42");
+      text(ctx, "GROW YOUR OWN WAY", 50, 94, 7.5); break;
+    }
+    case 7: { // Cheerful penguin
+      box(ctx, 0, 0, 100, 100, "#cbe8ec");
+      ctx.fillStyle = "#3d5268"; ctx.beginPath(); ctx.ellipse(50, 47, 25, 33, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#f9f6e9"; ctx.beginPath(); ctx.ellipse(50, 55, 18, 22, 0, 0, TAU); ctx.fill();
+      circle(ctx, 42, 35, 4, "#fff"); circle(ctx, 58, 35, 4, "#fff"); circle(ctx, 42, 35, 1.7, "#304353"); circle(ctx, 58, 35, 1.7, "#304353");
+      polygon(ctx, [45, 43, 55, 43, 50, 49], "#eca14e");
+      line(ctx, [37, 79, 43, 79], "#eca14e", 6); line(ctx, [56, 79, 63, 79], "#eca14e", 6);
+      text(ctx, "STAY COOL", 50, 96, 10); break;
+    }
+  }
+}
+
+
+function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) {
+  const w = z.w, h = z.h;
+  const variant = artVariant(z.x, z.y, seed ^ (z.hue ?? 0), 12);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
+  if (z.kind === "sticker") {
+    const note = variant >= 8;
+    box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
+    if (note) {
+      const lines = [["TO DO", "climb fridge", "find snacks", "repeat"], ["YOU GOT", "THIS!", "", "keep climbing"], ["DON'T", "LET", "GO!", ""], ["MILK", "EGGS", "MORE", "MAGNETS"]][variant - 8];
+      ctx.save(); ctx.translate(w * 0.1, h * 0.17); ctx.scale(w * 0.8 / 100, h * 0.75 / 100);
+      for (let i = 0; i < 4; i++) text(ctx, lines[i], 50, 17 + i * 23, i === 0 ? 17 : 13, "#4b5355");
+      ctx.restore();
+    } else {
+      ctx.save(); ctx.translate(w * 0.07, h * 0.1); ctx.scale(w * 0.86 / 100, h * 0.82 / 100); doodle(ctx, variant); ctx.restore();
+    }
+    // A small pin lives inside the nonstick card, never outside its collider.
+    circle(ctx, w * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
+    circle(ctx, w * 0.52, 5, 3.6, ["#ec7284", "#69b5d1", "#e8b54c"][variant % 3]);
+    circle(ctx, w * 0.52 - 1, 4, 1, "rgba(255,255,255,0.7)");
+    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(91,81,64,0.16)");
+    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(255,255,255,0.45)");
+  } else if (z.kind === "glass") {
+    const glass = ctx.createLinearGradient(0, 0, w, h);
+    glass.addColorStop(0, "#497788"); glass.addColorStop(0.5, ["#284759", "#345b62", "#364e6b"][variant % 3]); glass.addColorStop(1, "#172c41");
+    ctx.fillStyle = glass; ctx.fillRect(0, 0, w, h);
+    // Frosted shelves read as being behind the glass, not usable steel ledges.
+    for (let row = 38; row < h - 24; row += 74) {
+      box(ctx, 10, row + 35, w - 20, 1.5, "rgba(175,226,232,0.12)");
+      for (let x = 23; x < w - 20; x += 43) {
+        const tint = ["rgba(174,208,167,0.15)", "rgba(241,219,155,0.12)", "rgba(227,159,171,0.13)"][artVariant(x, row, variant, 3)];
+        box(ctx, x - 7, row + 8, 15, 26, tint); box(ctx, x - 4, row + 3, 9, 6, tint);
+      }
+    }
+    polygon(ctx, [0, h * 0.65, w, h * 0.08, w, h * 0.24, 0, h * 0.81], "rgba(205,243,244,0.13)");
+    line(ctx, [8, h * 0.83, w - 8, h * 0.26], "rgba(231,253,255,0.3)", 1);
+    ctx.strokeStyle = "#354958"; ctx.lineWidth = 5; ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
+    text(ctx, "GLASS", w / 2, h - 12, 8, "#accbd4");
   }
   ctx.restore();
 }
 
-/** Reversed-polarity plate: a glossy red enamel tile with a glowing N, matching the title art. */
-function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
-  castShadow(ctx, z.x, z.y, z.w, z.h, 8, 1.4);
-  // enamel body
-  const g = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-  g.addColorStop(0, "#c8232f");
-  g.addColorStop(0.5, "#8f1620");
-  g.addColorStop(1, "#5c0d15");
-  ctx.fillStyle = g;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  // bevel
-  ctx.strokeStyle = "rgba(255,120,120,0.8)";
-  ctx.lineWidth = 2;
-  roundRectPath(ctx, z.x + 2, z.y + 2, z.w - 4, z.h - 4, 6);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,0.5)";
-  ctx.lineWidth = 1.2;
-  roundRectPath(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 8);
-  ctx.stroke();
-  // inner glass window with the glowing N
-  const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
-  ctx.fillStyle = "rgba(30,0,4,0.75)";
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  const glow = ctx.createRadialGradient(z.x + z.w / 2, iy + ih / 2, 2, z.x + z.w / 2, iy + ih / 2, Math.max(iw, ih) * 0.6);
-  glow.addColorStop(0, `rgba(255,80,80,${0.45 + pulse * 0.35})`);
-  glow.addColorStop(1, "rgba(255,80,80,0)");
-  ctx.fillStyle = glow;
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  ctx.font = `900 ${Math.min(30, ih * 0.8)}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = `rgba(255,${150 + pulse * 60},${150 + pulse * 60},1)`;
-  ctx.shadowColor = "rgba(255,60,60,0.9)";
-  ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText("N", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
-  ctx.shadowBlur = 0;
-  // gloss streak
-  const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
-  gl.addColorStop(0, "rgba(255,255,255,0.28)");
-  gl.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gl;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,200,200,0.85)";
-  ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.fillText("REPELS", z.x + z.w / 2, z.y + z.h - 6);
-}
-
-function zoneLabel(ctx: CanvasRenderingContext2D, text: string, z: NoStickZone, color: string) {
-  if (z.w < 50 || z.h < 30) return;
-  ctx.fillStyle = color;
-  ctx.font = "bold 10px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(text, z.x + z.w / 2, z.y + z.h / 2 + 4);
-}
-
-// ---------------------------------------------------------------------------
-// bumpers: souvenir / letter magnets sliding across the door
-// ---------------------------------------------------------------------------
-
-export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
-  castShadow(ctx, b.x, b.y, b.w, b.h, 7, 1.3);
-  const single = b.label.length <= 1;
-  if (single) {
-    // chunky alphabet-fridge-magnet letter on a white tile
-    ctx.fillStyle = "#fdfdfb";
-    roundRectPath(ctx, b.x, b.y, b.w, b.h, 7);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.25)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.font = `900 ${b.h * 0.8}px system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillStyle = `hsl(${b.hue} 80% 40%)`;
-    ctx.fillText(b.label, b.x + b.w / 2 + 1.5, b.y + b.h * 0.78 + 1.5);
-    ctx.fillStyle = `hsl(${b.hue} 85% 58%)`;
-    ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h * 0.78);
+export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
+  // Keep Claude's handles, vents, gaps and glowing repel plates; mix both glass
+  // treatments, and retain his four card styles alongside the 12 new drawings.
+  const variant = artVariant(z.x, z.y, seed, 16);
+  const material = z.hue === -1 || z.kind === "trim" || z.kind === "void" || z.kind === "repel"
+    || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && variant >= 12);
+  if (material) {
+    ctx.save(); drawMaterialZone(ctx, z, time);
+    if (z.kind === "repel") {
+      const travel = (time * 14) % 14;
+      ctx.globalAlpha = (1 - travel / 14) * 0.4;
+      ctx.strokeStyle = "#ff687d"; ctx.lineWidth = 1.3;
+      ctx.strokeRect(z.x - travel, z.y - travel, z.w + travel * 2, z.h + travel * 2);
+    }
+    ctx.restore();
     return;
   }
-  const theme = b.label === "PIZZA" ? { a: "#e8402c", b: "#ffc940", t: "#fff" }
-    : b.label === "VEG" ? { a: "#2e9e57", b: "#8be07e", t: "#fff" }
-    : b.label === "24/7" ? { a: "#2758c9", b: "#7fb1ff", t: "#fff" }
-    : { a: `hsl(${b.hue} 75% 45%)`, b: `hsl(${b.hue} 80% 65%)`, t: "#fff" };
-  const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-  g.addColorStop(0, theme.b);
-  g.addColorStop(1, theme.a);
-  ctx.fillStyle = g;
-  roundRectPath(ctx, b.x, b.y, b.w, b.h, 7);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  ctx.lineWidth = 2;
-  roundRectPath(ctx, b.x + 2.5, b.y + 2.5, b.w - 5, b.h - 5, 5);
-  ctx.stroke();
-  const gl = ctx.createLinearGradient(b.x, b.y, b.x + b.w * 0.5, b.y + b.h);
-  gl.addColorStop(0, "rgba(255,255,255,0.35)");
-  gl.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gl;
-  roundRectPath(ctx, b.x, b.y, b.w, b.h, 7);
-  ctx.fill();
-  if (b.label === "PIZZA") {
-    // a slice icon before the word
-    ctx.fillStyle = "#ffd36b";
-    ctx.beginPath(); ctx.moveTo(b.x + 8, b.y + 8); ctx.lineTo(b.x + 20, b.y + 8); ctx.lineTo(b.x + 14, b.y + b.h - 8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#c8262a";
-    ctx.beginPath(); ctx.arc(b.x + 12, b.y + 13, 1.8, 0, Math.PI * 2); ctx.arc(b.x + 16, b.y + 12, 1.6, 0, Math.PI * 2); ctx.fill();
+  let cached = cards.get(z);
+  if (!cached || cached.seed !== seed) {
+    const image = document.createElement("canvas");
+    image.width = Math.ceil(z.w * 2); image.height = Math.ceil(z.h * 2);
+    const g = image.getContext("2d")!; g.scale(2, 2); paintZone(g, z, seed);
+    cached = { seed, image }; cards.set(z, cached);
   }
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.font = `900 ${Math.min(12, b.h * 0.36)}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  const tx = b.x + b.w / 2 + (b.label === "PIZZA" ? 6 : 0);
-  ctx.fillText(b.label, tx + 1, b.y + b.h / 2 + 5);
-  ctx.fillStyle = theme.t;
-  ctx.fillText(b.label, tx, b.y + b.h / 2 + 4);
+  ctx.save();
+  if (z.kind === "sticker") {
+    ctx.shadowColor = "rgba(27,35,43,0.26)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+  }
+  ctx.drawImage(cached.image, z.x, z.y, z.w, z.h); ctx.restore();
 }
 
-/** For tests/previews: whether the cached grain has been built. */
-export function sceneryCacheReady(): boolean {
-  return grainTile !== null;
+export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
+  if (b.label.length <= 1 || artVariant(b.minX, b.y, b.hue, 7) >= 5) {
+    ctx.save(); drawMaterialBumper(ctx, b); ctx.restore(); return;
+  }
+  ctx.save(); ctx.translate(b.x, b.y);
+  const variant = artVariant(b.minX, b.y, b.hue, 5);
+  ctx.shadowColor = "rgba(25,35,49,0.3)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+  const enamel = ctx.createLinearGradient(0, 0, b.w, b.h);
+  enamel.addColorStop(0, `hsl(${b.hue} 65% 82%)`); enamel.addColorStop(0.4, `hsl(${b.hue} 65% 60%)`); enamel.addColorStop(1, `hsl(${b.hue} 50% 39%)`);
+  ctx.fillStyle = enamel; ctx.beginPath(); ctx.roundRect(0, 0, b.w, b.h, 5); ctx.fill();
+  ctx.shadowColor = "transparent"; ctx.strokeStyle = "rgba(255,255,255,0.65)"; ctx.lineWidth = 1.3; ctx.stroke();
+  if (variant === 0) {
+    // Pizza delivery magnet.
+    ctx.save(); ctx.translate(4, 3); ctx.scale(0.28, 0.28); doodle(ctx, 0); ctx.restore();
+    text(ctx, "YUM", b.w * 0.74, b.h * 0.6, 9, "#fff8dd");
+  } else if (variant === 1) {
+    circle(ctx, b.w / 2, b.h / 2, 12, "#ffe17a");
+    circle(ctx, b.w / 2 - 4, b.h / 2 - 3, 1.6, "#6c4c38"); circle(ctx, b.w / 2 + 4, b.h / 2 - 3, 1.6, "#6c4c38");
+    ctx.strokeStyle = "#9e653e"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(b.w / 2, b.h / 2, 6, 0.2, Math.PI - 0.2); ctx.stroke();
+  } else {
+    const caption = variant === 2 ? "COOL!" : variant === 3 ? b.label : "WOW";
+    text(ctx, caption, b.w / 2, b.h / 2 + 5, Math.min(15, (b.w - 10) / Math.max(1, caption.length) * 1.6), "#fffbea");
+  }
+  line(ctx, [5, 4, b.w - 8, 4], "rgba(255,255,255,0.5)", 1.4);
+  ctx.restore();
+}
+
+export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
+  const bob = Math.sin(time * 3 + p.bob), y = p.y + bob * 4;
+  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5" };
+  ctx.save(); ctx.translate(p.x, y); ctx.lineCap = "round";
+  if (p.kind !== "coin") {
+    ctx.strokeStyle = `${colors[p.kind]}66`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(0, 0, 19 + bob * 1.5, 0, TAU); ctx.stroke();
+  }
+  ctx.shadowColor = "rgba(35,46,58,0.25)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 4;
+  const gloss = ctx.createLinearGradient(-12, -15, 12, 15);
+  gloss.addColorStop(0, "#fff7da"); gloss.addColorStop(0.3, colors[p.kind]); gloss.addColorStop(1, p.kind === "coin" ? "#d18b36" : "#4d748c");
+  ctx.fillStyle = gloss; ctx.beginPath(); ctx.arc(0, 0, 14, 0, TAU); ctx.fill(); ctx.shadowColor = "transparent";
+  ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 1; ctx.stroke();
+  if (p.kind === "coin") {
+    ctx.strokeStyle = "#b57a31"; ctx.beginPath(); ctx.arc(0, 0, 10, 0, TAU); ctx.stroke();
+    text(ctx, "$", 0, 5, 16, "#8f5a23");
+  } else if (p.kind === "gem") {
+    polygon(ctx, [-9, -4, -4, -9, 5, -9, 10, -4, 0, 10], "#dcffff");
+    polygon(ctx, [-9, -4, 0, -3, 0, 10], "#51b5dd"); polygon(ctx, [0, -3, 10, -4, 0, 10], "#278bc0");
+  } else if (p.kind === "magnet") {
+    ctx.strokeStyle = "#b63c58"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 1, 7, 0, Math.PI); ctx.stroke();
+    line(ctx, [-7, 1, -7, -7], "#d44b65", 6); line(ctx, [7, 1, 7, -7], "#5686d0", 6);
+    line(ctx, [-7, -7, -7, -9], "#f4f8f5", 6); line(ctx, [7, -7, 7, -9], "#f4f8f5", 6);
+  } else if (p.kind === "slowmo") {
+    circle(ctx, 0, 1, 9, "#f9f3e6"); circle(ctx, 0, 1, 1.4, "#60507e");
+    line(ctx, [0, -6, 0, 1, 5, 3], "#665185", 2); line(ctx, [-3, -11, 3, -11], "#665185", 3);
+  } else if (p.kind === "extra") {
+    circle(ctx, -3, -6, 3, "#376652"); line(ctx, [-3, -1, -3, 7], "#376652", 3);
+    line(ctx, [-8, 1, -3, 3, 2, 0], "#376652", 2.5); line(ctx, [-7, 10, -3, 5, 1, 10], "#376652", 2.5);
+    line(ctx, [5, -5, 11, -5], "#fff", 2); line(ctx, [8, -8, 8, -2], "#fff", 2);
+  } else {
+    line(ctx, [-9, 0, 9, 0], "#245c7b", 3);
+    line(ctx, [-5, -4, -9, 0, -5, 4], "#245c7b", 2); line(ctx, [5, -4, 9, 0, 5, 4], "#245c7b", 2);
+  }
+  ctx.restore();
 }
