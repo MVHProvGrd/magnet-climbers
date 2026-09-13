@@ -1,6 +1,14 @@
 name = "magnet-climbers-api"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Challenge share links (Open Graph cards) live on share.magnetclimbers.com.
+# The zone is on Cloudflare, so deploy creates the DNS record itself.
+routes = [{ pattern = "share.magnetclimbers.com", custom_domain = true }]
+
+# Bundled font for the score card renderer.
+rules = [{ type = "Data", globs = ["**/*.ttf"], fallthrough = true }]
 
 # Create the database once:  npx wrangler d1 create magnet-climbers
 # then paste the database_id it prints below and run:

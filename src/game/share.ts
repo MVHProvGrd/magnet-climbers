@@ -5,12 +5,18 @@ export interface Challenge {
   name: string;
 }
 
+/** Share links go through the Worker so chat apps unfurl a score card; it redirects people to the game. */
+const SHARE_BASE = (import.meta.env.VITE_SHARE_URL as string | undefined) || "https://share.magnetclimbers.com";
+
 export function buildChallengeUrl(c: Challenge): string {
-  const u = new URL(location.href);
-  u.search = "";
-  u.hash = "";
-  u.searchParams.set("c", `${c.mode}.${c.cm}.${c.name}`);
-  return u.toString();
+  const code = `${c.mode}.${c.cm}.${c.name}`;
+  if (SHARE_BASE === "off") {
+    const u = new URL(location.href);
+    u.search = ""; u.hash = "";
+    u.searchParams.set("c", code);
+    return u.toString();
+  }
+  return `${SHARE_BASE}/c/${encodeURIComponent(code)}`;
 }
 
 export function parseChallenge(): Challenge | null {

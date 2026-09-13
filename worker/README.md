@@ -68,3 +68,12 @@ One row per player per mode; a submit only ever raises the stored best. Names ar
 ## Anti-cheat note
 
 Scores are honour-system with a 2 km cap. Runs are seeded and deterministic (120 Hz fixed step), so the next step is submitting the input log and having the Worker replay it. See DESIGN.md.
+
+## Challenge share cards
+
+`GET /c/<mode>.<cm>.<name>` serves Open Graph tags (Discord, iMessage, Slack, X) with a
+generated 1200x630 score card at `/c/<code>.png`, and 302s real browsers to
+`https://magnetclimbers.com/?c=<code>`. The Worker is also bound to the custom domain
+`share.magnetclimbers.com` (see `wrangler.toml`); the game builds its share links against it
+(`VITE_SHARE_URL` overrides, `off` falls back to plain `?c=` links). Cards are rendered from SVG
+with `@resvg/resvg-wasm` and a subset of Liberation Sans in `assets/`.

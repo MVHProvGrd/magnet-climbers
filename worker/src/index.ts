@@ -11,11 +11,13 @@
  *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
  *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
  *   GET  /stats                                → { total_cm, runs, players }
+ *   GET  /c/<mode>.<cm>.<name>[.png]           → challenge share page (Open Graph) / score card PNG
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
  * so a later version can submit the input log and have the server replay it.
  */
 import PROFANITY from "../../src/game/data/profanity.json";
+import { handleShare, type Challenge } from "./card";
 
 const BLOCKED = new Set((PROFANITY as string[]).map((w) => w.toLowerCase()));
 const deleet = (t: string) => t.replace(/[0]/g, "o").replace(/[1|]/g, "i").replace(/3/g, "e").replace(/[4@]/g, "a").replace(/[5$]/g, "s").replace(/[7+]/g, "t").replace(/8/g, "b").replace(/9/g, "g");
@@ -63,6 +65,10 @@ export default {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
+    if (req.method === "GET" && (url.pathname.startsWith("/c/") || url.hostname.startsWith("share."))) {
+      const share = await handleShare(req, url, (c: Challenge) => nameIsProfane(c.name));
+      if (share) return share;
+    }
 
     if (req.method === "GET" && url.pathname === "/top") {
       const mode = url.searchParams.get("mode") ?? "crew";
