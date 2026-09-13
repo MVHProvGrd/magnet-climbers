@@ -54,6 +54,7 @@ resize();
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
   onResume: () => { paused = false; },
+  onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
     if (game && game.phase !== "dead") { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
     endRun(); ui.showMenu();
@@ -156,7 +157,7 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended });
       submitScore(cm, panel);
     },
   };

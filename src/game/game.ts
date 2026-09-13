@@ -718,6 +718,16 @@ export class Game {
     }
   }
 
+  /** Player chose to stop: the run counts, no revive. */
+  ended = false;
+  forceEnd() {
+    if (this.phase === "dead") return;
+    this.ended = true;
+    this.phase = "dead";
+    this.drag = null;
+    this.events.onGameOver();
+  }
+
   /** Bring the team back at the highest point reached, after a game over. */
   revive(useToken: boolean) {
     if (useToken) this.revivesLeft = Math.max(0, this.revivesLeft - 1);

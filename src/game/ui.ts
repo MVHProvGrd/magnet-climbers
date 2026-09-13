@@ -6,6 +6,7 @@ export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
   onResume(): void;
   onQuitRun(): void;
+  onEndRun(): void;
   onBuy(key: UpgradeKey): void;
   onBuyReserve(): void;
   onBuySkin(key: string): void;
@@ -286,16 +287,17 @@ export class Ui {
     p.innerHTML = `
       <h2>Paused</h2>
       <button class="primary" data-a="resume">RESUME</button>
-      <button data-a="quit">HOME SCREEN</button>
-      <p class="fine">Quitting ends the run. Coins collected so far are kept.</p>
+      <button data-a="end">END RUN &amp; BANK SCORE</button>
+      <p class="fine">Counts this height for your best and the scoreboard.</p>
+      <button class="ghost" data-a="quit">HOME SCREEN (discard run)</button>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       if (a === "resume") { this.clear(); this.h.onResume(); }
+      if (a === "end") { this.clear(); this.h.onEndRun(); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
     });
     this.show(p);
-    this.h.onResume; // keep type usage explicit
   }
 
   private lastGameOver: Parameters<Ui["showGameOver"]>[0] | null = null;
@@ -303,15 +305,15 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew" }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean }) {
     this.lastGameOver = o;
     const p = el("div", "panel small");
     p.innerHTML = `
-      <h2>${o.isRecord ? "New record!" : "All climbers lost"}</h2>
+      <h2>${o.isRecord ? "New record!" : o.ended ? "Run banked" : "All climbers lost"}</h2>
       <div class="big">${o.cm} cm</div>
       <p class="tag">Best ${o.best} cm · earned <span class="coin">$${o.coins}</span></p>
       <p class="tag rank" hidden></p>
-      <div class="revive">
+      <div class="revive" ${o.ended ? "hidden" : ""}>
         ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
         ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
         <button class="${o.gems >= 5 ? "" : "disabled"}" data-a="gems" ${o.gems >= 5 ? "" : "disabled"}>REVIVE · ◆5</button>
