@@ -90,25 +90,10 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     if (v && g.sync && g.rules === "crew") {
       for (const t of g.syncTargets()) {
         if (t.id === sel.id) continue;
-        drawArc(ctx, t.x, t.y, v, "rgba(255,255,255,0.5)");
+        drawArc(ctx, g, t.x, t.y, v, "rgba(255,255,255,0.5)");
       }
     }
-    if (v) {
-      let x = sel.x, y = sel.y, vx = v.x, vy = v.y;
-      const dt = 1 / 60;
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      for (let i = 0; i < 70; i++) {
-        vy += CFG.gravity * dt;
-        x += vx * dt;
-        y += vy * dt;
-        if (x < CFG.climberRadius || x > W - CFG.climberRadius) vx = -vx * 0.5;
-        if (i % 4 === 0) {
-          ctx.beginPath();
-          ctx.arc(x, y, 3.5 - i / 30, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
+    if (v) drawArc(ctx, g, sel.x, sel.y, v, "rgba(255,255,255,0.85)", 4, true);
   }
 
   // ladder rungs: someone is hanging on them, they cannot fling
@@ -349,16 +334,34 @@ export function teamDots(g: Game): { id: number; x: number; y: number }[] {
   return out;
 }
 
-function drawArc(ctx: CanvasRenderingContext2D, x: number, y: number, v: { x: number; y: number }, color: string) {
+/**
+ * Aim preview. Integrates the same forces the flyer feels (gravity, repel plates,
+ * wall bounce) at 1/60 s so the dotted path bends where the real path bends.
+ * Preview only: it never touches the simulation.
+ */
+function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v: { x: number; y: number }, color: string, every = 5, taper = false) {
   let vx = v.x, vy = v.y;
   const dt = 1 / 60;
   ctx.fillStyle = color;
   for (let i = 0; i < 70; i++) {
     vy += CFG.gravity * dt;
+    const rz = g.world.repelAt(x, y);
+    if (rz) {
+      const cx = rz.x + rz.w / 2, cy = rz.y + rz.h / 2;
+      const dx = x - cx, dy = y - cy;
+      const d = Math.max(20, Math.hypot(dx, dy));
+      vx += (dx / d) * 1400 * dt;
+      vy += (dy / d) * 1400 * dt;
+    }
     x += vx * dt;
     y += vy * dt;
-    if (x < CFG.climberRadius || x > W - CFG.climberRadius) vx = -vx * 0.5;
-    if (i % 5 === 0) { ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill(); }
+    if (x < CFG.climberRadius) { x = CFG.climberRadius; vx = Math.abs(vx) * 0.5; }
+    if (x > W - CFG.climberRadius) { x = W - CFG.climberRadius; vx = -Math.abs(vx) * 0.5; }
+    if (i % every === 0) {
+      ctx.beginPath();
+      ctx.arc(x, y, taper ? 3.5 - i / 30 : 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
