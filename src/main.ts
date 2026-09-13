@@ -198,6 +198,10 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
+  onToggleMute: () => {
+    const on = !save.sound && !save.music;
+    save.sound = on; save.music = on; setSound(on); setMusic(on); persist();
+  },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
   onOpenBoard: () => resubmitBests(),
   onLinkDevice: () => {

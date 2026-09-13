@@ -17,6 +17,8 @@ export interface UiHandlers {
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
   onToggleMusic(): void;
+  /** HUD speaker button: silences (or restores) both music and effects. */
+  onToggleMute(): void;
   onToggleChill(): void;
   onSetName(name: string): void;
   onUpdate(): void;
@@ -44,6 +46,7 @@ export class Ui {
   root: HTMLElement;
   private panel: HTMLElement | null = null;
   private pauseBtn: HTMLButtonElement;
+  private muteBtn: HTMLButtonElement;
 
   constructor(root: HTMLElement, private save: () => SaveData, private h: UiHandlers) {
     this.root = root;
@@ -53,6 +56,20 @@ export class Ui {
     this.pauseBtn.hidden = true;
     this.pauseBtn.addEventListener("click", () => this.showPause());
     root.appendChild(this.pauseBtn);
+    this.muteBtn = document.createElement("button");
+    this.muteBtn.className = "pause-btn mute-btn";
+    this.muteBtn.hidden = true;
+    this.muteBtn.addEventListener("click", () => { this.h.onToggleMute(); this.refreshMute(); });
+    root.appendChild(this.muteBtn);
+    this.refreshMute();
+  }
+
+  refreshMute() {
+    const s = this.save();
+    const muted = !s.sound && !s.music;
+    this.muteBtn.textContent = muted ? "🔇" : "🔊";
+    this.muteBtn.title = muted ? "Unmute" : "Mute";
+    this.muteBtn.setAttribute("aria-label", this.muteBtn.title);
   }
 
   private show(panel: HTMLElement) {
@@ -68,6 +85,8 @@ export class Ui {
 
   setInRun(inRun: boolean) {
     this.pauseBtn.hidden = !inRun;
+    this.muteBtn.hidden = !inRun;
+    this.refreshMute();
   }
 
   showMenu() {
