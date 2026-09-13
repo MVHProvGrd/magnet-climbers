@@ -16,7 +16,7 @@ const events = { onPower() {}, onGameOver() {}, onCoins() {}, onGems() {} };
 const game = new Game(levels, events, { seed: 12345, rules: "solo" });
 const library = createCanvas(1000, 1180), ctx = library.getContext("2d");
 ctx.fillStyle = "#192733"; ctx.fillRect(0, 0, 1000, 1180);
-ctx.fillStyle = "#fff4d7"; ctx.font = "bold 25px system-ui"; ctx.fillText("THE FRIDGE FIELD GUIDE / 38 ITEMS", 24, 39);
+ctx.fillStyle = "#fff4d7"; ctx.font = "bold 25px system-ui"; ctx.fillText(`THE FRIDGE FIELD GUIDE / ${FRIDGE_ITEMS.length} ITEMS`, 24, 39);
 for (let i = 0; i < FRIDGE_ITEMS.length; i++) {
   const x = 10 + i % 7 * 142, y = 60 + Math.floor(i / 7) * 184;
   ctx.fillStyle = "#b8c7ce"; ctx.beginPath(); ctx.roundRect(x, y, 132, 174, 10); ctx.fill();
@@ -62,4 +62,4 @@ for (let i = 0; i < 4; i++) {
 }
 await mkdir("artifacts", { recursive: true });
 for (const [name, canvas] of [["fridge-field-guide", library], ["ragdoll-flight", poses], ["obstacle-layouts", layouts]]) await writeFile(`artifacts/${name}.png`, canvas.toBuffer("image/png"));
-console.log("Rendered all 38 items, six flight frames, two upright landings and four obstacle layouts; drawing is read-only.");
+console.log(`Rendered all ${FRIDGE_ITEMS.length} items, six flight frames, two upright landings and four obstacle layouts; drawing is read-only.`);

@@ -1,4 +1,5 @@
 export { Game } from "../src/game/game";
+export { drawKidHand, handPose, handTouches, handWorldPoint, SWIPE_DURATION, RECOIL_DURATION } from "../src/game/kid-hand";
 export { UPGRADES } from "../src/game/config";
 export { attachGrip, braceLanding, findContacts, stepGrip } from "../src/game/magnetism";
 export { resetRagdoll, stepRagdoll } from "../src/game/ragdoll";

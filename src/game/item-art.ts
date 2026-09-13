@@ -51,7 +51,8 @@ export function drawObject(c: CanvasRenderingContext2D, id: number) {
     rect(0, 0, 100, 100, "#fff3d9"); rect(0, 0, 100, 20, "#df7e83"); label("A VERY BUSY MONTH", 13, "#fff8ec", 6);
     for (let i = 0; i < 5; i++) for (let j = 0; j < 7; j++) {
       const x = 5 + j * 13, y = 25 + i * 13; rect(x, y, 12, 12, (i + j) % 5 === 0 ? "#f8d9b4" : "#f5ead4");
-      c.fillStyle = "#807971"; c.font = "4px system-ui"; c.textAlign = "left"; c.fillText(String(i * 7 + j + 1), x + 2, y + 5);
+      c.fillStyle = "#807971"; c.font = "4px system-ui"; c.textAlign = "left";
+      if (i * 7 + j < 31) c.fillText(String(i * 7 + j + 1), x + 2, y + 5);
     }
     oval(49, 58, 5, 5, "#e99ca5"); label("snacks / naps / climb", 96, "#867466", 5);
   } else if (id === 22) {

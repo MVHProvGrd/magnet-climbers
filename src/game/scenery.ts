@@ -275,6 +275,6 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
   if (item.power) { ctx.save(); ctx.translate(50, 48); ctx.scale(2.2, 2.2); drawPower(ctx, { x: 0, y: 0, kind: item.power, taken: false, bob: 0 }, 0); ctx.restore(); }
-  else if (item.family === "bumper") drawBumper(ctx, { x: 5, y: 25, w: 90, h: 50, vx: 0, minX: 0, maxX: 100, label: item.label!, hue: item.hue!, itemId: item.id });
+  else if (item.family === "bumper") drawBumper(ctx, { x: 5, y: 25, w: 90, h: 50, vx: 0, minX: 0, maxX: 100, label: item.label!, hue: item.hue!, itemId: item.id, motion: "slide", vy: 0, minY: 25, maxY: 25 });
   else if (item.kind) drawZone(ctx, { x: 6, y: 6, w: 88, h: 88, kind: item.kind, hue: item.metal ? -1 : 0, itemId: item.id }, 0, 42);
 }

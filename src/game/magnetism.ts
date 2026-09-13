@@ -26,8 +26,10 @@ export function limbTip(c: Climber, limb: number): Vec {
 }
 
 export function cloneGrip(grip?: MagneticGrip): MagneticGrip | undefined {
-  return grip ? { ...grip, contacts: grip.contacts.map((p) => ({ ...p })),
-    pivotLocal: grip.pivotLocal ? { ...grip.pivotLocal } : undefined } : undefined;
+  if (!grip) return undefined;
+  const copy = { ...grip, contacts: grip.contacts.map((p) => ({ ...p })) };
+  if (grip.pivotLocal) copy.pivotLocal = { ...grip.pivotLocal };
+  return copy;
 }
 
 /** Each tip searches for real steel; magnet upgrades extend reach, not the surface. */

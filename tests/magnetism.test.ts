@@ -7,6 +7,7 @@ import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, ste
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, itemZone } from "../src/game/items";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
+import { handPose, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
 import { setSound } from "../src/game/audio";
 import type { Climber, NoStickZone } from "../src/game/types";
 
@@ -122,7 +123,7 @@ test("snapshot retains staggered crew flings", () => {
 
 test("bumpers release the physical grip", () => {
   const g = game(), c = g.climbers[0];
-  g.world.segments[0].bumpers.push({ x: c.x - 10, y: c.y - 10, w: 20, h: 20, vx: 10, minX: 0, maxX: 400, label: "test", hue: 0 });
+  g.world.segments[0].bumpers.push({ x: c.x - 10, y: c.y - 10, w: 20, h: 20, vx: 10, minX: 0, maxX: 400, label: "test", hue: 0, motion: "slide", vy: 0, minY: c.y - 10, maxY: c.y - 10 });
   g.update(1 / 120);
   assert.equal(c.state, "flying");
   assert.equal(c.grip, undefined);
@@ -172,7 +173,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 38);
+  assert.equal(FRIDGE_ITEMS.length, 39);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -202,4 +203,64 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   const modern = game(); modern.phase = "running";
   assert.equal(modern.snapshot()!.worldVersion, 2);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
+});
+
+test("kid hand follows a curved, mirrored route; palm and fingertips share the visible transform", () => {
+  const ys: number[] = [];
+  for (let i = 0; i <= 20; i++) {
+    const left: KidHand = { side: -1, y: -100, x: 0, phase: "sweep", t: SWIPE_DURATION * i / 20, hit: new Set() };
+    const right: KidHand = { ...left, side: 1 };
+    const l = handWorldPoint(left, { x: 0, y: 0 }), r = handWorldPoint(right, { x: 0, y: 0 });
+    assert.ok(Math.abs(l.x + r.x - 400) < 1e-8); assert.equal(l.y, r.y); ys.push(l.y);
+    for (const h of [left, right]) {
+      assert.ok(handTouches(h, handWorldPoint(h, { x: 0, y: 0 })));
+      const curl = handPose(h).curl;
+      assert.ok(handTouches(h, handWorldPoint(h, { x: 62 - curl * 9, y: -8 + curl * 8 })));
+      assert.equal(handTouches(h, handWorldPoint(h, { x: -95, y: 0 })), false, "forearm cannot hit");
+      assert.equal(handTouches({ ...h, phase: "warn" }, l), false);
+      assert.equal(handTouches({ ...h, phase: "retract" }, l), false);
+    }
+  }
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 150, "not a straight flying hand");
+});
+
+test("swat deals one hit, releases magnets, adds tumble, and cannot hit again during that swipe", () => {
+  const g = game(), c = g.climbers[0]; g.phase = "running";
+  g.hand = { side: -1, y: -100, x: 0, phase: "sweep", t: 0.35, hit: new Set() };
+  Object.assign(c, handWorldPoint(g.hand, { x: 0, y: 0 }));
+  g.update(1 / 120);
+  assert.equal(c.hp, 2); assert.equal(c.state, "flying"); assert.equal(c.grip, undefined);
+  assert.ok(c.ragdoll); assert.equal(c.spin, 7); assert.ok(g.hand.hit.has(c.id));
+  c.iframes = 0; Object.assign(c, handWorldPoint(g.hand, { x: 0, y: 0 }));
+  g.update(1 / 120); assert.equal(c.hp, 2);
+});
+
+test("active hand and next attack survive a JSON save/resume; Chill remains hand-free", () => {
+  const g = game(); g.phase = "running";
+  g.hand = { side: 1, y: -180, x: 0, phase: "sweep", t: 0.23, hit: new Set([99]) };
+  const saved = JSON.stringify(g.snapshot()), restored = Game.restore(levels, events, JSON.parse(saved));
+  assert.deepEqual(g.hand, restored.hand);
+  for (let i = 0; i < 160; i++) { g.update(1 / 120); restored.update(1 / 120); }
+  assert.deepEqual(g.climbers, restored.climbers); assert.deepEqual(g.hand, restored.hand);
+  assert.equal(g.nextHandAt, restored.nextHandAt);
+  const chill = new Game(levels, events, { seed: 12345, rules: "solo", chill: true }); chill.phase = "running"; chill.nextHandAt = 0;
+  for (let i = 0; i < 240; i++) chill.update(1 / 120);
+  assert.equal(chill.hand, null);
+});
+
+test("pre-health saves keep original world generation and acquire default health", () => {
+  const g = new Game(levels, events, { seed: 12345, worldVersion: 0 }); g.phase = "running";
+  const snap = JSON.parse(JSON.stringify(g.snapshot())); delete snap.worldVersion;
+  for (const c of snap.climbers) { delete c.hp; delete c.iframes; }
+  const restored = Game.restore(levels, events, snap);
+  assert.equal(restored.world.version, 0); assert.deepEqual(g.world.segments, restored.world.segments);
+  assert.equal(restored.climbers[0].hp, 3); assert.equal(restored.climbers[0].iframes, 0);
+});
+
+test("a lethal airborne bumper hit cannot re-stick the lost climber", () => {
+  const g = game(), c = g.climbers[0]; g.phase = "running";
+  c.state = "flying"; c.grip = undefined; c.hp = 1; c.airTime = 0.3; c.vy = 30;
+  g.world.segments[0].bumpers.push({ x: c.x - 10, y: c.y - 10, w: 20, h: 20, vx: 0, minX: 0, maxX: 400, label: "test", hue: 0, motion: "slide", vy: 0, minY: c.y - 10, maxY: c.y - 10 });
+  g.update(1 / 120);
+  assert.equal(c.hp, 0); assert.equal(c.state, "lost"); assert.equal(c.grip, undefined);
 });

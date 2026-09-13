@@ -1,6 +1,7 @@
 import { CFG, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
+import { drawKidHand } from "./kid-hand";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
 
@@ -163,7 +164,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
 
   // the kid's hand
-  if (g.hand) drawHand(ctx, g);
+  if (g.hand) drawKidHand(ctx, g.hand);
 
   // challenge target line
   if (g.target) {
@@ -402,45 +403,6 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
   }
 }
 
-/** Cartoon kid hand sweeping in from a side; a pulsing edge marker warns first. */
-function drawHand(ctx: CanvasRenderingContext2D, g: Game) {
-  const h = g.hand!;
-  if (h.phase === "warn") {
-    const pulse = 0.5 + 0.5 * Math.sin(h.t * 18);
-    const ex = h.side < 0 ? 0 : W;
-    const grad = ctx.createLinearGradient(ex, 0, ex - h.side * 70, 0);
-    grad.addColorStop(0, `rgba(255,200,60,${0.55 + pulse * 0.35})`);
-    grad.addColorStop(1, "rgba(255,200,60,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(h.side < 0 ? 0 : W - 70, h.y - 60, 70, 120);
-    ctx.fillStyle = "#1a1d24";
-    ctx.font = "bold 22px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(h.side < 0 ? "▶" : "◀", ex - h.side * 22, h.y + 8);
-    return;
-  }
-  ctx.save();
-  ctx.translate(h.x, h.y);
-  ctx.scale(-h.side, 1); // fingers point in the direction of travel
-  // shadow down/right
-  ctx.fillStyle = "rgba(20,26,34,0.25)";
-  roundRect(ctx, -30 + 5, -28 + 8, 66, 56, 18); ctx.fill();
-  // palm + fingers (skin tone with a soft edge)
-  const skin = ctx.createLinearGradient(-30, -28, 36, 28);
-  skin.addColorStop(0, "#ffd9b8"); skin.addColorStop(1, "#e8a982");
-  ctx.fillStyle = skin;
-  ctx.strokeStyle = "rgba(120,70,40,0.5)"; ctx.lineWidth = 2;
-  roundRect(ctx, -30, -28, 62, 56, 18); ctx.fill(); ctx.stroke();
-  for (let i = 0; i < 4; i++) {
-    const fy = -24 + i * 14;
-    roundRect(ctx, 26, fy, 34 - Math.abs(i - 1.5) * 4, 11, 5); ctx.fill(); ctx.stroke();
-  }
-  roundRect(ctx, -12, 22, 12, 26, 6); ctx.fill(); ctx.stroke(); // thumb
-  // motion streaks behind
-  ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3;
-  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-40, -16 + i * 16); ctx.lineTo(-70 - i * 10, -16 + i * 16); ctx.stroke(); }
-  ctx.restore();
-}
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
