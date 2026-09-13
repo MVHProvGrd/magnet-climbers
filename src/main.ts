@@ -97,6 +97,7 @@ const ui = new Ui(uiRoot, () => save, {
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onSetName: (name) => { save.name = name; persist(); },
   onUpdate: () => { void checkForUpdate(); },
+  onTutorial: () => startRun("solo", true),
 });
 
 const SNAP_KEY = "magnet-climbers:run:v1";
@@ -167,7 +168,30 @@ function resumeRun() {
   ui.toast("Run resumed");
 }
 
-function startRun(rules: "solo" | "crew") {
+/** Guided first run: a solo run on a fixed seed with coaching tips driven by game state. */
+const TUTORIAL_SEED = 20260913;
+let tutorial: { step: number; t: number } | null = null;
+const tutorialSteps: { tip: string; done: (g: Game, t: number) => boolean }[] = [
+  { tip: "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.", done: (g) => g.phase === "running" },
+  { tip: "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.", done: (g) => g.heightCm >= 15 },
+  { tip: "🟡 Grab coins on the way. They buy upgrades and reserves between runs.", done: (g, t) => g.coins > 0 || t > 12 },
+  { tip: "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.", done: (_g, t) => t > 6 },
+  { tip: "✅ That's it. Crew mode flings the whole gang at once. Go climb.", done: (_g, t) => t > 5 },
+];
+function tickTutorial(dt: number) {
+  if (!tutorial || !game) return;
+  tutorial.t += dt;
+  const step = tutorialSteps[tutorial.step];
+  if (!step) { tutorial = null; ui.hideTip(); return; }
+  if (step.done(game, tutorial.t)) {
+    tutorial.step++; tutorial.t = 0;
+    const next = tutorialSteps[tutorial.step];
+    if (next) ui.showTip(next.tip);
+    else { ui.hideTip(); tutorial = null; save.tutorialDone = true; persist(); }
+  }
+}
+
+function startRun(rules: "solo" | "crew", withTutorial = false) {
   rulesNow = rules;
   ui.clear();
   clearSnapshot();
@@ -175,7 +199,10 @@ function startRun(rules: "solo" | "crew") {
   bankedCm = 0;
   runCounted = false;
   paused = false;
-  game = new Game(save.upgrades, runEvents(), { rules });
+  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED } : { rules });
+  tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  ui.hideTip();
+  if (withTutorial) ui.showTip(tutorialSteps[0].tip);
   game.reserves = save.reserves;
   game.palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
   for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
@@ -203,6 +230,8 @@ function submitScore(cm: number, panel: HTMLElement) {
 
 function endRun() {
   clearSnapshot();
+  tutorial = null;
+  ui.hideTip();
   game = null;
   paused = false;
   ui.setInRun(false);
@@ -260,6 +289,7 @@ function frame(now: number) {
     if (!paused) {
       acc += dt;
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
+      tickTutorial(dt);
     }
     render(ctx, game, viewH, dpr);
   } else {
@@ -271,7 +301,13 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-if (loadSnapshot()) resumeRun(); else ui.showMenu();
+if (loadSnapshot()) resumeRun();
+else if (!save.introSeen) {
+  ui.showStory(() => {
+    save.introSeen = true; persist();
+    if (!save.tutorialDone) startRun("solo", true); else ui.showMenu();
+  });
+} else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
 declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown } } }

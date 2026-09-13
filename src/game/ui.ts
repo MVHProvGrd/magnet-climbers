@@ -13,6 +13,7 @@ export interface UiHandlers {
   onToggleSound(): void;
   onSetName(name: string): void;
   onUpdate(): void;
+  onTutorial(): void;
 }
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -73,6 +74,10 @@ export class Ui {
       <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
       <button data-a="shop">UPGRADES</button>
       <button data-a="board">SCOREBOARD</button>
+      <div class="pair">
+        <button class="ghost" data-a="tutorial">HOW TO PLAY</button>
+        <button class="ghost" data-a="story">STORY</button>
+      </div>
       <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
       <p class="fine">Runs: ${s.runs} · Total climbed: ${(s.totalCm / 100).toFixed(1)} m</p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
@@ -84,6 +89,8 @@ export class Ui {
       if (a === "shop") this.showShop();
       if (a === "board") this.showBoard("crew");
       if (a === "update") this.h.onUpdate();
+      if (a === "tutorial") this.h.onTutorial();
+      if (a === "story") this.showStory(() => this.showMenu());
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     this.show(p);
@@ -142,6 +149,49 @@ export class Ui {
       if (t.dataset.a === "back") this.showMenu();
     });
     this.show(p);
+  }
+
+  /** Back story, three slides. */
+  showStory(done: () => void) {
+    const slides = [
+      { icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of the kid. Good job. Steady work." },
+      { icon: "🧒", title: "Then bedtime came", text: "The kid \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge." },
+      { icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it." },
+    ];
+    let i = 0;
+    const p = el("div", "panel story");
+    const render = () => {
+      const sl = slides[i];
+      p.innerHTML = `
+        <div class="story-icon">${sl.icon}</div>
+        <h2>${sl.title}</h2>
+        <p class="tag big-tag">${sl.text}</p>
+        <div class="dots">${slides.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>
+        <button class="primary" data-a="next">${i < slides.length - 1 ? "NEXT" : "LET'S CLIMB"}</button>
+        ${i < slides.length - 1 ? `<button class="ghost" data-a="skip">SKIP</button>` : ""}`;
+    };
+    render();
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "next") { if (i < slides.length - 1) { i++; render(); } else { this.clear(); done(); } }
+      if (a === "skip") { this.clear(); done(); }
+    });
+    this.show(p);
+  }
+
+  /** Small non-blocking coaching bubble during the tutorial run. */
+  private tip: HTMLElement | null = null;
+  showTip(text: string, cta = "") {
+    this.hideTip();
+    const t = el("div", "tip", `<span>${text}</span>${cta ? `<button data-a="cta">${cta}</button>` : ""}`);
+    t.querySelector("[data-a=cta]")?.addEventListener("click", () => this.hideTip());
+    this.root.appendChild(t);
+    this.tip = t;
+    setTimeout(() => t.classList.add("show"), 10);
+  }
+  hideTip() {
+    this.tip?.remove();
+    this.tip = null;
   }
 
   showBoard(mode: Mode) {

@@ -73,3 +73,18 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .srow .cm { color: var(--coin); font-weight: 800; }
 .panel input { font: inherit; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #2b2f38; background: #12151b; color: #fff; text-align: center; }
 .panel button.link { background: none; color: var(--accent); padding: 0 4px; font-size: 13px; text-decoration: underline; }
+.story-icon { font-size: 64px; line-height: 1; }
+.big-tag { font-size: 16px !important; opacity: 0.95 !important; }
+.dots { display: flex; gap: 6px; justify-content: center; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+.dots i.on { background: var(--accent); }
+.pair { display: flex; gap: 8px; }
+.pair button { flex: 1; }
+.tip {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 110px); left: 50%; transform: translate(-50%, -10px);
+  width: min(88vw, 340px); background: rgba(20,22,28,0.94); border: 2px solid var(--accent); border-radius: 14px;
+  padding: 12px 14px; font-size: 15px; font-weight: 700; line-height: 1.35; text-align: center; opacity: 0; transition: all 0.25s;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+}
+.tip.show { opacity: 1; transform: translate(-50%, 0); }
+.tip button { border: 0; border-radius: 10px; padding: 8px; background: var(--accent); color: #1a1d24; font-weight: 800; }
