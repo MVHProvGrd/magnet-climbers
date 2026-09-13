@@ -38,18 +38,30 @@ let runCounted = false;
 let viewH = 700;
 let dpr = 1;
 
-function resize() {
+let lastCw = 0, lastCh = 0;
+function resize(force = false) {
+  const r = canvas.getBoundingClientRect();
+  const cw = r.width || window.innerWidth;
+  const ch = r.height || window.innerHeight;
+  if (!force && cw === lastCw && ch === lastCh) return;
+  lastCw = cw; lastCh = ch;
   dpr = Math.min(2, window.devicePixelRatio || 1);
-  const cw = canvas.clientWidth || window.innerWidth;
-  const ch = canvas.clientHeight || window.innerHeight;
   const scale = cw / W;
   viewH = ch / scale;
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(viewH * dpr);
   if (game) game.viewH = viewH;
 }
-window.addEventListener("resize", resize);
-resize();
+window.addEventListener("resize", () => resize(true));
+window.visualViewport?.addEventListener("resize", () => resize(true));
+window.addEventListener("orientationchange", () => setTimeout(() => resize(true), 300));
+if ("ResizeObserver" in window) new ResizeObserver(() => resize(true)).observe(canvas);
+resize(true);
+// iOS Safari ignores user-scalable=no; block pinch/double-tap zoom explicitly
+document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", (e) => { if ((e as TouchEvent).touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
 
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
@@ -299,6 +311,7 @@ let last = performance.now();
 let acc = 0;
 const STEP = 1 / 120;
 function frame(now: number) {
+  resize();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (game) {

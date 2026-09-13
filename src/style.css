@@ -8,8 +8,8 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
-#app { position: fixed; inset: 0; display: flex; justify-content: center; background: #0e1014; }
+html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); touch-action: none; -webkit-user-select: none; user-select: none; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
+#app { position: fixed; inset: 0; height: 100dvh; display: flex; justify-content: center; background: #0e1014; overflow: hidden; }
 #game { height: 100%; aspect-ratio: 9 / 16; max-width: 100%; touch-action: none; display: block; background: #1a1d24; }
 @media (max-aspect-ratio: 9/16) { #game { width: 100%; height: 100%; aspect-ratio: auto; } }
 #ui { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
@@ -71,6 +71,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .srow .n { width: 26px; opacity: 0.6; font-weight: 800; }
 .srow .who { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .srow .cm { color: var(--coin); font-weight: 800; }
+.panel input, .panel textarea { -webkit-user-select: text; user-select: text; }
 .panel input { font: inherit; font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #2b2f38; background: #12151b; color: #fff; text-align: center; }
 .panel button.link { background: none; color: var(--accent); padding: 0 4px; font-size: 13px; text-decoration: underline; }
 .story-icon { font-size: 64px; line-height: 1; }
