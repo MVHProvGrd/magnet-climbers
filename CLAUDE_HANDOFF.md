@@ -2,9 +2,9 @@
 
 ## Shipped feature pass — September 13, 2026
 
-This section supersedes the older updates below. Codex finished the implementation and merged Claude's `3ba22ce` (off-screen climber markers, super-magnet swat protection, and leaderboard reposting).
+This section supersedes the older updates below. Codex finished the implementation and merged Claude's `3ba22ce` (off-screen climber markers, super-magnet swat protection, and leaderboard reposting) and `9bc08d9` (world v3 sticker spacing/variety).
 
-- 51-item Field Guide, including 12 interactive gadgets in snack/travel/doodle themes. New runs use world version 3; old versions retain their original terrain.
+- 51-item Field Guide, including 12 interactive gadgets in snack/travel/doodle themes. New runs use world version 4; old versions, including Claude's already-deployed v3, retain their original terrain.
 - Swinging keyring grips, rotating alphabet grips, dangling paper clips, and blue/red polarity plates. Bright grip geometry and collision share one pose function. Red plates release climbers; three-second countdowns warn before switching. Side routes remain bare steel. Hanging chains follow their moving root.
 - Three detailed generated alpha sprites in `public/art/gadgets/{snack,travel,doodle}.png`. Created with built-in image generation (not API/CLI generation); final prompts and processing QC are in `artifacts/gadgets/<theme>/prompt-used.txt` and `pipeline-meta.json`. All are 256px with no edge-touch frames. Raw sheets remain local, outside deployment.
 - `kid-hand.ts`: three-bone fingers and two-bone thumb, staggered curl on follow-through, shared render/hit geometry. Near-miss bookkeeping is deep-copied in saves.

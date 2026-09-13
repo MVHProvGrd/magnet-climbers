@@ -205,7 +205,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 3);
+  assert.equal(modern.snapshot()!.worldVersion, 4);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -282,10 +282,10 @@ test("three knuckles flex without changing finger lengths or collision tips", ()
   }
 });
 
-test("all gadget themes spawn deterministically; v2 terrain stays gadget-free", () => {
+test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", () => {
   const ids = new Set<string>();
   for (let seed = 1; seed <= 12; seed++) {
-    const a = new World(seed, 0), b = new World(seed, 0), legacy = new World(seed, 0, 2);
+    const a = new World(seed, 0), b = new World(seed, 0), legacy = new World(seed, 0, 3);
     a.generateTo(33); b.generateTo(33); legacy.generateTo(33);
     assert.deepEqual(a.segments, b.segments); assert.equal(legacy.gadgets.length, 0);
     for (const g of a.gadgets) ids.add(g.itemId);
