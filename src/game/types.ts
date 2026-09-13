@@ -88,6 +88,8 @@ export interface Climber {
   hp: number;
   /** seconds of invulnerability left after a hit */
   iframes: number;
+  /** seconds during which the magnets will not catch (right after being knocked off) */
+  noStick?: number;
   /** World-space magnetic tips. Optional so v1 saves remain readable. */
   grip?: MagneticGrip;
 }

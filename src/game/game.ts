@@ -627,6 +627,7 @@ export class Game {
           c.vx = (c.x < bx ? -1 : 1) * CFG.bumperKnock + b.vx;
           c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
           c.x += c.vx * 0.03;
+          c.noStick = 0.25;
           this.damage(c);
         }
       }
@@ -647,7 +648,8 @@ export class Game {
 
     // magnet catch: on/after apex (or super magnet: any time) over metal
     const catchUp = this.effects.superMagnet > 0 ? 9999 : this.stats.magnetCatch;
-    if (c.vy > -catchUp && c.airTime > 0.08) {
+    if ((c.noStick ?? 0) > 0) c.noStick = Math.max(0, (c.noStick ?? 0) - dt);
+    if (c.vy > -catchUp && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
       if (this.stick(c)) return;
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
       const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
@@ -696,10 +698,13 @@ export class Game {
           if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
             c.state = "flying";
             c.grip = undefined;
-            c.vx = (b.vx > 0 ? 1 : -1) * 200 + (b.vx === 0 ? (c.x < b.x + b.w / 2 ? -160 : 160) : 0);
-            c.vy = 120 + Math.max(0, b.vy);
+            // knock clear of the bumper: away from its centre, plus its own motion
+            const away = c.x < b.x + b.w / 2 ? -1 : 1;
+            c.vx = away * 260 + b.vx * 0.6;
+            c.vy = (c.y < b.y + b.h / 2 ? -180 : 180) + b.vy * 0.6;
             c.leftLauncher = true;
             c.airTime = 0;
+            c.noStick = 0.35;
             this.damage(c);
           }
         }
@@ -769,8 +774,9 @@ export class Game {
         if (c.state !== "flying") { c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; }
         c.vx = -h.side * 260;
         c.vy = CFG.handShove; // swatted downward
-        this.damage(c);
-        this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED!", life: 1, color: "#ffd23f" });
+        c.noStick = 0.3;
+        this.damage(c, true);
+        if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED  -1 ♥", life: 1, color: "#ffd23f" });
       }
     }
     if ((h.side < 0 && h.x > W + 90) || (h.side > 0 && h.x < -90)) {
@@ -787,13 +793,13 @@ export class Game {
   }
 
   /** One hit point off, a grace window, and a loss at zero. */
-  private damage(c: Climber) {
+  private damage(c: Climber, quiet = false) {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
     sfx.bump();
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);
-    this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
+    if (!quiet || c.hp <= 0) this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
     if (c.hp <= 0) this.lose(c);
   }
 
