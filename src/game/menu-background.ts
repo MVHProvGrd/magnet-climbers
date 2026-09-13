@@ -25,7 +25,7 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
     const c: Climber = {
       id: i, x, y, vx: 0, vy: 20, angle: time * (i % 2 ? -0.35 : 0.28) + i,
       spin: 0, state: "flying", color: CLIMBER_COLORS[i], parent: null,
-      leftLauncher: true, launcherId: null, airTime: 0.5, squash: 0,
+      leftLauncher: true, launcherId: null, airTime: 0.5, squash: 0, hp: 3, iframes: 0,
     };
     ctx.globalAlpha = 0.8;
     drawClimberShadow(ctx, c); drawClimber(ctx, c, false, time);

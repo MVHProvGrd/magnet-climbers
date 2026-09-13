@@ -148,9 +148,15 @@ export class World {
       const bh = 34;
       const by = y + rangeOf(r, 30, h - 60);
       const speed = rangeOf(r, 60, 90 + difficulty * 120) * (r() < 0.5 ? 1 : -1);
+      // motion: sideways early; lifts and zig-zags appear as difficulty rises
+      const roll = r();
+      const motion = roll < 0.55 - difficulty * 0.25 ? "slide" : roll < 0.8 ? "lift" : "zigzag";
+      const span = rangeOf(r, 90, 160);
+      const minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
+      const vy = motion === "slide" ? 0 : rangeOf(r, 50, 70 + difficulty * 80) * (r() < 0.5 ? 1 : -1);
       bumpers.push({
-        x: rangeOf(r, 0, W - bw), y: by, w: bw, h: bh, vx: speed,
-        minX: 0, maxX: W - bw,
+        x: rangeOf(r, 0, W - bw), y: by, w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
+        minX: 0, maxX: W - bw, motion, vy, minY, maxY,
         label: pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
         hue: Math.floor(r() * 360),
       });
@@ -158,7 +164,7 @@ export class World {
 
     // power-ups: 1-2 per segment
     const pn = 1 + (r() < 0.45 ? 1 : 0);
-    const table: PowerKind[] = ["coin", "coin", "coin", "coin", "magnet", "extra", "slowmo", "reach", "coin", "gem"];
+    const table: PowerKind[] = ["coin", "coin", "coin", "coin", "magnet", "extra", "slowmo", "reach", "coin", "gem", "heart"];
     for (let k = 0; k < pn; k++) {
       let kindP = pick(r, table);
       if (kindP === "gem" && r() < 0.6) kindP = "coin";

@@ -110,7 +110,20 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // climbers (lost ones are gone)
   for (const c of g.climbers) if (c.state !== "lost") drawClimberShadow(ctx, c);
-  for (const c of g.climbers) if (c.state !== "lost") drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time);
+  for (const c of g.climbers) {
+    if (c.state === "lost") continue;
+    const flicker = c.iframes > 0 && Math.floor(g.time * 18) % 2 === 0;
+    if (flicker) ctx.globalAlpha = 0.45;
+    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time);
+    ctx.globalAlpha = 1;
+    // hp pips above the head, only once someone has taken a hit
+    if (c.hp < CFG.maxHp) {
+      for (let i = 0; i < CFG.maxHp; i++) {
+        ctx.fillStyle = i < c.hp ? "#ff5c8a" : "rgba(0,0,0,0.35)";
+        ctx.beginPath(); ctx.arc(c.x - 8 + i * 8, c.y - 30, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
 
   // particles
   for (const p of g.particles) {
@@ -138,6 +151,9 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.stroke();
   ctx.setLineDash([]);
   }
+
+  // the kid's hand
+  if (g.hand) drawHand(ctx, g);
 
   // challenge target line
   if (g.target) {
@@ -183,10 +199,16 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   ctx.font = "bold 22px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, 10, 10, 120, 34, 10);
+  roundRect(ctx, 10, 10, 120, !g.chill && g.phase === "running" ? 48 : 34, 10);
   ctx.fill();
   ctx.fillStyle = "#fff";
   ctx.fillText(`${g.heightCm} cm`, 20, 35);
+  if (!g.chill && g.phase === "running") {
+    const m = g.wallMult();
+    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.fillStyle = m >= 2.5 ? "#ff6b6b" : m >= 1.6 ? "#ffd23f" : "rgba(255,255,255,0.85)";
+    ctx.fillText(`▲ wall ${m.toFixed(1)}x`, 20, 50);
+  }
 
   ctx.font = "bold 15px system-ui, sans-serif";
   ctx.textAlign = "right";
@@ -208,6 +230,11 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     if (c.id === g.selectedId) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke(); }
     if (c.state === "flying") { ctx.fillStyle = "#fff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText("↑", d.x, d.y + 4); }
     if (g.isLadder(c)) { ctx.fillStyle = "#1a1d24"; ctx.fillRect(d.x - 5, d.y - 1, 10, 2); ctx.fillRect(d.x - 5, d.y + 3, 10, 2); ctx.fillRect(d.x - 5, d.y - 5, 10, 2); }
+    // hp pips under the dot
+    for (let i = 0; i < CFG.maxHp; i++) {
+      ctx.fillStyle = i < c.hp ? "#ff5c8a" : "rgba(0,0,0,0.5)";
+      ctx.fillRect(d.x - 7 + i * 5, d.y + 18, 4, 3);
+    }
   }
 
   if (g.chill) {
@@ -363,6 +390,46 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
       ctx.fill();
     }
   }
+}
+
+/** Cartoon kid hand sweeping in from a side; a pulsing edge marker warns first. */
+function drawHand(ctx: CanvasRenderingContext2D, g: Game) {
+  const h = g.hand!;
+  if (h.phase === "warn") {
+    const pulse = 0.5 + 0.5 * Math.sin(h.t * 18);
+    const ex = h.side < 0 ? 0 : W;
+    const grad = ctx.createLinearGradient(ex, 0, ex - h.side * 70, 0);
+    grad.addColorStop(0, `rgba(255,200,60,${0.55 + pulse * 0.35})`);
+    grad.addColorStop(1, "rgba(255,200,60,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(h.side < 0 ? 0 : W - 70, h.y - 60, 70, 120);
+    ctx.fillStyle = "#1a1d24";
+    ctx.font = "bold 22px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(h.side < 0 ? "▶" : "◀", ex - h.side * 22, h.y + 8);
+    return;
+  }
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.scale(-h.side, 1); // fingers point in the direction of travel
+  // shadow down/right
+  ctx.fillStyle = "rgba(20,26,34,0.25)";
+  roundRect(ctx, -30 + 5, -28 + 8, 66, 56, 18); ctx.fill();
+  // palm + fingers (skin tone with a soft edge)
+  const skin = ctx.createLinearGradient(-30, -28, 36, 28);
+  skin.addColorStop(0, "#ffd9b8"); skin.addColorStop(1, "#e8a982");
+  ctx.fillStyle = skin;
+  ctx.strokeStyle = "rgba(120,70,40,0.5)"; ctx.lineWidth = 2;
+  roundRect(ctx, -30, -28, 62, 56, 18); ctx.fill(); ctx.stroke();
+  for (let i = 0; i < 4; i++) {
+    const fy = -24 + i * 14;
+    roundRect(ctx, 26, fy, 34 - Math.abs(i - 1.5) * 4, 11, 5); ctx.fill(); ctx.stroke();
+  }
+  roundRect(ctx, -12, 22, 12, 26, 6); ctx.fill(); ctx.stroke(); // thumb
+  // motion streaks behind
+  ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-40, -16 + i * 16); ctx.lineTo(-70 - i * 10, -16 + i * 16); ctx.stroke(); }
+  ctx.restore();
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

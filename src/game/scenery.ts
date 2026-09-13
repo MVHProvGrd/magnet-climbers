@@ -219,7 +219,7 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
 
 export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   const bob = Math.sin(time * 3 + p.bob), y = p.y + bob * 4;
-  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5" };
+  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0" };
   ctx.save(); ctx.translate(p.x, y); ctx.lineCap = "round";
   if (p.kind !== "coin") {
     ctx.strokeStyle = `${colors[p.kind]}66`; ctx.lineWidth = 1.4;
@@ -243,6 +243,12 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
   } else if (p.kind === "slowmo") {
     circle(ctx, 0, 1, 9, "#f9f3e6"); circle(ctx, 0, 1, 1.4, "#60507e");
     line(ctx, [0, -6, 0, 1, 5, 3], "#665185", 2); line(ctx, [-3, -11, 3, -11], "#665185", 3);
+  } else if (p.kind === "heart") {
+    ctx.fillStyle = "#e0325f";
+    ctx.beginPath();
+    ctx.arc(-4, -3, 4.5, 0, TAU); ctx.arc(4, -3, 4.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8.3, -1.5); ctx.lineTo(0, 9); ctx.lineTo(8.3, -1.5); ctx.closePath(); ctx.fill();
+    circle(ctx, -4.5, -4.5, 1.4, "rgba(255,255,255,0.8)");
   } else if (p.kind === "extra") {
     circle(ctx, -3, -6, 3, "#376652"); line(ctx, [-3, -1, -3, 7], "#376652", 3);
     line(ctx, [-8, 1, -3, 3, 2, 0], "#376652", 2.5); line(ctx, [-7, 10, -3, 5, 1, 10], "#376652", 2.5);

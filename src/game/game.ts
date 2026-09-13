@@ -1,7 +1,7 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, PowerUp, Vec } from "./types";
-import { World, inRect } from "./world";
+import { World, inRect, makeRng } from "./world";
 import { attachGrip, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
 
 export type Phase = "idle" | "running" | "dead";
@@ -28,7 +28,7 @@ export interface RunSnapshot {
   selectedId: number | null;
   /** power-ups already taken, keyed by segment y and index */
   taken: string[];
-  bumpers: { y: number; i: number; x: number; vx: number }[];
+  bumpers: { y: number; i: number; x: number; vx: number; by?: number; vy?: number }[];
   pendingLaunches?: { id: number; v: Vec; at: number }[];
 }
 
@@ -66,6 +66,10 @@ export class Game {
   panning: { lastY: number } | null = null;
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /** the kid's hand sweeping across the door; null when idle */
+  hand: { side: -1 | 1; y: number; x: number; phase: "warn" | "sweep"; t: number; hit: Set<number> } | null = null;
+  nextHandAt = CFG.handFirstAfter;
+  private evRng = makeRng(1);
   /** friend's height to beat, from a challenge link */
   target: { cm: number; name: string; beaten: boolean } | null = null;
   /** flying climbers latch onto teammates they pass; disabled, see stepFlying */
@@ -85,6 +89,7 @@ export class Game {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
+    this.evRng = makeRng((seed ^ 0x9e3779b9) >>> 0);
     this.palette = opts.palette ?? CLIMBER_COLORS;
     this.reserves = opts.reserves ?? 0;
     this.stats = statsFor(levels);
@@ -115,6 +120,7 @@ export class Game {
       id, x, y, vx: 0, vy: 0, angle: 0, spin: 0, state,
       color: this.palette[(id - 1) % this.palette.length],
       parent: null, leftLauncher: true, launcherId: null, airTime: 0, squash: 0,
+      hp: CFG.maxHp, iframes: 0,
     };
     if (state === "stuck") attachGrip(c, findContacts(c, this.world, CFG.magnetism.snapDistance), true);
     // Revives can request a point beside an obstacle: fall until a real tip catches.
@@ -467,7 +473,7 @@ export class Game {
     const bumpers: RunSnapshot["bumpers"] = [];
     for (const seg of this.world.segments) {
       seg.powerUps.forEach((p, i) => { if (p.taken) taken.push(`${seg.y}:${i}`); });
-      seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx }));
+      seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx, by: b.y, vy: b.vy }));
     }
     return {
       v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, generated: this.world.generated,
@@ -484,7 +490,7 @@ export class Game {
     g.world.generateTo(snap.generated);
     for (const seg of g.world.segments) {
       seg.powerUps.forEach((p, i) => { if (snap.taken.includes(`${seg.y}:${i}`)) p.taken = true; });
-      for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { seg.bumpers[b.i].x = b.x; seg.bumpers[b.i].vx = b.vx; }
+      for (const b of snap.bumpers) if (b.y === seg.y && seg.bumpers[b.i]) { const t = seg.bumpers[b.i]; t.x = b.x; t.vx = b.vx; if (b.by != null) t.y = b.by; if (b.vy != null) t.vy = b.vy; }
     }
     g.climbers = snap.climbers.map((c) => {
       const restored = { ...c, grip: cloneGrip(c.grip) };
@@ -532,14 +538,21 @@ export class Game {
       this.selectedId = keep;
     }
 
-    // bumpers
+    // bumpers: slide, lift or zig-zag inside their box
     for (const s of this.world.segments) {
       for (const b of s.bumpers) {
         b.x += b.vx * sdt;
         if (b.x < b.minX) { b.x = b.minX; b.vx = Math.abs(b.vx); }
         if (b.x > b.maxX) { b.x = b.maxX; b.vx = -Math.abs(b.vx); }
+        if (b.vy) {
+          b.y += b.vy * sdt;
+          if (b.y < b.minY) { b.y = b.minY; b.vy = Math.abs(b.vy); }
+          if (b.y > b.maxY) { b.y = b.maxY; b.vy = -Math.abs(b.vy); }
+        }
       }
     }
+    for (const c of this.climbers) if (c.iframes > 0) c.iframes = Math.max(0, c.iframes - dt);
+    this.stepHand(sdt);
 
     for (const c of this.climbers) {
       if (c.state === "flying") this.stepFlying(c, sdt);
@@ -609,14 +622,12 @@ export class Game {
     // bumpers knock
     for (const s of this.world.segments) {
       for (const b of s.bumpers) {
-        if (inRect(c.x, c.y, b, CFG.climberRadius * 0.7)) {
+        if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.7)) {
           const bx = b.x + b.w / 2;
           c.vx = (c.x < bx ? -1 : 1) * CFG.bumperKnock + b.vx;
-          c.vy = -Math.abs(c.vy) * 0.3 + 60;
+          c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
           c.x += c.vx * 0.03;
-          sfx.bump();
-          this.shake = 0.6;
-          this.burst(c.x, c.y, "#ffffff", 8);
+          this.damage(c);
         }
       }
     }
@@ -682,15 +693,14 @@ export class Game {
     if (c.state === "stuck") {
       for (const s of this.world.segments) {
         for (const b of s.bumpers) {
-          if (inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
+          if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
             c.state = "flying";
             c.grip = undefined;
-            c.vx = (b.vx > 0 ? 1 : -1) * 200;
-            c.vy = 120;
+            c.vx = (b.vx > 0 ? 1 : -1) * 200 + (b.vx === 0 ? (c.x < b.x + b.w / 2 ? -160 : 160) : 0);
+            c.vy = 120 + Math.max(0, b.vy);
             c.leftLauncher = true;
             c.airTime = 0;
-            sfx.bump();
-            this.shake = 0.5;
+            this.damage(c);
           }
         }
       }
@@ -730,6 +740,63 @@ export class Game {
     this.floats.push({ x: c.x, y: Math.min(c.y, this.camY + this.viewH - 40), text: "lost!", life: 1, color: "#ff6b6b" });
   }
 
+  /** The kid's hand: a warning at the edge, then a fast sweep across the door that shoves climbers down. */
+  private stepHand(dt: number) {
+    if (this.phase !== "running" || this.chill) return;
+    if (!this.hand) {
+      if (this.time < this.nextHandAt) return;
+      const anchored = this.anchored;
+      const focus = anchored.length ? anchored.reduce((m, c) => (c.y < m.y ? c : m)) : this.alive[0];
+      if (!focus) return;
+      const side: -1 | 1 = this.evRng() < 0.5 ? -1 : 1;
+      const y = focus.y + (this.evRng() - 0.5) * 120;
+      this.hand = { side, y, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
+      sfx.lost();
+      return;
+    }
+    const h = this.hand;
+    h.t += dt;
+    if (h.phase === "warn") {
+      if (h.t >= CFG.handWarn) { h.phase = "sweep"; h.t = 0; }
+      return;
+    }
+    h.x += -h.side * CFG.handSpeed * dt;
+    // palm rect: 70 wide, 56 tall, centred on (x, y)
+    for (const c of this.climbers) {
+      if (c.state === "lost" || h.hit.has(c.id) || c.iframes > 0) continue;
+      if (Math.abs(c.x - h.x) < 42 && Math.abs(c.y - h.y) < 36) {
+        h.hit.add(c.id);
+        if (c.state !== "flying") { c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; }
+        c.vx = -h.side * 260;
+        c.vy = CFG.handShove; // swatted downward
+        this.damage(c);
+        this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED!", life: 1, color: "#ffd23f" });
+      }
+    }
+    if ((h.side < 0 && h.x > W + 90) || (h.side > 0 && h.x < -90)) {
+      this.hand = null;
+      const climbed = Math.max(0, this.startY - this.highestY) / 1000;
+      const interval = Math.max(CFG.handIntervalMin, CFG.handIntervalBase - climbed * 3);
+      this.nextHandAt = this.time + interval * (0.75 + this.evRng() * 0.5);
+    }
+  }
+
+  /** Wall speed as a multiple of the base, for the HUD. */
+  wallMult(): number {
+    return CFG.floorBase > 0 ? this.wallSpeed() / (CFG.floorBase * this.stats.floorMult) : 0;
+  }
+
+  /** One hit point off, a grace window, and a loss at zero. */
+  private damage(c: Climber) {
+    c.hp = Math.max(0, c.hp - 1);
+    c.iframes = CFG.hitIframes;
+    sfx.bump();
+    this.shake = 0.6;
+    this.burst(c.x, c.y, "#ffffff", 8);
+    this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
+    if (c.hp <= 0) this.lose(c);
+  }
+
   private collect(p: PowerUp, c: Climber) {
     p.taken = true;
     const d = CFG.effectDurations;
@@ -738,6 +805,13 @@ export class Game {
       case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
       case "magnet": this.effects.superMagnet = d.superMagnet; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
       case "slowmo": this.effects.slowmo = d.slowmo; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
+      case "heart": {
+        const healed = c.hp < CFG.maxHp;
+        c.hp = Math.min(CFG.maxHp, c.hp + 1);
+        sfx.power();
+        this.floats.push({ x: p.x, y: p.y, text: healed ? "+1 ♥" : "FULL ♥", life: 1, color: "#ff5c8a" });
+        break;
+      }
       case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
       case "extra": {
         const n = this.makeClimber(p.x, p.y, "flying");

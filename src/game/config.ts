@@ -14,13 +14,23 @@ export const CFG = {
   /** stepped ramp: +15% per 50cm, capped at 2.5x base */
   floorStepCm: 50,
   floorStepMult: 0.15,
-  floorCapMult: 2.5,
+  floorCapMult: 3.5,
   /** catch-up: if the lowest climber is more than this many px above the wall, the wall hurries */
   floorCatchupGap: 900,
   floorCatchupMult: 2.2,
   floorStartOffset: 320,
   powerRadius: 30,
   bumperKnock: 420,
+  /** hit points per climber and the grace period after a hit */
+  maxHp: 3,
+  hitIframes: 0.9,
+  /** kid hand swipes: first one after this many seconds of running, then every base..base/2 s as height grows */
+  handFirstAfter: 18,
+  handIntervalBase: 22,
+  handIntervalMin: 9,
+  handWarn: 1.1,
+  handSpeed: 520,
+  handShove: 560,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14 },
   coinValue: 5,
   /** 10px of fridge = 1cm of score */

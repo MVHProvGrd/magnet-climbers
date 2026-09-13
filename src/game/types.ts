@@ -19,13 +19,15 @@ export interface NoStickZone extends Rect {
   hue?: number;
 }
 
-export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem";
+export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart";
 
 export interface PowerUp extends Vec {
   kind: PowerKind;
   taken: boolean;
   bob: number;
 }
+
+export type BumperMotion = "slide" | "lift" | "zigzag";
 
 export interface Bumper {
   x: number;
@@ -37,6 +39,11 @@ export interface Bumper {
   maxX: number;
   label: string;
   hue: number;
+  /** slide = sideways, lift = up/down, zigzag = both at once (bounces off a box) */
+  motion: BumperMotion;
+  vy: number;
+  minY: number;
+  maxY: number;
 }
 
 export interface Segment {
@@ -77,6 +84,10 @@ export interface Climber {
   launcherId: number | null;
   airTime: number;
   squash: number;
+  /** hit points; bumpers take one each, zero = lost */
+  hp: number;
+  /** seconds of invulnerability left after a hit */
+  iframes: number;
   /** World-space magnetic tips. Optional so v1 saves remain readable. */
   grip?: MagneticGrip;
 }
