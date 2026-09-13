@@ -26,12 +26,14 @@ export default defineConfig({
         start_url: "./",
         scope: "./",
         icons: [
-          { src: "icons/toy-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-          { src: "icons/toy-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "icons/toy-icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "icons/toy-icon-192.png?icon-v=2", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icons/toy-icon-512.png?icon-v=2", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "icons/toy-icon-maskable-512.png?icon-v=2", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
+        // Icon revisions trigger manifest refreshes; serve the same cached PNG offline.
+        ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^icon-v$/],
         globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2}"],
         navigateFallback: "index.html",
       },
