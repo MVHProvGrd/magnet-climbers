@@ -9,6 +9,7 @@
  *   GET  /save?player=&token=                  → { blob, rev } | 404
  *   POST /link   { playerId, token }            → { code, expiresAt }   6-char code, 10 minutes
  *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
+ *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
  *   GET  /stats                                → { total_cm, runs, players }
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
@@ -190,6 +191,43 @@ export default {
       if (!sv) return json({ error: "no save" }, h, 404);
       await env.DB.prepare("DELETE FROM link_codes WHERE code = ?").bind(code).run();
       return json({ playerId: row.player_id, token: sv.token, blob: sv.blob, rev: sv.rev }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/merge") {
+      let body: { fromId?: unknown; fromToken?: unknown; toId?: unknown; toToken?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const fromId = String(body.fromId ?? "").slice(0, 64), fromToken = String(body.fromToken ?? "").slice(0, 64);
+      const toId = String(body.toId ?? "").slice(0, 64), toToken = String(body.toToken ?? "").slice(0, 64);
+      if (!fromId || !toId || fromId === toId) return json({ error: "bad request" }, h, 400);
+      // the caller must hold both secrets (it just claimed the target and still has its own)
+      const to = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(toId).first<{ token: string }>();
+      if (!to || to.token !== toToken) return json({ error: "forbidden" }, h, 403);
+      const from = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(fromId).first<{ token: string }>();
+      // an old device that never saved to the cloud has no token row; allow the merge of its board rows only if it
+      // never uploaded (nothing to prove), otherwise require its token
+      if (from && from.token !== fromToken) return json({ error: "forbidden" }, h, 403);
+      const toName = await env.DB.prepare("SELECT name FROM lifetime WHERE player_id = ?").bind(toId).first<{ name: string }>();
+      const name = toName?.name ?? "climber";
+      const now = Date.now();
+      await env.DB.batch([
+        // best per mode: keep the max
+        env.DB.prepare(
+          `INSERT INTO scores (player_id, name, mode, cm, created_at)
+             SELECT ?, ?, mode, cm, created_at FROM scores WHERE player_id = ?
+           ON CONFLICT(player_id, mode) DO UPDATE SET cm = MAX(scores.cm, excluded.cm)`,
+        ).bind(toId, name, fromId),
+        env.DB.prepare("DELETE FROM scores WHERE player_id = ?").bind(fromId),
+        // lifetime: add
+        env.DB.prepare(
+          `INSERT INTO lifetime (player_id, name, cm, runs, updated_at)
+             SELECT ?, ?, cm, runs, ? FROM lifetime WHERE player_id = ?
+           ON CONFLICT(player_id) DO UPDATE SET cm = lifetime.cm + excluded.cm, runs = lifetime.runs + excluded.runs, updated_at = excluded.updated_at`,
+        ).bind(toId, name, now, fromId),
+        env.DB.prepare("DELETE FROM lifetime WHERE player_id = ?").bind(fromId),
+        env.DB.prepare("DELETE FROM saves WHERE player_id = ?").bind(fromId),
+        env.DB.prepare("DELETE FROM link_codes WHERE player_id = ?").bind(fromId),
+      ]);
+      return json({ ok: true }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/run") {

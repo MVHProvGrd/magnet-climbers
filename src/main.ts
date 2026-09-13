@@ -206,11 +206,24 @@ const ui = new Ui(uiRoot, () => save, {
     void (async () => {
       const r = await cloud.claim(code);
       if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
+      // remember this device's old profile so it can be folded in rather than lost
+      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, reserves: save.reserves, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins] };
       save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
       applyCloudBlob(r.blob);
+      const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
+      if (hadProgress && old.id !== save.playerId) {
+        // wallet and lifetime add; records and upgrades take the higher; skins union
+        save.coins += old.coins; save.gems += old.gems; save.reserves = Math.min(5, save.reserves + old.reserves);
+        save.totalCm += old.totalCm; save.runs += old.runs;
+        save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
+        for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
+        save.skins = Array.from(new Set([...save.skins, ...old.skins]));
+        void cloud.merge(old.id, old.token, save.playerId, save.token);
+      }
       persist();
       clearSnapshot();
-      ui.toast(`Linked. Welcome back, ${save.name}`);
+      await cloudSync("link");
+      ui.toast(hadProgress ? `Linked and merged. Welcome back, ${save.name}` : `Linked. Welcome back, ${save.name}`);
       ui.showMenu();
     })();
   },
@@ -336,6 +349,7 @@ function tickTutorial(dt: number) {
 
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 function startRun(rules: "solo" | "crew", withTutorial = false) {
+  void cloudPull(true);
   rulesNow = rules;
   ui.clear();
   clearSnapshot();
@@ -466,12 +480,18 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-if (leaderboardEnabled) {
-  void cloud.pull(save.playerId, save.token).then((c) => {
-    if (c && c.rev > save.cloudRev) { mergeCloudBlob(c.blob); save.cloudRev = c.rev; persist(); ui.toast("Progress synced"); }
-    else if (!c) void cloudSync("launch");
-  });
+/** Pull the cloud copy if another device moved it forward. Safe to call often. */
+async function cloudPull(quiet = false) {
+  if (!leaderboardEnabled || game) return;
+  const c = await cloud.pull(save.playerId, save.token);
+  if (c && c.rev > save.cloudRev) {
+    mergeCloudBlob(c.blob); save.cloudRev = c.rev; persist();
+    if (!quiet) ui.toast("Progress synced from your other device");
+    if (!game) ui.showMenu();
+  } else if (!c) void cloudSync("launch");
 }
+void cloudPull();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
 resubmitBests();
 pendingChallenge = parseChallenge();
 clearChallengeParam();

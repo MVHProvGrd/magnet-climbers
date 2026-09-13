@@ -46,6 +46,8 @@ export const cloud = {
   },
   pull: (playerId: string, token: string) => call<CloudSave>(`/save?player=${encodeURIComponent(playerId)}&token=${encodeURIComponent(token)}`),
   link: (playerId: string, token: string) => call<{ code: string; expiresAt: number }>("/link", { method: "POST", body: JSON.stringify({ playerId, token }) }),
+  merge: (fromId: string, fromToken: string, toId: string, toToken: string) =>
+    call<{ ok: boolean }>("/merge", { method: "POST", body: JSON.stringify({ fromId, fromToken, toId, toToken }) }),
   claim: (code: string) => call<{ playerId: string; token: string; blob: string; rev: number }>("/claim", { method: "POST", body: JSON.stringify({ code }) }),
 };
 

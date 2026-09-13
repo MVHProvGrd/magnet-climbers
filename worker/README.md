@@ -58,6 +58,7 @@ Cloudflare dashboard → Workers & Pages → magnet-climbers-api → Settings �
 | GET | `/save?player=&token=` | | `{ blob, rev }` |
 | POST | `/link` | `{ playerId, token }` | 6-char code, 10 minutes |
 | POST | `/claim` | `{ code }` | `{ playerId, token, blob, rev }` |
+| POST | `/merge` | `{ fromId, fromToken, toId, toToken }` | folds an old profile's board rows into the linked one |
 | GET | `/stats` | | `{ total_cm, runs, players }` |
 
 Schema changes: re-run `npm run db:init` (it is idempotent) then `npm run deploy`.
