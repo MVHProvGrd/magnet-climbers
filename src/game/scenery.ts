@@ -163,6 +163,31 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   ctx.restore();
 }
 
+function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean) {
+  const cx = z.x + z.w / 2;
+  const span = 34;                 // how far the field reaches past the plate
+  const gap = span / 3;            // spacing between arcs
+  const rx = Math.max(z.w, z.h) / 2 + 4;
+  const phase = (time * 14) % gap;
+  ctx.strokeStyle = outward ? "#ff687d" : "#6fb6ff";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const d = outward ? i * gap + phase : (i + 1) * gap - phase;
+    if (d <= 0 || d > span) continue;
+    ctx.globalAlpha = (1 - d / span) * 0.45;
+    const r = rx + d;
+    const s = (rx + d * 0.75) / r;
+    // top edge: semicircle over the plate, squashed to hug it
+    ctx.save(); ctx.translate(cx, z.y); ctx.scale(1, s);
+    ctx.beginPath(); ctx.arc(0, 0, r, Math.PI, Math.PI * 2); ctx.stroke(); ctx.restore();
+    // bottom edge
+    ctx.save(); ctx.translate(cx, z.y + z.h); ctx.scale(1, s);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI); ctx.stroke(); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
   if (["dispenser", "calendar", "ice-tray"].includes(z.itemId ?? "")) {
     ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
@@ -176,18 +201,10 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && !z.itemId && variant >= 12);
   if (material) {
     ctx.save(); drawMaterialZone(ctx, z, time);
-    if (z.kind === "repel") {
-      const travel = (time * 14) % 14;
-      ctx.globalAlpha = (1 - travel / 14) * 0.4;
-      ctx.strokeStyle = "#ff687d"; ctx.lineWidth = 1.3;
-      ctx.strokeRect(z.x - travel, z.y - travel, z.w + travel * 2, z.h + travel * 2);
-    }
-    if (z.kind === "attract") {
-      // field rings travel inward: this one pulls
-      const travel = 14 - ((time * 14) % 14);
-      ctx.globalAlpha = (travel / 14) * 0.4;
-      ctx.strokeStyle = "#6fb6ff"; ctx.lineWidth = 1.3;
-      ctx.strokeRect(z.x - travel, z.y - travel, z.w + travel * 2, z.h + travel * 2);
+    if (z.kind === "repel" || z.kind === "attract") {
+      // magnet-style field: semicircle arcs fan out from the top and bottom
+      // edges; they travel outward on a repel plate and inward on an attract one.
+      drawFieldArcs(ctx, z, time, z.kind === "repel");
     }
     ctx.restore();
     return;
