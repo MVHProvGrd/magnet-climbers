@@ -93,34 +93,37 @@ export class Ui {
     const s = this.save();
     const p = el("div", "panel menu");
     p.innerHTML = `
+      <div class="rail">
+        <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
+        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
+        <span class="grow"></span>
+        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
+        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
+      </div>
       <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
-      <p class="tag">Fling your rubbery magnet crew up an endless fridge.<br/>Stick to steel. Outrun the kid.</p>
+      <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun the kid.</p>
       <div class="stats">
         <div><span>Best crew</span><b>${s.bestCm} cm</b></div>
         <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
-        <div><span>Coins</span><b class="coin">$${s.coins}</b></div>
-        <div><span>Gems</span><b class="gem">◆${s.gems}</b></div>
+        <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Coins</span><b class="coin">$${s.coins}</b></button>
+        <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
       </div>
-      <button class="primary" data-a="crew">CREW CLIMB</button>
-      <p class="fine">Whole crew flings at once. Spares are lives. Leave no one below the line.</p>
-      <button class="primary alt" data-a="solo">SOLO CLIMB</button>
-      <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
-      <button class="chip ${s.chill ? "on" : ""}" data-a="chill">😌 Chill mode: ${s.chill ? "ON" : "off"}</button>
-      <p class="fine">${s.chill ? "No red line. Take your time. No coins or records, but your metres add to the world total." : "Turn on to climb with no red line. No coins or records, but metres count for the world total."}</p>
-      <button data-a="shop">UPGRADES</button>
-      <button data-a="board">SCOREBOARD</button>
-      <button data-a="settings">⚙ SETTINGS</button>
-      <button data-a="guide">FRIDGE FIELD GUIDE</button>
+      <button class="primary mode" data-a="crew"><b>CREW CLIMB</b><small>Whole crew flings at once. Spares are lives.</small></button>
+      <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, pure arcade.</small></button>
+      <label class="switch-row ${s.chill ? "on" : ""}">
+        <span><b>😌 Chill mode</b><small>${s.chill ? "No red line, no rush. No coins or records; metres still count for the world." : "No red line. No coins or records; metres still count for the world."}</small></span>
+        <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i></i>
+      </label>
       <div class="pair">
-        <button class="ghost" data-a="tutorial">HOW TO PLAY</button>
-        <button class="ghost" data-a="story">STORY</button>
+        <button data-a="shop">UPGRADES</button>
+        <button data-a="story">STORY</button>
       </div>
-      <p class="fine">Runs: ${s.runs} · Lifetime climbed: ${(s.totalCm / 100).toFixed(1)} m (all runs added up)</p>
+      <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
     `;
     p.addEventListener("click", (e) => {
-      const a = (e.target as HTMLElement).dataset.a;
+      const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "crew") this.h.onPlay("crew");
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
@@ -131,8 +134,8 @@ export class Ui {
       if (a === "tutorial") this.h.onTutorial();
       if (a === "story") this.showStory(() => this.showMenu());
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
-      if (a === "chill") { this.h.onToggleChill(); this.showMenu(); }
     });
+    p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
     if (leaderboardEnabled) {
       void leaderboard.stats().then((st) => {
