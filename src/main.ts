@@ -1,7 +1,7 @@
 import "./style.css";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, hudButtons, teamDots, setSafeBottom } from "./game/render";
+import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
 import { renderMenuBackground } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
@@ -171,6 +171,7 @@ const ui = new Ui(uiRoot, () => save, {
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
+  onOpenBoard: () => resubmitBests(),
   onLinkDevice: () => {
     void (async () => {
       await cloudSync("link");
@@ -335,6 +336,13 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   ui.setInRun(true);
 }
 
+/** Re-post local bests; the server keeps the max, so a lost post heals itself. */
+function resubmitBests() {
+  if (!leaderboardEnabled) return;
+  if (save.bestCm > 0) void leaderboard.submit(save.playerId, save.name, "crew", save.bestCm);
+  if (save.bestSolo > 0) void leaderboard.submit(save.playerId, save.name, "solo", save.bestSolo);
+}
+
 /** Push the run to the global board (best per player is kept server-side). */
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
@@ -378,6 +386,9 @@ canvas.addEventListener("pointerdown", (e) => {
   const b = hudButtons(viewH);
   for (const d of teamDots(game)) {
     if (Math.hypot(d.x - sp.x, d.y - sp.y) < 17) { game.select(d.id); return; }
+  }
+  for (const m of offscreenMarkers(game, viewH)) {
+    if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }
   }
   if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
   if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
@@ -430,6 +441,7 @@ if (leaderboardEnabled) {
     else if (!c) void cloudSync("launch");
   });
 }
+resubmitBests();
 pendingChallenge = parseChallenge();
 clearChallengeParam();
 if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

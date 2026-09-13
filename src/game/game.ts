@@ -868,6 +868,13 @@ export class Game {
           continue;
         }
         h.hit.add(c.id);
+        // super magnet: too strong for the kid. Stuck climbers hold on, take no damage.
+        if (this.effects.superMagnet > 0 && c.state !== "flying") {
+          c.squash = 1;
+          this.burst(c.x, c.y, "#ff4d4d", 6);
+          this.floats.push({ x: c.x, y: c.y - 50, text: "HELD ON!", life: 1, color: "#ff4d4d" });
+          continue;
+        }
         c.state = "flying"; c.grip = undefined; c.parent = null;
         c.leftLauncher = true; c.airTime = 0;
         c.vx = -h.side * 260; c.vy = CFG.handShove; c.spin = -h.side * 7;

@@ -21,6 +21,7 @@ export interface UiHandlers {
   onSetName(name: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
+  onOpenBoard(): void;
   onEnterCode(code: string): void;
   onTutorial(): void;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
@@ -369,6 +370,7 @@ export class Ui {
 
   showBoard(mode: BoardMode) {
     const s = this.save();
+    this.h.onOpenBoard();
     const p = el("div", "panel board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
