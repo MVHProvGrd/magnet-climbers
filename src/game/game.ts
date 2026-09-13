@@ -63,6 +63,8 @@ export class Game {
   panning: { lastY: number } | null = null;
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /** friend's height to beat, from a challenge link */
+  target: { cm: number; name: string; beaten: boolean } | null = null;
   /** flying climbers latch onto teammates they pass; disabled, see stepFlying */
   autoGrab = false;
   private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
@@ -669,6 +671,12 @@ export class Game {
 
   private markHeight(c: Climber) {
     if (c.y < this.highestY) this.highestY = c.y;
+    if (this.target && !this.target.beaten && this.heightCm > this.target.cm) {
+      this.target.beaten = true;
+      sfx.power();
+      this.floats.push({ x: c.x, y: c.y - 40, text: `BEAT ${this.target.name.toUpperCase()}!`, life: 1.6, color: "#ffd23f" });
+      this.burst(c.x, c.y, "#ffd23f", 14);
+    }
   }
 
   private lose(c: Climber) {

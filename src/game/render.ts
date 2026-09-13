@@ -196,6 +196,25 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // challenge target line
+  if (g.target) {
+    const ty = g.startY - g.target.cm * CFG.pxPerCm;
+    if (ty > top && ty < bottom) {
+      ctx.strokeStyle = g.target.beaten ? "rgba(155,225,93,0.9)" : "rgba(255,210,63,0.95)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 8]);
+      ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(W, ty); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = ctx.strokeStyle;
+      roundRect(ctx, W - 150, ty - 24, 140, 20, 6);
+      ctx.fill();
+      ctx.fillStyle = "#1a1d24";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${g.target.name} · ${g.target.cm} cm ${g.target.beaten ? "✓" : ""}`, W - 80, ty - 10);
+    }
+  }
+
   // floating text
   ctx.font = "bold 16px system-ui, sans-serif";
   ctx.textAlign = "center";
@@ -463,12 +482,13 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (wallScreen > viewH) {
     const dist = Math.round((g.floorY - Math.max(...g.alive.map((c) => c.y), g.camY)) / CFG.pxPerCm);
     ctx.fillStyle = "rgba(255,80,110,0.9)";
-    roundRect(ctx, W / 2 - 70, viewH - 100, 140, 26, 8);
+    const wy = g.phase === "idle" ? viewH - 178 : viewH - 100;
+    roundRect(ctx, W / 2 - 70, wy, 140, 26, 8);
     ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.font = "bold 13px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`▼ wall ${dist} cm below`, W / 2, viewH - 82);
+    ctx.fillText(`▼ wall ${dist} cm below`, W / 2, wy + 18);
   }
 
   // active effects

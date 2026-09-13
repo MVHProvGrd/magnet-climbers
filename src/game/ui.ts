@@ -14,6 +14,8 @@ export interface UiHandlers {
   onSetName(name: string): void;
   onUpdate(): void;
   onTutorial(): void;
+  onShare(c: { mode: "solo" | "crew"; cm: number }): void;
+  onAcceptChallenge(mode: "solo" | "crew"): void;
 }
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -151,6 +153,24 @@ export class Ui {
     this.show(p);
   }
 
+  /** Landing panel when the app is opened from a challenge link. */
+  showChallenge(c: { mode: "solo" | "crew"; cm: number; name: string }) {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <div class="story-icon">📣</div>
+      <h2>${esc(c.name)} challenged you</h2>
+      <div class="big">${c.cm} cm</div>
+      <p class="tag">${c.mode === "crew" ? "Crew climb" : "Solo climb"}. Their height shows as a line on your fridge. Get above it.</p>
+      <button class="primary" data-a="go">ACCEPT</button>
+      <button class="ghost" data-a="menu">LATER</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "go") { this.clear(); this.h.onAcceptChallenge(c.mode); }
+      if (a === "menu") this.showMenu();
+    });
+    this.show(p);
+  }
+
   /** Back story, three slides. */
   showStory(done: () => void) {
     const slides = [
@@ -212,6 +232,7 @@ export class Ui {
         </div>
         <div class="srows">${list}</div>
         <p class="tag">${mine} · playing as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
+        ${(mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
         <button class="ghost" data-a="back">BACK</button>`;
     };
     render(null, null);
@@ -221,6 +242,7 @@ export class Ui {
       const m = t.dataset.m as Mode | undefined;
       if (m) { this.showBoard(m); return; }
       if (t.dataset.a === "back") this.showMenu();
+      if (t.dataset.a === "share") this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
       if (t.dataset.a === "name") this.showNamePrompt(() => this.showBoard(mode));
     });
     this.show(p);
@@ -276,7 +298,13 @@ export class Ui {
     this.h.onResume; // keep type usage explicit
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean }) {
+  private lastGameOver: Parameters<Ui["showGameOver"]>[0] | null = null;
+  reshowGameOver(): HTMLElement | null {
+    return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
+  }
+
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew" }) {
+    this.lastGameOver = o;
     const p = el("div", "panel small");
     p.innerHTML = `
       <h2>${o.isRecord ? "New record!" : "All climbers lost"}</h2>
@@ -288,11 +316,13 @@ export class Ui {
         ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
         <button class="${o.gems >= 5 ? "" : "disabled"}" data-a="gems" ${o.gems >= 5 ? "" : "disabled"}>REVIVE · ◆5</button>
       </div>
+      <button data-a="share">📣 CHALLENGE A FRIEND</button>
       <button class="ghost" data-a="quit">BACK TO MENU</button>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
+      if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
     });
     this.show(p);

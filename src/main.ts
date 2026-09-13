@@ -7,6 +7,7 @@ import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
 import { setSound } from "./game/audio";
 import { leaderboard, leaderboardEnabled } from "./game/leaderboard";
+import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
 const updateSW = registerSW({ immediate: true });
 /** Manual update check from the menu; reloads if a new build is waiting. */
@@ -98,6 +99,14 @@ const ui = new Ui(uiRoot, () => save, {
   onSetName: (name) => { save.name = name; persist(); },
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
+  onShare: (c) => {
+    const go = () => void shareChallenge({ ...c, name: save.name || "a friend" }).then((r) => {
+      if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
+      if (r === "failed") ui.toast("Could not share on this device");
+    });
+    if (!save.name) ui.showNamePrompt(go); else go();
+  },
+  onAcceptChallenge: (mode) => startRun(mode),
 });
 
 const SNAP_KEY = "magnet-climbers:run:v1";
@@ -147,7 +156,7 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       save.reserves = game.reserves;
       persist();
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow });
       submitScore(cm, panel);
     },
   };
@@ -191,6 +200,7 @@ function tickTutorial(dt: number) {
   }
 }
 
+let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   rulesNow = rules;
   ui.clear();
@@ -201,6 +211,10 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   paused = false;
   game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED } : { rules });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  if (pendingChallenge && pendingChallenge.mode === rules) {
+    game.target = { cm: pendingChallenge.cm, name: pendingChallenge.name, beaten: false };
+    pendingChallenge = null;
+  }
   ui.hideTip();
   if (withTutorial) ui.showTip(tutorialSteps[0].tip);
   game.reserves = save.reserves;
@@ -213,7 +227,8 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
 /** Push the run to the global board (best per player is kept server-side). */
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
-  const send = () => {
+  const send = (target: HTMLElement = panel) => {
+    panel = target;
     void leaderboard.submit(save.playerId, save.name || "anonymous", rulesNow, cm).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
@@ -222,7 +237,7 @@ function submitScore(cm: number, panel: HTMLElement) {
   };
   if (!save.name) {
     // first time on the board: ask for a name, then send
-    ui.showNamePrompt(() => send());
+    ui.showNamePrompt(() => { const again = ui.reshowGameOver(); if (again) send(again); });
     return;
   }
   send();
@@ -301,7 +316,10 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-if (loadSnapshot()) resumeRun();
+pendingChallenge = parseChallenge();
+clearChallengeParam();
+if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }
+else if (loadSnapshot()) resumeRun();
 else if (!save.introSeen) {
   ui.showStory(() => {
     save.introSeen = true; persist();
