@@ -63,7 +63,7 @@ export class Ui {
     const p = el("div", "panel menu");
     p.innerHTML = `
       <h1>Magnet<br/>Climbers</h1>
-      <p class="tag">Fling your rubbery magnet crew up an endless fridge.<br/>Chain together to cross the gaps.</p>
+      <p class="tag">Fling your rubbery magnet crew up an endless fridge.<br/>Stick to steel. Outrun the kid.</p>
       <div class="stats">
         <div><span>Best crew</span><b>${s.bestCm} cm</b></div>
         <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
@@ -71,7 +71,7 @@ export class Ui {
         <div><span>Gems</span><b class="gem">◆${s.gems}</b></div>
       </div>
       <button class="primary" data-a="crew">CREW CLIMB</button>
-      <p class="fine">Teammates fling each other. Chain up to cross the gaps. Never leave anyone behind.</p>
+      <p class="fine">Whole crew flings at once. Spares are lives. Leave no one below the line.</p>
       <button class="primary alt" data-a="solo">SOLO CLIMB</button>
       <p class="fine">One climber, pure arcade. Fling, stick, outrun the line.</p>
       <button data-a="shop">UPGRADES</button>
@@ -81,7 +81,7 @@ export class Ui {
         <button class="ghost" data-a="story">STORY</button>
       </div>
       <button class="ghost" data-a="sound">Sound: ${s.sound ? "on" : "off"}</button>
-      <p class="fine">Runs: ${s.runs} · Total climbed: ${(s.totalCm / 100).toFixed(1)} m</p>
+      <p class="fine">Runs: ${s.runs} · Lifetime climbed: ${(s.totalCm / 100).toFixed(1)} m (all runs added up)</p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
     `;
     p.addEventListener("click", (e) => {
