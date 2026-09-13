@@ -1,7 +1,7 @@
 import "./style.css";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, hudButtons, teamDots } from "./game/render";
+import { render, hudButtons, teamDots, setSafeBottom } from "./game/render";
 import { renderMenuBackground } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
@@ -39,6 +39,11 @@ let runCounted = false;
 let viewH = 700;
 let dpr = 1;
 
+// probe the safe-area inset so canvas buttons clear the gesture bar / home indicator
+const safeProbe = document.createElement("div");
+safeProbe.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none";
+document.body.appendChild(safeProbe);
+
 let lastCw = 0, lastCh = 0;
 function resize(force = false) {
   const r = canvas.getBoundingClientRect();
@@ -51,6 +56,8 @@ function resize(force = false) {
   viewH = ch / scale;
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(viewH * dpr);
+  const insetPx = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
+  setSafeBottom(insetPx / scale + 12);
   if (game) game.viewH = viewH;
 }
 window.addEventListener("resize", () => resize(true));

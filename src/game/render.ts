@@ -258,7 +258,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (wallScreen > viewH) {
     const dist = Math.round((g.floorY - Math.max(...g.alive.map((c) => c.y), g.camY)) / CFG.pxPerCm);
     ctx.fillStyle = "rgba(255,80,110,0.9)";
-    const wy = g.phase === "idle" ? viewH - 178 : viewH - 100;
+    const wy = g.phase === "idle" ? viewH - 150 - safeBottom : viewH - 72 - safeBottom;
     roundRect(ctx, W / 2 - 70, wy, 140, 26, 8);
     ctx.fill();
     ctx.fillStyle = "#fff";
@@ -323,27 +323,35 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (g.phase === "idle") {
     ctx.font = "bold 12px system-ui, sans-serif";
     ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, 20, viewH - 150, W - 40, 82, 12);
+    const hb = viewH - 122 - safeBottom; // hint box top
+    roundRect(ctx, 20, hb, W - 40, 82, 12);
     ctx.fill();
     ctx.fillStyle = "#fff";
     if (g.rules === "solo") {
-      ctx.fillText("Drag back anywhere, release to fling.", W / 2, viewH - 113);
-      ctx.fillText("Stick to steel. Outrun the red line.", W / 2, viewH - 91);
+      ctx.fillText("Drag back anywhere, release to fling.", W / 2, hb + 37);
+      ctx.fillText("Stick to steel. Outrun the red line.", W / 2, hb + 59);
     } else {
-      ctx.fillText("Drag back from a climber, release to fling.", W / 2, viewH - 124);
-      ctx.fillText("SYNC flings the whole crew. CLIMB crawls onto a teammate.", W / 2, viewH - 102);
-      ctx.fillText("Tap dots to switch. Drag empty steel to look around.", W / 2, viewH - 80);
+      ctx.fillText("Drag back from a climber, release to fling.", W / 2, hb + 26);
+      ctx.fillText("SYNC flings the whole crew. CLIMB crawls onto a teammate.", W / 2, hb + 48);
+      ctx.fillText("Tap dots to switch. Drag empty steel to look around.", W / 2, hb + 70);
     }
   }
 }
 
+/** Logical-px clearance above the bottom edge (gesture bar / home indicator). Set from main. */
+let safeBottom = 28;
+export function setSafeBottom(px: number) {
+  safeBottom = Math.max(28, px);
+}
+
 /** Screen-space rects for the canvas buttons; shared with the input code. */
 export function hudButtons(viewH: number) {
+  const by = viewH - 42 - safeBottom;
   return {
-    mode: { x: 12, y: viewH - 56, w: 84, h: 42 },
-    sync: { x: 104, y: viewH - 56, w: 90, h: 42 },
+    mode: { x: 12, y: by, w: 84, h: 42 },
+    sync: { x: 104, y: by, w: 90, h: 42 },
     recenter: { x: W - 132, y: 100, w: 120, h: 42 },
-    reserve: { x: W - 152, y: viewH - 56, w: 140, h: 42 },
+    reserve: { x: W - 152, y: by, w: 140, h: 42 },
   };
 }
 
