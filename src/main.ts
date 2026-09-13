@@ -7,7 +7,7 @@ import { Ui } from "./game/ui";
 import { loadSave, writeSave } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
 import { setSound } from "./game/audio";
-import { leaderboard, leaderboardEnabled } from "./game/leaderboard";
+import { leaderboard, leaderboardEnabled, cloud } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
 const updateSW = registerSW({ immediate: true });
@@ -29,6 +29,54 @@ const uiRoot = document.getElementById("ui")!;
 let save = loadSave();
 setSound(save.sound);
 const persist = () => writeSave(save);
+
+/** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
+function cloudBlob(): string {
+  const out: Record<string, unknown> = {};
+  for (const k of CLOUD_FIELDS) out[k] = save[k];
+  return JSON.stringify(out);
+}
+function applyCloudBlob(blob: string) {
+  try {
+    const data = JSON.parse(blob) as Partial<typeof save>;
+    for (const k of CLOUD_FIELDS) if (data[k] !== undefined) (save as unknown as Record<string, unknown>)[k] = data[k];
+  } catch { /* ignore bad blobs */ }
+}
+/** Merge a newer cloud copy without losing local gains: max of records, max of wallets. */
+function mergeCloudBlob(blob: string) {
+  try {
+    const c = JSON.parse(blob) as Partial<typeof save>;
+    save.coins = Math.max(save.coins, c.coins ?? 0);
+    save.gems = Math.max(save.gems, c.gems ?? 0);
+    save.bestCm = Math.max(save.bestCm, c.bestCm ?? 0);
+    save.bestSolo = Math.max(save.bestSolo, c.bestSolo ?? 0);
+    save.runs = Math.max(save.runs, c.runs ?? 0);
+    save.totalCm = Math.max(save.totalCm, c.totalCm ?? 0);
+    save.reserves = Math.max(save.reserves, c.reserves ?? 0);
+    for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], c.upgrades?.[k] ?? 0);
+    save.skins = Array.from(new Set([...save.skins, ...(c.skins ?? [])]));
+    if (c.name) save.name = c.name;
+  } catch { /* ignore */ }
+}
+let syncing = false;
+async function cloudSync(reason: string) {
+  if (!leaderboardEnabled || syncing) return;
+  syncing = true;
+  try {
+    const r = await cloud.push(save.playerId, save.token, cloudBlob(), save.cloudRev);
+    if (r && "ok" in r) { save.cloudRev = r.rev; persist(); }
+    else if (r && "conflict" in r) {
+      mergeCloudBlob(r.blob);
+      save.cloudRev = r.rev;
+      persist();
+      const again = await cloud.push(save.playerId, save.token, cloudBlob(), save.cloudRev);
+      if (again && "ok" in again) { save.cloudRev = again.rev; persist(); }
+      ui.toast("Synced with your other device");
+    }
+  } finally { syncing = false; }
+  void reason;
+}
 
 let game: Game | null = null;
 let paused = false;
@@ -76,6 +124,7 @@ const ui = new Ui(uiRoot, () => save, {
   onResume: () => { paused = false; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
+    void cloudSync("quit");
     if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
     endRun(); ui.showMenu();
   },
@@ -118,6 +167,26 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
+  onLinkDevice: () => {
+    void (async () => {
+      await cloudSync("link");
+      const r = await cloud.link(save.playerId, save.token);
+      if (!r) { ui.toast("Could not reach the server"); return; }
+      ui.showLinkCode(r.code, r.expiresAt);
+    })();
+  },
+  onEnterCode: (code) => {
+    void (async () => {
+      const r = await cloud.claim(code);
+      if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
+      save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
+      applyCloudBlob(r.blob);
+      persist();
+      clearSnapshot();
+      ui.toast(`Linked. Welcome back, ${save.name}`);
+      ui.showMenu();
+    })();
+  },
   onSetName: (name) => {
     const changed = name !== save.name;
     save.name = name; persist();
@@ -349,6 +418,12 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
+if (leaderboardEnabled) {
+  void cloud.pull(save.playerId, save.token).then((c) => {
+    if (c && c.rev > save.cloudRev) { mergeCloudBlob(c.blob); save.cloudRev = c.rev; persist(); ui.toast("Progress synced"); }
+    else if (!c) void cloudSync("launch");
+  });
+}
 pendingChallenge = parseChallenge();
 clearChallengeParam();
 if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

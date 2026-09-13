@@ -15,6 +15,10 @@ export interface SaveData {
   skins: string[];
   /** placeholder until real accounts exist */
   playerId: string;
+  /** per-player secret for cloud save; never shown */
+  token: string;
+  /** cloud save revision this device last synced */
+  cloudRev: number;
   /** display name for the leaderboard; empty until the player picks one */
   name: string;
   introSeen: boolean;
@@ -43,12 +47,20 @@ function defaults(): SaveData {
     skin: "classic",
     skins: ["classic"],
     playerId: "p-" + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8),
+    token: newToken(),
+    cloudRev: 0,
     name: "",
     introSeen: false,
     namePrompted: false,
     tutorialDone: false,
     chill: false,
   };
+}
+
+export function newToken(): string {
+  const b = new Uint8Array(24);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
 /** Guest name so every score has a label even when the player skips naming. */
@@ -71,6 +83,7 @@ export function loadSave(): SaveData {
     // players who already chose a name never see the one-time offer
     if (parsed.name && parsed.namePrompted === undefined) merged.namePrompted = true;
     if (!merged.name) merged.name = guestName();
+    if (!merged.token) merged.token = newToken();
     return merged;
   } catch {
     return { ...defaults(), name: guestName() };

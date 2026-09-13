@@ -30,6 +30,25 @@ async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
 
 export interface GlobalStats { total_cm: number; runs: number; players: number }
 
+export interface CloudSave { blob: string; rev: number }
+
+/** Cloud save + device linking. All calls are no-ops when the API is not configured. */
+export const cloud = {
+  push: async (playerId: string, token: string, blob: string, rev: number): Promise<{ ok: true; rev: number } | { conflict: true; rev: number; blob: string } | null> => {
+    if (!leaderboardEnabled) return null;
+    try {
+      const r = await fetch(API + "/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId, token, blob, rev }) });
+      if (r.status === 409) { const j = (await r.json()) as { rev: number; blob: string }; return { conflict: true, rev: j.rev, blob: j.blob }; }
+      if (!r.ok) return null;
+      const j = (await r.json()) as { rev: number };
+      return { ok: true, rev: j.rev };
+    } catch { return null; }
+  },
+  pull: (playerId: string, token: string) => call<CloudSave>(`/save?player=${encodeURIComponent(playerId)}&token=${encodeURIComponent(token)}`),
+  link: (playerId: string, token: string) => call<{ code: string; expiresAt: number }>("/link", { method: "POST", body: JSON.stringify({ playerId, token }) }),
+  claim: (code: string) => call<{ playerId: string; token: string; blob: string; rev: number }>("/claim", { method: "POST", body: JSON.stringify({ code }) }),
+};
+
 export const leaderboard = {
   stats: () => call<GlobalStats>("/stats"),
   rename: (playerId: string, name: string) =>

@@ -54,6 +54,10 @@ Cloudflare dashboard → Workers & Pages → magnet-climbers-api → Settings �
 | POST | `/score` | `{ playerId, name, mode, cm }` | `{ ok, best }` |
 | POST | `/run` | `{ playerId, mode, cm }` | adds to the global total |
 | POST | `/rename` | `{ playerId, name }` | renames the player's board rows |
+| POST | `/save` | `{ playerId, token, blob, rev }` | cloud save; 409 with the newer blob on conflict |
+| GET | `/save?player=&token=` | | `{ blob, rev }` |
+| POST | `/link` | `{ playerId, token }` | 6-char code, 10 minutes |
+| POST | `/claim` | `{ code }` | `{ playerId, token, blob, rev }` |
 | GET | `/stats` | | `{ total_cm, runs, players }` |
 
 Schema changes: re-run `npm run db:init` (it is idempotent) then `npm run deploy`.

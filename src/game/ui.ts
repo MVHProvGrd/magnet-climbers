@@ -18,6 +18,8 @@ export interface UiHandlers {
   onToggleChill(): void;
   onSetName(name: string): void;
   onUpdate(): void;
+  onLinkDevice(): void;
+  onEnterCode(code: string): void;
   onTutorial(): void;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
@@ -154,6 +156,17 @@ export class Ui {
           <button class="buy" data-a="name">CHANGE</button>
         </div>
       </div>
+      <h3>Play on another device</h3>
+      <div class="rows">
+        <div class="row">
+          <div class="info"><b>Link a new device</b><span>Shows a 6-letter code. Enter it on the other device to carry this profile over.</span></div>
+          <button class="buy" data-a="link">CODE</button>
+        </div>
+        <div class="row">
+          <div class="info"><b>Enter a link code</b><span>Adopt a profile from another device. Replaces this one.</span></div>
+          <button class="buy" data-a="claim">ENTER</button>
+        </div>
+      </div>
       <h3>Preferences</h3>
       <div class="rows">
         <div class="row">
@@ -176,7 +189,7 @@ export class Ui {
         </div>`;
       }).join("")}</div>
       <button data-a="shop">UPGRADES &amp; RESERVES</button>
-      <p class="fine">Player id ${esc(s.playerId.slice(0, 10))}… · scores are tied to this device until accounts arrive</p>
+      <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced to the cloud after every run</p>
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
@@ -184,6 +197,8 @@ export class Ui {
       const sk = t.closest<HTMLElement>("[data-s]")?.dataset.s;
       if (sk) { this.h.onBuySkin(sk); this.showSettings(); return; }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
+      if (a === "link") { this.h.onLinkDevice(); return; }
+      if (a === "claim") { this.showClaimPrompt(); return; }
       if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
       if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
       if (a === "shop") { this.showShop(); return; }
@@ -263,6 +278,44 @@ export class Ui {
       if (a === "menu") this.showMenu();
     });
     this.show(p);
+  }
+
+  /** Shows a freshly minted link code. */
+  showLinkCode(code: string, expiresAt: number) {
+    const p = el("div", "panel small");
+    const mins = Math.max(1, Math.round((expiresAt - Date.now()) / 60000));
+    p.innerHTML = `
+      <h2>Link code</h2>
+      <div class="big code">${esc(code)}</div>
+      <p class="tag">On the other device: Settings → Enter a link code. Valid for ${mins} minutes.</p>
+      <button class="primary" data-a="ok">DONE</button>`;
+    p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "ok") this.showSettings(); });
+    this.show(p);
+  }
+
+  showClaimPrompt() {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Enter link code</h2>
+      <p class="tag">From Settings on your other device. This replaces the profile on this device.</p>
+      <input id="code-in" maxlength="7" placeholder="ABC123" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:4px" />
+      <p class="fine err" hidden></p>
+      <button class="primary" data-a="ok">LINK</button>
+      <button class="ghost" data-a="back">CANCEL</button>`;
+    const input = p.querySelector<HTMLInputElement>("#code-in")!;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "ok") this.h.onEnterCode(input.value);
+      if (a === "back") this.showSettings();
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") this.h.onEnterCode(input.value); });
+    this.show(p);
+    setTimeout(() => input.focus(), 50);
+  }
+
+  showClaimError(text: string) {
+    const err = this.panel?.querySelector<HTMLElement>(".err");
+    if (err) { err.textContent = text; err.hidden = false; }
   }
 
   /** Back story, three slides. */

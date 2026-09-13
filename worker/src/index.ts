@@ -5,6 +5,10 @@
  *   POST /score  { playerId, name, mode, cm } → { ok, best }
  *   POST /run    { playerId, name?, mode, cm } → { ok }   adds to the global and the player's lifetime totals
  *   POST /rename { playerId, name }           → { ok, name }  renames every board row for that player
+ *   POST /save   { playerId, token, blob, rev } → { ok, rev } | 409 { rev, blob }   cloud save (token = per-player secret)
+ *   GET  /save?player=&token=                  → { blob, rev } | 404
+ *   POST /link   { playerId, token }            → { code, expiresAt }   6-char code, 10 minutes
+ *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
  *   GET  /stats                                → { total_cm, runs, players }
  *
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
@@ -126,6 +130,66 @@ export default {
         env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, playerId),
       ]);
       return json({ ok: true, name }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/save") {
+      let body: { playerId?: unknown; token?: unknown; blob?: unknown; rev?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      const blob = typeof body.blob === "string" ? body.blob : JSON.stringify(body.blob ?? null);
+      const rev = Math.floor(Number(body.rev ?? 0));
+      if (!playerId || token.length < 16 || blob.length > 64_000) return json({ error: "bad save" }, h, 400);
+      const cur = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string; blob: string; rev: number }>();
+      if (cur && cur.token !== token) return json({ error: "forbidden" }, h, 403);
+      if (cur && rev < cur.rev) return json({ error: "conflict", rev: cur.rev, blob: cur.blob }, h, 409);
+      const next = (cur?.rev ?? 0) + 1;
+      await env.DB.prepare(
+        "INSERT INTO saves (player_id, token, blob, rev, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(player_id) DO UPDATE SET blob = excluded.blob, rev = excluded.rev, updated_at = excluded.updated_at",
+      ).bind(playerId, token, blob, next, Date.now()).run();
+      return json({ ok: true, rev: next }, h);
+    }
+
+    if (req.method === "GET" && url.pathname === "/save") {
+      const playerId = url.searchParams.get("player") ?? "";
+      const token = url.searchParams.get("token") ?? "";
+      if (!playerId || !token) return json({ error: "bad request" }, h, 400);
+      const cur = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string; blob: string; rev: number }>();
+      if (!cur) return json({ error: "none" }, h, 404);
+      if (cur.token !== token) return json({ error: "forbidden" }, h, 403);
+      return json({ blob: cur.blob, rev: cur.rev }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/link") {
+      let body: { playerId?: unknown; token?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      const cur = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!cur || cur.token !== token) return json({ error: "save first" }, h, 403);
+      // unambiguous alphabet, six chars
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const bytes = crypto.getRandomValues(new Uint8Array(6));
+      const code = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+      const expiresAt = Date.now() + 10 * 60_000;
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM link_codes WHERE expires_at < ? OR player_id = ?").bind(Date.now(), playerId),
+        env.DB.prepare("INSERT INTO link_codes (code, player_id, expires_at) VALUES (?, ?, ?)").bind(code, playerId, expiresAt),
+      ]);
+      return json({ code, expiresAt }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/claim") {
+      let body: { code?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+      if (code.length !== 6) return json({ error: "bad code" }, h, 400);
+      const row = await env.DB.prepare("SELECT player_id, expires_at FROM link_codes WHERE code = ?").bind(code).first<{ player_id: string; expires_at: number }>();
+      if (!row || row.expires_at < Date.now()) return json({ error: "expired" }, h, 404);
+      const sv = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(row.player_id).first<{ token: string; blob: string; rev: number }>();
+      if (!sv) return json({ error: "no save" }, h, 404);
+      await env.DB.prepare("DELETE FROM link_codes WHERE code = ?").bind(code).run();
+      return json({ playerId: row.player_id, token: sv.token, blob: sv.blob, rev: sv.rev }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/run") {

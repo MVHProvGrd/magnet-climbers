@@ -38,3 +38,18 @@ CREATE INDEX IF NOT EXISTS lifetime_cm ON lifetime(cm DESC);
 INSERT OR IGNORE INTO lifetime (player_id, name, cm, runs, updated_at)
   SELECT player_id, MAX(name), SUM(cm), COUNT(*), MAX(created_at) FROM scores
   WHERE player_id NOT LIKE 'smoke-%' GROUP BY player_id;
+
+-- cloud save per player. token is a per-player secret held in the save; writes must present it.
+CREATE TABLE IF NOT EXISTS saves (
+  player_id TEXT PRIMARY KEY,
+  token TEXT NOT NULL,
+  blob TEXT NOT NULL,
+  rev INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+-- short-lived link codes: type the code on another device to adopt this player
+CREATE TABLE IF NOT EXISTS link_codes (
+  code TEXT PRIMARY KEY,
+  player_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
