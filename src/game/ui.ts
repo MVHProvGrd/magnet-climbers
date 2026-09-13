@@ -105,7 +105,8 @@ export class Ui {
       void leaderboard.stats().then((st) => {
         if (!st || this.panel !== p) return;
         const g = p.querySelector<HTMLElement>(".global");
-        if (g) { g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${st.runs.toLocaleString()} runs by ${st.players.toLocaleString()} climbers`; g.hidden = false; }
+        if (g) { const pl = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
+        g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
       });
     }
   }

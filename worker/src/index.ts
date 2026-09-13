@@ -63,7 +63,7 @@ export default {
       if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 25)));
       const rows = await env.DB.prepare(
-        "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? ORDER BY cm DESC, created_at ASC LIMIT ?",
+        "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
       ).bind(mode, limit).all();
       return json(rows.results, h);
     }
@@ -74,7 +74,7 @@ export default {
       if (!validMode(mode) || !player) return json({ error: "bad request" }, h, 400);
       const me = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(mode, player).first<{ cm: number }>();
       if (!me) return json({ rank: null }, h);
-      const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM scores WHERE mode = ? AND cm > ?").bind(mode, me.cm).first<{ n: number }>();
+      const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM scores WHERE mode = ? AND cm > ? AND player_id NOT LIKE 'smoke-%'").bind(mode, me.cm).first<{ n: number }>();
       return json({ rank: (above?.n ?? 0) + 1, cm: me.cm }, h);
     }
 
@@ -105,16 +105,18 @@ export default {
       let body: { playerId?: unknown; mode?: unknown; cm?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const cm = Math.floor(Number(body.cm));
-      if (!String(body.playerId ?? "") || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
+      const pid = String(body.playerId ?? "");
+      if (!pid || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
         return json({ error: "bad run" }, h, 400);
       }
+      if (pid.startsWith("smoke-")) return json({ ok: true }, h);
       await env.DB.prepare("UPDATE stats SET total_cm = total_cm + ?, runs = runs + 1 WHERE id = 1").bind(cm).run();
       return json({ ok: true }, h);
     }
 
     if (req.method === "GET" && url.pathname === "/stats") {
       const st = await env.DB.prepare("SELECT total_cm, runs FROM stats WHERE id = 1").first<{ total_cm: number; runs: number }>();
-      const pl = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM scores").first<{ n: number }>();
+      const pl = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM scores WHERE player_id NOT LIKE 'smoke-%'").first<{ n: number }>();
       return json({ total_cm: st?.total_cm ?? 0, runs: st?.runs ?? 0, players: pl?.n ?? 0 }, h);
     }
 

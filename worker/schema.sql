@@ -17,3 +17,10 @@ CREATE TABLE IF NOT EXISTS stats (
   runs INTEGER NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO stats (id, total_cm, runs) VALUES (1, 0, 0);
+
+-- one-time backfill (idempotent: only when the counter is still empty): seed the
+-- global total from the best runs recorded before the counter existed
+UPDATE stats SET
+  total_cm = (SELECT COALESCE(SUM(cm), 0) FROM scores WHERE player_id NOT LIKE 'smoke-%'),
+  runs = (SELECT COUNT(*) FROM scores WHERE player_id NOT LIKE 'smoke-%')
+WHERE id = 1 AND runs = 0;
