@@ -33,7 +33,10 @@ export class World {
 
   readonly seed: number;
 
-  constructor(seed: number, startY: number, readonly version = 2) {
+  /** last paper card used, so consecutive segments do not repeat it */
+  private lastCardId = "";
+
+  constructor(seed: number, startY: number, readonly version = 3) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -82,7 +85,7 @@ export class World {
 
     switch (kind) {
       case "solid": {
-        if (r() < 0.6) zones.push(sticker(r, y, h));
+        if (r() < 0.6) pushSticker(r, y, h, zones, this.version);
         break;
       }
       case "band": {
@@ -132,7 +135,7 @@ export class World {
       }
       case "stickers": {
         const n = 3 + Math.floor(r() * 3);
-        for (let k = 0; k < n; k++) zones.push(sticker(r, y, h));
+        for (let k = 0; k < n; k++) pushSticker(r, y, h, zones, this.version);
         break;
       }
     }
@@ -178,7 +181,19 @@ export class World {
     if (this.version >= 2) {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
-      for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, PAPER_ITEMS).id;
+      if (this.version >= 3) {
+        const used = new Set<string>([this.lastCardId]);
+        for (const zone of zones) {
+          if (zone.kind !== "sticker") continue;
+          let choice = pick(art, PAPER_ITEMS);
+          for (let k = 0; k < 6 && used.has(choice.id); k++) choice = pick(art, PAPER_ITEMS);
+          used.add(choice.id);
+          zone.itemId = choice.id;
+          this.lastCardId = choice.id;
+        }
+      } else {
+        for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, PAPER_ITEMS).id;
+      }
       for (const bumper of bumpers) {
         const item = pick(art, BUMPER_ITEMS);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
@@ -237,6 +252,17 @@ export class World {
     }
     return null;
   }
+}
+
+/** Place a sticker; from world version 3 it must not overlap other zones (12px clearance). */
+function pushSticker(r: Rng, y: number, h: number, zones: NoStickZone[], version: number) {
+  if (version < 3) { zones.push(sticker(r, y, h)); return; }
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const z = sticker(r, y, h);
+    const clash = zones.some((o) => z.x < o.x + o.w + 12 && z.x + z.w > o.x - 12 && z.y < o.y + o.h + 12 && z.y + z.h > o.y - 12);
+    if (!clash) { zones.push(z); return; }
+  }
+  // too crowded: skip this sticker rather than pile it on
 }
 
 function sticker(r: Rng, y: number, h: number): NoStickZone {
