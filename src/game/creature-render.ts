@@ -70,27 +70,29 @@ export function drawCreatureDecorations(ctx: CanvasRenderingContext2D, c: Climbe
 }
 
 /** Head and torso silhouette uses the same origin/angle as the shared skeleton. */
-export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle, material: CanvasGradient | string, shadow: boolean) {
+export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle, material: CanvasGradient | string, shadow: boolean, part: "all" | "torso" | "head" = "all") {
+  const torso = part !== "head", head = part !== "torso";
   if (!shadow) ctx.fillStyle = material;
   if (s.id === "robot") {
-    ctx.beginPath(); ctx.roundRect(-7, -8, 14, 19, 3); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(-10, -22, 20, 16, 4); ctx.fill();
+    if (torso) { ctx.beginPath(); ctx.roundRect(-7, -8, 14, 19, 3); ctx.fill(); }
+    if (head) { ctx.beginPath(); ctx.roundRect(-10, -22, 20, 16, 4); ctx.fill(); }
   } else {
-    oval(ctx, 0, 1, s.width / 2, s.id === "crab" ? 7 : 11);
-    oval(ctx, 0, -14, s.headX, s.headY);
+    if (torso) oval(ctx, 0, 1, s.width / 2, s.id === "crab" ? 7 : 11);
+    if (head) oval(ctx, 0, -14, s.headX, s.headY);
   }
-  if (s.id === "frog" || s.id === "crab" || s.id === "gecko") {
+  if (head && (s.id === "frog" || s.id === "crab" || s.id === "gecko")) {
     for (const side of [-1, 1]) oval(ctx, side * 7, s.id === "crab" ? -19 : -20, 3.5, 4);
   }
   if (shadow) return;
   ctx.fillStyle = s.accent;
   if (s.id === "robot") {
-    ctx.beginPath(); ctx.roundRect(-8, -19, 16, 9, 2); ctx.fill();
-    oval(ctx, 0, 1, 3, 3);
+    if (head) { ctx.beginPath(); ctx.roundRect(-8, -19, 16, 9, 2); ctx.fill(); }
+    if (torso) oval(ctx, 0, 1, 3, 3);
     ctx.fillStyle = "#315462";
-    for (const x of [-4, 4]) ctx.fillRect(x - 1, -17, 2, 4);
+    if (head) for (const x of [-4, 4]) ctx.fillRect(x - 1, -17, 2, 4);
   } else {
-    oval(ctx, 0, 3, Math.max(3, s.width / 2 - 2), 5);
+    if (torso) oval(ctx, 0, 3, Math.max(3, s.width / 2 - 2), 5);
+    if (!head) return;
     ctx.fillStyle = "#f7fff3";
     const eyeY = ["frog", "gecko", "crab"].includes(s.id) ? -20 : -15;
     const gap = s.id === "crab" || s.id === "frog" ? 7 : 5;
@@ -102,12 +104,12 @@ export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle
     ctx.beginPath(); ctx.moveTo(-3, -10); ctx.quadraticCurveTo(0, -8, 3, -10); ctx.stroke();
   }
   ctx.fillStyle = s.accent;
-  if (s.marking === "spots" || s.id === "gecko") {
+  if (torso && (s.marking === "spots" || s.id === "gecko")) {
     for (const [x, y] of [[-3, -4], [3, 0], [-2, 6]]) oval(ctx, x, y, 1.4, 1.8);
-  } else if (s.marking === "stripes") {
+  } else if (torso && s.marking === "stripes") {
     for (const y of [-4, 0, 4]) ctx.fillRect(-s.width / 2 + 2, y, s.width - 4, 1.5);
   }
-  ctx.fillStyle = "rgba(255,255,255,.35)"; oval(ctx, -3, -17, 2, 1);
+  if (head) { ctx.fillStyle = "rgba(255,255,255,.35)"; oval(ctx, -3, -17, 2, 1); }
 }
 
 /** Decorative cap surrounds a shared tip, never displacing its metallic center. */

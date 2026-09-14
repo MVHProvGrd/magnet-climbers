@@ -78,6 +78,16 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t =
   ctx.restore();
 }
 
+/** Creature body in body-local space; the gloss gradient is built there too so it lines up after the rotate. */
+function drawBodyLocal(ctx: CanvasRenderingContext2D, origin: Vec, angle: number, style: ReturnType<typeof creatureStyle>, part: "all" | "torso" | "head" = "all") {
+  ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(angle);
+  const gloss = ctx.createLinearGradient(-20, -26, 20, 16);
+  gloss.addColorStop(0, "#ffffff"); gloss.addColorStop(0.18, style.color);
+  gloss.addColorStop(0.85, style.color); gloss.addColorStop(1, "#47505c");
+  drawCreatureBody(ctx, style, gloss, false, part);
+  ctx.restore();
+}
+
 /** Flexible toy geometry, metallic tips, and a common window light in world coordinates. */
 export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number, appearance: CreatureAppearance = {}) {
   const shape = geometry(c);
@@ -93,9 +103,12 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
   material.addColorStop(0.8, style.color); material.addColorStop(1, "#47505c");
   ctx.lineCap = "round";
   const origin = project({ x: c.x, y: c.y, z: shape.lift }, false);
+  // the octopus mantle is tall, so its body sits under the limbs and all eight arms come out from beneath it
+  const bodyUnderLimbs = style.id === "octopus";
   if (style.id !== "human") {
     ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
     drawCreatureDecorations(ctx, c, style, t, false); ctx.restore();
+    if (bodyUnderLimbs) drawBodyLocal(ctx, origin, c.angle, style, "torso");
   }
   for (const [index, limb] of shape.limbs.entries()) {
     const start = project(limb.start, false), middle = project(limb.middle, false), end = project(limb.end, false);
@@ -121,8 +134,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     }
   }
   if (style.id !== "human") {
-    ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
-    drawCreatureBody(ctx, style, material, false); ctx.restore();
+    drawBodyLocal(ctx, origin, c.angle, style, bodyUnderLimbs ? "head" : "all");
     ctx.restore(); return;
   }
   const shoulder = project(shape.shoulder, false), hip = project(shape.hip, false);
