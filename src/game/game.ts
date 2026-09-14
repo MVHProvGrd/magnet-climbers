@@ -101,6 +101,8 @@ export class Game {
   flings = 0;
   won = false;
   private outOfFlings = 0;
+  /** ladder crossing: once a stack's top grabs steel, the ones below crawl up over it one by one */
+  bridge: { queue: number[]; crawler: { id: number; path: Vec[]; seg: number; t: number } | null; frozen: Set<number> } | null = null;
   reserves = 0;
   palette: string[];
   /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
@@ -446,13 +448,13 @@ export class Game {
       let q: Climber | undefined = onto; let cyc = false;
       for (let i = 0; q && i < 20; i++) { if (q.parent === c.id) { cyc = true; break; } q = this.byId(q.parent); }
       const taken = this.climbers.some((o) => o.parent === onto.id && o.state === "linked" && o.locked && o.id !== c.id);
-      if (!cyc && !taken && Math.hypot(onto.x - c.x, onto.y - c.y) <= range) return { x: onto.x, y: onto.y - CFG.stackHeight, parent: onto.id };
+      if (!cyc && !taken && this.stackDepth(onto) < CFG.stackMax && Math.hypot(onto.x - c.x, onto.y - c.y) <= range) return { x: onto.x, y: onto.y - CFG.stackHeight, parent: onto.id };
     }
-    // short shuffle on bare metal
+    // short shuffle on bare metal: needs three of four tips on steel, so nobody inches across glass on one toe
     if (Math.hypot(tx - c.x, ty - c.y) <= this.currentReach() * 1.1 && findContacts(
       { ...c, x: tx, y: ty, angle: 0, state: "flying", grip: undefined },
       this.world, CFG.magnetism.snapDistance + this.stats.magnetRadius,
-    ).length > 0) {
+    ).length >= 3) {
       return { x: tx, y: ty, parent: null };
     }
     // otherwise hang on an anchored teammate near the drop point
@@ -470,9 +472,78 @@ export class Game {
       if (dd < bd) { bd = dd; best = o; }
     }
     if (!best) return null;
-    // stack: stand upright on the teammate's shoulders; one climber per set of shoulders
+    // stack: stand upright on the teammate's shoulders; one climber per set of shoulders, stacks up to stackMax
     if (this.climbers.some((o) => o.parent === best!.id && o.state === "linked" && o.locked && o.id !== c.id)) return null;
+    if (this.stackDepth(best) >= CFG.stackMax) return null;
     return { x: best.x, y: best.y - CFG.stackHeight, parent: best.id };
+  }
+
+  /** How many climbers stand in the stack that ends at `c` (c included). */
+  stackDepth(c: Climber): number {
+    let d = 1; let cur: Climber | undefined = c;
+    while (cur && cur.state === "linked" && cur.locked && cur.parent != null && d < 20) { cur = this.byId(cur.parent); d++; }
+    return d;
+  }
+
+  /** The stack under a climber, bottom first (excluding the climber itself). */
+  private stackBelow(c: Climber): Climber[] {
+    const out: Climber[] = []; let cur: Climber | undefined = c;
+    while (cur && cur.state === "linked" && cur.locked && cur.parent != null && out.length < 20) { cur = this.byId(cur.parent); if (cur) out.unshift(cur); }
+    return out;
+  }
+
+  /** A stack whose top reached steel becomes a ladder: everyone below crawls up over it, free of charge. */
+  private tryBridge(top: Climber) {
+    if (this.bridge) return;
+    // a ladder spans something you cannot stick to: the top must be standing over glass/plastic/paper
+    if (this.world.isMetal(top.x, top.y)) return;
+    // only hands on steel above the head count: feet on the shoulders below always touch something
+    const contacts = findContacts(top, this.world, CFG.magnetism.snapDistance + this.stats.magnetRadius).filter((k) => k.limb < 2 && k.y < top.y - 8);
+    if (!contacts.length) return;
+    const below = this.stackBelow(top);
+    if (!below.length) return;
+    if (!attachGrip(top, contacts, true)) return;
+    top.state = "stuck"; top.parent = null; top.locked = false; top.vx = 0; top.vy = 0;
+    this.floats.push({ x: top.x, y: top.y - 34, text: "LADDER! everyone up", life: 1.2, color: "#9be15d" });
+    this.awardNewHeight(top, "HUMAN LADDER", 60);
+    this.bridge = { queue: below.map((b) => b.id), crawler: null, frozen: new Set(below.map((b) => b.id)) };
+  }
+
+  private stepBridge(dt: number) {
+    const b = this.bridge; if (!b) return;
+    if (!b.crawler) {
+      const id = b.queue.shift();
+      if (id == null) { this.bridge = null; this.pickDefaultSelection(); return; }
+      const c = this.byId(id); if (!c || c.state === "lost") { return; }
+      // path: over every frozen teammate above me, then the highest anchored one, then one step above it
+      const others = this.climbers.filter((o) => o.id !== c.id && o.state !== "lost" && o.y < c.y && Math.abs(o.x - c.x) < 90).sort((p, q) => q.y - p.y);
+      const topmost = others[others.length - 1] ?? c;
+      const path = others.map((o) => ({ x: o.x, y: o.y })).concat([{ x: topmost.x, y: topmost.y - CFG.stackHeight }]);
+      b.frozen.delete(c.id);
+      b.crawler = { id: c.id, path, seg: 0, t: 0 };
+      c.state = "linked"; c.locked = true; c.parent = null; c.grip = undefined; c.angle = 0;
+      return;
+    }
+    const cr = b.crawler; const c = this.byId(cr.id);
+    if (!c || c.state === "lost") { b.crawler = null; return; }
+    const from = cr.seg === 0 ? { x: c.x, y: c.y } : cr.path[cr.seg - 1], to = cr.path[cr.seg];
+    if (!to) { b.crawler = null; return; }
+    const len = Math.max(1, Math.hypot(to.x - from.x, to.y - from.y));
+    cr.t += (CFG.crawlSpeed * dt) / len;
+    if (cr.t >= 1) {
+      c.x = to.x; c.y = to.y; cr.seg++; cr.t = 0;
+      if (cr.seg >= cr.path.length) {
+        // arrived above the ladder: hold steel if there is any, else stand on the top climber
+        const top = this.climbers.filter((o) => o.id !== c.id && o.state !== "lost" && (o.state === "stuck" || o.locked) && Math.abs(o.x - c.x) < 90 && o.y > c.y - 1).sort((p, q) => p.y - q.y)[0];
+        if (!this.stick(c, true)) { c.state = "linked"; c.locked = true; c.parent = top?.id ?? null; c.angle = 0; }
+        else { c.parent = null; c.locked = false; }
+        this.markHeight(c);
+        b.crawler = null;
+      }
+    } else {
+      c.x = from.x + (to.x - from.x) * cr.t; c.y = from.y + (to.y - from.y) * cr.t;
+      c.angle = Math.sin(cr.t * Math.PI * 2) * 0.35;
+    }
   }
 
   /** Crawl / reel a climber to a new hold. */
@@ -480,20 +551,25 @@ export class Game {
     const t = this.moveTarget(c, p);
     if (!t) { this.floats.push({ x: c.x, y: c.y - 30, text: "out of reach", life: 0.9, color: "#ff6b6b" }); return; }
     if (this.phase === "idle") this.phase = "running";
-    for (const o of this.climbers) if (o.parent === c.id && o.state === "linked") this.detach(o);
-    c.x = t.x; c.y = t.y;
-    c.vx = 0; c.vy = 0;
-    c.squash = 1;
-    c.grip = undefined;
+    const was = { x: c.x, y: c.y, grip: c.grip, state: c.state, parent: c.parent, locked: c.locked, angle: c.angle };
     if (t.parent == null) {
-      c.angle = 0;
-      if (!this.stick(c, true)) { c.state = "flying"; c.airTime = 0; c.parent = null; }
+      // a shuffle that finds no grip at the new spot stays put instead of dropping the climber
+      c.x = t.x; c.y = t.y; c.vx = 0; c.vy = 0; c.squash = 1; c.grip = undefined; c.angle = 0;
+      if (!this.stick(c, true)) {
+        Object.assign(c, was); c.vx = 0; c.vy = 0;
+        this.floats.push({ x: c.x, y: c.y - 30, text: "no grip there", life: 0.9, color: "#ff6b6b" });
+        return;
+      }
+      for (const o of this.climbers) if (o.parent === c.id && o.state === "linked") this.detach(o);
     }
     else {
+      for (const o of this.climbers) if (o.parent === c.id && o.state === "linked") this.detach(o);
       const a = this.byId(t.parent)!;
+      c.x = t.x; c.y = t.y; c.vx = 0; c.vy = 0; c.squash = 1; c.grip = undefined;
       c.state = "linked"; c.parent = a.id; c.locked = true;
       c.angle = 0;
       sfx.link();
+      this.tryBridge(c);
       this.feats.maxChain = Math.max(this.feats.maxChain, this.chainDepthAbove(c) + this.chainDepthBelow(c) + 1);
       this.awardNewHeight(c, "CHAIN BUILDER", 25);
     }
@@ -629,7 +705,9 @@ export class Game {
     for (const c of this.climbers) if (c.iframes > 0) c.iframes = Math.max(0, c.iframes - dt);
     this.stepHand(sdt);
 
+    this.stepBridge(sdt);
     for (const c of this.climbers) {
+      if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
       if (c.state === "flying") this.stepFlying(c, sdt);
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
@@ -644,6 +722,7 @@ export class Game {
     }
     // hanging chains whose parent vanished
     for (const c of this.climbers) {
+      if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
       if (c.state === "linked") {
         const p = this.byId(c.parent);
         if (!p || (p.state !== "stuck" && p.state !== "linked")) this.detach(c);

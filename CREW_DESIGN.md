@@ -27,7 +27,12 @@ Stars: finished, at or under par, nobody lost.
 | glass band a single fling cannot clear | ≥ 210 px |
 | glass band a 2-stack still clears | ≤ 270 px |
 
-A 3-high stack is not possible (chain length adds hangers side by side). Bands are 240–260 px.
+Stacks lock in upright, up to three high (`stackHeight` 56 px each). **Ladder:** when the top of a
+stack gets its hands on steel above, it grabs on and everyone below crawls up over the ladder
+automatically, no flings spent. Three under a band of ≤ ~110 px cross for free; taller bands need a
+fling from the top of the stack. A climber hanging from a CATCH cannot fling until it CLIMBs up.
+CLIMB's shuffle needs three of four tips on steel, so nobody inches across glass. Bands are 100 (ladder
+showcase) and 240–260 px.
 Over glass the pull back to the door equals steel on purpose: a weaker pull would touch down later on
 the way down, i.e. lower, and punish crossing glass.
 
@@ -38,7 +43,7 @@ any level is not beatable inside its budget. Par is the solver's best plus one.
 
 | Pack | Trick | Section that needs it |
 |---|---|---|
-| 1 Stack Up (shipped) | fling budget; **STACK**: CLIMB onto a teammate, fling from its back; **CATCH**: a falling climber grabs any stuck teammate within reach | glass bands; bumpers with a catcher below |
+| 1 Stack Up (shipped) | fling budget; **STACK**: CLIMB onto a teammate, lock in upright, fling from the top; **LADDER**: a stack that reaches steel carries everyone over; **CATCH**: a falling climber grabs any stuck teammate within reach | glass bands; a short band for the ladder; bumpers with a catcher below |
 | 2 | Octopus: holds two hangers, so stacks fork | split shelf needing a wide base |
 | 3 | Gecko: wall-kick off glass once per flight (tap) | chimney between glass walls |
 | 4 | Pair fling: SYNC landings within reach auto-link, top one gets a slingshot bonus | twin gap |

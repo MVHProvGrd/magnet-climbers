@@ -9,6 +9,10 @@ export const CFG = {
   minDrag: 14,
   /** how far above a teammate a stacked climber stands (px); the fling gain of a 2-stack */
   stackHeight: 56,
+  /** climbers standing on each other, base included */
+  stackMax: 3,
+  /** px/s a climber crawls over teammates when a ladder bridges a gap */
+  crawlSpeed: 240,
   segmentH: 340,
   climberRadius: 18,
   /** floor (danger line) speed in px/s at height 0 and growth per 1000px climbed */

@@ -36,7 +36,8 @@ export interface PackDef { id: string; name: string; blurb: string; levels: Leve
 
 export const INTROS = {
   flings: { title: "Flings are the budget", lines: ["No red line here. Take your time.", "Every fling counts. Finish under par for the second star, lose nobody for the third."] },
-  stack: { title: "New trick: STACK", lines: ["Glass too tall for one fling? Land one climber below it.", "Switch to CLIMB and drag the other onto it: it locks in standing on the first one's shoulders. FLING from up there."] },
+  stack: { title: "New trick: STACK", lines: ["Glass too tall for one fling? Land one climber below it.", "Switch to CLIMB and drag the next one onto it: it locks in standing on the shoulders below. Up to three high. FLING from the top."] },
+  ladder: { title: "New trick: LADDER", lines: ["Stack three under a short gap and the top one can grab the steel above.", "Then everyone crawls up over the ladder on their own. No flings spent."] },
   catch: { title: "New trick: CATCH", lines: ["A falling climber grabs any stuck teammate within arm's reach and hangs on.", "A hanging climber cannot fling: CLIMB it up onto the catcher first."] },
 } as const;
 
@@ -48,17 +49,17 @@ export const PACKS: PackDef[] = [
     id: "stack", name: "Stack Up", blurb: "Learn the fling budget, then climb each other over glass.",
     levels: [
       { id: "stack-1", name: "First Steps", seed: 1101, team: 2, goalCm: 45, flings: 5, par: 2, recipe: [steel, steel], intro: "flings" },
-      { id: "stack-2", name: "Two of Us", seed: 1102, team: 2, goalCm: 80, flings: 9, par: 5, recipe: [steel, steel, steel] },
-      { id: "stack-3", name: "Glass Ceiling", seed: 1103, team: 2, goalCm: 75, flings: 9, par: 5, recipe: [band(240), steel, steel], intro: "stack" },
-      { id: "stack-4", name: "Double Glazing", seed: 1104, team: 2, goalCm: 110, flings: 14, par: 10, recipe: [band(240), steel, band(240), steel] },
-      { id: "stack-5", name: "Three's a Ladder", seed: 1105, team: 3, goalCm: 110, flings: 14, par: 10, recipe: [steel, band(250), steel, steel] },
-      { id: "stack-6", name: "Side Door", seed: 1106, team: 2, goalCm: 110, flings: 12, par: 8, recipe: [band(240, { lane: "right" }), steel, band(240, { lane: "left" }), steel] },
+      { id: "stack-2", name: "Two of Us", seed: 1102, team: 2, goalCm: 80, flings: 7, par: 3, recipe: [steel, steel, steel] },
+      { id: "stack-3", name: "Glass Ceiling", seed: 1103, team: 2, goalCm: 75, flings: 8, par: 4, recipe: [band(240), steel, steel], intro: "stack" },
+      { id: "stack-4", name: "Double Glazing", seed: 1104, team: 2, goalCm: 110, flings: 11, par: 8, recipe: [band(240), steel, band(240), steel] },
+      { id: "stack-5", name: "Human Ladder", seed: 1105, team: 3, goalCm: 110, flings: 10, par: 7, recipe: [steel, band(90), steel, steel], intro: "ladder" },
+      { id: "stack-6", name: "Side Door", seed: 1106, team: 2, goalCm: 110, flings: 11, par: 8, recipe: [band(240, { lane: "right" }), steel, band(240, { lane: "left" }), steel] },
       { id: "stack-7", name: "Island Hop", seed: 1107, team: 2, goalCm: 110, flings: 12, par: 8, recipe: [band(260, { island: true }), steel, steel, steel] },
-      { id: "stack-8", name: "Sliding Trouble", seed: 1108, team: 3, goalCm: 110, flings: 14, par: 9, recipe: [steel, { kind: "bumper", y: 150, speed: 70 }, band(240), steel], intro: "catch" },
-      { id: "stack-9", name: "Long Way Up", seed: 1109, team: 3, goalCm: 150, flings: 21, par: 16, recipe: [band(240), steel, band(250), steel, steel] },
+      { id: "stack-8", name: "Sliding Trouble", seed: 1108, team: 3, goalCm: 110, flings: 11, par: 8, recipe: [steel, { kind: "bumper", y: 150, speed: 70 }, band(240), steel], intro: "catch" },
+      { id: "stack-9", name: "Long Way Up", seed: 1109, team: 3, goalCm: 150, flings: 20, par: 14, recipe: [band(240), steel, band(250), steel, steel] },
       { id: "stack-10", name: "No Room", seed: 1110, team: 3, goalCm: 145, flings: 18, par: 13, recipe: [band(250), band(240, { lane: "left" }), steel, steel, steel] },
-      { id: "stack-11", name: "Bumpers Below", seed: 1111, team: 3, goalCm: 150, flings: 19, par: 14, recipe: [{ kind: "bumper", y: 120, speed: 90 }, band(250), steel, { kind: "bumper", y: 200, speed: 80 }, steel] },
-      { id: "stack-12", name: "Summit", seed: 1112, team: 3, goalCm: 180, flings: 26, par: 21, recipe: [band(240), steel, band(260, { island: true }), steel, band(250), steel] },
+      { id: "stack-11", name: "Bumpers Below", seed: 1111, team: 3, goalCm: 150, flings: 17, par: 12, recipe: [{ kind: "bumper", y: 120, speed: 90 }, band(250), steel, { kind: "bumper", y: 200, speed: 80 }, steel] },
+      { id: "stack-12", name: "Summit", seed: 1112, team: 3, goalCm: 170, flings: 24, par: 18, recipe: [band(240), steel, band(250, { island: true }), steel, band(90), steel] },
     ],
   },
 ];
