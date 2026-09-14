@@ -489,8 +489,7 @@ function drawSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   ctx.restore();
 }
 
-/** Reversed-polarity plate: a glossy red enamel tile with a glowing N, matching the title art. */
-/** Right-polarity plate: glossy blue enamel with a glowing S. It pulls, and it is steel. */
+/** Blue Grabber field magnet: a glossy blue tile with a target cue. */
 function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   const pulse = 0.5 + 0.5 * Math.sin(t * 4);
   castShadow(ctx, z.x, z.y, z.w, z.h, 8, 1.4);
@@ -524,7 +523,7 @@ function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fillStyle = `rgba(${150 + pulse * 60},${200 + pulse * 40},255,1)`;
   ctx.shadowColor = "rgba(90,160,255,0.9)";
   ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText("S", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
+  ctx.fillText("◎", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
   ctx.shadowBlur = 0;
   const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
   gl.addColorStop(0, "rgba(255,255,255,0.28)");
@@ -534,7 +533,7 @@ function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fill();
   ctx.fillStyle = "rgba(200,225,255,0.9)";
   ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.fillText("ATTRACTS", z.x + z.w / 2, z.y + z.h - 6);
+  ctx.fillText("GRABS", z.x + z.w / 2, z.y + z.h - 6);
 }
 
 function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
@@ -557,7 +556,7 @@ function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.lineWidth = 1.2;
   roundRectPath(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 8);
   ctx.stroke();
-  // inner glass window with the glowing N
+  // inner window with a glowing outward-arrow cue
   const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
   ctx.fillStyle = "rgba(30,0,4,0.75)";
   roundRectPath(ctx, ix, iy, iw, ih, 5);
@@ -573,7 +572,7 @@ function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fillStyle = `rgba(255,${150 + pulse * 60},${150 + pulse * 60},1)`;
   ctx.shadowColor = "rgba(255,60,60,0.9)";
   ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText("N", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
+  ctx.fillText("↗", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
   ctx.shadowBlur = 0;
   // gloss streak
   const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
@@ -584,7 +583,7 @@ function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fill();
   ctx.fillStyle = "rgba(255,200,200,0.85)";
   ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.fillText("REPELS", z.x + z.w / 2, z.y + z.h - 6);
+  ctx.fillText("BOUNCE", z.x + z.w / 2, z.y + z.h - 6);
 }
 
 function zoneLabel(ctx: CanvasRenderingContext2D, text: string, z: NoStickZone, color: string) {

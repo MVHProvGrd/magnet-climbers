@@ -50,11 +50,13 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.fillStyle = shine; ctx.fill();
     ctx.save(); ctx.translate(p.x, p.y - 1); charm(ctx, theme, 34); ctx.restore();
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "900 9px system-ui";
-    ctx.fillText(p.active ? "REPEL" : "GRIP", p.x, z.y + 11);
+    ctx.fillText(p.active ? "BOUNCE" : "GRAB", p.x, z.y + 11);
     const urgent = p.remaining < .65 && Math.sin(time * 25) > 0;
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
-    ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
+    // A spring and a target communicate the action faster than compass letters.
+    ctx.font = "900 18px system-ui"; ctx.fillText(p.active ? "↗" : "◎", z.x + 14, p.y + 6);
+    ctx.font = "bold 11px system-ui"; ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
   } else {
     const steel = ctx.createLinearGradient(0, z.y, 0, z.y + z.h);
     steel.addColorStop(0, "#f1fcff"); steel.addColorStop(.3, "#a8bbc0"); steel.addColorStop(.5, "#f5ffff"); steel.addColorStop(1, "#657e89");

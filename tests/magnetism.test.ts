@@ -177,7 +177,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 52);
+  assert.equal(FRIDGE_ITEMS.length, 200);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
