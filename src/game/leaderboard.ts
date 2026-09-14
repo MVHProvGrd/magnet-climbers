@@ -7,7 +7,7 @@ export interface ScoreRow {
 }
 
 export type Mode = "crew" | "solo";
-export type BoardMode = Mode | "lifetime";
+export type BoardMode = Mode | "lifetime" | "coins";
 
 const DEFAULT_API = "https://magnet-climbers-api.magnetclimbers.workers.dev";
 /** Override with VITE_LEADERBOARD_URL; set it to "off" to disable the board. */

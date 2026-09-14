@@ -120,6 +120,7 @@ export const exact: Record<string, string> = {
   "So we climb": "Значит, лезем",
   "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it.": "Бросок, прилип, лезь. Сталь держит. Стекло, пластик и наклейки — нет. Красная линия — досягаемость ребёнка. Держитесь выше.",
   // board
+  "Richest climbers": "Богатейшие альпинисты", "COINS": "МОНЕТЫ", "Coins on hand right now. Spend them and you drop.": "Монеты на руках прямо сейчас. Потратите — опуститесь.",
   "Lifetime climbed": "Всего пройдено", "Highest climbs": "Рекорды высоты", "SOLO": "СОЛО", "LIFETIME": "ЗА ВСЁ ВРЕМЯ",
   "Every centimetre ever climbed, all modes, chill included. Pure dedication.": "Каждый сантиметр за всё время, все режимы, включая спокойный. Чистое упорство.",
   "No climbs yet. Be first.": "Пока нет забегов. Будьте первым.", "Could not reach the scoreboard.": "Таблица недоступна.",

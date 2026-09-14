@@ -101,6 +101,12 @@ export default {
         ).bind(limit).all();
         return json(rows.results, h);
       }
+      if (mode === "coins") {
+        const rows = await env.DB.prepare(
+          "SELECT name, coins AS cm, player_id, updated_at AS created_at FROM wallet WHERE player_id NOT LIKE 'smoke-%' AND coins > 0 ORDER BY coins DESC, updated_at ASC LIMIT ?",
+        ).bind(limit).all();
+        return json(rows.results, h);
+      }
       if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       const rows = await env.DB.prepare(
         "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
@@ -116,6 +122,12 @@ export default {
         if (!me) return json({ rank: null }, h);
         const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM lifetime WHERE cm > ? AND player_id NOT LIKE 'smoke-%'").bind(me.cm).first<{ n: number }>();
         return json({ rank: (above?.n ?? 0) + 1, cm: me.cm }, h);
+      }
+      if (mode === "coins" && player) {
+        const me = await env.DB.prepare("SELECT coins FROM wallet WHERE player_id = ?").bind(player).first<{ coins: number }>();
+        if (!me) return json({ rank: null }, h);
+        const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM wallet WHERE coins > ? AND player_id NOT LIKE 'smoke-%'").bind(me.coins).first<{ n: number }>();
+        return json({ rank: (above?.n ?? 0) + 1, cm: me.coins }, h);
       }
       if (!validMode(mode) || !player) return json({ error: "bad request" }, h, 400);
       const me = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(mode, player).first<{ cm: number }>();
@@ -157,6 +169,7 @@ export default {
       await env.DB.batch([
         env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId),
         env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, playerId),
+        env.DB.prepare("UPDATE wallet SET name = ? WHERE player_id = ?").bind(name, playerId),
       ]);
       return json({ ok: true, name }, h);
     }
@@ -176,6 +189,16 @@ export default {
       await env.DB.prepare(
         "INSERT INTO saves (player_id, token, blob, rev, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(player_id) DO UPDATE SET blob = excluded.blob, rev = excluded.rev, updated_at = excluded.updated_at",
       ).bind(playerId, token, blob, next, Date.now()).run();
+      // coins on hand for the COINS board: read straight from the save so it needs no extra call
+      try {
+        const data = JSON.parse(blob) as { coins?: unknown; name?: unknown };
+        const coins = Math.max(0, Math.min(1_000_000_000, Math.floor(Number(data?.coins ?? 0))));
+        let name = String(data?.name ?? "").replace(NAME_RE, "").trim().slice(0, 12);
+        if (name.length < 3 || nameIsProfane(name)) name = "climber";
+        if (Number.isFinite(coins)) await env.DB.prepare(
+          "INSERT INTO wallet (player_id, name, coins, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(player_id) DO UPDATE SET name = excluded.name, coins = excluded.coins, updated_at = excluded.updated_at",
+        ).bind(playerId, name, coins, Date.now()).run();
+      } catch { /* a save that is not JSON has no wallet */ }
       return json({ ok: true, rev: next }, h);
     }
 

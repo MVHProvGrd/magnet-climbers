@@ -733,23 +733,26 @@ export class Ui {
     const p = el("div", "panel board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
-        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : `${r.cm} cm`}</span></div>`).join("")
+        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span></div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
-      const localMine = mode === "lifetime" ? s.totalCm : mode === "crew" ? s.bestCm : s.bestSolo;
+      const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : mode === "crew" ? s.bestCm : s.bestSolo;
+      const fmt = (n: number) => mode === "coins" ? `$${n.toLocaleString()}` : fmtDistance(n);
       const mine = leaderboardEnabled
-        ? rank?.rank ? `You: #${rank.rank} · ${fmtDistance(rank.cm ?? 0)}` : "You: not on the board yet"
-        : `You: ${fmtDistance(localMine)}`;
+        ? rank?.rank ? `You: #${rank.rank} · ${fmt(rank.cm ?? 0)}` : "You: not on the board yet"
+        : `You: ${fmt(localMine)}`;
       p.innerHTML = `
-        <h2>${mode === "lifetime" ? "Lifetime climbed" : "Highest climbs"}</h2>
+        <h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2>
         <div class="tabs">
           <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
           <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
           <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
+          <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>
         </div>
         ${mode === "lifetime" ? `<p class="fine">Every centimetre ever climbed, all modes, chill included. Pure dedication.</p>` : ""}
+        ${mode === "coins" ? `<p class="fine">Coins on hand right now. Spend them and you drop.</p>` : ""}
         <div class="srows">${list}</div>
         <p class="tag">${mine} · playing as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
-        ${mode !== "lifetime" && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
+        ${(mode === "crew" || mode === "solo") && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
         <button class="ghost" data-a="back">BACK</button>`;
     };
     render(null, null);
@@ -759,7 +762,7 @@ export class Ui {
       const m = t.dataset.m as BoardMode | undefined;
       if (m) { this.showBoard(m); return; }
       if (t.dataset.a === "back") this.showMenu();
-      if (t.dataset.a === "share" && mode !== "lifetime") this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
+      if (t.dataset.a === "share" && (mode === "crew" || mode === "solo")) this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
       if (t.dataset.a === "name") this.showNamePrompt(() => this.showBoard(mode));
     });
     this.show(p);

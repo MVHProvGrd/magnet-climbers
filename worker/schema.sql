@@ -69,3 +69,12 @@ CREATE TABLE IF NOT EXISTS chat_mutes (
   player_id TEXT PRIMARY KEY,
   until INTEGER NOT NULL DEFAULT 0
 );
+
+-- coins on hand per player, refreshed from every cloud save
+CREATE TABLE IF NOT EXISTS wallet (
+  player_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  coins INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS wallet_coins ON wallet(coins DESC);

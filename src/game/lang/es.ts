@@ -108,6 +108,7 @@ export const exact: Record<string, string> = {
   "The kid \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge.": "El niño «ordenó». Ahora estamos en el suelo, y el cajón de los calcetines es lo siguiente. Quien siga en la nevera por la mañana se queda en la nevera.",
   "So we climb": "Así que escalamos",
   "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it.": "Lanza, pégate, sube. El acero sujeta. El cristal, el plástico y las pegatinas no. La línea roja es hasta donde llega el niño. Quédate por encima.",
+  "Richest climbers": "Escaladores más ricos", "COINS": "MONEDAS", "Coins on hand right now. Spend them and you drop.": "Monedas en mano ahora mismo. Gástalas y bajas.",
   "Lifetime climbed": "Total escalado", "Highest climbs": "Mayores alturas", "SOLO": "SOLO", "LIFETIME": "TOTAL",
   "Every centimetre ever climbed, all modes, chill included. Pure dedication.": "Cada centímetro escalado, todos los modos, tranquilo incluido. Pura dedicación.",
   "No climbs yet. Be first.": "Aún no hay escaladas. Sé el primero.", "Could not reach the scoreboard.": "No se pudo cargar la clasificación.",

@@ -108,6 +108,7 @@ export const exact: Record<string, string> = {
   "The kid \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge.": "小孩“收拾”了一下。现在我们在地板上，下一站是袜子抽屉。天亮时还在冰箱上的，就能留在冰箱上。",
   "So we climb": "所以我们爬",
   "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it.": "甩出、吸住、往上爬。钢板能吸。玻璃、塑料和贴纸不行。红线是小孩够得到的高度。待在它上面。",
+  "Richest climbers": "最富有的攀登者", "COINS": "金币", "Coins on hand right now. Spend them and you drop.": "此刻手上的金币。花掉就会掉名次。",
   "Lifetime climbed": "累计攀登", "Highest climbs": "最高纪录", "SOLO": "单人", "LIFETIME": "累计",
   "Every centimetre ever climbed, all modes, chill included. Pure dedication.": "爬过的每一厘米，所有模式，含休闲。纯粹的坚持。",
   "No climbs yet. Be first.": "还没有记录。来当第一个。", "Could not reach the scoreboard.": "无法连接排行榜。",

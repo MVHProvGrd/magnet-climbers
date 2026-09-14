@@ -108,6 +108,7 @@ export const exact: Record<string, string> = {
   "The kid \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge.": "아이가 \"정리\"를 했어요. 이제 우린 바닥에 있고, 다음은 양말 서랍. 아침까지 냉장고에 남은 인형만 냉장고에 살아요.",
   "So we climb": "그래서 올라가요",
   "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it.": "던지고, 붙고, 올라가요. 철은 붙어요. 유리, 플라스틱, 스티커는 안 붙어요. 빨간 선은 아이 손이 닿는 높이. 그 위에 있으세요.",
+  "Richest climbers": "가장 부유한 등반가", "COINS": "코인", "Coins on hand right now. Spend them and you drop.": "지금 보유한 코인. 쓰면 순위가 내려가요.",
   "Lifetime climbed": "누적 거리", "Highest climbs": "최고 기록", "SOLO": "솔로", "LIFETIME": "누적",
   "Every centimetre ever climbed, all modes, chill included. Pure dedication.": "지금까지 오른 모든 센티미터, 모든 모드, 느긋한 모드 포함. 순수한 끈기.",
   "No climbs yet. Be first.": "아직 기록이 없어요. 첫 번째가 되세요.", "Could not reach the scoreboard.": "순위표에 연결할 수 없어요.",
