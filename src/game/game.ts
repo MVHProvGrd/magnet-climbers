@@ -482,6 +482,34 @@ export class Game {
   }
 
   /** How many climbers stand in the stack that ends at `c` (c included). */
+  /** The climber standing highest in the stack that o belongs to. */
+  private stackTop(o: Climber): Climber {
+    let top = o;
+    for (let i = 0; i < 20; i++) {
+      const above = this.climbers.find((k) => k.parent === top.id && k.state === "linked" && k.locked);
+      if (!above) break; top = above;
+    }
+    return top;
+  }
+
+  /** A crew climber that comes down on a teammate lands on its shoulders and locks in: no CLIMB needed to stack. */
+  private landOnTeammate(c: Climber): boolean {
+    if (this.rules !== "crew") return false;
+    const onto = this.anchored.find((o) => o.id !== c.id && (o.state === "stuck" || o.locked) && Math.hypot(o.x - c.x, o.y - c.y) < 34);
+    if (!onto) return false;
+    const top = this.stackTop(onto);
+    if (top.id === c.id || this.stackDepth(top) >= CFG.stackMax) return false;
+    c.state = "linked"; c.locked = true; c.parent = top.id; c.grip = undefined;
+    c.x = top.x; c.y = top.y - CFG.stackHeight; c.angle = 0; c.vx = 0; c.vy = 0; c.spin = 0; c.squash = 1;
+    sfx.link();
+    this.burst(c.x, c.y, top.color, 5);
+    this.floats.push({ x: c.x, y: c.y - 30, text: "STACKED", life: 0.9, color: "#fff" });
+    this.feats.maxChain = Math.max(this.feats.maxChain, this.stackDepth(c));
+    this.markHeight(c);
+    this.tryBridge(c);
+    return true;
+  }
+
   stackDepth(c: Climber): number {
     let d = 1; let cur: Climber | undefined = c;
     while (cur && cur.state === "linked" && cur.locked && cur.parent != null && d < 20) { cur = this.byId(cur.parent); d++; }
@@ -842,6 +870,7 @@ export class Game {
     // magnet catch: only once the toy is back on the door (z = 0) over metal
     if ((c.noStick ?? 0) > 0) c.noStick = Math.max(0, (c.noStick ?? 0) - dt);
     if ((c.z ?? 0) <= 0 && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
+      if (this.landOnTeammate(c)) return;
       if (this.stick(c)) return;
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
       const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);

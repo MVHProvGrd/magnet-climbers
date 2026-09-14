@@ -36,7 +36,7 @@ export interface PackDef { id: string; name: string; blurb: string; levels: Leve
 
 export const INTROS = {
   flings: { title: "Flings are the budget", lines: ["No red line here. Take your time.", "Every fling counts. Finish under par for the second star, lose nobody for the third."] },
-  stack: { title: "New trick: STACK", lines: ["Glass too tall for one fling? Land one climber below it.", "Switch to CLIMB and drag the next one onto it: it locks in standing on the shoulders below. Up to three high. FLING from the top."] },
+  stack: { title: "New trick: STACK", lines: ["Glass too tall for one fling? Land one climber below it.", "Fling the next one onto it: it locks in standing on the shoulders below. Up to three high. FLING from the top. (CLIMB drags a climber onto a teammate too.)"] },
   ladder: { title: "New trick: LADDER", lines: ["Stack three under a short gap and the top one can grab the steel above.", "Then everyone crawls up over the ladder on their own. No flings spent."] },
   catch: { title: "New trick: CATCH", lines: ["A falling climber grabs any stuck teammate within arm's reach and hangs on.", "A hanging climber cannot fling: CLIMB it up onto the catcher first."] },
 } as const;
