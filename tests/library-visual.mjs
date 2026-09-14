@@ -10,6 +10,8 @@ if (existsSync("C:/Windows/Fonts/segoeui.ttf")) GlobalFonts.registerFromPath("C:
 await build({ configFile: false, logLevel: "warn", build: { lib: { entry: "tests/visual-entry.ts", formats: ["es"], fileName: () => "visual.mjs" }, outDir: "node_modules/.cache/magnet-climbers-render", minify: false } });
 const api = await import(pathToFileURL(resolve("node_modules/.cache/magnet-climbers-render/visual.mjs")).href);
 for (const theme of api.THEMES) api.setGadgetArt(theme, await loadImage(`public/art/gadgets/${theme}.png`));
+for (const id of api.OBSTACLE_IDS) api.setObstacleArt(id, await loadImage(`public/art/real-v1/obstacles/${id}.png`));
+for (const id of ['coin','gem','heart','magnet','extra','slowmo','reach']) api.setPickupArt(id, await loadImage(`public/art/real-v1/pickups/${id}.png`));
 const { Game, UPGRADES, FRIDGE_ITEMS, drawItemPreview, drawClimber, drawClimberShadow, resetRagdoll, stepRagdoll, braceLanding, stepGrip, SET_PIECES, populateSetPiece, drawSurface, drawZone, drawPower, setSound } = api;
 globalThis.document = { createElement: () => createCanvas(256, 256) }; setSound(false);
 const levels = Object.fromEntries(UPGRADES.map((u) => [u.key, 0]));
