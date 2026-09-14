@@ -1,4 +1,5 @@
 node_modules
+.art-venv/
 dist
 dev-dist
 # Local high-resolution generation intermediates; final art, prompts and QC are tracked.

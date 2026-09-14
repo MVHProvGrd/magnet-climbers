@@ -1,0 +1,257 @@
+[
+  {
+    "id": "coin",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      55,
+      145,
+      335,
+      425
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "gem",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      785,
+      125,
+      1055,
+      415
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "heart",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      1145,
+      140,
+      1435,
+      415
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "magnet",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      70,
+      515,
+      355,
+      852
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "reach",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      465,
+      520,
+      1060,
+      853
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "slowmo",
+    "family": "pickups",
+    "source": "pickups.png",
+    "crop": [
+      1120,
+      510,
+      1450,
+      850
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "extra",
+    "family": "pickups",
+    "source": "pocket-pal.png",
+    "crop": [
+      45,
+      65,
+      530,
+      740
+    ],
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "id": "attract",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      88,
+      80,
+      345,
+      300
+    ],
+    "size": [
+      201,
+      186
+    ]
+  },
+  {
+    "id": "repel",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      480,
+      80,
+      755,
+      300
+    ],
+    "size": [
+      200,
+      186
+    ]
+  },
+  {
+    "id": "glass",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      817,
+      80,
+      1163,
+      301
+    ],
+    "size": [
+      328,
+      194
+    ]
+  },
+  {
+    "id": "plastic",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      1215,
+      118,
+      1565,
+      262
+    ],
+    "size": [
+      322,
+      115
+    ]
+  },
+  {
+    "id": "gap",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      1660,
+      43,
+      1919,
+      302
+    ],
+    "size": [
+      228,
+      239
+    ]
+  },
+  {
+    "id": "vent",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      35,
+      448,
+      380,
+      650
+    ],
+    "size": [
+      306,
+      181
+    ]
+  },
+  {
+    "id": "dispenser",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      451,
+      381,
+      753,
+      695
+    ],
+    "size": [
+      257,
+      292
+    ]
+  },
+  {
+    "id": "calendar",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      809,
+      386,
+      1159,
+      690
+    ],
+    "size": [
+      326,
+      282
+    ]
+  },
+  {
+    "id": "ice-tray",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      1210,
+      434,
+      1572,
+      653
+    ],
+    "size": [
+      338,
+      189
+    ]
+  },
+  {
+    "id": "handle",
+    "family": "obstacles",
+    "source": "obstacles.png",
+    "crop": [
+      1599,
+      482,
+      1969,
+      610
+    ],
+    "size": [
+      345,
+      104
+    ]
+  }
+]

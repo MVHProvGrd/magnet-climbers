@@ -12,8 +12,10 @@ export const pickupArtReady: Promise<void> = typeof Image === "undefined" ? Prom
   const img = new Image();
   img.onload = () => { images.set(kind, img); resolve(); };
   img.onerror = () => resolve();
-  img.src = `${base}art/pickups/${kind}.png`;
+  img.src = `${base}art/real-v1/pickups/${kind}.png`;
 }))).then(() => undefined);
+
+export function setPickupArt(kind: PowerKind, image: HTMLImageElement) { images.set(kind, image); }
 
 /** Drawn centred on the origin at the game's pickup size (about 32 px). Returns false when no image is ready. */
 export function drawPickupImage(ctx: CanvasRenderingContext2D, kind: PowerKind, size = 34): boolean {
