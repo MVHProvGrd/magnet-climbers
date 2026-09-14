@@ -101,6 +101,8 @@ export interface Climber {
   pattern?: string;
   /** id of the climber this one is hanging on (linked state) */
   parent: number | null;
+  /** linked and standing upright on the parent's shoulders (a stack), rather than hanging from a catch */
+  locked?: boolean;
   /** distance from launcher must exceed reach before it can re-grab */
   leftLauncher: boolean;
   launcherId: number | null;

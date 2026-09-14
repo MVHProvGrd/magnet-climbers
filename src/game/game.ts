@@ -227,12 +227,12 @@ export class Game {
     if (best) {
       // a ladder (someone hangs on it) cannot fling: hand the aim to the climber on top of it instead
       if (this.isLadder(best) && this.mode === "fling") {
-        const top = this.climbers.filter((o) => o.parent === best!.id && o.state === "linked").sort((a, b) => a.y - b.y)[0];
+        const top = this.climbers.find((o) => o.parent === best!.id && o.state === "linked" && o.locked);
         if (top) {
           best = top;
           this.floats.push({ x: top.x, y: top.y - 34, text: "flinging the top climber", life: 1, color: "#fff" });
         } else {
-          this.floats.push({ x: best.x, y: best.y - 34, text: "someone's hanging on you", life: 1, color: "#ff6b6b" });
+          this.floats.push({ x: best.x, y: best.y - 34, text: "someone's hanging on you: CLIMB them up", life: 1, color: "#ff6b6b" });
           return;
         }
       }
@@ -321,6 +321,7 @@ export class Game {
 
   launch(c: Climber, v: Vec) {
     if (this.isLadder(c)) return;
+    if (c.state === "linked" && !c.locked) { this.floats.push({ x: c.x, y: c.y - 34, text: "CLIMB up first", life: 1, color: "#ff6b6b" }); return; }
     if (this.phase === "idle") this.phase = "running";
     // anything hanging on this climber loses its grip
     for (const o of this.climbers) {
@@ -328,7 +329,7 @@ export class Game {
     }
     c.state = "flying";
     c.grip = undefined;
-    c.parent = null;
+    c.parent = null; c.locked = false;
     c.vx = v.x;
     c.vy = v.y;
     c.spin = v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 8;
@@ -356,7 +357,7 @@ export class Game {
     }
     o.state = "flying";
     o.grip = undefined;
-    o.parent = null;
+    o.parent = null; o.locked = false;
     o.vx = 0;
     o.vy = 0;
     o.leftLauncher = true;
@@ -439,6 +440,14 @@ export class Game {
     let tx = p.x, ty = p.y;
     if (d > range) { tx = c.x + ((p.x - c.x) / d) * range; ty = c.y + ((p.y - c.y) / d) * range; }
     tx = Math.max(CFG.climberRadius, Math.min(W - CFG.climberRadius, tx));
+    // dropped onto a teammate: stack on its shoulders, whatever the steel underneath
+    const onto = this.anchored.find((o) => o.id !== c.id && Math.hypot(o.x - tx, o.y - ty) < 34);
+    if (onto) {
+      let q: Climber | undefined = onto; let cyc = false;
+      for (let i = 0; q && i < 20; i++) { if (q.parent === c.id) { cyc = true; break; } q = this.byId(q.parent); }
+      const taken = this.climbers.some((o) => o.parent === onto.id && o.state === "linked" && o.locked && o.id !== c.id);
+      if (!cyc && !taken && Math.hypot(onto.x - c.x, onto.y - c.y) <= range) return { x: onto.x, y: onto.y - CFG.stackHeight, parent: onto.id };
+    }
     // short shuffle on bare metal
     if (Math.hypot(tx - c.x, ty - c.y) <= this.currentReach() * 1.1 && findContacts(
       { ...c, x: tx, y: ty, angle: 0, state: "flying", grip: undefined },
@@ -461,10 +470,9 @@ export class Game {
       if (dd < bd) { bd = dd; best = o; }
     }
     if (!best) return null;
-    const dx = tx - best.x, dy = ty - best.y;
-    const dd = Math.hypot(dx, dy) || 1;
-    const r = Math.min(dd, reach - 4);
-    return { x: best.x + (dx / dd) * r, y: best.y + (dy / dd) * r, parent: best.id };
+    // stack: stand upright on the teammate's shoulders; one climber per set of shoulders
+    if (this.climbers.some((o) => o.parent === best!.id && o.state === "linked" && o.locked && o.id !== c.id)) return null;
+    return { x: best.x, y: best.y - CFG.stackHeight, parent: best.id };
   }
 
   /** Crawl / reel a climber to a new hold. */
@@ -483,8 +491,8 @@ export class Game {
     }
     else {
       const a = this.byId(t.parent)!;
-      c.state = "linked"; c.parent = a.id;
-      c.angle = Math.atan2(c.y - a.y, c.x - a.x) + Math.PI / 2;
+      c.state = "linked"; c.parent = a.id; c.locked = true;
+      c.angle = 0;
       sfx.link();
       this.feats.maxChain = Math.max(this.feats.maxChain, this.chainDepthAbove(c) + this.chainDepthBelow(c) + 1);
       this.awardNewHeight(c, "CHAIN BUILDER", 25);
@@ -773,7 +781,7 @@ export class Game {
     if ((this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) || falling) {
       const a = this.nearestAnchor(c, null);
       if (a) {
-        c.state = "linked";
+        c.state = "linked"; c.locked = false;
         c.grip = undefined;
         c.parent = a.id;
         c.vx = 0; c.vy = 0;

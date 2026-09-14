@@ -7,6 +7,8 @@ export const CFG = {
   /** launch speed per px of drag. 5.3 → max vertical jump ≈ 250px; the widest gaps need ladders */
   launchScale: 5.3,
   minDrag: 14,
+  /** how far above a teammate a stacked climber stands (px); the fling gain of a 2-stack */
+  stackHeight: 56,
   segmentH: 340,
   climberRadius: 18,
   /** floor (danger line) speed in px/s at height 0 and growth per 1000px climbed */
