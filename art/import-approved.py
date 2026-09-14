@@ -16,7 +16,7 @@ jobs = [
  ('pickups','coin','pickups.png',(55,145,335,425)),
  ('pickups','gem','pickups.png',(785,125,1055,415)),
  ('pickups','heart','pickups.png',(1145,140,1435,415)),
- ('pickups','magnet','pickups.png',(70,515,355,852)),
+ ('pickups','magnet','pickups.png',(42,500,410,875)),
  ('pickups','reach','pickups.png',(465,520,1060,853)),
  ('pickups','slowmo','pickups.png',(1120,510,1450,850)),
  ('pickups','extra','pocket-pal.png',(45,65,530,740)),

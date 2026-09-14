@@ -49,10 +49,10 @@
     "family": "pickups",
     "source": "pickups.png",
     "crop": [
-      70,
-      515,
-      355,
-      852
+      42,
+      500,
+      410,
+      875
     ],
     "size": [
       256,
