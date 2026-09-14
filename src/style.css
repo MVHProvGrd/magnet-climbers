@@ -99,9 +99,10 @@ html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); tou
 .guide-legend { margin: 0; padding: 12px; border-radius: 12px; background: #253343; font-size: 12px; line-height: 1.6; text-align: left; }
 .guide-tabs button { flex: 1 1 40%; }
 .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.guide-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; background: #283340; border: 1px solid #43515d; border-radius: 14px; }
-.guide-card canvas { width: 100%; max-width: 120px; height: auto; }
-.guide-card b { font-size: 14px; }
+.guide-card { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 10px 14px; background: linear-gradient(155deg, #303b4b 0%, #252e3b 62%, #202734 100%); border: 1px solid #4b5a69; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(0,0,0,.14); }
+.guide-card::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, #ff8a3d, #ffd166, #72d6c9); opacity: .75; }
+.guide-card canvas { width: 100%; max-width: 132px; height: auto; border-radius: 20px; background: radial-gradient(circle at 50% 43%, rgba(109, 190, 211, .17), rgba(20, 27, 37, 0) 67%); }
+.guide-card b { font-size: 14px; letter-spacing: .1px; }
 .guide-card span { font-size: 12px; line-height: 1.4; color: #ccd6df; }
 .swatches i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
 .panel button.primary.alt { background: #4fc3f7; }

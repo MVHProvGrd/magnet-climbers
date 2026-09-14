@@ -148,36 +148,47 @@ export function drawFieldMagnet(c: CanvasRenderingContext2D, z: NoStickZone, rep
   label(c,repel?"N":"S",50,90,11,"#f5e8c8"); c.restore();
 }
 
-/** Pickups have their own silhouettes rather than sharing a round coin badge. */
+/** Pickups are collectible fridge toys: chunky silhouettes, soft shadows and a face/detail to remember. */
 export function drawPickupObject(c: CanvasRenderingContext2D, kind: PowerKind) {
-  c.save(); c.lineCap="round"; c.lineJoin="round";
-  if(kind==="coin") { oval(c,0,0,12,14,"#bb8131"); oval(c,-1,-2,10,12,"#f6ce61"); star(c,-1,-2,6,"#fff2a7"); }
-  if(kind==="gem") {
-    c.fillStyle="#53c1df"; c.beginPath(); c.moveTo(-12,-6); c.lineTo(-6,-14); c.lineTo(8,-12); c.lineTo(14,-3); c.lineTo(0,15); c.closePath(); c.fill();
-    line(c,[-12,-6,14,-3,0,15,-3,-6,8,-12],"#d0fcff",1.5); star(c,-9,-14,4,"#fff");
+  c.save(); c.lineCap = "round"; c.lineJoin = "round";
+  const ink = "#263241";
+  const shadow = (x: number, y: number, rx: number, ry: number) => oval(c, x, y, rx, ry, "rgba(9,16,25,.34)");
+  if (kind === "coin") {
+    shadow(2, 15, 15, 4); oval(c, 1, 1, 16, 17, ink); oval(c, -1, -2, 14, 15, "#e4a83e");
+    oval(c, -3, -5, 10, 11, "#ffd86b"); oval(c, -6, -8, 3, 2, "#fff4b6");
+    label(c, "+", -2, 2, 15, "#9b6527"); star(c, 7, 7, 4, "#fff0a3");
   }
-  if(kind==="heart") {
-    box(c,-15,-11,30,23,"#f8e8c9",4); box(c,-4,-8,8,17,"#dd6375",1); box(c,-10,-3,20,7,"#dd6375",1);
-    line(c,[-8,-11,-8,-16,8,-16,8,-11],"#c88a6b",2);
+  if (kind === "gem") {
+    shadow(2, 15, 14, 4); c.fillStyle = ink; c.beginPath(); c.moveTo(-15, -5); c.lineTo(-7, -17); c.lineTo(8, -15); c.lineTo(16, -4); c.lineTo(1, 17); c.closePath(); c.fill();
+    c.fillStyle = "#42b9da"; c.beginPath(); c.moveTo(-11, -5); c.lineTo(-5, -12); c.lineTo(8, -11); c.lineTo(12, -3); c.lineTo(0, 12); c.closePath(); c.fill();
+    c.fillStyle = "#9beeff"; c.beginPath(); c.moveTo(-5, -12); c.lineTo(1, -3); c.lineTo(8, -11); c.lineTo(12, -3); c.lineTo(0, 1); c.closePath(); c.fill();
+    line(c, [-11, -5, 0, 1, 0, 12], "#e3fcff", 1.5); star(c, -10, -15, 4, "#fff6be");
   }
-  if(kind==="magnet") {
-    c.strokeStyle="#d65757"; c.lineWidth=8; c.beginPath(); c.moveTo(-10,-11); c.lineTo(-10,2); c.bezierCurveTo(-10,18,10,18,10,2); c.lineTo(10,-11); c.stroke();
-    box(c,-14,-14,8,7,"#eef8ec",1); box(c,6,-14,8,7,"#eef8ec",1); star(c,0,-6,5,"#ffdc77");
+  if (kind === "heart") {
+    shadow(1, 15, 19, 4); box(c, -18, -12, 36, 28, ink, 8); box(c, -15, -9, 30, 23, "#fff3d3", 6);
+    box(c, -5, -7, 10, 19, "#e46678", 2); box(c, -12, -1, 24, 8, "#e46678", 2);
+    line(c, [-9, -13, -9, -18, 9, -18, 9, -13], "#d7976e", 3); oval(c, -9, -4, 2, 2, "#fff"); oval(c, 9, -4, 2, 2, "#fff");
   }
-  if(kind==="slowmo") {
-    oval(c,0,3,15,13,"#d96350"); oval(c,-1,0,10,10,"#fff1d4");
-    for(let i=0;i<8;i++) { const a=i*TAU/8; line(c,[Math.cos(a)*7,Math.sin(a)*7,Math.cos(a)*8.5,Math.sin(a)*8.5],"#775d4b",1); }
-    line(c,[0,-6,0,0,5,2],"#775d4b",1.8); line(c,[-5,-12,0,-17,5,-12],"#78a16e",3);
+  if (kind === "magnet") {
+    shadow(0, 16, 19, 4); c.strokeStyle = ink; c.lineWidth = 14; c.beginPath(); c.moveTo(-13, -13); c.lineTo(-13, 1); c.bezierCurveTo(-13, 22, 13, 22, 13, 1); c.lineTo(13, -13); c.stroke();
+    c.strokeStyle = "#ef665e"; c.lineWidth = 10; c.stroke(); box(c, -19, -17, 11, 10, ink, 2); box(c, 8, -17, 11, 10, ink, 2);
+    box(c, -17, -16, 8, 7, "#f2f0d6", 1); box(c, 9, -16, 8, 7, "#f2f0d6", 1); star(c, 0, -3, 5, "#ffdb63");
+    oval(c, -6, -1, 2, 2, "#fff"); oval(c, 6, -1, 2, 2, "#fff");
   }
-  if(kind==="reach") {
-    box(c,-15,-9,17,21,"#ecc659",5); box(c,-10,-6,9,9,"#e98753",3);
-    box(c,1,-2,13,7,"#fff5c5",1); for(let i=0;i<4;i++) line(c,[3+i*3,-2,3+i*3,1],"#665942",1);
-    line(c,[14,-3,14,7],"#afbfc6",2);
+  if (kind === "slowmo") {
+    shadow(1, 15, 18, 4); oval(c, 1, 3, 18, 16, ink); oval(c, 0, 0, 15, 13, "#ef795d"); oval(c, -2, -2, 11, 11, "#fff1d1");
+    for (let i = 0; i < 8; i++) { const a = i * TAU / 8; line(c, [-2 + Math.cos(a) * 7, -2 + Math.sin(a) * 7, -2 + Math.cos(a) * 9, -2 + Math.sin(a) * 9], "#69584e", 1.5); }
+    line(c, [-2, -8, -2, -2, 5, 2], "#69584e", 2.2); line(c, [-8, -14, -2, -20, 5, -14], "#7ca76e", 4); oval(c, -2, -2, 2, 2, "#69584e");
   }
-  if(kind==="extra") {
-    box(c,-12,-16,24,32,"#f0c780",4); box(c,-9,-12,18,25,"#567f8e",6);
-    oval(c,0,-5,4,4,"#b6e4a0"); line(c,[0,0,0,6],"#b6e4a0",3); line(c,[-5,1,0,3,5,1],"#b6e4a0",2.5); line(c,[-4,10,0,6,4,10],"#b6e4a0",2.5);
-    star(c,12,-11,6,"#fff0a6");
+  if (kind === "reach") {
+    shadow(2, 14, 18, 4); box(c, -18, -13, 24, 27, ink, 7); box(c, -14, -10, 17, 21, "#efc95f", 5); box(c, -9, -7, 10, 10, "#ed8653", 3);
+    box(c, 3, -5, 17, 9, ink, 2); box(c, 4, -3, 17, 6, "#fff2bd", 1); for (let i = 0; i < 5; i++) line(c, [7 + i * 3, -3, 7 + i * 3, 1], "#645a4e", 1);
+    line(c, [20, -6, 20, 6], "#d9e6e4", 3); line(c, [20, -6, 23, -3], "#d9e6e4", 2); line(c, [20, 6, 23, 3], "#d9e6e4", 2);
+  }
+  if (kind === "extra") {
+    shadow(0, 17, 15, 4); box(c, -15, -18, 30, 36, ink, 8); box(c, -12, -15, 24, 30, "#f2c970", 6); box(c, -8, -11, 16, 24, "#4e7c8a", 6);
+    oval(c, 0, -5, 5, 5, "#b9e6a4"); line(c, [0, 1, 0, 9], "#b9e6a4", 3.5); line(c, [-6, 3, 0, 5, 6, 3], "#b9e6a4", 3); line(c, [-5, 13, 0, 8, 5, 13], "#b9e6a4", 3);
+    oval(c, -2, -6, 1, 1, ink); oval(c, 2, -6, 1, 1, ink); star(c, 14, -14, 6, "#fff0a6");
   }
   c.restore();
 }
