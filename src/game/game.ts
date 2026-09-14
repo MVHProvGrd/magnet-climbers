@@ -343,6 +343,7 @@ export class Game {
     c.z = 0; c.vz = CFG.hop.liftMin + (CFG.hop.liftFull - CFG.hop.liftMin) * pull;
     resetRagdoll(c);
     c.leftLauncher = false;
+    c.launchY = c.y; c.fell = false;
     c.launcherId = this.launcherFor(c)?.id ?? null;
     c.airTime = 0;
     c.squash = 1;
@@ -857,12 +858,13 @@ export class Game {
     }
     // teammate grab: after apex, within reach of an anchored teammate with chain room.
     // Off by default: it made flings unpredictable. CLIMB is the deliberate way to chain.
-    // CATCH: in crew, a climber that is falling grabs any anchored teammate within arm's reach
-    const falling = this.rules === "crew" && c.vy > 220 && c.leftLauncher && c.airTime > 0.25 && !(c.noStick && c.noStick > 0);
+    // CATCH: in crew, a climber that was knocked off or has fallen back past where its fling
+    // started grabs any anchored teammate within arm's reach. A normal fling on its way down is not a fall.
+    if (c.vy > 0 && c.launchY != null && c.y > c.launchY - 10) c.fell = true;
+    const falling = this.rules === "crew" && !!c.fell && c.vy > 220 && c.leftLauncher && c.airTime > 0.25 && !(c.noStick && c.noStick > 0);
     if ((this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) || falling) {
       const a = this.nearestAnchor(c, null);
-      // a CATCH is a hand reaching up: the catcher has to be below the faller, not beside it
-      if (a && !(falling && a.y < c.y + 12)) {
+      if (a) {
         c.state = "linked"; c.locked = false;
         c.grip = undefined;
         c.parent = a.id;
@@ -901,7 +903,7 @@ export class Game {
         released = c.grip.contacts.some((p) => Math.hypot(p.x - c.x, p.y - c.y) > 65);
       }
       if (released) {
-        c.state = "flying"; c.grip = undefined; c.vx = dx / Math.max(dt, 0.001); c.vy = 35;
+        c.state = "flying"; c.grip = undefined; c.vx = dx / Math.max(dt, 0.001); c.vy = 35; c.fell = true;
         c.airTime = 0; c.noStick = 0.18; resetRagdoll(c); return;
       }
     }
@@ -917,7 +919,7 @@ export class Game {
             c.vx = away * 260 + b.vx * 0.6;
             c.vy = (c.y < b.y + b.h / 2 ? -180 : 180) + b.vy * 0.6;
             resetRagdoll(c);
-            c.leftLauncher = true;
+            c.leftLauncher = true; c.fell = true;
             c.airTime = 0;
             c.noStick = 0.35;
             this.damage(c);
@@ -1039,7 +1041,7 @@ export class Game {
           continue;
         }
         c.state = "flying"; c.grip = undefined; c.parent = null;
-        c.leftLauncher = true; c.airTime = 0;
+        c.leftLauncher = true; c.airTime = 0; c.fell = true;
         c.vx = -h.side * 260; c.vy = CFG.handShove; c.spin = -h.side * 7;
         c.noStick = 0.3;
         resetRagdoll(c);

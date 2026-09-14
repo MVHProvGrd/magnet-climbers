@@ -117,6 +117,10 @@ export interface Climber {
   iframes: number;
   /** seconds during which the magnets will not catch (right after being knocked off) */
   noStick?: number;
+  /** flight height this fling started from; a flier back below it has missed and is falling */
+  launchY?: number;
+  /** knocked off or fallen past its launch point: teammates may CATCH it */
+  fell?: boolean;
   /** World-space magnetic tips. Optional so v1 saves remain readable. */
   grip?: MagneticGrip;
   ragdoll?: Ragdoll;
