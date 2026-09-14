@@ -95,6 +95,10 @@ export interface Climber {
   spin: number;
   state: ClimberState;
   color: string;
+  /** cosmetic body (see creatures.ts); renderers fall back to "toy" when missing or unknown */
+  creature?: string;
+  /** cosmetic colours/effects id; `color` is already resolved from it */
+  pattern?: string;
   /** id of the climber this one is hanging on (linked state) */
   parent: number | null;
   /** distance from launcher must exceed reach before it can re-grab */

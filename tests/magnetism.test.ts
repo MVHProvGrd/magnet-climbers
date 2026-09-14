@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import "./audio.test";
+import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { World } from "../src/game/world";

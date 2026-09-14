@@ -1,4 +1,8 @@
-import { RESERVE_COST, SKINS, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { RESERVE_COST, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
+import { drawClimber, drawClimberShadow } from "./climber-render";
+import { resetRagdoll } from "./ragdoll";
+import type { Climber } from "./types";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, type BoardMode, type ScoreRow } from "./leaderboard";
 import { nameReason } from "./profanity";
@@ -13,7 +17,14 @@ export interface UiHandlers {
   onEndRun(): void;
   onBuy(key: UpgradeKey): void;
   onBuyReserve(): void;
-  onBuySkin(key: string): void;
+  /** Wear a creature + pattern for solo runs (and as the crew default). */
+  onWear(look: Look): void;
+  /** Dress one crew slot. */
+  onWearCrew(slot: number, look: Look): void;
+  /** The one-time free creature choice. */
+  onPickFirst(creature: string): void;
+  /** Spend coins on the prize machine; null when unaffordable or the collection is complete. */
+  onSpin(): PatternDef | null;
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
   onToggleMusic(): void;
@@ -91,12 +102,14 @@ export class Ui {
 
   showMenu() {
     const s = this.save();
+    if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
     const p = el("div", "panel menu");
     p.innerHTML = `
       <div class="rail">
         <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
         <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
         <span class="grow"></span>
+        <button class="icon" data-a="story" title="Story" aria-label="Story">📜</button>
         <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
         <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
       </div>
@@ -116,7 +129,7 @@ export class Ui {
       </label>
       <div class="pair">
         <button data-a="shop">UPGRADES</button>
-        <button data-a="story">STORY</button>
+        <button data-a="collection">🎨 CREATURES</button>
       </div>
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
@@ -127,6 +140,7 @@ export class Ui {
       if (a === "crew") this.h.onPlay("crew");
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
+      if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
       if (a === "guide") this.showFieldGuide();
@@ -145,6 +159,128 @@ export class Ui {
         g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
       });
     }
+  }
+
+  /** Animated preview canvases: one fake climber per card, idling on the fridge. */
+  private previewLoop: number | null = null;
+  private startPreviews(p: HTMLElement) {
+    const cards = Array.from(p.querySelectorAll<HTMLCanvasElement>("canvas[data-look]"));
+    const climbers = cards.map((cv, i) => {
+      const [creature, pattern] = cv.dataset.look!.split("|");
+      const c: Climber = { id: 100 + i, x: 50, y: 58, vx: 0, vy: 0, angle: 0, spin: 0, state: "stuck", color: patternColors(pattern)[0], creature, pattern,
+        parent: null, leftLauncher: true, launcherId: null, airTime: 0, squash: 0, hp: 3, iframes: 0 };
+      resetRagdoll(c); return c;
+    });
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      if (!p.isConnected) { this.previewLoop = null; return; }
+      const t = (now - t0) / 1000;
+      cards.forEach((cv, i) => {
+        const ctx = cv.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
+        const c = climbers[i]; c.angle = Math.sin(t * 1.3 + i) * 0.12; c.squash = Math.sin(t * 2.2 + i) * 0.08;
+        for (const [limb, joint] of c.ragdoll!.limbs.entries()) { joint.angle = Math.sin(t * 1.6 + i + limb * 1.7) * 0.25; joint.bend = Math.sin(t * 1.9 + i * 2 + limb) * 0.3; }
+        drawClimberShadow(ctx, c); drawClimber(ctx, c, false, t);
+      });
+      this.previewLoop = requestAnimationFrame(tick);
+    };
+    if (this.previewLoop) cancelAnimationFrame(this.previewLoop);
+    this.previewLoop = requestAnimationFrame(tick);
+  }
+
+  /** Creatures and patterns: what you own, what you wear, how to earn the rest. */
+  showCollection(tab: "creatures" | "patterns" | "crew" = "creatures") {
+    const s = this.save();
+    const p = el("div", "panel collection");
+    const teamSize = statsFor(s.upgrades).teamSize;
+    const owned = (c: CreatureDef) => s.creatures.includes(c.id);
+    let body = "";
+    if (tab === "creatures") {
+      body = `<div class="guide-grid">${CREATURES.map((c) => {
+        const on = s.creature === c.id, has = owned(c);
+        return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-c="${c.id}" ${has ? "" : "disabled"}>
+          <canvas width="200" height="200" data-look="${c.id}|${has ? s.pattern : "stealth"}"></canvas>
+          <b>${esc(c.name)}</b><span>${has ? esc(c.blurb) : "🔒 " + esc(unlockText(c.unlock))}</span>${on ? "<i class=\"tick\">WEARING</i>" : ""}
+        </button>`; }).join("")}</div>`;
+    } else if (tab === "patterns") {
+      body = `<div class="guide-grid">${PATTERNS.map((k) => {
+        const on = s.pattern === k.id, has = s.patterns.includes(k.id);
+        return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-p="${k.id}" ${has ? "" : "disabled"}>
+          <canvas width="200" height="200" data-look="${has ? s.creature : "toy"}|${k.id}"></canvas>
+          <b>${esc(k.name)} <em class="r ${k.rarity}">${k.rarity}</em></b>
+          <span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span>${on ? "<i class=\"tick\">WEARING</i>" : has ? "" : "<span>🔒 prize machine</span>"}
+        </button>`; }).join("")}</div>
+        <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${PRIZE_COST}</button>`;
+    } else {
+      const slots = Array.from({ length: teamSize }, (_, i) => s.crew[i] ?? { creature: s.creature, pattern: s.pattern });
+      body = `<p class="tag">Tap a toy to change its creature, tap the swatch for its pattern. ${teamSize} climbers start a crew run.</p>
+        <div class="guide-grid">${slots.map((l, i) => `<div class="guide-card look">
+          <canvas width="200" height="200" data-look="${l.creature}|${l.pattern}"></canvas>
+          <button class="chip" data-slot="${i}" data-cycle="c">${esc(creatureById(l.creature).name)} ›</button>
+          <button class="chip" data-slot="${i}" data-cycle="p"><span class="swatches">${patternColors(l.pattern).slice(0, 3).map((c) => `<i style="background:${c}"></i>`).join("")}</span>${esc(patternById(l.pattern).name)} ›</button>
+        </div>`).join("")}</div>`;
+    }
+    p.innerHTML = `<h2>Collection</h2>
+      <div class="tabs"><button class="${tab === "creatures" ? "on" : ""}" data-tab="creatures">CREATURES ${s.creatures.length}/${CREATURES.length}</button><button class="${tab === "patterns" ? "on" : ""}" data-tab="patterns">PATTERNS ${s.patterns.length}/${PATTERNS.length}</button><button class="${tab === "crew" ? "on" : ""}" data-tab="crew">CREW</button></div>
+      ${body}
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-c],[data-p],[data-slot],[data-a]");
+      if (!t) return;
+      if (t.dataset.tab) { this.showCollection(t.dataset.tab as "creatures"); return; }
+      if (t.dataset.c) { this.h.onWear({ creature: t.dataset.c as CreatureId, pattern: this.save().pattern }); this.showCollection("creatures"); return; }
+      if (t.dataset.p) { this.h.onWear({ creature: this.save().creature, pattern: t.dataset.p }); this.showCollection("patterns"); return; }
+      if (t.dataset.slot) {
+        const sv = this.save(); const i = Number(t.dataset.slot);
+        const cur = sv.crew[i] ?? { creature: sv.creature, pattern: sv.pattern };
+        const next = (list: string[], id: string) => list[(list.indexOf(id) + 1) % list.length];
+        this.h.onWearCrew(i, t.dataset.cycle === "c" ? { creature: next(sv.creatures, cur.creature) as CreatureId, pattern: cur.pattern } : { creature: cur.creature, pattern: next(sv.patterns, cur.pattern) });
+        this.showCollection("crew"); return;
+      }
+      if (t.dataset.a === "prize") this.showPrize();
+      if (t.dataset.a === "back") this.showMenu();
+    });
+    this.show(p);
+    this.startPreviews(p);
+  }
+
+  /** The coin prize machine: visible odds, no duplicates, one pattern per spin. */
+  showPrize(result: PatternDef | null = null) {
+    const s = this.save();
+    const left = PATTERNS.filter((k) => !s.patterns.includes(k.id));
+    const p = el("div", "panel small prize");
+    const can = s.coins >= PRIZE_COST && left.length > 0;
+    p.innerHTML = `<h2>Prize machine</h2>
+      ${result ? `<div class="reveal"><canvas width="200" height="200" data-look="${s.creature}|${result.id}"></canvas><b>${esc(result.name)}</b><em class="r ${result.rarity}">${result.rarity}</em><p class="tag">Now wearing it. Change any time in the collection.</p></div>`
+        : `<div class="story-icon">🎰</div><p class="tag">One spin, one new pattern. Never a duplicate.<br/>${left.length} left to find.</p>`}
+      <p class="fine">Odds: common ${PRIZE_ODDS.common}% · rare ${PRIZE_ODDS.rare}% · epic ${PRIZE_ODDS.epic}%</p>
+      <button class="primary ${can ? "" : "disabled"}" data-a="spin" ${can ? "" : "disabled"}>${left.length ? `SPIN · $${PRIZE_COST}` : "COLLECTION COMPLETE"}</button>
+      <p class="fine">You have <span class="coin">$${s.coins}</span></p>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "spin") { const won = this.h.onSpin(); if (won) this.showPrize(won); }
+      if (a === "back") this.showCollection("patterns");
+    });
+    this.show(p);
+    if (result) this.startPreviews(p);
+  }
+
+  /** One-time offer after the first run: choose a creature to own. */
+  showFirstPick() {
+    const s = this.save();
+    const choices = CREATURES.filter((c) => c.id !== "toy");
+    const p = el("div", "panel collection");
+    p.innerHTML = `<h2>Pick your first creature</h2>
+      <p class="tag">One is yours right now, free. The rest are earned by climbing.</p>
+      <div class="guide-grid">${choices.map((c) => `<button class="guide-card look" data-c="${c.id}">
+        <canvas width="200" height="200" data-look="${c.id}|${s.pattern}"></canvas><b>${esc(c.name)}</b><span>${esc(c.blurb)}</span></button>`).join("")}</div>`;
+    p.addEventListener("click", (e) => {
+      const id = (e.target as HTMLElement).closest<HTMLElement>("[data-c]")?.dataset.c as CreatureId | undefined;
+      if (!id) return;
+      this.h.onPickFirst(id); this.toast(`${creatureById(id).name} joined your fridge`); this.showMenu();
+    });
+    this.show(p);
+    this.startPreviews(p);
   }
 
   showFieldGuide(family: ItemFamily = "surface") {
@@ -206,24 +342,14 @@ export class Ui {
           <button class="buy ${s.chill ? "" : ""}" data-a="chill">${s.chill ? "ON" : "OFF"}</button>
         </div>
       </div>
-      <h3>Skins</h3>
-      <div class="rows">${SKINS.map((k) => {
-        const owned = s.skins.includes(k.key);
-        const active = s.skin === k.key;
-        const can = owned || s.coins >= k.cost;
-        return `<div class="row">
-          <div class="info"><b>${k.name}</b><span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span></div>
-          <button class="buy ${can ? "" : "disabled"}" data-s="${k.key}" ${can ? "" : "disabled"}>${active ? "ON" : owned ? "USE" : `$${k.cost}`}</button>
-        </div>`;
-      }).join("")}</div>
+      <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
       <button data-a="shop">UPGRADES &amp; RESERVES</button>
       <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced to the cloud after every run</p>
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const a = t.dataset.a;
-      const sk = t.closest<HTMLElement>("[data-s]")?.dataset.s;
-      if (sk) { this.h.onBuySkin(sk); this.showSettings(); return; }
+      if (a === "collection") { this.showCollection(); return; }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
@@ -267,16 +393,7 @@ export class Ui {
           <button class="buy ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}" data-r="1" ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}>$${RESERVE_COST}</button>
         </div>
       </div>
-      <h3>Skins</h3>
-      <div class="rows">${SKINS.map((k) => {
-        const owned = s.skins.includes(k.key);
-        const active = s.skin === k.key;
-        const can = owned || s.coins >= k.cost;
-        return `<div class="row">
-          <div class="info"><b>${k.name}</b><span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span></div>
-          <button class="buy ${can ? "" : "disabled"}" data-s="${k.key}" ${can ? "" : "disabled"}>${active ? "ON" : owned ? "USE" : `$${k.cost}`}</button>
-        </div>`;
-      }).join("")}</div>
+      <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
     p.addEventListener("click", (e) => {
@@ -284,8 +401,7 @@ export class Ui {
       const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
       if (k) { this.h.onBuy(k); this.showShop(); return; }
       if (t.closest<HTMLElement>("[data-r]")) { this.h.onBuyReserve(); this.showShop(); return; }
-      const sk = t.closest<HTMLElement>("[data-s]")?.dataset.s;
-      if (sk) { this.h.onBuySkin(sk); this.showShop(); return; }
+      if (t.dataset.a === "collection") { this.showCollection(); return; }
       if (t.dataset.a === "back") this.showMenu();
     });
     this.show(p);
@@ -491,7 +607,7 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[] }) {
     this.lastGameOver = o;
     const p = el("div", "panel small");
     p.innerHTML = `
@@ -499,6 +615,7 @@ export class Ui {
       <div class="big">${o.cm} cm</div>
       <p class="tag">${o.chill ? "Chill mode: no coins or records. Metres added to the world total." : `Best ${o.best} cm · earned <span class="coin">$${o.coins}</span>`}</p>
       <p class="tag rank" hidden></p>
+      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
       <div class="revive" ${o.ended ? "hidden" : ""}>
         ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
         ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
@@ -512,6 +629,8 @@ export class Ui {
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
+      const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
+      if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }
     });
     this.show(p);
     return p;

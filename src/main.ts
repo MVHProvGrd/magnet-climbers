@@ -4,8 +4,9 @@ import { Game, type RunSnapshot } from "./game/game";
 import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
-import { loadSave, writeSave } from "./game/save";
-import { UPGRADES, W, upgradeCost, RESERVE_COST, SKINS, type UpgradeKey } from "./game/config";
+import { loadSave, writeSave, migrateLooks } from "./game/save";
+import { UPGRADES, W, upgradeCost, RESERVE_COST, statsFor, type UpgradeKey } from "./game/config";
+import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -62,7 +63,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -87,6 +88,10 @@ function mergeCloudBlob(blob: string) {
     save.reserves = Math.max(save.reserves, c.reserves ?? 0);
     for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], c.upgrades?.[k] ?? 0);
     save.skins = Array.from(new Set([...save.skins, ...(c.skins ?? [])]));
+    save.creatures = Array.from(new Set([...save.creatures, ...(c.creatures ?? [])]));
+    save.patterns = Array.from(new Set([...save.patterns, ...(c.patterns ?? [])]));
+    save.hitsTotal = Math.max(save.hitsTotal, c.hitsTotal ?? 0); save.spins = Math.max(save.spins, c.spins ?? 0);
+    migrateLooks(save);
     if (c.name) save.name = c.name;
   } catch { /* ignore */ }
 }
@@ -187,14 +192,28 @@ const ui = new Ui(uiRoot, () => save, {
     if (save.coins < RESERVE_COST || save.reserves >= 5) return;
     save.coins -= RESERVE_COST; save.reserves += 1; persist();
   },
-  onBuySkin: (key) => {
-    const sk = SKINS.find((k) => k.key === key);
-    if (!sk) return;
-    if (!save.skins.includes(key)) {
-      if (save.coins < sk.cost) return;
-      save.coins -= sk.cost; save.skins.push(key);
-    }
-    save.skin = key; persist();
+  onWear: (look) => {
+    if (!save.creatures.includes(look.creature) || !save.patterns.includes(look.pattern)) return;
+    save.creature = look.creature; save.pattern = look.pattern; save.skin = look.pattern; persist();
+  },
+  onWearCrew: (slot, look) => {
+    if (!save.creatures.includes(look.creature) || !save.patterns.includes(look.pattern)) return;
+    while (save.crew.length <= slot) save.crew.push({ creature: save.creature, pattern: save.pattern });
+    save.crew[slot] = look; persist();
+  },
+  onPickFirst: (creature) => {
+    if (save.picked) return;
+    if (!save.creatures.includes(creature)) save.creatures.push(creature);
+    save.creature = creature; save.picked = true; persist();
+  },
+  onSpin: () => {
+    if (save.coins < PRIZE_COST) return null;
+    const prize = drawPrize(save.patterns);
+    if (!prize) return null;
+    save.coins -= PRIZE_COST; save.spins += 1;
+    save.patterns.push(prize.id); save.skins = save.patterns;
+    save.pattern = prize.id; save.skin = prize.id; persist();
+    return prize;
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
@@ -217,7 +236,7 @@ const ui = new Ui(uiRoot, () => save, {
       const r = await cloud.claim(code);
       if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
       // remember this device's old profile so it can be folded in rather than lost
-      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, reserves: save.reserves, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins] };
+      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, reserves: save.reserves, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
       save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
       applyCloudBlob(r.blob);
       const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
@@ -228,6 +247,9 @@ const ui = new Ui(uiRoot, () => save, {
         save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
         for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
         save.skins = Array.from(new Set([...save.skins, ...old.skins]));
+        save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
+        save.patterns = Array.from(new Set([...save.patterns, ...old.patterns]));
+        migrateLooks(save);
         void cloud.merge(old.id, old.token, save.playerId, save.token);
       }
       persist();
@@ -285,7 +307,7 @@ let rulesNow: "solo" | "crew" = "crew";
 function runEvents() {
   return {
     onPower: () => {},
-    onCoins: () => {},
+    onCoins: (n: number) => { runCoinsTotal += n; },
     onGems: () => {},
     onGameOver: () => {
       if (!game) return;
@@ -309,23 +331,33 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
+      save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal });
+      for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures });
       if (!chill) submitScore(cm, panel);
     },
   };
+}
+
+/** Looks for a run: solo wears the chosen creature; crew slots come from the lineup, defaulting to it. */
+function lineupFor(rules: "solo" | "crew"): Look[] {
+  const me: Look = { creature: save.creature, pattern: save.pattern };
+  if (rules === "solo") return [me];
+  const n = statsFor(save.upgrades).teamSize;
+  return Array.from({ length: n }, (_, i) => save.crew[i] ?? me);
 }
 
 function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
   rulesNow = r.snap.rules;
-  adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted;
+  adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
-  const palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
-  game = Game.restore(save.upgrades, runEvents(), r.snap, palette);
+  game = Game.restore(save.upgrades, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
   game.walletCoins = save.coins; game.walletGems = save.gems;
   game.viewH = viewH;
   game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
@@ -358,6 +390,8 @@ function tickTutorial(dt: number) {
 }
 
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
+/** coins picked up this run, across revives; feeds the dino unlock */
+let runCoinsTotal = 0;
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
@@ -366,8 +400,10 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   adUsedThisRun = false;
   bankedCm = 0;
   runCounted = false;
+  runCoinsTotal = 0;
   paused = false;
-  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED } : { rules, chill: save.chill });
+  const lineup = lineupFor(rules);
+  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   if (pendingChallenge && pendingChallenge.mode === rules) {
     game.target = { cm: pendingChallenge.cm, name: pendingChallenge.name, beaten: false };
@@ -377,8 +413,6 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   if (withTutorial) ui.showTip(tutorialSteps[0].tip);
   game.reserves = save.reserves;
   game.walletCoins = save.coins; game.walletGems = save.gems;
-  game.palette = SKINS.find((k) => k.key === save.skin)?.colors ?? SKINS[0].colors;
-  for (const c of game.climbers) c.color = game.palette[(c.id - 1) % game.palette.length];
   game.viewH = viewH;
   ui.setInRun(true);
   backdropDrawn = false; appEl.classList.add("in-run");

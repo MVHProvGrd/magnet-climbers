@@ -6,6 +6,7 @@ import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, stepGrip } 
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
+import { patternColors, type Look } from "./creatures";
 
 export type Phase = "idle" | "running" | "dead";
 
@@ -17,6 +18,7 @@ export interface RunSnapshot {
   seed: number;
   worldVersion?: number;
   gadgetTime?: number;
+  feats?: RunFeats;
   tricks?: TrickState;
   hand?: Omit<KidHand, "hit"> & { hit: number[] };
   handCount?: number;
@@ -40,6 +42,9 @@ export interface RunSnapshot {
   bumpers: { y: number; i: number; x: number; vx: number; by?: number; vy?: number }[];
   pendingLaunches?: { id: number; v: Vec; at: number }[];
 }
+
+/** Facts about the run that creature unlocks are checked against. Not gameplay. */
+export interface RunFeats { maxChain: number; gadgetRides: number; hits: number }
 
 export interface RunEvents {
   onPower(kind: PowerUp["kind"], at: Vec): void;
@@ -91,6 +96,9 @@ export class Game {
   chill = false;
   reserves = 0;
   palette: string[];
+  /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
+  lineup: Look[];
+  feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0 };
   /** banked totals from the save, so the HUD can show wallet + this run */
   walletCoins = 0;
   walletGems = 0;
@@ -98,11 +106,12 @@ export class Game {
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
+  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
     this.palette = opts.palette ?? CLIMBER_COLORS;
+    this.lineup = opts.lineup?.length ? opts.lineup : [];
     this.reserves = opts.reserves ?? 0;
     this.stats = statsFor(levels);
     this.revivesLeft = this.stats.revives;
@@ -128,9 +137,11 @@ export class Game {
 
   private makeClimber(x: number, y: number, state: Climber["state"]): Climber {
     const id = this.nextId++;
+    const look = this.lineup.length ? this.lineup[(id - 1) % this.lineup.length] : null;
     const c: Climber = {
       id, x, y, vx: 0, vy: 0, angle: 0, spin: 0, state,
-      color: this.palette[(id - 1) % this.palette.length],
+      color: look ? patternColors(look.pattern)[(id - 1) % 6] : this.palette[(id - 1) % this.palette.length],
+      ...(look ? { creature: look.creature, pattern: look.pattern } : {}),
       parent: null, leftLauncher: true, launcherId: null, airTime: 0, squash: 0,
       hp: CFG.maxHp, iframes: 0,
       ragdoll: undefined,
@@ -452,6 +463,7 @@ export class Game {
       c.state = "linked"; c.parent = a.id;
       c.angle = Math.atan2(c.y - a.y, c.x - a.x) + Math.PI / 2;
       sfx.link();
+      this.feats.maxChain = Math.max(this.feats.maxChain, this.chainDepthAbove(c) + this.chainDepthBelow(c) + 1);
       this.awardNewHeight(c, "CHAIN BUILDER", 25);
     }
     this.markHeight(c);
@@ -503,13 +515,14 @@ export class Game {
       taken, bumpers, pendingLaunches: this.pendingLaunches.map((p) => ({ ...p, v: { ...p.v } })),
       hand: this.hand ? { ...this.hand, hit: [...this.hand.hit], ...(this.hand.near ? { near: [...this.hand.near] } : {}) } : undefined,
       handCount: this.handCount, nextHandAt: this.nextHandAt,
-      gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks),
+      gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks), feats: { ...this.feats },
     };
   }
 
-  static restore(levels: Record<UpgradeKey, number>, events: RunEvents, snap: RunSnapshot, palette?: string[]): Game {
+  static restore(levels: Record<UpgradeKey, number>, events: RunEvents, snap: RunSnapshot, palette?: string[], lineup?: Look[]): Game {
     const legacyVersion = snap.climbers.some((c) => c.hp != null) ? 1 : 0;
-    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
+    const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, lineup, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
+    if (snap.feats) g.feats = { ...g.feats, ...snap.feats };
     g.world.generateTo(snap.generated);
     g.world.gadgetTime = snap.gadgetTime ?? 0;
     g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();
@@ -799,6 +812,7 @@ export class Game {
     c.vx = 0; c.vy = 0; c.spin = 0;
     c.squash = 1;
     sfx.stick();
+    if (c.grip?.contacts.some((k) => k.carrierId)) this.feats.gadgetRides++;
     if (!flat && c.airTime > 0.18) {
       const pose = c.grip!.pose;
       const name = pose === "single" ? (c.grip!.contacts[0].limb < 2 ? "ONE-HAND SAVE" : "ONE-FOOT SAVE") : pose === "hands" ? "HANDSTAND" : pose === "mixed" ? "TWIST CATCH" : pose === "feet" ? "STOOD IT!" : "SPLAT!";
@@ -914,6 +928,7 @@ export class Game {
   private damage(c: Climber, quiet = false) {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
+    this.feats.hits++;
     sfx.bump();
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);

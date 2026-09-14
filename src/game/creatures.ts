@@ -1,0 +1,131 @@
+/**
+ * Creature + pattern contract shared by the save, the UI and the renderer.
+ *
+ * A climber is `creature` (body and animation rules, drawn by climber-render.ts)
+ * plus `pattern` (colours and effects). All creatures share the same four
+ * magnetic contact points and identical stats; cosmetics never touch physics.
+ * The renderer must fall back to "toy" for any creature id it does not know.
+ */
+
+export type CreatureId = "toy" | "gecko" | "frog" | "crab" | "octopus" | "robot" | "dino";
+export type PatternId = string;
+export type Rarity = "common" | "rare" | "epic";
+
+/** How a creature is earned. Creatures come from moments; patterns from the prize machine. */
+export type UnlockRule =
+  | { kind: "start" }
+  | { kind: "height"; mode: "solo" | "crew"; cm: number }
+  | { kind: "chain"; size: number }
+  | { kind: "gadgets"; rides: number }
+  | { kind: "hits"; total: number }
+  | { kind: "coins"; perRun: number };
+
+export interface CreatureDef {
+  id: CreatureId;
+  name: string;
+  blurb: string;
+  /** signature detail the renderer should sell */
+  detail: string;
+  unlock: UnlockRule;
+}
+
+export interface PatternDef {
+  id: PatternId;
+  name: string;
+  rarity: Rarity;
+  /** six crew colours; solo uses the first */
+  colors: string[];
+  /** optional renderer effect hint; ignored by renderers that do not know it */
+  effect?: "glow" | "sparkle" | "chrome";
+}
+
+/** What one climber wears. */
+export interface Look { creature: string; pattern: PatternId }
+
+export const CREATURES: CreatureDef[] = [
+  { id: "toy", name: "Magnet Person", blurb: "The original fridge toy. Rubbery, cheerful, indestructible.", detail: "classic bendy limbs", unlock: { kind: "start" } },
+  { id: "gecko", name: "Gecko", blurb: "Huge sticky toe pads and a tail that whips on every fling.", detail: "toe pads on the magnets, whipping tail", unlock: { kind: "height", mode: "solo", cm: 1000 } },
+  { id: "frog", name: "Tree Frog", blurb: "Big fingertips, legs tucked in flight, stretchy catches.", detail: "tucked legs mid-air, throat puff on landing", unlock: { kind: "height", mode: "crew", cm: 1200 } },
+  { id: "octopus", name: "Octopus", blurb: "Four arms grip, four more curl along for the ride.", detail: "four decorative curling arms", unlock: { kind: "chain", size: 3 } },
+  { id: "robot", name: "Robot", blurb: "Spring joints, four grippers and a little face screen.", detail: "face screen reacts to landings", unlock: { kind: "gadgets", rides: 5 } },
+  { id: "crab", name: "Crab", blurb: "Two claws and two feet grip. Sideways stance, frantic tumbles.", detail: "claws as magnets, sideways idle", unlock: { kind: "hits", total: 15 } },
+  { id: "dino", name: "Dino", blurb: "Stubby arms, big feet, tiny roar on every stick.", detail: "tail counterweight, tiny arms", unlock: { kind: "coins", perRun: 40 } },
+];
+
+export const PATTERNS: PatternDef[] = [
+  { id: "classic", name: "Classic", rarity: "common", colors: ["#ff8a3d", "#4fc3f7", "#9be15d", "#f06292", "#ffd54f", "#b388ff"] },
+  { id: "lemon", name: "Lemon", rarity: "common", colors: ["#fff176", "#ffe94d", "#fff59d", "#ffd600", "#ffee58", "#f9e04b"] },
+  { id: "mint", name: "Mint", rarity: "common", colors: ["#7ef0c8", "#5ce0b0", "#a8f5dc", "#3fd1a1", "#90f0d0", "#62e6bd"] },
+  { id: "bubblegum", name: "Bubblegum", rarity: "common", colors: ["#ff9ad5", "#ff7cc8", "#ffb6e1", "#ff5fbf", "#ffa8db", "#ff8ad0"] },
+  { id: "ocean", name: "Ocean", rarity: "common", colors: ["#4fc3f7", "#29b6f6", "#81d4fa", "#03a9f4", "#5fcbf8", "#39bdf6"] },
+  { id: "candy", name: "Candy", rarity: "common", colors: ["#ff9ad5", "#ffd1a1", "#a1e3ff", "#d3a1ff", "#a1ffb8", "#fff3a1"] },
+  { id: "watermelon", name: "Watermelon", rarity: "rare", colors: ["#ff5c7a", "#5ad46b", "#ff7a93", "#3cc352", "#ff6b86", "#6ee07e"] },
+  { id: "tiger", name: "Tiger", rarity: "rare", colors: ["#ff9f1c", "#ffb84d", "#ff8c00", "#ffae42", "#ff9a2e", "#ffc266"] },
+  { id: "lava", name: "Lava", rarity: "rare", colors: ["#ff4e1c", "#ff7a2e", "#ff3d00", "#ff9140", "#ff5a1f", "#ff6f3c"], effect: "glow" },
+  { id: "stealth", name: "Stealth", rarity: "rare", colors: ["#3a3f47", "#5b6470", "#8a94a1", "#2c3036", "#b0b8c2", "#6f7986"] },
+  { id: "glow", name: "Glow in the dark", rarity: "rare", colors: ["#c8ff5a", "#9bff8a", "#e6ffb0", "#7cf0c8", "#d4ff3d", "#b8ffe0"], effect: "glow" },
+  { id: "galaxy", name: "Galaxy", rarity: "epic", colors: ["#7c4dff", "#536dfe", "#b388ff", "#3d5afe", "#9575ff", "#6a5cff"], effect: "sparkle" },
+  { id: "chrome", name: "Chrome", rarity: "epic", colors: ["#d8dde2", "#c0c8d0", "#eef1f4", "#aeb7c0", "#cfd6dc", "#e3e8ec"], effect: "chrome" },
+  { id: "midnight", name: "Midnight", rarity: "epic", colors: ["#1b2340", "#22305a", "#2c3c70", "#17203a", "#253466", "#1f2b4f"], effect: "sparkle" },
+];
+
+export const PRIZE_COST = 100;
+/** Odds shown to the player; the draw uses the same numbers. */
+export const PRIZE_ODDS: Record<Rarity, number> = { common: 65, rare: 28, epic: 7 };
+
+export const creatureById = (id: string): CreatureDef => CREATURES.find((c) => c.id === id) ?? CREATURES[0];
+export const patternById = (id: string): PatternDef => PATTERNS.find((p) => p.id === id) ?? PATTERNS[0];
+export const patternColors = (id: string): string[] => patternById(id).colors;
+
+/** Human text for a locked creature's unlock rule. */
+export function unlockText(rule: UnlockRule): string {
+  switch (rule.kind) {
+    case "start": return "Yours from the start";
+    case "height": return `Reach ${rule.cm} cm in a ${rule.mode === "solo" ? "Solo" : "Crew"} climb`;
+    case "chain": return `Hang ${rule.size} climbers in one chain`;
+    case "gadgets": return `Ride ${rule.rides} gadgets in one run`;
+    case "hits": return `Take ${rule.total} bumper hits (lifetime)`;
+    case "coins": return `Collect ${rule.perRun} coins in one run`;
+  }
+}
+
+/** Run facts the unlock rules are checked against. */
+export interface RunFacts {
+  mode: "solo" | "crew";
+  cm: number;
+  chill: boolean;
+  maxChain: number;
+  gadgetRides: number;
+  coins: number;
+  /** lifetime bumper hits after this run */
+  hitsTotal: number;
+}
+
+/** Creatures this run newly earns. Chill runs unlock nothing height-based. */
+export function creaturesEarned(owned: string[], f: RunFacts): CreatureDef[] {
+  return CREATURES.filter((c) => {
+    if (owned.includes(c.id)) return false;
+    const r = c.unlock;
+    switch (r.kind) {
+      case "start": return true;
+      case "height": return !f.chill && f.mode === r.mode && f.cm >= r.cm;
+      case "chain": return f.maxChain >= r.size;
+      case "gadgets": return f.gadgetRides >= r.rides;
+      case "hits": return f.hitsTotal >= r.total;
+      case "coins": return !f.chill && f.coins >= r.perRun;
+    }
+  });
+}
+
+/** Prize machine draw with duplicate protection: only unowned patterns are in the pool. */
+export function drawPrize(owned: string[], roll: () => number = Math.random): PatternDef | null {
+  const pool = PATTERNS.filter((p) => !owned.includes(p.id));
+  if (!pool.length) return null;
+  const tiers: Rarity[] = ["common", "rare", "epic"];
+  const available = tiers.filter((t) => pool.some((p) => p.rarity === t));
+  const total = available.reduce((n, t) => n + PRIZE_ODDS[t], 0);
+  let r = roll() * total; let tier = available[0];
+  for (const t of available) { r -= PRIZE_ODDS[t]; if (r <= 0) { tier = t; break; } }
+  const choices = pool.filter((p) => p.rarity === tier);
+  return choices[Math.floor(roll() * choices.length)];
+}
