@@ -89,7 +89,7 @@ input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;backg
 <div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('crew')">Delete crew</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
 <div class="row"><input id="lifecm" placeholder="lifetime cm" type="number"><button onclick="setLife()">Set lifetime</button><button class="bad" onclick="mute(0,true)">Mute forever + wipe chat</button><button onclick="mute(24,false)">Mute 24h</button><button onclick="unmute()">Unmute</button></div>
 <div id="out"></div></section>
-<section style="grid-column:1/-1"><h2>Chat (newest first) <button class="bad" onclick="clearChat()" style="float:right">Clear all</button></h2><div id="mutes" class="muted"></div><table id="chat"></table></section>
+<section style="grid-column:1/-1;max-width:1200px"><h2 style="display:flex;gap:10px;align-items:center">Chat (newest first) <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><table id="chat"></table></section>
 <section><h2>Crew board</h2><table id="crew"></table></section>
 <section><h2>Solo board</h2><table id="solo"></table></section>
 </main>
