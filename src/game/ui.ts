@@ -12,7 +12,7 @@ import { drawItemPreview } from "./scenery";
 import { gadgetArtReady } from "./gadget-art";
 import { pickupArtReady } from "./pickup-art";
 import { obstacleArtReady } from "./obstacle-art";
-import { LANGS, lang, t, translateTree, watchTree } from "./i18n";
+import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -38,7 +38,7 @@ export interface UiHandlers {
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
-  onSetLang(lang: "en" | "ru"): void;
+  onSetLang(lang: Lang): void;
   onSetName(name: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
@@ -547,8 +547,8 @@ export class Ui {
       <h3>Preferences</h3>
       <div class="rows">
         <div class="row">
-          <div class="info"><b>Language</b><span>English · Русский</span></div>
-          <button class="buy" data-a="lang">${LANGS.find((l) => l.id === lang())?.name ?? "English"}</button>
+          <div class="info"><b>Language</b><span>${LANGS.map((l) => l.name).join(" · ")}</span></div>
+          <select class="buy" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>
         </div>
         <div class="row">
           <div class="info"><b>Sound effects</b><span>Rubber twangs, steel clicks and hand swishes</span></div>
@@ -571,12 +571,14 @@ export class Ui {
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
-      if (a === "lang") { const i = LANGS.findIndex((l) => l.id === lang()); this.h.onSetLang(LANGS[(i + 1) % LANGS.length].id); this.refreshLang(); this.showSettings(); return; }
       if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
       if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
       if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
       if (a === "shop") { this.showShop(); return; }
       if (a === "back") this.showMenu();
+    });
+    p.querySelector<HTMLSelectElement>('select[data-a="lang"]')!.addEventListener("change", (e) => {
+      this.h.onSetLang((e.target as HTMLSelectElement).value as Lang); this.refreshLang(); this.showSettings();
     });
     this.show(p);
   }

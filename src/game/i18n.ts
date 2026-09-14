@@ -1,11 +1,23 @@
+import * as ru from "./lang/ru";
+import * as es from "./lang/es";
+import * as fr from "./lang/fr";
+import * as pt from "./lang/pt";
+import * as zh from "./lang/zh";
+import * as zhHant from "./lang/zh-Hant";
+import * as ja from "./lang/ja";
+import * as ko from "./lang/ko";
+
 /**
  * Languages. English is the source; other languages are looked up by the English string.
  * DOM panels are translated after they render (text nodes, titles, placeholders), the canvas
  * HUD and floats call t() directly. Anything without a translation stays English.
  */
 
-export type Lang = "en" | "ru";
-export const LANGS: { id: Lang; name: string }[] = [{ id: "en", name: "English" }, { id: "ru", name: "Русский" }];
+export type Lang = "en" | "ru" | "es" | "fr" | "pt" | "zh" | "zh-Hant" | "ja" | "ko";
+export const LANGS: { id: Lang; name: string }[] = [
+  { id: "en", name: "English" }, { id: "es", name: "Español" }, { id: "fr", name: "Français" }, { id: "pt", name: "Português" },
+  { id: "ru", name: "Русский" }, { id: "zh", name: "简体中文" }, { id: "zh-Hant", name: "繁體中文" }, { id: "ja", name: "日本語" }, { id: "ko", name: "한국어" },
+];
 
 let current: Lang = "en";
 export const lang = () => current;
@@ -13,216 +25,15 @@ export function setLang(l: Lang) { current = l; if (typeof document !== "undefin
 /** Browser language on first launch; the setting overrides it. */
 export function detectLang(): Lang {
   const n = typeof navigator !== "undefined" ? navigator.language || "" : "";
-  return /^ru\b/i.test(n) ? "ru" : "en";
+  const l = n.toLowerCase();
+  if (l.startsWith("zh")) return /hant|tw|hk|mo/.test(l) ? "zh-Hant" : "zh";
+  const base = l.split("-")[0] as Lang;
+  return LANGS.some((x) => x.id === base) ? base : "en";
 }
 
-type Rule = [RegExp, (m: RegExpMatchArray) => string];
+export type Rule = [RegExp, (m: RegExpMatchArray) => string];
 
-const RU: Record<string, string> = {
-  // menu
-  "Settings": "Настройки", "Fridge field guide": "Справочник холодильника", "Global chat": "Общий чат", "Story": "История",
-  "How to play": "Как играть", "Scoreboard": "Таблица рекордов",
-  "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun the kid.": "Запускайте резиновые магнитики вверх по бесконечному холодильнику. Держитесь за сталь. Убегайте от ребёнка.",
-  "Stars": "Звёзды", "Best solo": "Лучший соло", "Coins": "Монеты", "Gems": "Кристаллы", "Upgrades & skins": "Улучшения и облики",
-  "SOLO CLIMB": "СОЛО", "One climber, endless fridge, outrun the line.": "Один альпинист, бесконечный холодильник, беги от линии.",
-  "EXPEDITIONS": "ЭКСПЕДИЦИИ", "😌 Chill mode": "😌 Спокойный режим", "Chill mode": "Спокойный режим",
-  "No red line, no rush. No coins or records; metres still count for the world.": "Без красной линии и спешки. Без монет и рекордов; метры идут в общий счёт.",
-  "No red line. No coins or records; metres still count for the world.": "Без красной линии. Без монет и рекордов; метры идут в общий счёт.",
-  "UPGRADES": "УЛУЧШЕНИЯ", "🎨 CREATURES": "🎨 СУЩЕСТВА", "check for update": "проверить обновление",
-  "Privacy": "Конфиденциальность", "Terms": "Условия", "Contact": "Контакты",
-  // common buttons
-  "BACK": "НАЗАД", "Back": "Назад", "CANCEL": "ОТМЕНА", "DONE": "ГОТОВО", "SAVE": "СОХРАНИТЬ", "NEXT": "ДАЛЕЕ", "SKIP": "ПРОПУСТИТЬ",
-  "LET'S CLIMB": "ПОЛЕЗЛИ", "GOT IT": "ПОНЯТНО", "CHANGE": "ИЗМЕНИТЬ", "change": "изменить", "ON": "ВКЛ", "OFF": "ВЫКЛ", "MAX": "МАКС",
-  "Loading…": "Загрузка…", "Mute": "Без звука", "Unmute": "Включить звук", "☰ MENU": "☰ МЕНЮ",
-  // collection
-  "Collection": "Коллекция", "CREW": "КОМАНДА", "WEARING": "НАДЕТО", "🔒 prize machine": "🔒 призовой автомат",
-  "Prize machine": "Призовой автомат", "Now wearing it. Change any time in the collection.": "Уже надето. Поменять можно в коллекции.",
-  "One spin, one new pattern. Never a duplicate.": "Один запуск — один новый узор. Без повторов.", "COLLECTION COMPLETE": "КОЛЛЕКЦИЯ СОБРАНА",
-  "You have ": "У вас ", "Pick your first creature": "Выберите первое существо",
-  "One is yours right now, free. The rest are earned by climbing.": "Одно ваше прямо сейчас, бесплатно. Остальные зарабатываются в игре.",
-  "common": "обычный", "rare": "редкий", "epic": "эпический",
-  // creatures
-  "Magnet Person": "Магнитный человечек", "The original fridge toy. Rubbery, cheerful, indestructible.": "Классическая игрушка с холодильника. Резиновая, весёлая, неубиваемая.",
-  "Gecko": "Геккон", "Huge sticky toe pads and a tail that whips on every fling.": "Липкие лапки и хвост, который хлещет при каждом броске.",
-  "Tree Frog": "Древесная лягушка", "Big fingertips, legs tucked in flight, stretchy catches.": "Большие пальцы, поджатые в полёте лапы, тянущиеся захваты.",
-  "Octopus": "Осьминог", "Four arms grip, four more curl along for the ride.": "Четыре руки держат, ещё четыре завиваются за компанию.",
-  "Robot": "Робот", "Spring joints, four grippers and a little face screen.": "Пружинные суставы, четыре захвата и экранчик-лицо.",
-  "Crab": "Краб", "Two claws and two feet grip. Sideways stance, frantic tumbles.": "Две клешни и две ноги держат. Боком стоит, кувыркается отчаянно.",
-  "Dino": "Дино", "Stubby arms, big feet, tiny roar on every stick.": "Короткие лапки, большие ступни, крошечный рык при каждой посадке.",
-  "Yours from the start": "Ваш с самого начала",
-  "Classic": "Классика", "Lemon": "Лимон", "Mint": "Мята", "Bubblegum": "Жвачка", "Ocean": "Океан", "Candy": "Конфета", "Watermelon": "Арбуз",
-  "Tiger": "Тигр", "Lava": "Лава", "Stealth": "Стелс", "Glow in the dark": "Светится в темноте", "Galaxy": "Галактика", "Chrome": "Хром", "Midnight": "Полночь",
-  // chat
-  "Everyone playing right now. Be kind. No personal info, no links. ": "Все, кто играет сейчас. Будьте добры. Без личных данных и ссылок. ",
-  "SEND": "ОТПРАВИТЬ", "Nobody has said anything yet. You could be first.": "Пока никто ничего не написал. Вы можете быть первым.",
-  // expeditions
-  "Expeditions": "Экспедиции", "Stack Up": "Пирамида", "Learn the fling budget, then climb each other over glass.": "Освойте запас бросков, потом лезьте друг по другу через стекло.",
-  "First Steps": "Первые шаги", "Two of Us": "Нас двое", "Glass Ceiling": "Стеклянный потолок", "Double Glazing": "Двойное стекло", "Human Ladder": "Живая лестница",
-  "Side Door": "Боковая дверь", "Island Hop": "По островкам", "Sliding Trouble": "Скользкая беда", "Long Way Up": "Долгий путь", "No Room": "Нет места",
-  "Bumpers Below": "Бамперы внизу", "Summit": "Вершина",
-  "Flings are the budget": "Броски — это запас", "No red line here. Take your time.": "Красной линии нет. Не спешите.",
-  "Every fling counts. Finish under par for the second star, lose nobody for the third.": "Каждый бросок на счету. Уложитесь в норму ради второй звезды, никого не потеряйте ради третьей.",
-  "New trick: STACK": "Новый приём: ПИРАМИДА", "Glass too tall for one fling? Land one climber below it.": "Стекло слишком высокое для одного броска? Посадите одного под ним.",
-  "Fling the next one onto it: it locks in standing on the shoulders below. Up to three high. FLING from the top. (CLIMB drags a climber onto a teammate too.)": "Бросьте следующего на него: он встанет на плечи и зафиксируется. До трёх в высоту. БРОСОК с верхнего. (ЛЕЗТЬ тоже сажает на товарища.)",
-  "New trick: LADDER": "Новый приём: ЛЕСТНИЦА", "Stack three under a short gap and the top one can grab the steel above.": "Поставьте троих под коротким разрывом, и верхний дотянется до стали выше.",
-  "Then everyone crawls up over the ladder on their own. No flings spent.": "Дальше все сами перелезут по лестнице. Броски не тратятся.",
-  "New trick: CATCH": "Новый приём: ЛОВЛЯ", "A falling climber grabs any stuck teammate within arm's reach and hangs on.": "Падающий хватается за любого товарища в пределах руки и повисает.",
-  "A hanging climber cannot fling: CLIMB it up onto the catcher first.": "Висящий не может бросаться: сначала ЛЕЗТЬ вверх на поймавшего.",
-  "Perfect!": "Идеально!", "Made it!": "Получилось!", "Everyone lost": "Все потеряны", "Out of flings": "Броски кончились",
-  "Under par for a star. ": "Уложитесь в норму ради звезды. ", "Lose nobody for a star.": "Никого не потеряйте ради звезды.",
-  "Earned ": "Заработано ", "NEXT LEVEL": "СЛЕДУЮЩИЙ УРОВЕНЬ", "PLAY AGAIN": "ЕЩЁ РАЗ", "TRY AGAIN": "ПОПРОБОВАТЬ СНОВА", "ALL LEVELS": "ВСЕ УРОВНИ",
-  // field guide
-  "Fridge Field Guide": "Справочник холодильника", "Obstacles": "Препятствия", "Gadgets": "Гаджеты", "Movers": "Движущиеся", "Pickups": "Бонусы", "Paper art": "Бумажки",
-  "Silver holds stick. Paper, glass and plastic don't.": "Серебристое держит. Бумага, стекло и пластик — нет.",
-  "Blue S pulls you in.": "Синий S притягивает.", " Its steel face catches you.": " Его стальная поверхность ловит.",
-  "Red N pushes you away.": "Красный N отталкивает.", " Moving magnets knock you loose.": " Движущиеся магниты сбивают.",
-  "Timed magnets switch between a blue hold and red repulsion; their countdown warns you. Blue timed holds do not pull from a distance.": "Магниты с таймером переключаются между синим захватом и красным отталкиванием; отсчёт предупреждает. Синие с таймером не тянут издалека.",
-  "Item category": "Категория",
-  "Paper isn't steel. Catch the bare door around this card.": "Бумага — не сталь. Цепляйтесь за голую дверь вокруг карточки.",
-  "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges.": "Бумага мешает магнитам. Цельтесь в открытую сталь по краям.",
-  "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart.": "Движущийся рекламный магнит. Ходит вбок, вверх-вниз или зигзагом; касание сбивает и отнимает сердце.",
-  "Little Lifeline": "Сердечко", "Restores one heart to the climber who collects it, up to three.": "Возвращает одно сердце тому, кто подобрал, до трёх.",
-  "Pocket Change": "Мелочь", "Collect coins for upgrades. Chill mode doesn't award currency.": "Собирайте монеты на улучшения. В спокойном режиме валюта не даётся.",
-  "Ice Gem": "Ледяной кристалл", "Rare gem currency. Not awarded in Chill mode.": "Редкая валюта. В спокойном режиме не даётся.",
-  "Super Magnet": "Супермагнит", "Temporarily catch earlier and reach farther for real steel.": "Временно ловит раньше и тянется дальше к стали.",
-  "Pocket Pal": "Карманный друг", "Adds another climber to your run.": "Добавляет ещё одного альпиниста.",
-  "Kitchen Timer": "Кухонный таймер", "Temporarily slows the action.": "Временно замедляет время.",
-  "Pocket Tape Measure": "Рулетка", "Unroll extra reach: temporarily stretches the distance you can climb to a teammate.": "Временно увеличивает дальность, на которую можно долезть до товарища.",
-  "Water Station": "Диспенсер воды", "Slippery dispenser. Climb the steel beside it or its silver handle.": "Скользкий диспенсер. Лезьте по стали рядом или по его серебристой ручке.",
-  "Busy Month": "Занятой месяц", "A big paper calendar. Follow the open steel side lane.": "Большой бумажный календарь. Идите по открытой стальной полосе сбоку.",
-  "Ice Cube Alley": "Аллея льда", "Plastic ice tray: no grip. The exposed door around it is safe.": "Пластиковый лоток для льда: не держит. Дверь вокруг безопасна.",
-  "Silver Handle": "Серебристая ручка", "A real metal hold over slippery panels. Hands and feet can catch here.": "Настоящий металл над скользкими панелями. Руки и ноги цепляются здесь.",
-  "N / Repelling Magnet": "N / Отталкивающий магнит", "RED / N: pushes airborne climbers away. The field flows outward. Its face is not a safe hold.": "КРАСНЫЙ / N: отталкивает летящих. Поле идёт наружу. За него не удержаться.",
-  "S / Attracting Magnet": "S / Притягивающий магнит", "BLUE / S: pulls airborne climbers toward it from a distance. Its steel face catches you. The aim preview bends with the pull.": "СИНИЙ / S: тянет летящих к себе издалека. Стальная поверхность ловит. Траектория прицела изгибается.",
-  "Glass Panel": "Стеклянная панель", "Glass blocks catches. Use steel at the sides or a silver handle across it.": "Стекло не держит. Используйте сталь по бокам или ручку поперёк.",
-  "Plastic Trim": "Пластиковая накладка", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "Пластик не магнитится. Перелетайте или используйте металлический островок.",
-  "Door Gap": "Щель двери", "Nothing to stick to here. Fling across or land on a metal handle.": "Здесь не за что зацепиться. Перелетайте или садитесь на ручку.",
-  "Cold Air Vent": "Вентиляция", "Non-magnetic plastic grille. Jump across or use the steel sides.": "Пластиковая решётка. Перепрыгивайте или идите по стали сбоку.",
-  "Moving magnet: knocks you loose, even from a planted grip. Time your fling.": "Движущийся магнит: сбивает даже с крепкого захвата. Выбирайте момент броска.",
-  "Rolling Donut": "Катящийся пончик", "Duck Dash": "Уточка", "Robot Patrol": "Робот-патруль", "Dino Slide": "Дино", "Pop Magnet": "Поп-магнит", "Cool Cruiser": "Крутой круизёр",
-  "Swinging silver grip carries you. Fling from it to cross the panel.": "Качающийся захват везёт вас. Бросайтесь с него через панель.",
-  "A rotating letter carries a silver grip around its face. Time your launch.": "Вращающаяся буква возит захват по кругу. Ловите момент.",
-  "A dangling clip carries you above the paper. Only its silver top grips.": "Прищепка везёт вас над бумагой. Держит только её серебристый верх.",
-  "Blue steel holds for three seconds; red repels for three. The countdown warns before it releases you.": "Синяя сталь держит три секунды, красная три секунды отталкивает. Отсчёт предупредит.",
-  // settings
-  "Profile": "Профиль", "Climber name": "Имя альпиниста", "not set": "не задано", " · shown on the scoreboard": " · видно в таблице рекордов",
-  "Play on another device": "Игра на другом устройстве", "Link a new device": "Привязать устройство",
-  "Shows a 6-letter code. Enter it on the other device to carry this profile over.": "Покажет код из 6 знаков. Введите его на другом устройстве, чтобы перенести профиль.",
-  "CODE": "КОД", "Enter a link code": "Ввести код", "Adopt a profile from another device. Replaces this one.": "Взять профиль с другого устройства. Заменит текущий.",
-  "ENTER": "ВВЕСТИ", "Preferences": "Параметры", "Language": "Язык", "Sound effects": "Звуковые эффекты",
-  "Rubber twangs, steel clicks and hand swishes": "Резиновые щелчки, стальные клики и взмахи руки", "Music": "Музыка",
-  "Original toy-box groove; builds as danger approaches": "Своя музыка; нарастает, когда приближается опасность",
-  "No red line. No coins or records; metres still count for the world total": "Без красной линии. Без монет и рекордов; метры идут в общий счёт",
-  "🎨 CREATURES & PATTERNS": "🎨 СУЩЕСТВА И УЗОРЫ", "UPGRADES & RESERVES": "УЛУЧШЕНИЯ И ЗАПАСНЫЕ",
-  // shop
-  "Upgrades": "Улучшения", "Reserves": "Запасные", "Reserve climber": "Запасной альпинист", "Drop a fresh climber onto the crew mid-run": "Сбросить нового альпиниста команде посреди забега",
-  "Team size": "Размер команды", "+1 climber at the start of every run": "+1 альпинист в начале каждого забега",
-  "Magnet strength": "Сила магнита", "Pulls you back onto the door sooner, so you land nearer the top of your arc": "Раньше тянет к двери, посадка ближе к вершине дуги",
-  "Arm reach": "Длина рук", "Grab teammates from further away": "Хватать товарищей с большего расстояния",
-  "Chain length": "Длина цепочки", "More climbers can hang off one anchor": "Больше альпинистов на одном якоре",
-  "Slingshot power": "Сила рогатки", "Launch further": "Летать дальше",
-  "Sticky floor": "Липкий пол", "The danger line rises slower": "Красная линия поднимается медленнее",
-  "Spare tokens": "Запасные жетоны", "+1 free revive per run": "+1 бесплатное возрождение за забег",
-  // challenge / link / name
-  "Their height shows as a line on your fridge. Get above it.": "Их высота — линия на вашем холодильнике. Поднимитесь выше.",
-  "ACCEPT": "ПРИНЯТЬ", "LATER": "ПОЗЖЕ", "Link code": "Код привязки", "Enter link code": "Введите код",
-  "From Settings on your other device. This replaces the profile on this device.": "Из настроек на другом устройстве. Заменит профиль на этом.",
-  "LINK": "ПРИВЯЗАТЬ", "Pick your climber name": "Выберите имя", "Your climber name": "Ваше имя",
-  "Shown on the global scoreboard. 3–12 characters. You can change it any time in Settings.": "Видно в общей таблице. 3–12 символов. Можно изменить в настройках.",
-  "At least 3 characters.": "Не меньше 3 символов.", "Code not found or expired. Codes last 10 minutes.": "Код не найден или устарел. Коды живут 10 минут.",
-  // story
-  "Life on the fridge": "Жизнь на холодильнике",
-  "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of the kid. Good job. Steady work.": "Мы — магнитные человечки. Держим меню пиццы, карточку стоматолога, фото ребёнка. Хорошая работа. Стабильная.",
-  "Then bedtime came": "А потом пришло время спать",
-  "The kid \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge.": "Ребёнок «прибрался». Теперь мы на полу, а дальше — ящик с носками. Кто к утру на холодильнике, тот на нём и останется.",
-  "So we climb": "Значит, лезем",
-  "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is the kid's reach. Stay above it.": "Бросок, прилип, лезь. Сталь держит. Стекло, пластик и наклейки — нет. Красная линия — досягаемость ребёнка. Держитесь выше.",
-  // board
-  "Lifetime climbed": "Всего пройдено", "Highest climbs": "Рекорды высоты", "SOLO": "СОЛО", "LIFETIME": "ЗА ВСЁ ВРЕМЯ",
-  "Every centimetre ever climbed, all modes, chill included. Pure dedication.": "Каждый сантиметр за всё время, все режимы, включая спокойный. Чистое упорство.",
-  "No climbs yet. Be first.": "Пока нет забегов. Будьте первым.", "Could not reach the scoreboard.": "Таблица недоступна.",
-  "Global scoreboard not configured yet. Local best shown.": "Общая таблица не настроена. Показан локальный рекорд.",
-  "You: not on the board yet": "Вы: пока не в таблице", "anonymous": "аноним", " · playing as ": " · играете как ",
-  // pause / game over
-  "Paused": "Пауза", "RESUME": "ПРОДОЛЖИТЬ", "END RUN & BANK SCORE": "ЗАКОНЧИТЬ И ЗАСЧИТАТЬ",
-  "Counts this height for your best and the scoreboard.": "Засчитает эту высоту в рекорд и таблицу.", "HOME SCREEN (discard run)": "НА ГЛАВНУЮ (забег не засчитается)",
-  "New record!": "Новый рекорд!", "Chill run done": "Спокойный забег окончен", "Run banked": "Забег засчитан", "All climbers lost": "Все альпинисты потеряны",
-  "Chill mode: no coins or records. Metres added to the world total.": "Спокойный режим: без монет и рекордов. Метры добавлены в общий счёт.",
-  "REVIVE · watch ad": "ВОЗРОДИТЬ · реклама", "REVIVE · ◆5": "ВОЗРОДИТЬ · ◆5", "📣 CHALLENGE A FRIEND": "📣 ВЫЗВАТЬ ДРУГА", "BACK TO MENU": "В МЕНЮ",
-  "Ad placeholder": "Здесь будет реклама", "A rewarded video plays here in the store builds.": "В версиях из магазинов здесь идёт видео за награду.",
-  "⬆ Update ready · applies after this run · tap to apply now": "⬆ Обновление готово · применится после забега · нажмите, чтобы сейчас",
-  // toasts / tips (main.ts)
-  "Updating…": "Обновление…", "Checking for update…": "Проверка обновлений…", "Synced with your other device": "Синхронизировано с другим устройством",
-  "Could not reach the server": "Сервер недоступен", "Scoreboard name updated": "Имя в таблице обновлено",
-  "Link copied. Paste it to a friend.": "Ссылка скопирована. Отправьте другу.", "Could not share on this device": "На этом устройстве поделиться не вышло",
-  "Run resumed": "Забег продолжен", "Scoreboard unreachable": "Таблица недоступна", "Score sent": "Результат отправлен",
-  "Progress synced from your other device": "Прогресс подтянут с другого устройства",
-  "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 Коснитесь экрана, потяните ВНИЗ, отпустите — и бросок вверх.",
-  "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 Магниты липнут к стали. Цельтесь в блестящий металл, а не в стекло и наклейки.",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 Собирайте монеты по пути. На них покупаются улучшения и запасные.",
-  "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 Красная линия — досягаемость ребёнка. Чем выше, тем быстрее она растёт. Не стойте.",
-  "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ Вот и всё. Командный режим бросает всех разом. Вперёд.",
-  // HUD (canvas)
-  "nothing to hold there": "там не за что держаться", "LADDER": "ЛЕСТНИЦА", "BEST BEATEN ✓": "РЕКОРД ПОБИТ ✓", "😌 CHILL": "😌 СПОКОЙНО",
-  "FLING": "БРОСОК", "CLIMB": "ЛЕЗТЬ", "SYNC ON": "СИНХРОН ВКЛ", "SYNC": "СИНХРОН", "◎ RECENTER": "◎ ЦЕНТР",
-  "Drag back anywhere, release to fling.": "Потяните назад в любом месте, отпустите — бросок.", "Stick to steel. Outrun the red line.": "Липните к стали. Убегайте от красной линии.",
-  "Drag back from a climber, release to fling.": "Потяните от альпиниста, отпустите — бросок.",
-  "SYNC flings the whole crew. CLIMB crawls to a teammate.": "СИНХРОН бросает всю команду. ЛЕЗТЬ — ползти к товарищу.",
-  "Tap dots to switch. Drag empty steel to look around.": "Точки переключают альпиниста. Тяните по пустой стали, чтобы осмотреться.",
-  "GOAL": "ЦЕЛЬ", "SUPER MAGNET": "СУПЕРМАГНИТ", "SLOW-MO": "ЗАМЕДЛЕНИЕ", "LONG ARMS": "ДЛИННЫЕ РУКИ",
-  // floats
-  "flinging the top climber": "бросаем верхнего", "someone's hanging on you: CLIMB them up": "на вас кто-то висит: поднимите его (ЛЕЗТЬ)",
-  "out of flings": "броски кончились", "CLIMB up first": "сначала ЛЕЗТЬ вверх", "STACKED": "В СТОПКУ", "LADDER! everyone up": "ЛЕСТНИЦА! все наверх",
-  "out of reach": "не дотянуться", "no grip there": "там не зацепиться", "RESERVE!": "ЗАПАСНОЙ!", "GRAB!": "ПОЙМАЛ!", "NEW BEST!": "НОВЫЙ РЕКОРД!",
-  "lost!": "потерян!", "HELD ON!": "УДЕРЖАЛСЯ!", "SWATTED  -1 ♥": "ПРИХЛОПНУТ  -1 ♥", "KO!": "НОКАУТ!", "+1 gem": "+1 кристалл", "FULL ♥": "ПОЛНОЕ ♥", "+1 FRIEND": "+1 ДРУГ",
-  "ONE-HAND SAVE": "СПАС ОДНОЙ РУКОЙ", "ONE-FOOT SAVE": "СПАС ОДНОЙ НОГОЙ", "HANDSTAND": "СТОЙКА НА РУКАХ", "TWIST CATCH": "ЗАХВАТ С ПОВОРОТОМ", "STOOD IT!": "УСТОЯЛ!", "SPLAT!": "ШЛЁП!",
-  "CHAIN BUILDER": "СТРОИТЕЛЬ ЦЕПИ", "CHAIN CATCH": "ЛОВЛЯ В ЦЕПЬ", "HUMAN LADDER": "ЖИВАЯ ЛЕСТНИЦА",
-};
-
-const RU_RULES: Rule[] = [
-  [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} забегов · ${m[2]} м пройдено за всё время`],
-  [/^Build (.+?) · $/, (m) => `Сборка ${m[1]} · `],
-  [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · видно в таблице рекордов`],
-  [/^🌍 Everyone together: (.+?) over ([\d,.]+) runs? by ([\d,.]+) climbers?$/, (m) => `🌍 Все вместе: ${m[1]} за ${m[2]} забегов, ${m[3]} альпинистов`],
-  [/^Crew puzzles\. No red line, a fling budget, three stars\.\s*(★ \d+)?$/, (m) => `Головоломки для команды. Без красной линии, запас бросков, три звезды. ${m[1] ?? ""}`],
-  [/^CREATURES (\d+\/\d+)$/, (m) => `СУЩЕСТВА ${m[1]}`], [/^PATTERNS (\d+\/\d+)$/, (m) => `УЗОРЫ ${m[1]}`],
-  [/^🎰 PRIZE MACHINE · \$(\d+)$/, (m) => `🎰 ПРИЗОВОЙ АВТОМАТ · $${m[1]}`], [/^SPIN · \$(\d+)$/, (m) => `ЗАПУСК · $${m[1]}`],
-  [/^(\d+) left to find\.$/, (m) => `Осталось найти: ${m[1]}.`],
-  [/^Odds: common (\d+)% · rare (\d+)% · epic (\d+)%$/, (m) => `Шансы: обычный ${m[1]}% · редкий ${m[2]}% · эпический ${m[3]}%`],
-  [/^Tap a toy to change its creature, tap the swatch for its pattern\. (\d+) climbers start a crew run\.$/, (m) => `Нажмите на игрушку, чтобы сменить существо, на образец — узор. Команда стартует с ${m[1]} альпинистами.`],
-  [/^(.+) joined your fridge$/, (m) => `${t(m[1])} теперь на вашем холодильнике`], [/^Wearing (.+)$/, (m) => `Надето: ${t(m[1])}`],
-  [/^Say something as (.+)$/, (m) => `Напишите что-нибудь как ${m[1]}`], [/^· (\d+) chatting lately$/, (m) => `· ${m[1]} недавно в чате`],
-  [/^(\d+)\/(\d+) done · (\d+)\/(\d+) stars$/, (m) => `${m[1]}/${m[2]} пройдено · ${m[3]}/${m[4]} звёзд`],
-  [/^(.+?) · (\d+) flings(?: \(par (\d+)\))?(?: · (\d+) lost)?$/, (m) => `${t(m[1])} · бросков: ${m[2]}${m[3] ? ` (норма ${m[3]})` : ""}${m[4] ? ` · потеряно: ${m[4]}` : ""}`],
-  [/^(\d+) little things\. One very big fridge\.$/, (m) => `${m[1]} мелочей. Один очень большой холодильник.`],
-  [/^(.+) illustration$/, (m) => `${t(m[1])}, иллюстрация`],
-  [/^(\S+)… · synced to the cloud after every run$/, (m) => `${m[1]}… · синхронизируется после каждого забега`],
-  [/^Profile (\S+)… · synced to the cloud after every run$/, (m) => `Профиль ${m[1]}… · синхронизируется после каждого забега`],
-  [/^ · team (\d+) · reach (\d+)px · (\d+) links$/, (m) => ` · команда ${m[1]} · руки ${m[2]}px · цепочка ${m[3]}`],
-  [/^(\d+)\/5 carried$/, (m) => `${m[1]}/5 с собой`],
-  [/^(.+) challenged you$/, (m) => `${m[1]} бросил вам вызов`], [/^(Crew|Solo) climb\. /, (m) => `${m[1] === "Crew" ? "Командный" : "Соло"} забег. `],
-  [/^On the other device: Settings → Enter a link code\. Valid for (\d+) minutes\.$/, (m) => `На другом устройстве: Настройки → Ввести код. Действует ${m[1]} мин.`],
-  [/^KEEP "(.+)"$/, (m) => `ОСТАВИТЬ «${m[1]}»`],
-  [/^You: #(\d+) · (.+)$/, (m) => `Вы: №${m[1]} · ${m[2]}`], [/^You: (.+)$/, (m) => `Вы: ${m[1]}`],
-  [/^📣 CHALLENGE FRIENDS TO BEAT (\d+) cm$/, (m) => `📣 ВЫЗВАТЬ ДРУЗЕЙ: ПОБЕЙТЕ ${m[1]} см`],
-  [/^Best (\d+) cm · earned $/, (m) => `Рекорд ${m[1]} см · заработано `],
-  [/^🎉 New creature: $/, () => `🎉 Новое существо: `], [/^(.+) · tap to wear$/, (m) => `${m[1]} · нажмите, чтобы надеть`],
-  [/^REVIVE · token \((\d+)\)$/, (m) => `ВОЗРОДИТЬ · жетон (${m[1]})`],
-  [/^(Linked and merged|Linked)\. Welcome back, (.+)$/, (m) => `${m[1] === "Linked" ? "Привязано" : "Привязано и объединено"}. С возвращением, ${m[2]}`],
-  [/^Scoreboard shows "(.+)"$/, (m) => `В таблице будет «${m[1]}»`],
-  [/^Global rank #(\d+) \((\d+) cm\)$/, (m) => `Место в мире №${m[1]} (${m[2]} см)`],
-  // HUD
-  [/^YOUR BEST · (\d+) cm$/, (m) => `ВАШ РЕКОРД · ${m[1]} см`], [/^(\d+) cm$/, (m) => `${m[1]} см`],
-  [/^▲ wall ([\d.]+)x$/, (m) => `▲ стена ${m[1]}x`], [/^▼ wall (\d+) cm below$/, (m) => `▼ стена ${m[1]} см ниже`],
-  [/^\+(\d+)( ◆\+\d+)? this run$/, (m) => `+${m[1]}${m[2] ?? ""} за забег`],
-  [/^FLINGS (\d+) \/ (\d+)$/, (m) => `БРОСКИ ${m[1]} / ${m[2]}`], [/^STYLE (\d+)(.*)$/, (m) => `СТИЛЬ ${m[1]}${m[2]}`],
-  [/^\+1 RESERVE \((\d+)\)$/, (m) => `+1 ЗАПАСНОЙ (${m[1]})`],
-  [/^(SUPER MAGNET|SLOW-MO|LONG ARMS) (\d+s)$/, (m) => `${t(m[1])} ${m[2]}`],
-  [/^BEAT (.+)!$/, (m) => `ПОБИЛ ${m[1]}!`],
-  [/^(ONE-HAND SAVE|ONE-FOOT SAVE|HANDSTAND|TWIST CATCH|STOOD IT!|SPLAT!|CHAIN BUILDER|CHAIN CATCH|HUMAN LADDER) (\+\d+.*)$/, (m) => `${t(m[1])} ${m[2]}`],
-];
-
-const TABLES: Record<Lang, { exact: Record<string, string>; rules: Rule[] }> = { en: { exact: {}, rules: [] }, ru: { exact: RU, rules: RU_RULES } };
+const TABLES: Record<Lang, { exact: Record<string, string>; rules: Rule[] }> = { en: { exact: {}, rules: [] }, ru, es, fr, pt, zh, "zh-Hant": zhHant, ja, ko };
 
 /** Translate one string; unknown strings come back unchanged. */
 export function t(s: string): string {

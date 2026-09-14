@@ -1,3 +1,4 @@
+import type { Lang } from "./i18n";
 import { UPGRADES, type UpgradeKey } from "./config";
 import type { Look } from "./creatures";
 
@@ -13,7 +14,7 @@ export interface SaveData {
   sound: boolean;
   music: boolean;
   /** "" = follow the browser language */
-  lang: "" | "en" | "ru";
+  lang: "" | Lang;
   reserves: number;
   /** legacy skin fields; migrated into `pattern`/`patterns` on load and kept for older clients */
   skin: string;
