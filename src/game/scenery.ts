@@ -202,7 +202,7 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     ctx.save(); drawFieldMagnet(ctx, z, z.kind === "repel");
     drawFieldArcs(ctx, z, time, z.kind === "repel"); ctx.restore(); return;
   }
-  if (z.itemId === "glass" || z.itemId === "plastic" || z.itemId === "gap" || z.itemId === "vent") {
+  if (z.itemId === "glass" || z.itemId === "plastic" || z.itemId === "vent") {
     ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
     drawObstacleObject(ctx, z.itemId); ctx.restore(); return;
   }
@@ -328,7 +328,7 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
 
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
-  if (item.family === 'surface' && drawObstaclePreview(ctx, item.id)) return;
+  if (item.family === 'surface' && item.id !== 'gap' && drawObstaclePreview(ctx, item.id)) return;
   if (item.id === "handle") {
     drawZone(ctx, { x: 6, y: 39, w: 88, h: 22, kind: "void", hue: -1, itemId: item.id }, 0, 42); return;
   }

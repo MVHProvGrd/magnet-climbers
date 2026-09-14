@@ -23,6 +23,9 @@ export type Rng = () => number;
 const rangeOf = (r: Rng, a: number, b: number) => a + r() * (b - a);
 const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 
+/** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
+export const SEAM_MARGIN = 36;
+
 /** The vertical seam between the two fridge doors. Always non-stick. */
 export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 
@@ -42,7 +45,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 6, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 7, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -181,14 +184,16 @@ export class World {
     if (i > 6 && r() < 0.25 + difficulty * 0.3) {
       const rw = rangeOf(r, 70, 120);
       const rh = rangeOf(r, 70, 110);
-      zones.push({ x: rangeOf(r, 10, W - rw - 10), y: y + rangeOf(r, 10, h - rh - 10), w: rw, h: rh, kind: "repel" });
+      const m = this.version >= 7 ? SEAM_MARGIN : 10;
+      zones.push({ x: rangeOf(r, 10, W - rw - 10), y: y + rangeOf(r, m, h - rh - m), w: rw, h: rh, kind: "repel" });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
     if (this.version >= 5 && i > 5 && r() < 0.22 + difficulty * 0.25) {
       const aw = rangeOf(r, 64, 100);
       const ah = rangeOf(r, 64, 96);
-      const ax = rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, 10, h - ah - 10);
+      const m = this.version >= 7 ? SEAM_MARGIN : 10;
+      const ax = rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, m, h - ah - m);
       const clash = zones.some((o) => ax < o.x + o.w + 16 && ax + aw > o.x - 16 && ay < o.y + o.h + 16 && ay + ah > o.y - 16);
       if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract" });
     }
@@ -246,7 +251,8 @@ export class World {
         const item = pick(art, bumperPool);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
-      if (i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5);
+      // set pieces: every third door before v7, every fifth since (they filled the doors and sat on the seams)
+      if (this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5, this.version);
       if (this.version >= 4 && i >= 4 && i % 4 === 0) {
         const kind = GADGET_KINDS[(i / 4 - 1) % 4];
         segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
@@ -344,17 +350,18 @@ export class World {
 function pushSticker(r: Rng, y: number, h: number, zones: NoStickZone[], version: number) {
   if (version < 3) { zones.push(sticker(r, y, h)); return; }
   for (let attempt = 0; attempt < 8; attempt++) {
-    const z = sticker(r, y, h);
+    const z = sticker(r, y, h, version);
     const clash = zones.some((o) => z.x < o.x + o.w + 12 && z.x + z.w > o.x - 12 && z.y < o.y + o.h + 12 && z.y + z.h > o.y - 12);
     if (!clash) { zones.push(z); return; }
   }
   // too crowded: skip this sticker rather than pile it on
 }
 
-function sticker(r: Rng, y: number, h: number): NoStickZone {
+function sticker(r: Rng, y: number, h: number, version = 0): NoStickZone {
   const w = rangeOf(r, 50, 110);
   const sh = rangeOf(r, 50, 100);
-  return { x: rangeOf(r, 0, W - w), y: y + rangeOf(r, 0, h - sh), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
+  const m = version >= 7 ? SEAM_MARGIN : 0;
+  return { x: rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
 }
 
 /** pad > 0 grows the rect; pad < 0 shrinks it. */

@@ -2,7 +2,7 @@ import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, inRect, makeRng } from "./world";
-import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
+import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
@@ -942,6 +942,7 @@ export class Game {
     const contacts = findContacts(c, this.world, radius);
     if (!contacts.length) return false;
     if ((flat || !braceLanding(c, this.world)) && !attachGrip(c, contacts, flat)) return false;
+    settleGrip(c, this.world);
     c.state = "stuck";
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;

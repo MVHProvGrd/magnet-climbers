@@ -12,11 +12,14 @@ export const obstacleArtReady = typeof Image === 'undefined' ? Promise.resolve()
   img.src = `${base}art/real-v1/obstacles/${id}.png`;
 }))).then(() => undefined);
 
+/** The door-gap photo reads as a huge dark gasket when stretched across a band, so open gaps stay hand-drawn. */
+const NO_PHOTO = new Set(['gap']);
+
 function artId(z: NoStickZone): string | undefined {
   if (z.kind === 'attract' || z.kind === 'repel') return z.kind;
   if (z.hue === -1) return 'handle';
-  if (z.itemId && images.has(z.itemId)) return z.itemId;
-  return { glass: 'glass', trim: 'plastic', void: 'gap', sticker: undefined }[z.kind];
+  const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: 'plastic', void: 'gap', sticker: undefined }[z.kind];
+  return id && NO_PHOTO.has(id) ? undefined : id;
 }
 
 /** Fill the real collision rectangle; nine-slice preserves the molded frame thickness. */

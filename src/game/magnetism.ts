@@ -76,6 +76,23 @@ export function attachGrip(c: Climber, available: MagneticContact[], flat = fals
   return true;
 }
 
+/** After a catch, limbs relax toward their rest spread wherever there is steel to plant on.
+ * The body stays where the primary tip pinned it; only tucked limbs unfold. Edge catches with
+ * no steel under the rest position keep their tucked contact, so one-hand saves still read.
+ */
+export function settleGrip(c: Climber, world: World): void {
+  const grip = c.grip;
+  if (!grip || grip.contacts.length < 2) return;
+  for (const contact of grip.contacts) {
+    if (contact.carrierId) continue;
+    const rest = rotate(LIMB_TIPS[contact.limb], c.angle);
+    const metal = world.nearestMetal(c.x + rest.x, c.y + rest.y, 4);
+    if (!metal || world.carrierAt(metal).carrierId) continue;
+    contact.x = metal.x; contact.y = metal.y;
+    if (grip.contacts[0] === contact) grip.pivotLocal = { ...LIMB_TIPS[contact.limb] };
+  }
+}
+
 /** Catch with the actual flying tips first, then brace an obvious upright stance
  * only when both desired magnets have real steel within a small settling reach.
  */

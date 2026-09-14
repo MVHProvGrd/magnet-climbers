@@ -206,7 +206,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 6);
+  assert.equal(modern.snapshot()!.worldVersion, 7);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -441,4 +441,20 @@ test("Claude's super magnet protection survives the articulated swipe integratio
   Object.assign(c, handWorldPoint(g.hand, { x: 0, y: 0 }));
   g.update(1 / 120);
   assert.equal(c.hp, 3); assert.equal(c.state, "stuck"); assert.ok(c.grip); assert.ok(g.hand.hit.has(c.id));
+});
+
+test("v7 keeps steel clear of the door seams and thins out set pieces", () => {
+  const seed = 777;
+  const world = new World(seed, 0, 7); world.generateTo(30);
+  const seam = 36;
+  for (const s of world.segments) {
+    for (const z of s.zones) {
+      if (z.kind === "glass" || z.kind === "trim" || z.kind === "void") continue;
+      assert.ok(z.y >= s.y + seam - 1, `${z.kind} at ${z.y - s.y} sits on the top seam`);
+      assert.ok(z.y + z.h <= s.y + s.h - seam + 1, `${z.kind} ends ${s.y + s.h - (z.y + z.h)} px from the bottom seam`);
+    }
+  }
+  const old = new World(seed, 0, 6); old.generateTo(30);
+  const big = (w: World) => w.segments.filter((s) => s.zones.some((z) => ["dispenser", "calendar", "vent", "ice-tray"].includes(z.itemId ?? ""))).length;
+  assert.ok(big(world) < big(old), `set pieces should be rarer: ${big(world)} vs ${big(old)}`);
 });
