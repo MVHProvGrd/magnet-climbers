@@ -6,7 +6,7 @@ import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from ".
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
-import { UPGRADES, W, upgradeCost, RESERVE_COST, statsFor, type UpgradeKey } from "./game/config";
+import { UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
@@ -400,7 +400,7 @@ let tutorial: { step: number; t: number } | null = null;
 const tutorialSteps: { tip: string; done: (g: Game, t: number) => boolean }[] = [
   { tip: "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.", done: (g) => g.phase === "running" },
   { tip: "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.", done: (g) => g.heightCm >= 15 },
-  { tip: "🟡 Grab coins on the way. They buy upgrades and reserves between runs.", done: (g, t) => g.coins > 0 || t > 12 },
+  { tip: "🟡 Grab coins on the way. They feed the prize machine for new patterns.", done: (g, t) => g.coins > 0 || t > 12 },
   { tip: "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.", done: (_g, t) => t > 6 },
   { tip: "✅ That's it. Crew mode flings the whole gang at once. Go climb.", done: (_g, t) => t > 5 },
 ];
@@ -543,7 +543,7 @@ canvas.addEventListener("pointerdown", (e) => {
   if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
   if (game.rules === "crew" && !game.level && hit(sp, b.sync)) { game.sync = !game.sync; return; }
   if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
-  if (game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
+  if (SHOP_ENABLED && game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
   canvas.setPointerCapture(e.pointerId);
   game.pointerDown(toWorld(e));
 });

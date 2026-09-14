@@ -127,7 +127,7 @@ export const exact: Record<string, string> = {
   "Progress synced from your other device": "다른 기기에서 진행 상황을 가져왔어요",
   "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 아무 데나 손가락을 대고 아래로 당긴 뒤 놓으면 위로 날아가요.",
   "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 자석은 철에 붙어요. 유리나 스티커 말고 반짝이는 금속을 노리세요.",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 가는 길에 코인을 주우세요. 업그레이드와 예비 인형을 살 수 있어요.",
+  "🟡 Grab coins on the way. They feed the prize machine for new patterns.": "🟡 가는 길에 코인을 주우세요. 뽑기 기계에서 새 무늬를 얻어요.",
   "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 빨간 선은 아이 손이 닿는 높이. 높이 갈수록 빨리 올라와요. 멈추지 마세요.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 끝! 팀 모드는 모두를 한 번에 던져요. 올라가세요.",
   "nothing to hold there": "거긴 잡을 게 없어요", "LADDER": "사다리", "BEST BEATEN ✓": "기록 경신 ✓", "😌 CHILL": "😌 느긋",

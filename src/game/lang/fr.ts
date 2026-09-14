@@ -127,7 +127,7 @@ export const exact: Record<string, string> = {
   "Progress synced from your other device": "Progression récupérée depuis votre autre appareil",
   "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 Posez un doigt n'importe où, tirez vers le BAS pour tendre, lâchez pour lancer.",
   "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 Les aimants collent à l'acier. Visez le métal brillant, pas le verre ni les autocollants.",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 Ramassez les pièces en route. Elles paient améliorations et réserves entre les parties.",
+  "🟡 Grab coins on the way. They feed the prize machine for new patterns.": "🟡 Ramassez les pièces en route. Elles alimentent la machine à prix pour de nouveaux motifs.",
   "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 La ligne rouge, c'est la portée du petit. Elle monte plus vite quand vous êtes haut. Ne vous arrêtez pas.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ C'est tout. Le mode équipe lance toute la bande d'un coup. À vous.",
   "nothing to hold there": "rien à quoi s'accrocher ici", "LADDER": "ÉCHELLE", "BEST BEATEN ✓": "RECORD BATTU ✓", "😌 CHILL": "😌 ZEN",

@@ -1,5 +1,5 @@
 import { appearanceFor } from "./creatures";
-import { CFG, W } from "./config";
+import { CFG, SHOP_ENABLED, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
@@ -392,7 +392,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#1a1d24";
     ctx.fillText(tr("◎ RECENTER"), b.recenter.x + b.recenter.w / 2, b.recenter.y + 27);
   }
-  if (g.rules === "crew" && g.reserves > 0) {
+  if (SHOP_ENABLED && g.rules === "crew" && g.reserves > 0) {
     ctx.fillStyle = "#9be15d";
     roundRect(ctx, b.reserve.x, b.reserve.y, b.reserve.w, b.reserve.h, 12);
     ctx.fill();

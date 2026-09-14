@@ -1,4 +1,4 @@
-import { RESERVE_COST, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { RESERVE_COST, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
@@ -183,8 +183,8 @@ export class Ui {
       <div class="stats">
         <div><span>Stars</span><b>★ ${Object.values(s.expeditions).reduce((a, b) => a + b, 0)}</b></div>
         <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
-        <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Coins</span><b class="coin">$${s.coins}</b></button>
-        <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
+        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Coins</span><b class="coin">$${s.coins}</b></button>
+        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
       </div>
       <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, endless fridge, outrun the line.</small></button>
       <button class="primary mode" data-a="expeditions"><b>EXPEDITIONS</b><small>Crew puzzles. No red line, a fling budget, three stars. ${expeditionStars(s)}</small></button>
@@ -193,7 +193,7 @@ export class Ui {
         <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i></i>
       </label>
       <div class="pair">
-        <button data-a="shop">UPGRADES</button>
+        ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
         <button data-a="collection">🎨 CREATURES</button>
       </div>
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
@@ -561,7 +561,7 @@ export class Ui {
         </div>
       </div>
       <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
-      <button data-a="shop">UPGRADES &amp; RESERVES</button>
+      ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES &amp; RESERVES</button>` : ""}
       <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced to the cloud after every run</p>
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {

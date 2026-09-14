@@ -1,6 +1,9 @@
 /** Logical canvas width. Height scales with the device aspect ratio. */
 export const W = 400;
 
+/** Upgrades and reserve climbers are hidden until the mechanics settle; the code stays for the revamp. */
+export const SHOP_ENABLED = false;
+
 export const CFG = {
   gravity: 950,
   maxDrag: 130,

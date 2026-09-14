@@ -127,7 +127,7 @@ export const exact: Record<string, string> = {
   "Progress synced from your other device": "別の端末から進行状況を同期",
   "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 どこでも指を置き、下にドラッグして引き、離すと上へ飛ぶ。",
   "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 磁石は鉄にくっつく。光る金属を狙え。ガラスやシールはダメ。",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 途中でコインを拾おう。強化と控えが買える。",
+  "🟡 Grab coins on the way. They feed the prize machine for new patterns.": "🟡 途中でコインを拾おう。ガチャで新しい柄が手に入る。",
   "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 赤いラインは子どもの手が届く高さ。高くなるほど速く上がる。止まるな。",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 以上！チームモードは全員いっせいに飛ばす。さあ登ろう。",
   "nothing to hold there": "そこにはつかめるものがない", "LADDER": "はしご", "BEST BEATEN ✓": "記録更新 ✓", "😌 CHILL": "😌 のんびり",

@@ -141,7 +141,7 @@ export const exact: Record<string, string> = {
   "Progress synced from your other device": "Прогресс подтянут с другого устройства",
   "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 Коснитесь экрана, потяните ВНИЗ, отпустите — и бросок вверх.",
   "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 Магниты липнут к стали. Цельтесь в блестящий металл, а не в стекло и наклейки.",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 Собирайте монеты по пути. На них покупаются улучшения и запасные.",
+  "🟡 Grab coins on the way. They feed the prize machine for new patterns.": "🟡 Собирайте монеты по пути. Они идут в призовой автомат за новыми узорами.",
   "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 Красная линия — досягаемость ребёнка. Чем выше, тем быстрее она растёт. Не стойте.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ Вот и всё. Командный режим бросает всех разом. Вперёд.",
   // HUD (canvas)

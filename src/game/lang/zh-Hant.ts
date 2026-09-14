@@ -127,7 +127,7 @@ export const exact: Record<string, string> = {
   "Progress synced from your other device": "已從另一台裝置同步進度",
   "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.": "👆 手指按住任意位置，向下拖曳拉弓，放開就向上甩。",
   "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.": "🧲 磁鐵吸鋼板。瞄準亮閃閃的金屬，別瞄玻璃和貼紙。",
-  "🟡 Grab coins on the way. They buy upgrades and reserves between runs.": "🟡 順路撿金幣。局間可以買升級和替補。",
+  "🟡 Grab coins on the way. They feed the prize machine for new patterns.": "🟡 順路撿金幣。用來在抽獎機抽新圖案。",
   "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.": "🔴 紅線是小孩夠得到的高度。你越高它漲得越快。別停。",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 就這些。隊伍模式一次甩全隊。去爬吧。",
   "nothing to hold there": "那裡沒東西可抓", "LADDER": "人梯", "BEST BEATEN ✓": "已破紀錄 ✓", "😌 CHILL": "😌 休閒",
