@@ -393,7 +393,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#1a1d24";
     ctx.fillText(tr(g.mode === "fling" ? "FLING" : "CLIMB"), b.mode.x + b.mode.w / 2, b.mode.y + 27);
   }
-  if (g.rules === "crew" && !g.level) {
+  if (g.rules === "crew") {
     ctx.fillStyle = g.sync ? "#c77dff" : "rgba(0,0,0,0.45)";
     roundRect(ctx, b.sync.x, b.sync.y, b.sync.w, b.sync.h, 12);
     ctx.fill();
