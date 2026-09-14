@@ -52,6 +52,7 @@ export const exact: Record<string, string> = {
   "Blue S pulls you in.": "파란 S는 끌어당겨요.", " Its steel face catches you.": " 철 면이 받아 줘요.",
   "Red N pushes you away.": "빨간 N은 밀어내요.", " Moving magnets knock you loose.": " 움직이는 자석은 떨어뜨려요.",
   "The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.": "나침반, 크레용, 사탕 막대는 파란 붙잡기와 빨간 밀기를 번갈아요. 카운트다운이 알려 줘요. 자기장이 비행을 휘는 곳에서 조준점이 빨강이나 파랑으로 변해요.",
+  "Tap to close": "탭하여 닫기",
   "Item category": "분류",
   "Paper isn't steel. Catch the bare door around this card.": "종이는 철이 아니에요. 카드 주변의 맨 문을 잡으세요.",
   "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges.": "인쇄된 종이는 자력을 막아요. 가장자리에 드러난 철을 노리세요.",

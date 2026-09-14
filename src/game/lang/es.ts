@@ -52,6 +52,7 @@ export const exact: Record<string, string> = {
   "Blue S pulls you in.": "El S azul te atrae.", " Its steel face catches you.": " Su cara de acero te atrapa.",
   "Red N pushes you away.": "El N rojo te repele.", " Moving magnets knock you loose.": " Los imanes móviles te sueltan.",
   "The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.": "La brújula, la cera y el bastón de caramelo alternan entre sujeción azul y empuje rojo; su cuenta atrás avisa. Los puntos de puntería se vuelven rojos o azules donde un campo curva tu vuelo.",
+  "Tap to close": "Toca para cerrar",
   "Item category": "Categoría",
   "Paper isn't steel. Catch the bare door around this card.": "El papel no es acero. Agárrate a la puerta desnuda alrededor.",
   "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges.": "El papel impreso bloquea los agarres. Apunta al acero visible de los bordes.",

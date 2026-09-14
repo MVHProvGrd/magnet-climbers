@@ -52,6 +52,7 @@ export const exact: Record<string, string> = {
   "Blue S pulls you in.": "青いSは引き寄せる。", " Its steel face catches you.": " 鉄の面がキャッチしてくれる。",
   "Red N pushes you away.": "赤いNは押し返す。", " Moving magnets knock you loose.": " 動く磁石は弾き飛ばす。",
   "The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.": "コンパス、クレヨン、キャンディ棒は青の吸着と赤の反発を切り替える。カウントダウンが警告。磁場が飛行を曲げる場所で狙いの点が赤か青になる。",
+  "Tap to close": "タップで閉じる",
   "Item category": "カテゴリ",
   "Paper isn't steel. Catch the bare door around this card.": "紙は鉄じゃない。カードの周りのむき出しのドアをつかもう。",
   "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges.": "印刷紙は磁力を遮る。縁の見えている鉄を狙え。",

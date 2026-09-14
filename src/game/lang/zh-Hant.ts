@@ -52,6 +52,7 @@ export const exact: Record<string, string> = {
   "Blue S pulls you in.": "藍色 S 會吸你。", " Its steel face catches you.": " 它的鋼面能接住你。",
   "Red N pushes you away.": "紅色 N 會推開你。", " Moving magnets knock you loose.": " 移動的磁鐵會把你撞掉。",
   "The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.": "指南針、蠟筆和糖棒會在藍色吸附和紅色推力之間切換；倒數會提醒你。瞄準點在磁場彎曲你飛行的地方會變紅或變藍。",
+  "Tap to close": "點一下關閉",
   "Item category": "分類",
   "Paper isn't steel. Catch the bare door around this card.": "紙不是鋼。抓卡片周圍裸露的門板。",
   "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges.": "印刷紙片擋住磁力。瞄準邊緣露出的鋼板。",

@@ -152,6 +152,17 @@ select.buy option { background: #1e2229; color: #fff; }
 /* collection */
 .panel.collection { width: min(94vw, 420px); }
 .guide-card.look { position: relative; cursor: pointer; font: inherit; color: inherit; text-align: center; }
+.field-guide article.guide-card { cursor: pointer; }
+.field-guide article.guide-card:active { transform: scale(.97); }
+/* tapped guide card: the item big, over everything */
+.guide-zoom { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(8,10,14,.78); opacity: 0; transition: opacity .15s; cursor: pointer; }
+.guide-zoom.show { opacity: 1; }
+.zoom-card { width: min(92vw, 360px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 16px 16px; border-radius: 22px; background: linear-gradient(155deg, #303b4b 0%, #252e3b 62%, #202734 100%); border: 1px solid #4b5a69; box-shadow: 0 20px 60px rgba(0,0,0,.6); text-align: center; transform: scale(.9); transition: transform .15s; }
+.guide-zoom.show .zoom-card { transform: scale(1); }
+.zoom-card canvas { width: 100%; max-width: 300px; height: auto; border-radius: 28px; background: radial-gradient(circle at 50% 43%, rgba(109, 190, 211, .17), rgba(20, 27, 37, 0) 67%); }
+.zoom-card b { font-size: 20px; }
+.zoom-card span { font-size: 14px; line-height: 1.5; color: #ccd6df; }
+.zoom-card i { font-size: 11px; color: #8b97a3; font-style: normal; margin-top: 4px; }
 .guide-card.look.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,138,61,0.35) inset; }
 .guide-card.look.locked { opacity: 0.55; cursor: default; }
 .guide-card.look.locked canvas { filter: grayscale(1) brightness(0.6); }
