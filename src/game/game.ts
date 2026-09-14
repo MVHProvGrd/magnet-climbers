@@ -126,6 +126,8 @@ export class Game {
     this.revivesLeft = this.stats.revives;
     this.startY = 0;
     this.level = opts.level ?? null;
+    // expeditions: one fling at a time, every fling deliberate
+    if (this.level) this.sync = false;
     if (this.level) { this.chill = true; this.rules = "crew"; }
     this.world = new World(seed, 0, opts.worldVersion, this.level ? this.level.recipe : null);
     this.floorY = CFG.floorStartOffset;
@@ -859,7 +861,8 @@ export class Game {
     const falling = this.rules === "crew" && c.vy > 220 && c.leftLauncher && c.airTime > 0.25 && !(c.noStick && c.noStick > 0);
     if ((this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) || falling) {
       const a = this.nearestAnchor(c, null);
-      if (a) {
+      // a CATCH is a hand reaching up: the catcher has to be below the faller, not beside it
+      if (a && !(falling && a.y < c.y + 12)) {
         c.state = "linked"; c.locked = false;
         c.grip = undefined;
         c.parent = a.id;

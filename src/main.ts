@@ -523,7 +523,7 @@ canvas.addEventListener("pointerdown", (e) => {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }
   }
   if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
-  if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
+  if (game.rules === "crew" && !game.level && hit(sp, b.sync)) { game.sync = !game.sync; return; }
   if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
   if (game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
   canvas.setPointerCapture(e.pointerId);
