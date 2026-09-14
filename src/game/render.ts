@@ -56,7 +56,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   // links
   ctx.lineWidth = 3;
   for (const c of g.climbers) {
-    if (c.state !== "linked") continue;
+    if (c.state !== "linked" || c.locked) continue;
     const p = g.byId(c.parent);
     if (!p) continue;
     ctx.strokeStyle = "rgba(0,0,0,0.25)";
