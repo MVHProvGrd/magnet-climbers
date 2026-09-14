@@ -69,6 +69,7 @@ export const exact: Record<string, string> = {
   "Silver Handle": "銀の取っ手", "A real metal hold over slippery panels. Hands and feet can catch here.": "つるつるパネルの上の本物の金属。手も足もつかめる。",
   "N Souvenir Magnet": "N極のお土産マグネット", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Nと書かれた冷蔵庫のお土産。赤い磁場が空中の仲間を押し返す。弧が広いほど強い。大きいものはパチンコ。",
   "S Souvenir Magnet": "S極のお土産マグネット", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Sと書かれた冷蔵庫のお土産。青い磁場が遠くから空中の仲間を引き寄せ、表面がキャッチしてくれる。飛行を曲げる場所で狙いの点が青くなる。",
+  "Fiji (S)": "フィジー (S)", "Hawaii (S)": "ハワイ (S)", "Bali (S)": "バリ (S)", "Norway (N)": "ノルウェー (N)", "Alaska (N)": "アラスカ (N)", "Iceland (N)": "アイスランド (N)", "Jūrmala (N)": "ユールマラ (N)", "Kyiv (N)": "キーウ (N)",
   "Glass Panel": "ガラスパネル", "Glass blocks catches. Use steel at the sides or a silver handle across it.": "ガラスにはくっつかない。両脇の鉄か、渡された銀の取っ手を使おう。",
   "Plastic Trim": "プラスチックの縁", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "プラスチックは磁力ゼロ。飛び越えるか金属の島を使おう。",
   "Door Gap": "ドアの隙間", "Nothing to stick to here. Fling across or land on a metal handle.": "くっつくものがない。飛び越えるか金属の取っ手に着地。",

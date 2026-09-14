@@ -69,6 +69,7 @@ export const exact: Record<string, string> = {
   "Silver Handle": "銀色把手", "A real metal hold over slippery panels. Hands and feet can catch here.": "滑面板上真正的金屬抓點。手腳都能吸住。",
   "N Souvenir Magnet": "N 極紀念磁鐵", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "標著 N 的冰箱紀念磁鐵。紅色磁場推開空中的攀登者；弧線越寬推力越大。大的就是彈弓。",
   "S Souvenir Magnet": "S 極紀念磁鐵", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "標著 S 的冰箱紀念磁鐵。藍色磁場遠距離把空中的攀登者拉過來，表面能接住你。瞄準點在它彎曲你飛行的地方會變藍。",
+  "Fiji (S)": "斐濟 (S)", "Hawaii (S)": "夏威夷 (S)", "Bali (S)": "峇里島 (S)", "Norway (N)": "挪威 (N)", "Alaska (N)": "阿拉斯加 (N)", "Iceland (N)": "冰島 (N)", "Jūrmala (N)": "尤爾馬拉 (N)", "Kyiv (N)": "基輔 (N)",
   "Glass Panel": "玻璃板", "Glass blocks catches. Use steel at the sides or a silver handle across it.": "玻璃吸不住。用兩側的鋼板或橫跨的銀色把手。",
   "Plastic Trim": "塑膠飾條", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "塑膠沒有磁力。飛過去，或者用金屬小島。",
   "Door Gap": "門縫", "Nothing to stick to here. Fling across or land on a metal handle.": "這裡沒東西可吸。甩過去或落在金屬把手上。",

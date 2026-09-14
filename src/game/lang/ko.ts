@@ -69,6 +69,7 @@ export const exact: Record<string, string> = {
   "Silver Handle": "은색 손잡이", "A real metal hold over slippery panels. Hands and feet can catch here.": "미끄러운 판 위의 진짜 금속 손잡이. 손발 모두 붙어요.",
   "N Souvenir Magnet": "N극 기념 자석", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "N이 표시된 냉장고 기념품. 빨간 자기장이 공중의 인형을 밀어내요. 호가 넓을수록 세게 밀어요. 큰 것은 새총이에요.",
   "S Souvenir Magnet": "S극 기념 자석", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "S가 표시된 냉장고 기념품. 파란 자기장이 멀리서 공중의 인형을 당기고 표면이 받아 줘요. 비행을 휘게 하는 곳에서 조준점이 파랗게 변해요.",
+  "Fiji (S)": "피지 (S)", "Hawaii (S)": "하와이 (S)", "Bali (S)": "발리 (S)", "Norway (N)": "노르웨이 (N)", "Alaska (N)": "알래스카 (N)", "Iceland (N)": "아이슬란드 (N)", "Jūrmala (N)": "유르말라 (N)", "Kyiv (N)": "키이우 (N)",
   "Glass Panel": "유리판", "Glass blocks catches. Use steel at the sides or a silver handle across it.": "유리엔 못 붙어요. 양옆 철이나 가로지르는 은색 손잡이를 쓰세요.",
   "Plastic Trim": "플라스틱 테두리", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "플라스틱엔 자력이 없어요. 날아서 넘거나 금속 섬을 쓰세요.",
   "Door Gap": "문 틈", "Nothing to stick to here. Fling across or land on a metal handle.": "붙을 게 없어요. 날아 넘거나 금속 손잡이에 착지하세요.",

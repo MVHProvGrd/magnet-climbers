@@ -46,8 +46,15 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", description: "A big paper calendar. Follow the open steel side lane." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
-  { id: "repel", name: "N Souvenir Magnet", family: "surface", kind: "repel", description: "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots." },
-  { id: "attract", name: "S Souvenir Magnet", family: "surface", kind: "attract", metal: true, description: "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight." },
+  // every destination souvenir gets its own card; the plates in the game pick from these pools by position
+  ...[["fiji", "Fiji (S)"], ["hawaii", "Hawaii (S)"], ["bali", "Bali (S)"]].map(([place, name]): FridgeItem => ({
+    id: `attract-${place}`, name, family: "surface", kind: "attract", metal: true,
+    description: "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.",
+  })),
+  ...[["norway", "Norway (N)"], ["alaska", "Alaska (N)"], ["iceland", "Iceland (N)"], ["jurmala", "Jūrmala (N)"], ["kyiv", "Kyiv (N)"]].map(([place, name]): FridgeItem => ({
+    id: `repel-${place}`, name, family: "surface", kind: "repel",
+    description: "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.",
+  })),
   { id: "glass", name: "Glass Panel", family: "surface", kind: "glass", description: "Glass blocks catches. Use steel at the sides or a silver handle across it." },
   { id: "plastic", name: "Plastic Trim", family: "surface", kind: "trim", description: "Plastic offers no magnetic hold. Cross in flight or use a metal island." },
   { id: "gap", name: "Door Gap", family: "surface", kind: "void", description: "Nothing to stick to here. Fling across or land on a metal handle." },

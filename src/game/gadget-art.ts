@@ -30,6 +30,8 @@ function charm(ctx: CanvasRenderingContext2D, theme: string, size: number) {
   if (image) ctx.drawImage(image, -size / 2, -size / 2, size, size);
   else { plate(ctx, -size / 2, -size / 2, size, size, "#ecd397", 8); ctx.fillStyle = "#587b7b"; ctx.font = `bold ${size * .55}px system-ui`; ctx.textAlign = "center"; ctx.fillText("★", 0, size * .2); }
 }
+/** A specific souvenir by id (guide cards). */
+export const destinationArtById = (id: string) => destinationArt.get(id);
 /** Souvenir magnet for a static N/S plate, picked by position so it never changes frame to frame. */
 export function destinationArtFor(x: number, y: number, repel: boolean): CanvasImageSource | undefined {
   return destinationArt.get(polarityDestination(`${Math.round(x)}:${Math.round(y)}`, repel));
