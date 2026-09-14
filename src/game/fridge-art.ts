@@ -1,10 +1,10 @@
 /** Canvas-native fridge objects. Art stays inside the existing collision boxes. */
 import type { NoStickZone, PowerKind } from "./types";
 const TAU = Math.PI * 2;
-function oval(c: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, color: string) {
+function oval(c: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, color: string | CanvasGradient | CanvasPattern) {
   c.fillStyle = color; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill();
 }
-function box(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, r = 0) {
+function box(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string | CanvasGradient | CanvasPattern, r = 0) {
   c.fillStyle = color; c.beginPath(); c.roundRect(x, y, w, h, r); c.fill();
 }
 function line(c: CanvasRenderingContext2D, pts: number[], color: string, width = 2) {
@@ -148,79 +148,78 @@ export function drawFieldMagnet(c: CanvasRenderingContext2D, z: NoStickZone, rep
   label(c,repel?"N":"S",50,90,11,"#f5e8c8"); c.restore();
 }
 
-/** Pickups are collectible fridge toys: chunky silhouettes, soft shadows and a face/detail to remember. */
+/** Real-material pickup props: no mascots, no stickers, just recognizable objects. */
 export function drawPickupObject(c: CanvasRenderingContext2D, kind: PowerKind) {
   c.save(); c.lineCap = "round"; c.lineJoin = "round";
-  const ink = "#263241";
-  const shadow = (x: number, y: number, rx: number, ry: number) => oval(c, x, y, rx, ry, "rgba(9,16,25,.34)");
+  const shadow = (x: number, y: number, rx: number, ry: number) => oval(c, x, y, rx, ry, "rgba(22,30,38,.22)");
   if (kind === "coin") {
-    shadow(2, 15, 15, 4); oval(c, 1, 1, 16, 17, ink); oval(c, -1, -2, 14, 15, "#e4a83e");
-    oval(c, -3, -5, 10, 11, "#ffd86b"); oval(c, -6, -8, 3, 2, "#fff4b6");
-    label(c, "+", -2, 2, 15, "#9b6527"); star(c, 7, 7, 4, "#fff0a3");
+    shadow(2, 15, 15, 3); const edge = c.createLinearGradient(-15, -12, 14, 15); edge.addColorStop(0, "#f5d879"); edge.addColorStop(.48, "#a66d25"); edge.addColorStop(1, "#6d481d"); oval(c, 1, 1, 15, 16, "#70491d"); oval(c, -1, -2, 14, 15, edge);
+    c.strokeStyle = "#f4d578"; c.lineWidth = 1; c.beginPath(); c.arc(-1, -2, 10, 0, TAU); c.stroke();
+    for (let i = 0; i < 18; i++) { const a = i * TAU / 18; line(c, [-1 + Math.cos(a) * 11, -2 + Math.sin(a) * 11, -1 + Math.cos(a) * 13, -2 + Math.sin(a) * 13], "#c18a35", .8); }
+    label(c, "+", -1, 3, 13, "#9a641e");
   }
   if (kind === "gem") {
-    shadow(2, 15, 14, 4); c.fillStyle = ink; c.beginPath(); c.moveTo(-15, -5); c.lineTo(-7, -17); c.lineTo(8, -15); c.lineTo(16, -4); c.lineTo(1, 17); c.closePath(); c.fill();
-    c.fillStyle = "#42b9da"; c.beginPath(); c.moveTo(-11, -5); c.lineTo(-5, -12); c.lineTo(8, -11); c.lineTo(12, -3); c.lineTo(0, 12); c.closePath(); c.fill();
-    c.fillStyle = "#9beeff"; c.beginPath(); c.moveTo(-5, -12); c.lineTo(1, -3); c.lineTo(8, -11); c.lineTo(12, -3); c.lineTo(0, 1); c.closePath(); c.fill();
-    line(c, [-11, -5, 0, 1, 0, 12], "#e3fcff", 1.5); star(c, -10, -15, 4, "#fff6be");
+    shadow(2, 15, 14, 3); c.fillStyle = "#347d9b"; c.beginPath(); c.moveTo(-14, -6); c.lineTo(-6, -16); c.lineTo(8, -14); c.lineTo(15, -3); c.lineTo(1, 16); c.closePath(); c.fill();
+    c.fillStyle = "#73d3e4"; c.beginPath(); c.moveTo(-10, -6); c.lineTo(-4, -12); c.lineTo(7, -11); c.lineTo(11, -3); c.lineTo(0, 11); c.closePath(); c.fill();
+    c.fillStyle = "#bff5f4"; c.beginPath(); c.moveTo(-4, -12); c.lineTo(0, -3); c.lineTo(7, -11); c.lineTo(11, -3); c.lineTo(0, 1); c.closePath(); c.fill();
+    c.fillStyle = "rgba(255,255,255,.7)"; c.beginPath(); c.moveTo(-4, -12); c.lineTo(-9, -6); c.lineTo(-2, -7); c.closePath(); c.fill();
   }
   if (kind === "heart") {
-    shadow(1, 15, 19, 4); box(c, -18, -12, 36, 28, ink, 8); box(c, -15, -9, 30, 23, "#fff3d3", 6);
-    box(c, -5, -7, 10, 19, "#e46678", 2); box(c, -12, -1, 24, 8, "#e46678", 2);
-    line(c, [-9, -13, -9, -18, 9, -18, 9, -13], "#d7976e", 3); oval(c, -9, -4, 2, 2, "#fff"); oval(c, 9, -4, 2, 2, "#fff");
+    shadow(1, 15, 19, 3); const tin = c.createLinearGradient(-18, -14, 18, 14); tin.addColorStop(0, "#fff6dc"); tin.addColorStop(.45, "#e8d5ae"); tin.addColorStop(1, "#a98c68"); box(c, -18, -12, 36, 26, "#836a52", 6); box(c, -16, -14, 32, 24, tin, 5);
+    box(c, -5, -9, 10, 18, "#d45257", 1); box(c, -12, -3, 24, 7, "#d45257", 1); line(c, [-11, -14, -11, -17, 11, -17, 11, -14], "#99775b", 2);
+    line(c, [-12, 8, 12, 8], "rgba(110,84,58,.35)", 1);
   }
   if (kind === "magnet") {
-    shadow(0, 16, 19, 4); c.strokeStyle = ink; c.lineWidth = 14; c.beginPath(); c.moveTo(-13, -13); c.lineTo(-13, 1); c.bezierCurveTo(-13, 22, 13, 22, 13, 1); c.lineTo(13, -13); c.stroke();
-    c.strokeStyle = "#ef665e"; c.lineWidth = 10; c.stroke(); box(c, -19, -17, 11, 10, ink, 2); box(c, 8, -17, 11, 10, ink, 2);
-    box(c, -17, -16, 8, 7, "#f2f0d6", 1); box(c, 9, -16, 8, 7, "#f2f0d6", 1); star(c, 0, -3, 5, "#ffdb63");
-    oval(c, -6, -1, 2, 2, "#fff"); oval(c, 6, -1, 2, 2, "#fff");
+    shadow(0, 16, 19, 3); c.strokeStyle = "#4d2e2c"; c.lineWidth = 15; c.beginPath(); c.moveTo(-13, -13); c.lineTo(-13, 1); c.bezierCurveTo(-13, 20, 13, 20, 13, 1); c.lineTo(13, -13); c.stroke();
+    const red = c.createLinearGradient(-14, -14, 14, 12); red.addColorStop(0, "#f18476"); red.addColorStop(.45, "#cb413f"); red.addColorStop(1, "#7f292d"); c.strokeStyle = red; c.lineWidth = 11; c.stroke();
+    const cap = c.createLinearGradient(0, -16, 0, -5); cap.addColorStop(0, "#fffdf0"); cap.addColorStop(.5, "#c9d5d5"); cap.addColorStop(1, "#70828a"); box(c, -19, -17, 11, 10, cap, 1); box(c, 8, -17, 11, 10, cap, 1);
+    line(c, [-15, -15, -9, -15], "rgba(255,255,255,.85)", 1); line(c, [11, -15, 17, -15], "rgba(255,255,255,.85)", 1);
   }
   if (kind === "slowmo") {
-    shadow(1, 15, 18, 4); oval(c, 1, 3, 18, 16, ink); oval(c, 0, 0, 15, 13, "#ef795d"); oval(c, -2, -2, 11, 11, "#fff1d1");
-    for (let i = 0; i < 8; i++) { const a = i * TAU / 8; line(c, [-2 + Math.cos(a) * 7, -2 + Math.sin(a) * 7, -2 + Math.cos(a) * 9, -2 + Math.sin(a) * 9], "#69584e", 1.5); }
-    line(c, [-2, -8, -2, -2, 5, 2], "#69584e", 2.2); line(c, [-8, -14, -2, -20, 5, -14], "#7ca76e", 4); oval(c, -2, -2, 2, 2, "#69584e");
+    shadow(1, 15, 18, 3); const body = c.createLinearGradient(-16, -12, 16, 14); body.addColorStop(0, "#f19b71"); body.addColorStop(.5, "#c75e4d"); body.addColorStop(1, "#88423e"); oval(c, 1, 3, 17, 15, "#74413b"); oval(c, 0, 0, 15, 13, body);
+    const face = c.createRadialGradient(-5, -6, 1, 0, 0, 12); face.addColorStop(0, "#fff9df"); face.addColorStop(1, "#d6c29c"); oval(c, -2, -2, 10, 10, face);
+    for (let i = 0; i < 12; i++) { const a = i * TAU / 12; line(c, [-2 + Math.cos(a) * 7, -2 + Math.sin(a) * 7, -2 + Math.cos(a) * 9, -2 + Math.sin(a) * 9], "#6a584b", i % 3 === 0 ? 1.5 : .8); }
+    line(c, [-2, -2, -2, -8, 4, 1], "#4b4944", 1.8); oval(c, -2, -2, 1.5, 1.5, "#4b4944"); box(c, -7, -17, 10, 4, "#74915f", 2);
   }
   if (kind === "reach") {
-    shadow(2, 14, 18, 4); box(c, -18, -13, 24, 27, ink, 7); box(c, -14, -10, 17, 21, "#efc95f", 5); box(c, -9, -7, 10, 10, "#ed8653", 3);
-    box(c, 3, -5, 17, 9, ink, 2); box(c, 4, -3, 17, 6, "#fff2bd", 1); for (let i = 0; i < 5; i++) line(c, [7 + i * 3, -3, 7 + i * 3, 1], "#645a4e", 1);
-    line(c, [20, -6, 20, 6], "#d9e6e4", 3); line(c, [20, -6, 23, -3], "#d9e6e4", 2); line(c, [20, 6, 23, 3], "#d9e6e4", 2);
+    shadow(2, 14, 18, 3); const caseG = c.createLinearGradient(-16, -12, 4, 13); caseG.addColorStop(0, "#ffe28a"); caseG.addColorStop(.55, "#e9b64f"); caseG.addColorStop(1, "#a96d32"); box(c, -18, -13, 25, 27, "#8b6337", 6); box(c, -15, -11, 20, 22, caseG, 5); box(c, -10, -7, 10, 10, "#da8052", 3);
+    box(c, 3, -5, 20, 9, "#aeb9b6", 2); box(c, 4, -3, 20, 5, "#fbf0c3", 1); for (let i = 0; i < 6; i++) line(c, [7 + i * 3, -3, 7 + i * 3, i % 2 ? 0 : 1], "#75644f", .8); line(c, [23, -6, 23, 6], "#e4eee8", 2);
   }
   if (kind === "extra") {
-    shadow(0, 17, 15, 4); box(c, -15, -18, 30, 36, ink, 8); box(c, -12, -15, 24, 30, "#f2c970", 6); box(c, -8, -11, 16, 24, "#4e7c8a", 6);
-    oval(c, 0, -5, 5, 5, "#b9e6a4"); line(c, [0, 1, 0, 9], "#b9e6a4", 3.5); line(c, [-6, 3, 0, 5, 6, 3], "#b9e6a4", 3); line(c, [-5, 13, 0, 8, 5, 13], "#b9e6a4", 3);
-    oval(c, -2, -6, 1, 1, ink); oval(c, 2, -6, 1, 1, ink); star(c, 14, -14, 6, "#fff0a6");
+    shadow(0, 17, 15, 3); box(c, -15, -18, 30, 36, "#aa8450", 7); box(c, -12, -16, 24, 31, "#d7b46b", 5); box(c, -8, -11, 16, 23, "#345769", 4);
+    oval(c, 0, -3, 4, 4, "#d7e2c0"); line(c, [0, 2, 0, 9], "#d7e2c0", 2.5); line(c, [-5, 4, 0, 5, 5, 4], "#d7e2c0", 2); line(c, [-4, 13, 0, 8, 4, 13], "#d7e2c0", 2);
+    line(c, [-8, -14, 8, -14], "rgba(255,244,187,.65)", 1);
   }
   c.restore();
 }
 
-/** Big non-magnetic fridge objects. They should read by silhouette, not by a caption. */
+/** Big non-magnetic fridge objects, rendered like actual door hardware and material. */
 export function drawObstacleObject(c: CanvasRenderingContext2D, kind: "glass" | "plastic" | "gap" | "vent") {
   c.save(); c.lineCap = "round"; c.lineJoin = "round";
-  const ink = "#263241";
   if (kind === "glass") {
-    box(c, 3, 3, 94, 94, ink, 9); box(c, 8, 8, 84, 84, "#8ed4dc", 6);
-    box(c, 13, 13, 74, 74, "#467f96", 3);
-    for (const [x, y, w, h, color] of [[20, 24, 22, 19, "#d99767"], [56, 24, 24, 19, "#e9c967"], [26, 51, 18, 17, "#83b879"], [55, 52, 25, 16, "#ce7a87"]] as const) box(c, x, y, w, h, color, 4);
-    line(c, [17, 46, 83, 23], "rgba(232,255,255,.72)", 4); line(c, [27, 81, 79, 53], "rgba(232,255,255,.28)", 2);
-    oval(c, 28, 31, 3, 3, "#fff5cc"); oval(c, 67, 62, 3, 3, "#fff5cc");
+    const bezel = c.createLinearGradient(0, 0, 100, 100); bezel.addColorStop(0, "#f2f4ee"); bezel.addColorStop(.42, "#b8c2c4"); bezel.addColorStop(1, "#65737b");
+    box(c, 3, 3, 94, 94, "#596870", 7); box(c, 7, 7, 86, 86, bezel, 5);
+    const glass = c.createLinearGradient(12, 10, 85, 88); glass.addColorStop(0, "#bfe7e7"); glass.addColorStop(.45, "#6da5ae"); glass.addColorStop(1, "#284c5d"); box(c, 12, 12, 76, 76, glass, 2);
+    box(c, 17, 49, 66, 2, "rgba(231,247,240,.38)"); box(c, 17, 72, 66, 2, "rgba(231,247,240,.28)");
+    for (const [x, y, w, h, color] of [[22, 27, 18, 15, "rgba(224,166,109,.72)"], [58, 28, 18, 14, "rgba(238,210,119,.72)"], [28, 55, 13, 10, "rgba(144,185,132,.7)"], [56, 56, 19, 11, "rgba(206,126,133,.62)"]] as const) box(c, x, y, w, h, color, 2);
+    line(c, [15, 46, 86, 21], "rgba(255,255,255,.72)", 3); line(c, [28, 86, 83, 55], "rgba(235,255,255,.22)", 2);
   }
   if (kind === "plastic") {
-    box(c, 5, 8, 90, 84, ink, 12); box(c, 10, 13, 80, 74, "#d8e55e", 8);
-    box(c, 18, 20, 64, 60, "#7f9d59", 5); for (let x = 24; x <= 76; x += 10) { box(c, x, 23, 4, 54, "#d2e78a", 2); line(c, [x + 1, 25, x + 1, 74], "#5e754e", 1); }
-    for (const x of [17, 83]) { oval(c, x, 51, 5, 5, "#f0f3ce"); oval(c, x, 51, 2, 2, "#71837a"); }
-    line(c, [18, 17, 82, 17], "rgba(255,255,255,.8)", 3);
+    const base = c.createLinearGradient(0, 0, 100, 100); base.addColorStop(0, "#eef3e4"); base.addColorStop(.35, "#aebba8"); base.addColorStop(1, "#53635e"); box(c, 5, 8, 90, 84, base, 9); box(c, 13, 16, 74, 68, "#6d8175", 5);
+    for (let x = 20; x <= 80; x += 10) { box(c, x, 20, 4, 60, "#b8c8a8", 1); line(c, [x + 1, 22, x + 1, 78], "rgba(255,255,255,.38)", 1); line(c, [x + 4, 23, x + 4, 78], "rgba(35,50,48,.35)", 1); }
+    for (const x of [16, 84]) { oval(c, x, 50, 4, 4, "#d6ded2"); oval(c, x, 50, 1.5, 1.5, "#63736f"); }
+    line(c, [18, 18, 82, 18], "rgba(255,255,255,.65)", 2);
   }
   if (kind === "gap") {
-    box(c, 5, 4, 90, 92, ink, 9); box(c, 16, 10, 68, 80, "#101820", 5);
-    const g = c.createLinearGradient(0, 15, 0, 88); g.addColorStop(0, "#27323b"); g.addColorStop(.5, "#05080c"); g.addColorStop(1, "#33424c");
-    c.fillStyle = g; c.fillRect(25, 12, 50, 76);
-    for (let y = 20; y < 84; y += 12) line(c, [29, y, 71, y], "rgba(113,138,148,.28)", 2);
-    for (const [x, y] of [[20, 28], [78, 64], [82, 19]]) { oval(c, x, y, 3, 3, "#bcebf0"); line(c, [x - 4, y + 5, x + 2, y + 11], "#78c4d2", 1.5); }
+    const outer = c.createLinearGradient(0, 0, 100, 100); outer.addColorStop(0, "#6f7a7e"); outer.addColorStop(.5, "#263038"); outer.addColorStop(1, "#0e151a"); box(c, 5, 4, 90, 92, outer, 8); box(c, 17, 10, 66, 80, "#11191e", 4);
+    const rubber = c.createLinearGradient(0, 12, 0, 88); rubber.addColorStop(0, "#3f4a4e"); rubber.addColorStop(.4, "#080c0f"); rubber.addColorStop(1, "#354147"); box(c, 25, 12, 50, 76, rubber, 3);
+    for (let y = 20; y < 84; y += 11) line(c, [29, y, 71, y], "rgba(165,187,189,.18)", 1); line(c, [21, 13, 21, 87], "rgba(224,242,239,.22)", 2); line(c, [79, 13, 79, 87], "rgba(0,0,0,.35)", 2);
+    for (const [x, y] of [[20, 28], [78, 64], [82, 19]]) { oval(c, x, y, 2.5, 2.5, "#c3e6e4"); line(c, [x - 3, y + 4, x + 1, y + 9], "#87bdc5", 1); }
   }
   if (kind === "vent") {
-    box(c, 4, 8, 92, 84, ink, 12); box(c, 10, 14, 80, 72, "#5c6c76", 8);
-    for (let y = 24; y <= 72; y += 12) { box(c, 19, y, 62, 5, "#1c2933", 2); line(c, [22, y + 1, 77, y + 1], "#a7bac0", 1); }
-    oval(c, 27, 26, 2, 2, "#e5fbfa"); oval(c, 73, 74, 2, 2, "#e5fbfa");
+    const frame = c.createLinearGradient(0, 0, 0, 100); frame.addColorStop(0, "#e2e6e5"); frame.addColorStop(.45, "#89959a"); frame.addColorStop(1, "#4a565d"); box(c, 4, 8, 92, 84, frame, 10); box(c, 11, 15, 78, 70, "#354149", 6);
+    for (let y = 23; y <= 73; y += 11) { box(c, 19, y, 62, 5, "#172126", 2); line(c, [22, y + 1, 77, y + 1], "rgba(207,224,223,.42)", 1); }
+    oval(c, 22, 21, 2, 2, "#e7f7f1"); oval(c, 78, 78, 2, 2, "#e7f7f1");
   }
   c.restore();
 }
