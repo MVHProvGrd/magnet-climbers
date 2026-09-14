@@ -1,5 +1,6 @@
 import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES } from "./gadgets";
+import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
 
 const art = new Map<string, CanvasImageSource>();
 export function setGadgetArt(theme: string, image: CanvasImageSource) { art.set(theme, image); }
@@ -42,26 +43,22 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   }
   ctx.restore();
   if (g.kind === "polarity") {
+    drawFieldMagnet(ctx, z, p.active);
     ctx.shadowColor = "#22303955"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
-    plate(ctx, z.x, z.y, z.w, z.h, p.active ? "#d84e5e" : "#459cb9", 7);
     ctx.shadowColor = "transparent";
     const shine = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
     shine.addColorStop(0, "#ffffff66"); shine.addColorStop(.4, "#ffffff00"); shine.addColorStop(1, "#172f4d55");
-    ctx.fillStyle = shine; ctx.fill();
-    ctx.save(); ctx.translate(p.x, p.y - 1); charm(ctx, theme, 34); ctx.restore();
+    ctx.fillStyle = shine; ctx.fillRect(z.x, z.y, z.w, z.h);
+    // Small enamel pins keep the three themed versions distinct.
+    ctx.save(); ctx.translate(z.x + 9, z.y + 9); charm(ctx, theme, 12); ctx.restore();
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "900 9px system-ui";
-    ctx.fillText(p.active ? "REPEL" : "GRIP", p.x, z.y + 11);
     const urgent = p.remaining < .65 && Math.sin(time * 25) > 0;
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
     ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
   } else {
-    const steel = ctx.createLinearGradient(0, z.y, 0, z.y + z.h);
-    steel.addColorStop(0, "#f1fcff"); steel.addColorStop(.3, "#a8bbc0"); steel.addColorStop(.5, "#f5ffff"); steel.addColorStop(1, "#657e89");
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
-    ctx.fillStyle = steel; ctx.beginPath(); ctx.roundRect(z.x, z.y, z.w, z.h, 3); ctx.fill();
-    ctx.strokeStyle = "#4a626d"; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = "#3f6572"; ctx.font = "bold 8px system-ui"; ctx.textAlign = "center"; ctx.fillText("GRIP", p.hold.x, z.y + 10);
+    drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }
   ctx.restore();
 }

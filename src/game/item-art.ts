@@ -46,7 +46,6 @@ export function drawObject(c: CanvasRenderingContext2D, id: number) {
     label("WATER + ICE", 11, "#b1d7e1", 5); rect(39, 19, 22, 8, "#71959f", 2); rect(46, 25, 8, 10, "#c2d8db", 1);
     line([50, 36, 50, 58], "#73c9e5", 1.3); rect(36, 54, 28, 21, "#618f9f", 2); rect(38, 55, 24, 3, "#b1e6ef");
     for (let i = 0; i < 8; i++) line([21 + i * 8, 85, 21 + i * 8, 92], "#8da6ad", 2);
-    label("NO GRIP", 99, "#b1d7e1", 4);
   } else if (id === 21) {
     rect(0, 0, 100, 100, "#fff3d9"); rect(0, 0, 100, 20, "#df7e83"); label("A VERY BUSY MONTH", 13, "#fff8ec", 6);
     for (let i = 0; i < 5; i++) for (let j = 0; j < 7; j++) {
@@ -60,7 +59,6 @@ export function drawObject(c: CanvasRenderingContext2D, id: number) {
     for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) {
       const x = 10 + j * 44, y = 8 + i * 17; rect(x, y, 35, 13, "#57849e", 3); rect(x + 3, y + 1, 29, 10, "#d0edf0", 2); line([x + 7, y + 3, x + 17, y + 3], "#fff", 1);
     }
-    label("PLASTIC / NO GRIP", 98, "#355a70", 4);
   }
   c.restore();
 }

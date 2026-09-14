@@ -1,4 +1,5 @@
 import type { NoStickKind, NoStickZone, PowerKind } from "./types";
+import { PAPER_ADDITIONS, BUSINESS_MAGNETS } from "./fridge-art";
 
 export type ItemFamily = "pickup" | "paper" | "surface" | "bumper" | "gadget";
 export interface FridgeItem {
@@ -32,19 +33,24 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
     description: ["Swinging silver grip carries you. Fling from it to cross the panel.", "A rotating letter carries a silver grip around its face. Time your launch.", "A dangling clip carries you above the paper. Only its silver top grips.", "Blue steel holds for three seconds; red repels for three. The countdown warns before it releases you."][i],
   }))),
   ...papers,
+  ...PAPER_ADDITIONS.map((name, i): FridgeItem => ({ id: `paper-new-${i}`, name, family: "paper", art: 100 + i, kind: "sticker", description: "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges." })),
+  ...BUSINESS_MAGNETS.map(([name, label], i): FridgeItem => ({ id: `business-${i}`, name, label, family: "bumper", art: 100 + i, hue: [195, 5, 110, 205, 15, 255, 40, 25][i], description: "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart." })),
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },
   { id: "coin", name: "Pocket Change", family: "pickup", power: "coin", description: "Collect coins for upgrades. Chill mode doesn't award currency." },
   { id: "gem", name: "Ice Gem", family: "pickup", power: "gem", description: "Rare gem currency. Not awarded in Chill mode." },
   { id: "magnet", name: "Super Magnet", family: "pickup", power: "magnet", description: "Temporarily catch earlier and reach farther for real steel." },
   { id: "extra", name: "Pocket Pal", family: "pickup", power: "extra", description: "Adds another climber to your run." },
   { id: "slowmo", name: "Kitchen Timer", family: "pickup", power: "slowmo", description: "Temporarily slows the action." },
-  { id: "reach", name: "Stretch Armstrong", family: "pickup", power: "reach", description: "Temporarily extends teammate reach." },
+  { id: "reach", name: "Pocket Tape Measure", family: "pickup", power: "reach", description: "Unroll extra reach: temporarily stretches the distance you can climb to a teammate." },
   { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Climb the steel beside it or its silver handle." },
   { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", description: "A big paper calendar. Follow the open steel side lane." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
-  { id: "repel", name: "Wrong Pole", family: "surface", kind: "repel", description: "Pushes airborne climbers away. Watch the red magnetic field." },
-  { id: "attract", name: "Right Pole", family: "surface", kind: "attract", metal: true, description: "Pulls airborne climbers in, and it is steel, so it catches them. Blue field, safe landing." },
+  { id: "repel", name: "N / Repelling Magnet", family: "surface", kind: "repel", description: "RED / N: pushes airborne climbers away. The field flows outward. Its face is not a safe hold." },
+  { id: "attract", name: "S / Attracting Magnet", family: "surface", kind: "attract", metal: true, description: "BLUE / S: pulls airborne climbers toward it from a distance. Its steel face catches you. The aim preview bends with the pull." },
+  { id: "glass", name: "Glass Panel", family: "surface", kind: "glass", description: "Glass blocks catches. Use steel at the sides or a silver handle across it." },
+  { id: "plastic", name: "Plastic Trim", family: "surface", kind: "trim", description: "Plastic offers no magnetic hold. Cross in flight or use a metal island." },
+  { id: "gap", name: "Door Gap", family: "surface", kind: "void", description: "Nothing to stick to here. Fling across or land on a metal handle." },
   { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Jump across or use the steel sides." },
   ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL"].map((label, i): FridgeItem => ({
     id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser"][i],

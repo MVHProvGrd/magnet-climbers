@@ -38,7 +38,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 5) {
+  constructor(seed: number, startY: number, readonly version = 6) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -192,21 +192,23 @@ export class World {
     if (this.version >= 2) {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
+      const paperPool = this.version >= 6 ? PAPER_ITEMS : PAPER_ITEMS.slice(0, 20);
+      const bumperPool = this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
       if (this.version >= 3) {
         const used = new Set<string>([this.lastCardId]);
         for (const zone of zones) {
           if (zone.kind !== "sticker") continue;
-          let choice = pick(art, PAPER_ITEMS);
-          for (let k = 0; k < 6 && used.has(choice.id); k++) choice = pick(art, PAPER_ITEMS);
+          let choice = pick(art, paperPool);
+          for (let k = 0; k < 6 && used.has(choice.id); k++) choice = pick(art, paperPool);
           used.add(choice.id);
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
         }
       } else {
-        for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, PAPER_ITEMS).id;
+        for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
       for (const bumper of bumpers) {
-        const item = pick(art, BUMPER_ITEMS);
+        const item = pick(art, bumperPool);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
       if (i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5);

@@ -15,7 +15,8 @@ export function getArmStretch(): number {
   return armStretch;
 }
 
-function geometry(c: Climber) {
+function geometry(c: Climber, appearance: CreatureAppearance = {}) {
+  const style = creatureStyle(c, appearance);
   const lift = bodyLift(c);
   const bodyPoint = (x: number, y: number, z = lift): Point => {
     const p = rotate({ x, y }, c.angle);
@@ -25,7 +26,11 @@ function geometry(c: Climber) {
   const limbs = [0, 1, 2, 3].map((limb) => {
     const tip = limbTip(c, limb);
     const attached = c.state === "stuck" && c.grip?.contacts.some((p) => p.limb === limb);
-    const root = LIMB_ROOTS[limb];
+    const side = limb % 2 ? 1 : -1;
+    const root = style.id === "octopus" ? { x: side * (limb < 2 ? 8 : 4), y: -2 }
+      : style.id === "crab" ? { x: side * 11, y: limb < 2 ? -4 : 4 }
+      : style.id === "frog" ? { x: side * (limb < 2 ? 7 : 10), y: limb < 2 ? -7 : 6 }
+      : LIMB_ROOTS[limb];
     const start = bodyPoint(root.x, root.y);
     const stretch = limb < 2 ? armStretch : 1;
     const end: Point = attached || stretch === 1
@@ -34,7 +39,8 @@ function geometry(c: Climber) {
     const flight = flightLimb(c, limb);
     const localTip = rotate({ x: end.x - c.x, y: end.y - c.y }, -c.angle);
     const joint = flight && stretch === 1 ? flight.joint : plantedJoint(root, localTip, limb);
-    const middle = bodyPoint(joint.x, joint.y, (start.z + end.z) / 2 + 3 + (attached ? (stretch - 1) * 10 : 0));
+    const spread = style.id === "frog" && limb >= 2 ? 7 : style.id === "octopus" ? 5 : 0;
+    const middle = bodyPoint(joint.x + side * spread, joint.y, (start.z + end.z) / 2 + 3 + (attached ? (stretch - 1) * 10 : 0));
     return { start, middle, end, attached };
   });
   return { shoulder, hip, head, limbs, lift };
@@ -54,7 +60,7 @@ function tube(ctx: CanvasRenderingContext2D, start: Vec, middle: Vec, end: Vec) 
 }
 
 export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t = 0, appearance: CreatureAppearance = {}) {
-  const shape = geometry(c);
+  const shape = geometry(c, appearance);
   const style = creatureStyle(c, appearance);
   ctx.save();
   const opacity = Math.max(0.07, 0.23 - shape.lift * 0.004);
@@ -90,7 +96,7 @@ function drawBodyLocal(ctx: CanvasRenderingContext2D, origin: Vec, angle: number
 
 /** Flexible toy geometry, metallic tips, and a common window light in world coordinates. */
 export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number, appearance: CreatureAppearance = {}) {
-  const shape = geometry(c);
+  const shape = geometry(c, appearance);
   const style = creatureStyle(c, appearance);
   ctx.save();
   if (selected) {
@@ -103,12 +109,9 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
   material.addColorStop(0.8, style.color); material.addColorStop(1, "#47505c");
   ctx.lineCap = "round";
   const origin = project({ x: c.x, y: c.y, z: shape.lift }, false);
-  // the octopus mantle is tall, so its body sits under the limbs and all eight arms come out from beneath it
-  const bodyUnderLimbs = style.id === "octopus";
   if (style.id !== "human") {
     ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
     drawCreatureDecorations(ctx, c, style, t, false); ctx.restore();
-    if (bodyUnderLimbs) drawBodyLocal(ctx, origin, c.angle, style, "torso");
   }
   for (const [index, limb] of shape.limbs.entries()) {
     const start = project(limb.start, false), middle = project(limb.middle, false), end = project(limb.end, false);
@@ -134,7 +137,16 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     }
   }
   if (style.id !== "human") {
-    drawBodyLocal(ctx, origin, c.angle, style, bodyUnderLimbs ? "head" : "all");
+    // Opaque body occludes limb roots. Magnetic centers are repainted above it
+    // so tucked catches stay legible even with the larger silhouettes.
+    drawBodyLocal(ctx, origin, c.angle, style);
+    for (const [index, limb] of shape.limbs.entries()) {
+      const end = project(limb.end, false);
+      drawCreatureCap(ctx, style, end.x, end.y, c.angle, index);
+      ctx.fillStyle = "#c6d5df"; ctx.strokeStyle = "#536778"; ctx.lineWidth = .8;
+      ctx.beginPath(); ctx.arc(end.x, end.y, 3.8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(end.x - 1, end.y - 1, 1.3, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore(); return;
   }
   const shoulder = project(shape.shoulder, false), hip = project(shape.hip, false);

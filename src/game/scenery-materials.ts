@@ -288,7 +288,6 @@ function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fillRect(ix, iy + ih - 2, iw, 2);
   ctx.fillRect(ix + iw - 2, iy, 2, ih);
   ctx.restore();
-  zoneLabel(ctx, "GLASS", z, "rgba(10,40,60,0.45)");
 }
 
 /** Molded black plastic trim: matte, horizontal ribs, a soft top sheen. */
@@ -317,7 +316,6 @@ function drawTrim(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   ctx.fillRect(z.x, z.y, z.w, 1.5);
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fillRect(z.x, z.y + z.h - 2, z.w, 2);
-  zoneLabel(ctx, "PLASTIC", z, "rgba(255,255,255,0.28)");
 }
 
 /** Open gap between panels: a dark recess with depth at the top lip. */
@@ -344,7 +342,6 @@ function drawGap(ctx: CanvasRenderingContext2D, z: NoStickZone) {
     ctx.fillStyle = "rgba(255,255,255,0.05)";
     for (let k = -2; k <= 2; k++) ctx.fillRect(vx - 14, vy + k * 5, 28, 1.5);
   }
-  zoneLabel(ctx, "GAP", z, "rgba(255,255,255,0.22)");
 }
 
 /**
@@ -585,14 +582,6 @@ function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.fillStyle = "rgba(255,200,200,0.85)";
   ctx.font = "bold 8px system-ui, sans-serif";
   ctx.fillText("REPELS", z.x + z.w / 2, z.y + z.h - 6);
-}
-
-function zoneLabel(ctx: CanvasRenderingContext2D, text: string, z: NoStickZone, color: string) {
-  if (z.w < 50 || z.h < 30) return;
-  ctx.fillStyle = color;
-  ctx.font = "bold 10px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(text, z.x + z.w / 2, z.y + z.h / 2 + 4);
 }
 
 // ---------------------------------------------------------------------------
