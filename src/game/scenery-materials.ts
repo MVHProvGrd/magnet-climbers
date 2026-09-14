@@ -108,57 +108,68 @@ function grain(ctx: CanvasRenderingContext2D): CanvasPattern {
  * kitchen bounce low-left. Lighting is fixed in screen space so it reads as a
  * window in the room, not something painted on the door.
  */
-export function drawSteel(ctx: CanvasRenderingContext2D, camY: number, viewH: number) {
-  const top = camY - 60;
-  const h = viewH + 120;
-  // base tone with slight horizontal curvature per door
-  const base = ctx.createLinearGradient(0, 0, W, 0);
+/** Base tone + grain baked into one world-locked tile, so a frame is a few blits instead of an overlay blend. */
+let steelTile: { key: number; canvas: HTMLCanvasElement } | null = null;
+function steel(ctx: CanvasRenderingContext2D, scale: number): HTMLCanvasElement {
+  if (steelTile?.key === scale) return steelTile.canvas;
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(W * scale); c.height = Math.ceil(TILE * scale);
+  const g = c.getContext("2d")!; g.scale(scale, scale);
+  const base = g.createLinearGradient(0, 0, W, 0);
   base.addColorStop(0, "#aab3bc");
   base.addColorStop(0.18, "#c9d0d7");
   base.addColorStop(0.47, "#b7bfc7");
   base.addColorStop(0.53, "#bdc5cd");
   base.addColorStop(0.8, "#d0d6dc");
   base.addColorStop(1, "#a5aeb8");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, top, W, h);
+  g.fillStyle = base; g.fillRect(0, 0, W, TILE);
+  g.fillStyle = grain(ctx); g.globalCompositeOperation = "overlay"; g.fillRect(0, 0, W, TILE);
+  steelTile = { key: scale, canvas: c };
+  return c;
+}
 
-  // grain, tiled and locked to world space
-  ctx.save();
-  const off = Math.floor(camY / TILE) * TILE;
-  ctx.translate(0, off);
-  ctx.fillStyle = grain(ctx);
-  ctx.globalCompositeOperation = "overlay";
-  ctx.fillRect(0, top - off, W, h);
-  ctx.restore();
-
-  // window light: big soft diagonal from upper-left (screen space)
-  const wl = ctx.createLinearGradient(0, camY, W, camY + viewH);
+/** Screen-space lighting (window light, reflection band, warm and cool bounce) baked once per view height. */
+let lightLayer: { key: string; canvas: HTMLCanvasElement } | null = null;
+function lighting(viewH: number, scale: number): HTMLCanvasElement {
+  const key = `${viewH}@${scale}`;
+  if (lightLayer?.key === key) return lightLayer.canvas;
+  const h = viewH + 120;
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(W * scale); c.height = Math.ceil(h * scale);
+  const g = c.getContext("2d")!; g.scale(scale, scale); g.translate(0, 60); // y = 0 is camY
+  const wl = g.createLinearGradient(0, 0, W, viewH);
   wl.addColorStop(0, "rgba(255,248,235,0.22)");
   wl.addColorStop(0.35, "rgba(255,248,235,0.07)");
   wl.addColorStop(0.7, "rgba(90,110,140,0.06)");
   wl.addColorStop(1, "rgba(60,80,110,0.16)");
-  ctx.fillStyle = wl;
-  ctx.fillRect(0, top, W, h);
-
-  // a soft highlight band, like the window's reflection sliding down the door
-  const band = ctx.createLinearGradient(0, camY + viewH * 0.1, 0, camY + viewH * 0.55);
+  g.fillStyle = wl; g.fillRect(0, -60, W, h);
+  const band = g.createLinearGradient(0, viewH * 0.1, 0, viewH * 0.55);
   band.addColorStop(0, "rgba(255,255,255,0)");
   band.addColorStop(0.5, "rgba(255,255,255,0.10)");
   band.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = band;
-  ctx.fillRect(0, top, W, h);
-
-  // warm bounce low-left, cool sky upper-right, both restrained
-  const warm = ctx.createRadialGradient(0, camY + viewH, 0, 0, camY + viewH, W * 0.9);
+  g.fillStyle = band; g.fillRect(0, -60, W, h);
+  const warm = g.createRadialGradient(0, viewH, 0, 0, viewH, W * 0.9);
   warm.addColorStop(0, "rgba(255,170,90,0.10)");
   warm.addColorStop(1, "rgba(255,170,90,0)");
-  ctx.fillStyle = warm;
-  ctx.fillRect(0, top, W, h);
-  const cool = ctx.createRadialGradient(W, camY, 0, W, camY, W * 0.8);
+  g.fillStyle = warm; g.fillRect(0, -60, W, h);
+  const cool = g.createRadialGradient(W, 0, 0, W, 0, W * 0.8);
   cool.addColorStop(0, "rgba(120,170,230,0.10)");
   cool.addColorStop(1, "rgba(120,170,230,0)");
-  ctx.fillStyle = cool;
-  ctx.fillRect(0, top, W, h);
+  g.fillStyle = cool; g.fillRect(0, -60, W, h);
+  lightLayer = { key, canvas: c };
+  return c;
+}
+
+export function drawSteel(ctx: CanvasRenderingContext2D, camY: number, viewH: number) {
+  const top = camY - 60;
+  const h = viewH + 120;
+  const scale = Math.min(2, Math.max(1, ctx.getTransform().a || 1));
+  // world-locked steel tiles
+  const tile = steel(ctx, scale);
+  const first = Math.floor(top / TILE) * TILE;
+  for (let y = first; y < top + h; y += TILE) ctx.drawImage(tile, 0, y, W, TILE);
+  // screen-locked lighting
+  ctx.drawImage(lighting(viewH, scale), 0, top, W, h);
 }
 
 /** The groove between the two doors: a real recess with a lit right lip. */

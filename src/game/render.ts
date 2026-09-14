@@ -122,16 +122,15 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     ctx.fillText("LADDER", c.x, c.y - 30);
   }
 
-  // climbers (lost ones are gone)
-  for (const c of g.climbers) if (c.state !== "lost") drawClimberShadow(ctx, c, g.time, appearanceFor(c));
-  for (const c of g.climbers) {
-    if (c.state === "lost") continue;
+  // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
+  const visible = g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
+  for (const c of visible) drawClimberShadow(ctx, c, g.time, appearanceFor(c));
+  for (const c of visible) {
     const flicker = c.iframes > 0 && Math.floor(g.time * 18) % 2 === 0;
-    // Flash an outline instead of blending every body part independently.
-    // Per-part alpha exposed limbs through the creature's belly on hit frames.
-    if (flicker) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 8; }
+    // Hit flash: a white halo without a blur pass.
+    if (flicker) { ctx.shadowColor = "rgba(255,255,255,0.9)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 1.5; }
     drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, appearanceFor(c));
-    ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0; ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
     // hp pips above the head, only once someone has taken a hit
     if (c.hp < CFG.maxHp) {

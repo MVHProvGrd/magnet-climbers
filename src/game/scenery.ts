@@ -226,7 +226,7 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
   }
   ctx.save();
   if (z.kind === "sticker") {
-    ctx.shadowColor = "rgba(27,35,43,0.26)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+    ctx.shadowColor = "rgba(27,35,43,0.22)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
   }
   ctx.drawImage(cached.image, z.x, z.y, z.w, z.h); ctx.restore();
 }
@@ -235,7 +235,7 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
   const item = fridgeItem(b.itemId);
   if (item?.art != null && item.art >= 100) {
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.w / 100, b.h / 60);
-    ctx.shadowColor = "#24374766"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+    ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
     drawBusinessMagnet(ctx, item.art - 100); ctx.restore(); return;
   }
   if (!item && (b.label.length <= 1 || artVariant(b.minX, b.minY, b.hue, 7) >= 5)) {
@@ -243,7 +243,7 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
   }
   ctx.save(); ctx.translate(b.x, b.y);
   const variant = artVariant(b.minX, b.minY, b.hue, 5);
-  ctx.shadowColor = "rgba(25,35,49,0.3)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+  ctx.shadowColor = "rgba(25,35,49,0.25)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
   const enamel = ctx.createLinearGradient(0, 0, b.w, b.h);
   enamel.addColorStop(0, `hsl(${b.hue} 65% 82%)`); enamel.addColorStop(0.4, `hsl(${b.hue} 65% 60%)`); enamel.addColorStop(1, `hsl(${b.hue} 50% 39%)`);
   ctx.fillStyle = enamel; ctx.beginPath(); ctx.roundRect(0, 0, b.w, b.h, 5); ctx.fill();
@@ -269,7 +269,7 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
 
 export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   ctx.save(); ctx.translate(p.x, p.y + Math.sin(time * 3 + p.bob) * 4);
-  ctx.shadowColor = "#21374866"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+  ctx.shadowColor = "#21374855"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
   // generated image art first; the canvas drawing stays as the fallback while images load
   if (!drawPickupImage(ctx, p.kind)) drawPickupObject(ctx, p.kind);
   ctx.restore();

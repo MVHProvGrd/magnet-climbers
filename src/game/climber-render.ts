@@ -63,11 +63,11 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t =
   const shape = geometry(c, appearance);
   const style = creatureStyle(c, appearance);
   ctx.save();
-  const opacity = Math.max(0.07, 0.23 - shape.lift * 0.004);
+  // No canvas shadowBlur here: a blur pass per climber per frame was the main cost with a full crew.
+  // A wider, fainter stroke reads the same at game scale; higher toys get a softer, wider shadow.
+  const opacity = Math.max(0.05, 0.2 - shape.lift * 0.0035);
   ctx.strokeStyle = ctx.fillStyle = `rgba(31,37,48,${opacity})`;
-  ctx.shadowColor = `rgba(31,37,48,${opacity})`;
-  ctx.shadowBlur = 1 + shape.lift * 0.22;
-  ctx.lineCap = "round"; ctx.lineWidth = style.limb + 1;
+  ctx.lineCap = "round"; ctx.lineWidth = style.limb + 1 + shape.lift * 0.12;
   if (style.id !== "human") {
     const origin = project({ x: c.x, y: c.y, z: shape.lift }, true);
     ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
