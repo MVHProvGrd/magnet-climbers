@@ -6,11 +6,11 @@ import { resetRagdoll } from "./ragdoll";
 
 const scene = new Image();
 scene.src = `${import.meta.env.BASE_URL}art/title-fridge.webp`;
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+// Title toys always fall: decorative, slow, and the owner wants them moving even under OS "reduce motion".
 
 /** Decorative falling toys over the user's kitchen artwork; never touches run state. */
 export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: number, dpr: number, seconds: number, width = W) {
-  const time = reducedMotion.matches ? 0 : seconds;
+  const time = seconds;
   ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = "#252e38"; ctx.fillRect(0, 0, width, height);
   if (scene.complete && scene.naturalWidth > 0) {
