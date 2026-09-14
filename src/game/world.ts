@@ -53,7 +53,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 8, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 9, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -194,7 +194,11 @@ export class World {
       const rh = rangeOf(r, 70, 110);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
       const rx = this.version >= 8 ? onOneDoor(r, rw, 10) : rangeOf(r, 10, W - rw - 10);
-      zones.push({ x: rx, y: y + rangeOf(r, m, h - rh - m), w: rw, h: rh, kind: "repel" });
+      // v9+: plates vary in strength; the odd big one is a slingshot that throws a flier well past its arc
+      const big = this.version >= 9 && r() < 0.2;
+      const power = this.version >= 9 ? (big ? rangeOf(r, 2, 2.6) : rangeOf(r, 0.6, 1.5)) : 1;
+      const rw2 = big ? rw * 1.25 : rw, rh2 = big ? rh * 1.25 : rh;
+      zones.push({ x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2, kind: "repel", power });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
@@ -204,7 +208,7 @@ export class World {
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
       const ax = this.version >= 8 ? onOneDoor(r, aw, 10) : rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, m, h - ah - m);
       const clash = zones.some((o) => ax < o.x + o.w + 16 && ax + aw > o.x - 16 && ay < o.y + o.h + 16 && ay + ah > o.y - 16);
-      if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract" });
+      if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract", power: this.version >= 9 ? rangeOf(r, 0.7, 1.6) : 1 });
     }
 
     // sliding fridge magnet bumpers
@@ -323,20 +327,42 @@ export class World {
   repelAt(x: number, y: number): NoStickZone | null {
     for (const g of this.gadgets) {
       const zone = gadgetZone(g, this.gadgetTime);
-      if (zone.kind === "repel" && inRect(x, y, zone, 20)) return zone;
+      if (zone.kind === "repel" && inRect(x, y, zone, repelReach(zone))) return zone;
     }
     for (const s of this.segments) {
-      if (y < s.y - 60 || y > s.y + s.h + 60) continue;
-      for (const z of s.zones) if (z.kind === "repel" && inRect(x, y, z, 20)) return z;
+      if (y < s.y - 200 || y > s.y + s.h + 200) continue;
+      for (const z of s.zones) if (z.kind === "repel" && inRect(x, y, z, repelReach(z))) return z;
     }
     return null;
+  }
+
+  /** Acceleration a field magnet applies at a point: red pushes out, blue pulls in. Shared by the sim and the aim preview. */
+  fieldAt(x: number, y: number, withAttract = true): { ax: number; ay: number; repel: NoStickZone | null; attract: NoStickZone | null } {
+    let ax = 0, ay = 0;
+    const repel = this.repelAt(x, y);
+    if (repel) {
+      const cx = repel.x + repel.w / 2, cy = repel.y + repel.h / 2;
+      const dx = x - cx, dy = y - cy;
+      const d = Math.max(20, Math.hypot(dx, dy));
+      const f = 1400 * (repel.power ?? 1);
+      ax += (dx / d) * f; ay += (dy / d) * f;
+    }
+    const attract = withAttract ? this.attractAt(x, y) : null;
+    if (attract) {
+      const cx = attract.x + attract.w / 2, cy = attract.y + attract.h / 2;
+      const dx = cx - x, dy = cy - y;
+      const d = Math.max(20, Math.hypot(dx, dy));
+      const f = 1500 * (attract.power ?? 1);
+      ax += (dx / d) * f; ay += (dy / d) * f;
+    }
+    return { ax, ay, repel, attract };
   }
 
   /** Nearest blue attract plate whose field (rect + 110px) covers the point. */
   attractAt(x: number, y: number): NoStickZone | null {
     for (const s of this.segments) {
-      if (y < s.y - 160 || y > s.y + s.h + 160) continue;
-      for (const z of s.zones) if (z.kind === "attract" && inRect(x, y, z, 110)) return z;
+      if (y < s.y - 220 || y > s.y + s.h + 220) continue;
+      for (const z of s.zones) if (z.kind === "attract" && inRect(x, y, z, attractReach(z))) return z;
     }
     return null;
   }
@@ -372,6 +398,11 @@ function sticker(r: Rng, y: number, h: number, version = 0): NoStickZone {
   const m = version >= 7 ? SEAM_MARGIN : 0;
   return { x: version >= 8 ? onOneDoor(r, w) : rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
 }
+
+/** How far a red plate's push reaches past its edge; strong plates reach much further. */
+export const repelReach = (z: { power?: number }) => 20 + Math.max(0, (z.power ?? 1) - 1) * 70;
+/** How far a blue plate pulls from. */
+export const attractReach = (z: { power?: number }) => 110 * (z.power ?? 1);
 
 /** pad > 0 grows the rect; pad < 0 shrinks it. */
 export function inRect(x: number, y: number, r: Rect, pad = 0): boolean {

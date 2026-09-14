@@ -168,12 +168,13 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
 
 function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean) {
   const cx = z.x + z.w / 2;
-  const span = 34;                 // how far the field reaches past the plate
+  const power = z.power ?? 1;
+  const span = 34 * Math.sqrt(power) * (outward ? 1 + Math.max(0, power - 1) : 1); // how far the field reaches past the plate
   const gap = span / 3;            // spacing between arcs
   const rx = Math.max(z.w, z.h) / 2 + 4;
   const phase = (time * 14) % gap;
   ctx.strokeStyle = outward ? "#ff687d" : "#6fb6ff";
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 1.4 + Math.max(0, power - 1) * 1.2;
   ctx.lineCap = "round";
   for (let i = 0; i < 3; i++) {
     const d = outward ? i * gap + phase : (i + 1) * gap - phase;

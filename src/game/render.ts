@@ -491,22 +491,11 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
   ctx.fillStyle = color;
   for (let i = 0; i < 110; i++) {
     vy += CFG.gravity * dt;
-    const rz = g.world.repelAt(x, y);
-    if (rz) {
-      const cx = rz.x + rz.w / 2, cy = rz.y + rz.h / 2;
-      const dx = x - cx, dy = y - cy;
-      const d = Math.max(20, Math.hypot(dx, dy));
-      vx += (dx / d) * 1400 * dt;
-      vy += (dy / d) * 1400 * dt;
-    }
-    const az = g.world.attractAt(x, y);
-    if (az) {
-      const cx = az.x + az.w / 2, cy = az.y + az.h / 2;
-      const dx = cx - x, dy = cy - y;
-      const d = Math.max(20, Math.hypot(dx, dy));
-      vx += (dx / d) * 1500 * dt;
-      vy += (dy / d) * 1500 * dt;
-    }
+    const field = g.world.fieldAt(x, y);
+    const az = field.attract;
+    vx += field.ax * dt; vy += field.ay * dt;
+    // dots take the colour of the field bending them: red push, blue pull
+    ctx.fillStyle = field.repel ? "#ff687d" : az ? "#6fb6ff" : color;
     let gz = CFG.hop.zGravity * magnet;
     if (!g.world.isMetal(x, y, 6)) gz *= CFG.hop.offMetal;
     if (az) gz += CFG.hop.attractPull;

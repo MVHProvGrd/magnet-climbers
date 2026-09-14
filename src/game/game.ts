@@ -845,24 +845,11 @@ export class Game {
   private stepFlying(c: Climber, dt: number) {
     c.airTime += dt;
     c.vy += CFG.gravity * dt;
-    // repel panels push
-    const rz = this.world.repelAt(c.x, c.y);
-    if (rz) {
-      const cx = rz.x + rz.w / 2, cy = rz.y + rz.h / 2;
-      const dx = c.x - cx, dy = c.y - cy;
-      const d = Math.max(20, Math.hypot(dx, dy));
-      c.vx += (dx / d) * 1400 * dt;
-      c.vy += (dy / d) * 1400 * dt;
-    }
-    // blue plates pull the other way; the plate itself is steel so it catches you
-    const az = this.world.attractAt(c.x, c.y);
-    if (az && !(c.noStick && c.noStick > 0)) {
-      const cx = az.x + az.w / 2, cy = az.y + az.h / 2;
-      const dx = cx - c.x, dy = cy - c.y;
-      const d = Math.max(20, Math.hypot(dx, dy));
-      c.vx += (dx / d) * 1500 * dt;
-      c.vy += (dy / d) * 1500 * dt;
-    }
+    // field magnets: red plates push out (strong ones are slingshots), blue plates pull in and catch you
+    // (a toy just knocked off ignores blue plates for a moment, so it is not yanked straight back)
+    const field = this.world.fieldAt(c.x, c.y, !(c.noStick && c.noStick > 0));
+    const az = field.attract;
+    c.vx += field.ax * dt; c.vy += field.ay * dt;
     // height off the door: only a toy back at z = 0 can be caught
     c.vz = (c.vz ?? 0) - this.zPull(c, az) * dt;
     c.z = Math.max(0, (c.z ?? 0) + (c.vz ?? 0) * dt);

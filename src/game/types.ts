@@ -18,6 +18,8 @@ export interface NoStickZone extends Rect {
   kind: NoStickKind;
   /** sticker colour / photo hue */
   hue?: number;
+  /** field magnets: strength multiplier (1 = the original plates); reach and push scale with it */
+  power?: number;
 }
 
 export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart";
