@@ -921,6 +921,8 @@ export class Game {
     if (c.vy > 0 && c.launchY != null && c.y > c.launchY - 10) c.fell = true;
     const falling = this.rules === "crew" && !!c.fell && c.vy > 220 && c.leftLauncher && c.airTime > 0.25 && !(c.noStick && c.noStick > 0);
     if ((this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) || falling) {
+      // coming down onto a teammate is a landing, not a fall: stand on the shoulders instead of hanging beside them
+      if (falling && this.landOnTeammate(c)) return;
       const a = this.nearestAnchor(c, null);
       if (a) {
         c.state = "linked"; c.locked = false;
