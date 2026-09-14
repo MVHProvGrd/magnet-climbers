@@ -6,9 +6,6 @@ export type { CreatureAppearance } from "./creature-render";
 
 interface Point extends Vec { z: number }
 
-/** The bendy toy drew small next to the creatures; its body and head scale up, the magnetic tips stay put. */
-const TOY_SCALE = 1.35;
-
 /** Visual arm stretch (1 = normal). Set by the renderer while LONG ARMS is active; eased there. */
 let armStretch = 1;
 export function setArmStretch(v: number) {
@@ -25,8 +22,7 @@ function geometry(c: Climber, appearance: CreatureAppearance = {}) {
     const p = rotate({ x, y }, c.angle);
     return { x: c.x + p.x, y: c.y + p.y, z };
   };
-  const k = style.id === "human" ? TOY_SCALE : 1;
-  const shoulder = bodyPoint(0, -5 * k), hip = bodyPoint(0, 7 * k), head = bodyPoint(0, -14 * k, lift + 2);
+  const shoulder = bodyPoint(0, -5), hip = bodyPoint(0, 7), head = bodyPoint(0, -14, lift + 2);
   const limbs = [0, 1, 2, 3].map((limb) => {
     const tip = limbTip(c, limb);
     const attached = c.state === "stuck" && c.grip?.contacts.some((p) => p.limb === limb);
@@ -80,12 +76,11 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t =
     for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
     ctx.restore(); return;
   }
-  ctx.lineWidth = style.limb * TOY_SCALE + 1 + shape.lift * 0.12;
   for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-  ctx.lineWidth = 9 * TOY_SCALE;
+  ctx.lineWidth = 9;
   tube(ctx, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
   const head = project(shape.head, true);
-  ctx.beginPath(); ctx.arc(head.x, head.y, 7 * TOY_SCALE, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head.x, head.y, 7, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
@@ -118,12 +113,11 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
     drawCreatureDecorations(ctx, c, style, t, false); ctx.restore();
   }
-  const limbWidth = style.id === "human" ? style.limb * TOY_SCALE : style.limb;
   for (const [index, limb] of shape.limbs.entries()) {
     const start = project(limb.start, false), middle = project(limb.middle, false), end = project(limb.end, false);
-    ctx.strokeStyle = "rgba(45,37,42,0.32)"; ctx.lineWidth = limbWidth + 1.5;
+    ctx.strokeStyle = "rgba(45,37,42,0.32)"; ctx.lineWidth = style.limb + 1.5;
     tube(ctx, start, middle, end);
-    ctx.strokeStyle = material; ctx.lineWidth = limbWidth;
+    ctx.strokeStyle = material; ctx.lineWidth = style.limb;
     tube(ctx, start, middle, end);
     ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = 1.4;
     tube(ctx, { x: start.x - 1, y: start.y - 1 }, { x: middle.x - 1, y: middle.y - 1 }, { x: end.x - 1, y: end.y - 1 });
@@ -156,12 +150,12 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     ctx.restore(); return;
   }
   const shoulder = project(shape.shoulder, false), hip = project(shape.hip, false);
-  ctx.strokeStyle = material; ctx.lineWidth = 8 * TOY_SCALE;
+  ctx.strokeStyle = material; ctx.lineWidth = 8;
   tube(ctx, shoulder, hip, hip);
   const head = project(shape.head, false);
-  const plastic = ctx.createRadialGradient(head.x - 3 * TOY_SCALE, head.y - 4 * TOY_SCALE, 0.5, head.x, head.y, 8 * TOY_SCALE);
+  const plastic = ctx.createRadialGradient(head.x - 3, head.y - 4, 0.5, head.x, head.y, 8);
   plastic.addColorStop(0, "#ffffff"); plastic.addColorStop(0.25, style.color); plastic.addColorStop(1, style.color);
   ctx.fillStyle = plastic;
-  ctx.beginPath(); ctx.arc(head.x, head.y, 7.5 * TOY_SCALE, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head.x, head.y, 7.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
