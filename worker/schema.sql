@@ -53,3 +53,19 @@ CREATE TABLE IF NOT EXISTS link_codes (
   player_id TEXT NOT NULL,
   expires_at INTEGER NOT NULL
 );
+
+-- global chat: one public room, newest 500 kept
+CREATE TABLE IF NOT EXISTS chat (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS chat_created ON chat(created_at DESC);
+-- muted players: until = 0 means forever. Mute from the CLI:
+--   npx wrangler d1 execute magnet-climbers --remote --command "INSERT OR REPLACE INTO chat_mutes VALUES ('p-xxxx', 0)"
+CREATE TABLE IF NOT EXISTS chat_mutes (
+  player_id TEXT PRIMARY KEY,
+  until INTEGER NOT NULL DEFAULT 0
+);

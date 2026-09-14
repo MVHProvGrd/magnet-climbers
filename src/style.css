@@ -155,3 +155,15 @@ html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); tou
 .prize .reveal canvas { width: 140px; height: 140px; }
 .panel button.unlock { display: flex; flex-direction: column; gap: 2px; background: linear-gradient(90deg, #9be15d, #7ef0c8); color: #1a1d24; text-align: center; }
 .panel button.unlock small { font-weight: 600; opacity: 0.8; letter-spacing: 0; }
+
+/* chat */
+.panel.chat { width: min(94vw, 420px); }
+.chat-log { text-align: left; max-height: 46vh; min-height: 160px; overflow: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: rgba(0,0,0,0.25); border-radius: 12px; }
+.chat-log .msg { font-size: 14px; line-height: 1.35; word-break: break-word; }
+.chat-log .msg b { color: var(--coin); margin-right: 4px; }
+.chat-log .msg.me b { color: var(--accent); }
+.chat-form { display: flex; gap: 8px; }
+.chat-form input { flex: 1; text-align: left; font-size: 16px; padding: 10px 12px; }
+.chat-form button { padding: 10px 14px; }
+.panel .err { color: #ff8a8a; opacity: 1; }
+.panel .legal a { color: rgba(255,255,255,0.6); }

@@ -11,6 +11,9 @@
  *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
  *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
  *   GET  /stats                                → { total_cm, runs, players }
+ *   GET  /admin                                → owner panel (ADMIN_KEY secret); JSON API under /admin/api/*
+ *   GET  /chat?after=<id>                      → { messages: [{ id, name, text, player_id, created_at }], online }
+ *   POST /chat   { playerId, token, name, text } → { ok, message } | 429 (3 s per player) | 403 (muted)
  *   GET  /c/<mode>.<cm>.<name>[/<playerId>][.png] → challenge share page (Open Graph) / score card PNG; the
  *        height is checked against that player's scoreboard best, else the card says "unverified"
  *
@@ -19,6 +22,7 @@
  */
 import PROFANITY from "../../src/game/data/profanity.json";
 import { handleShare, type Challenge } from "./card";
+import { handleAdmin } from "./admin";
 
 const BLOCKED = new Set((PROFANITY as string[]).map((w) => w.toLowerCase()));
 const deleet = (t: string) => t.replace(/[0]/g, "o").replace(/[1|]/g, "i").replace(/3/g, "e").replace(/[4@]/g, "a").replace(/[5$]/g, "s").replace(/[7+]/g, "t").replace(/8/g, "b").replace(/9/g, "g");
@@ -34,9 +38,20 @@ function nameIsProfane(name: string): boolean {
   return false;
 }
 
+/** Chat text filter: profane words become stars, links are dropped. Whole-message rejection is for names only. */
+function cleanChat(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|io|gg|xyz)\b\S*/gi, "[link]")
+    .split(/(\s+)/)
+    .map((tok) => (/\s/.test(tok) || !nameIsProfane(tok) ? tok : "*".repeat(Math.min(tok.length, 6))))
+    .join("");
+}
+
 export interface Env {
   DB: D1Database;
   ALLOWED_ORIGINS: string;
+  /** owner key for /admin; set with `npx wrangler secret put ADMIN_KEY` */
+  ADMIN_KEY?: string;
 }
 
 const MAX_CM = 200_000;
@@ -49,7 +64,7 @@ function cors(req: Request, env: Env): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0],
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
@@ -66,6 +81,8 @@ export default {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
+    const admin = await handleAdmin(req, url, env, h);
+    if (admin) return admin;
     if (req.method === "GET" && (url.pathname.startsWith("/c/") || url.hostname.startsWith("share."))) {
       const share = await handleShare(req, url, (c: Challenge) => nameIsProfane(c.name), async (c, playerId) => {
         if (!playerId) return { ok: false };
@@ -261,6 +278,41 @@ export default {
         ).bind(pid, name, cm, now),
       ]);
       return json({ ok: true }, h);
+    }
+
+    if (req.method === "GET" && url.pathname === "/chat") {
+      const after = Math.max(0, Math.floor(Number(url.searchParams.get("after") ?? 0)));
+      const rows = await env.DB.prepare(
+        "SELECT id, name, text, player_id, created_at FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40",
+      ).bind(after).all<{ id: number; name: string; text: string; player_id: string; created_at: number }>();
+      const online = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM chat WHERE created_at > ?").bind(Date.now() - 10 * 60_000).first<{ n: number }>();
+      return json({ messages: (rows.results ?? []).reverse(), online: online?.n ?? 0 }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/chat") {
+      let body: { playerId?: unknown; token?: unknown; name?: unknown; text?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      const text = String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+      if (!playerId || token.length < 16 || text.length < 1) return json({ error: "bad message" }, h, 400);
+      // a player with a cloud save must present its token; brand-new players (no save yet) may post once they have synced
+      const owner = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!owner || owner.token !== token) return json({ error: "forbidden" }, h, 403);
+      const mute = await env.DB.prepare("SELECT until FROM chat_mutes WHERE player_id = ?").bind(playerId).first<{ until: number }>();
+      if (mute && (mute.until === 0 || mute.until > Date.now())) return json({ error: "muted" }, h, 403);
+      const last = await env.DB.prepare("SELECT created_at FROM chat WHERE player_id = ? ORDER BY id DESC LIMIT 1").bind(playerId).first<{ created_at: number }>();
+      if (last && Date.now() - last.created_at < 3000) return json({ error: "slow down" }, h, 429);
+      let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12);
+      const known = await env.DB.prepare("SELECT name FROM lifetime WHERE player_id = ?").bind(playerId).first<{ name: string }>();
+      if (known?.name) name = known.name;
+      if (name.length < 3 || nameIsProfane(name)) name = "climber";
+      const clean = cleanChat(text);
+      const now = Date.now();
+      const ins = await env.DB.prepare("INSERT INTO chat (player_id, name, text, created_at) VALUES (?, ?, ?, ?)").bind(playerId, name, clean, now).run();
+      const id = Number(ins.meta.last_row_id ?? 0);
+      if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - 500).run();
+      return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now } }, h);
     }
 
     if (req.method === "GET" && url.pathname === "/stats") {
