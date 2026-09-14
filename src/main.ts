@@ -139,6 +139,10 @@ function resize(force = false) {
   const ch = r.height || window.innerHeight;
   if (!force && cw === lastCw && ch === lastCh) return;
   lastCw = cw; lastCh = ch;
+  // Panels are laid out for a 400 x 780 CSS-px phone. When the viewport is effectively smaller
+  // (system font / page zoom on Android, tiny phones) they shrink to fit instead of overflowing.
+  const fit = Math.min(1, window.innerWidth / 400, window.innerHeight / 780);
+  uiRoot.style.setProperty("--fit", fit.toFixed(3));
   dpr = Math.min(2, window.devicePixelRatio || 1);
   const scale = cw / W;
   viewH = ch / scale;
