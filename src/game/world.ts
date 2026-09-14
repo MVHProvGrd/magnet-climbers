@@ -2,6 +2,7 @@ import { CFG, W } from "./config";
 import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
+import type { Section } from "./expeditions";
 import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
@@ -38,7 +39,11 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 6) {
+  /** Expedition recipe; when set, segments come from it instead of the endless generator. */
+  spec: Section[] | null = null;
+
+  constructor(seed: number, startY: number, readonly version = 6, spec: Section[] | null = null) {
+    this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -73,7 +78,37 @@ export class World {
     }
   }
 
+  /** One expedition segment: exactly what the recipe says, two coins, nothing else. */
+  private generateFromSpec(i: number): Segment {
+    const r = this.rng;
+    const y = this.topY - CFG.segmentH, h = CFG.segmentH;
+    const section: Section = this.spec![i - 1] ?? { kind: "steel" };
+    const zones: NoStickZone[] = []; const bumpers: Bumper[] = []; const powerUps: PowerUp[] = [];
+    if (section.kind === "band") {
+      const by = y + (h - section.h) / 2;
+      const laneW = 64;
+      const x = section.lane === "left" ? laneW : 0;
+      const w = section.lane ? W - laneW : W;
+      zones.push({ x, y: by, w, h: section.h, kind: "glass" });
+      if (section.island) zones.push({ x: W / 2 - 34, y: by + section.h / 2 - 12, w: 68, h: 24, kind: "void", hue: -1 });
+      // coins sit on the steel above and below the glass
+      powerUps.push({ x: rangeOf(r, 40, W - 40), y: by - 30, kind: "coin", taken: false, bob: r() * 6 });
+      powerUps.push({ x: rangeOf(r, 40, W - 40), y: by + section.h + 30, kind: "coin", taken: false, bob: r() * 6 });
+    } else {
+      if (section.kind === "bumper") {
+        const bw = section.w ?? 56, bh = 34, by = y + section.y;
+        bumpers.push({ x: rangeOf(r, 0, W - bw), y: by, w: bw, h: bh, vx: section.speed, minX: 0, maxX: W - bw, motion: "slide", vy: 0, minY: by, maxY: by, label: "MOM", hue: 5 });
+      }
+      for (let k = 0; k < 2; k++) powerUps.push({ x: rangeOf(r, 40, W - 40), y: y + rangeOf(r, 40, h - 40), kind: "coin", taken: false, bob: r() * 6 });
+    }
+    const segment: Segment = { y, h, zones, powerUps, bumpers };
+    const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
+    for (const bumper of bumpers) { const item = pick(art, BUMPER_ITEMS); bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!; }
+    return segment;
+  }
+
   private generate(i: number): Segment {
+    if (this.spec) return this.generateFromSpec(i);
     const r = this.rng;
     const y = this.topY - CFG.segmentH;
     const h = CFG.segmentH;

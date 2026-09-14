@@ -27,6 +27,10 @@ export interface SaveData {
   picked: boolean;
   /** lifetime bumper hits, for the crab unlock */
   hitsTotal: number;
+  /** expedition stars by level id */
+  expeditions: Record<string, number>;
+  /** intro cards already shown */
+  intros: string[];
   spins: number;
   /** placeholder until real accounts exist */
   playerId: string;
@@ -69,6 +73,8 @@ function defaults(): SaveData {
     crew: [],
     picked: false,
     hitsTotal: 0,
+    expeditions: {},
+    intros: [],
     spins: 0,
     playerId: "p-" + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8),
     token: newToken(),
@@ -124,6 +130,7 @@ export function migrateLooks(d: SaveData): void {
   d.creatures = Array.from(new Set([...(d.creatures ?? []), "toy"]));
   if (!d.pattern || !d.patterns.includes(d.pattern)) d.pattern = d.patterns.includes(d.skin) ? d.skin : "classic";
   if (!d.creature || !d.creatures.includes(d.creature)) d.creature = "toy";
+  d.expeditions = d.expeditions ?? {}; d.intros = d.intros ?? [];
   d.crew = (d.crew ?? []).filter((l) => l && d.creatures.includes(l.creature) && d.patterns.includes(l.pattern));
   d.skin = d.pattern; d.skins = d.patterns;
 }

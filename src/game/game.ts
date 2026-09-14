@@ -7,6 +7,7 @@ import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
+import type { LevelDef } from "./expeditions";
 
 export type Phase = "idle" | "running" | "dead";
 
@@ -94,6 +95,12 @@ export class Game {
   rules: "solo" | "crew" = "crew";
   /** chill: no rising wall. Falling off the bottom still loses a climber. */
   chill = false;
+  /** expedition level, when this run is one; chill rules apply and the goal line ends the run */
+  level: LevelDef | null = null;
+  /** flings used this run (one per gesture; a SYNC fling counts once) */
+  flings = 0;
+  won = false;
+  private outOfFlings = 0;
   reserves = 0;
   palette: string[];
   /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
@@ -106,7 +113,7 @@ export class Game {
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; level?: LevelDef } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
@@ -116,11 +123,14 @@ export class Game {
     this.stats = statsFor(levels);
     this.revivesLeft = this.stats.revives;
     this.startY = 0;
-    this.world = new World(seed, 0, opts.worldVersion);
+    this.level = opts.level ?? null;
+    if (this.level) { this.chill = true; this.rules = "crew"; }
+    this.world = new World(seed, 0, opts.worldVersion, this.level ? this.level.recipe : null);
     this.floorY = CFG.floorStartOffset;
     this.highestY = 0;
     this.camY = -this.viewH * 0.55;
-    this.spawnTeam(this.rules === "solo" ? 1 : this.stats.teamSize, 0);
+    this.spawnTeam(this.rules === "solo" ? 1 : this.level ? this.level.team : this.stats.teamSize, 0);
+    if (this.level) this.target = { cm: this.level.goalCm, name: "GOAL", beaten: false };
     this.world.ensure(-this.viewH * 2);
   }
 
@@ -269,6 +279,8 @@ export class Game {
     const v = this.launchVector();
     this.drag = null;
     if (!v) return;
+    if (this.level && this.flings >= this.level.flings) { this.floats.push({ x: c.x, y: c.y - 34, text: "out of flings", life: 1, color: "#ff6b6b" }); return; }
+    this.flings++;
     if (this.sync && this.rules === "crew") {
       const targets = this.syncTargets();
       if (targets.length === 0) return;
@@ -646,6 +658,17 @@ export class Game {
       sfx.over();
       this.events.onGameOver();
     }
+    if (this.level && this.phase === "running") {
+      const goalY = this.startY - this.level.goalCm * CFG.pxPerCm;
+      if (this.climbers.some((c) => (c.state === "stuck" || c.state === "linked") && c.y <= goalY)) {
+        this.won = true; if (this.target) this.target.beaten = true;
+        this.phase = "dead"; sfx.power(); this.events.onGameOver();
+      } else if (this.flings >= this.level.flings && !this.climbers.some((c) => c.state === "flying") && this.pendingLaunches.length === 0) {
+        // budget spent and everyone has settled short of the goal
+        this.outOfFlings += 1 / 120;
+        if (this.outOfFlings > 1.2) { this.phase = "dead"; sfx.over(); this.events.onGameOver(); }
+      }
+    }
   }
 
   /** Pull toward the door at this spot: the fridge's own steel, upgrades, plates and power-ups. */
@@ -738,7 +761,9 @@ export class Game {
     }
     // teammate grab: after apex, within reach of an anchored teammate with chain room.
     // Off by default: it made flings unpredictable. CLIMB is the deliberate way to chain.
-    if (this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) {
+    // CATCH: in crew, a climber that is falling grabs any anchored teammate within arm's reach
+    const falling = this.rules === "crew" && c.vy > 220 && c.leftLauncher && c.airTime > 0.25 && !(c.noStick && c.noStick > 0);
+    if ((this.autoGrab && c.vy > -60 && c.leftLauncher && c.airTime > 0.15) || falling) {
       const a = this.nearestAnchor(c, null);
       if (a) {
         c.state = "linked";

@@ -48,8 +48,9 @@ export const CFG = {
     zGravity: 300,
     /** stronger magnets pull the toy back sooner: +6% per upgrade level */
     magnetPerLevel: 0.06,
-    /** over glass, plastic and paper there is no steel to pull; the toy floats longer */
-    offMetal: 0.55,
+    /** pull over glass, plastic and paper. Kept equal to steel: a weaker pull would make the toy touch
+     *  down later on its way down, i.e. lower, which punishes crossing glass instead of rewarding it */
+    offMetal: 1,
     /** extra pull inside a blue attract plate's field */
     attractPull: 900,
     /** SUPER MAGNET slams the toy back onto the door */

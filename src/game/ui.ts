@@ -1,6 +1,7 @@
 import { RESERVE_COST, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
+import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { SaveData } from "./save";
@@ -13,6 +14,9 @@ import { pickupArtReady } from "./pickup-art";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
+  onPlayLevel(id: string): void;
+  onNextLevel(id: string): void;
+  onIntroSeen(key: string): void;
   onResume(): void;
   onQuitRun(): void;
   onEndRun(): void;
@@ -48,6 +52,7 @@ const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)}
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
+const expeditionStars = (s: SaveData) => { const n = Object.values(s.expeditions).reduce((a, b) => a + b, 0); return n ? `★ ${n}` : ""; };
 const el = (tag: string, cls: string, html = "") => {
   const e = document.createElement(tag);
   e.className = cls;
@@ -129,13 +134,13 @@ export class Ui {
       <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
       <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun the kid.</p>
       <div class="stats">
-        <div><span>Best crew</span><b>${s.bestCm} cm</b></div>
+        <div><span>Stars</span><b>★ ${Object.values(s.expeditions).reduce((a, b) => a + b, 0)}</b></div>
         <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
         <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Coins</span><b class="coin">$${s.coins}</b></button>
         <button class="wallet" data-a="shop" title="Upgrades &amp; skins"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
       </div>
-      <button class="primary mode" data-a="crew"><b>CREW CLIMB</b><small>Whole crew flings at once. Spares are lives.</small></button>
-      <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, pure arcade.</small></button>
+      <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, endless fridge, outrun the line.</small></button>
+      <button class="primary mode" data-a="expeditions"><b>EXPEDITIONS</b><small>Crew puzzles. No red line, a fling budget, three stars. ${expeditionStars(s)}</small></button>
       <label class="switch-row ${s.chill ? "on" : ""}">
         <span><b>😌 Chill mode</b><small>${s.chill ? "No red line, no rush. No coins or records; metres still count for the world." : "No red line. No coins or records; metres still count for the world."}</small></span>
         <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i></i>
@@ -152,6 +157,7 @@ export class Ui {
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "crew") this.h.onPlay("crew");
+      if (a === "expeditions") this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
@@ -342,6 +348,62 @@ export class Ui {
     p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });
     this.show(p);
     input.focus();
+  }
+
+  /** Pack and level picker. Levels open one at a time; stars persist per level. */
+  showExpeditions(packId: string = PACKS[0].id) {
+    const s = this.save();
+    const pack = PACKS.find((p) => p.id === packId) ?? PACKS[0];
+    const p = el("div", "panel collection expeditions");
+    p.innerHTML = `<h2>Expeditions</h2>
+      <p class="tag">${esc(pack.blurb)}</p>
+      <div class="tabs">${PACKS.map((k) => `<button class="${k.id === pack.id ? "on" : ""}" data-pack="${k.id}">${esc(k.name)}</button>`).join("")}</div>
+      <div class="level-grid">${pack.levels.map((l, i) => {
+        const st = s.expeditions[l.id] ?? 0, open = isUnlocked(l.id, s.expeditions);
+        return `<button class="level ${open ? "" : "locked"} ${st ? "done" : ""}" data-level="${l.id}" ${open ? "" : "disabled"}>
+          <b>${i + 1}</b><span>${esc(l.name)}</span><i>${"★".repeat(st)}${"☆".repeat(3 - st)}</i></button>`; }).join("")}</div>
+      <p class="fine">${pack.levels.filter((l) => s.expeditions[l.id]).length}/${pack.levels.length} done · ${pack.levels.reduce((a, l) => a + (s.expeditions[l.id] ?? 0), 0)}/${pack.levels.length * 3} stars</p>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-pack],[data-level],[data-a]");
+      if (!t) return;
+      if (t.dataset.pack) this.showExpeditions(t.dataset.pack);
+      else if (t.dataset.level) this.h.onPlayLevel(t.dataset.level);
+      else if (t.dataset.a === "back") this.showMenu();
+    });
+    this.show(p);
+  }
+
+  /** Two-line teaching card before a level that introduces a trick. */
+  showIntro(key: keyof typeof INTROS, go: () => void) {
+    const card = INTROS[key];
+    const p = el("div", "panel small intro");
+    p.innerHTML = `<div class="story-icon">${key === "stack" ? "🪜" : key === "catch" ? "🤝" : "🎯"}</div>
+      <h2>${esc(card.title)}</h2>${card.lines.map((l) => `<p class="tag">${esc(l)}</p>`).join("")}
+      <button class="primary" data-a="go">GOT IT</button>`;
+    p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "go") { this.clear(); go(); } });
+    this.show(p);
+  }
+
+  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number }) {
+    const p = el("div", "panel small");
+    const next = nextLevel(o.level.id);
+    p.innerHTML = `
+      <h2>${o.won ? (o.stars === 3 ? "Perfect!" : "Made it!") : o.lost >= o.level.team ? "Everyone lost" : "Out of flings"}</h2>
+      <div class="big stars">${o.won ? "★".repeat(o.stars) + "☆".repeat(3 - o.stars) : "☆☆☆"}</div>
+      <p class="tag">${esc(o.level.name)} · ${o.flings} flings${o.won ? ` (par ${o.level.par})` : ""}${o.lost ? ` · ${o.lost} lost` : ""}</p>
+      ${o.won && o.stars < 3 ? `<p class="fine">${o.flings > o.level.par ? "Under par for a star. " : ""}${o.lost ? "Lose nobody for a star." : ""}</p>` : ""}
+      <p class="tag">Earned <span class="coin">$${o.earned}</span></p>
+      ${o.won && next ? `<button class="primary" data-a="next">NEXT LEVEL</button>` : ""}
+      <button class="${o.won ? "" : "primary"}" data-a="retry">${o.won ? "PLAY AGAIN" : "TRY AGAIN"}</button>
+      <button class="ghost" data-a="map">ALL LEVELS</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "next") { this.clear(); this.h.onQuitRun(); this.h.onNextLevel(o.level.id); }
+      if (a === "retry") { this.clear(); this.h.onQuitRun(); this.h.onPlayLevel(o.level.id); }
+      if (a === "map") { this.clear(); this.h.onQuitRun(); this.showExpeditions(); }
+    });
+    this.show(p);
   }
 
   showFieldGuide(family: ItemFamily = "surface") {

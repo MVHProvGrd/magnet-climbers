@@ -7,6 +7,7 @@ import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
+import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -63,7 +64,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "expeditions", "intros", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -91,6 +92,8 @@ function mergeCloudBlob(blob: string) {
     save.creatures = Array.from(new Set([...save.creatures, ...(c.creatures ?? [])]));
     save.patterns = Array.from(new Set([...save.patterns, ...(c.patterns ?? [])]));
     save.hitsTotal = Math.max(save.hitsTotal, c.hitsTotal ?? 0); save.spins = Math.max(save.spins, c.spins ?? 0);
+    for (const [id, st] of Object.entries(c.expeditions ?? {})) save.expeditions[id] = Math.max(save.expeditions[id] ?? 0, st as number);
+    save.intros = Array.from(new Set([...save.intros, ...(c.intros ?? [])]));
     migrateLooks(save);
     if (c.name) save.name = c.name;
   } catch { /* ignore */ }
@@ -157,11 +160,14 @@ canvas.addEventListener("touchend", (e) => { const now = Date.now(); if (now - l
 
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
+  onPlayLevel: (id) => { const l = levelById(id); if (l) startLevel(l); },
+  onNextLevel: (id) => { const n = nextLevel(id); if (n) startLevel(n); else ui.showExpeditions(); },
+  onIntroSeen: (key) => { if (!save.intros.includes(key)) { save.intros.push(key); persist(); } },
   onResume: () => { paused = false; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
     void cloudSync("quit");
-    if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
+    if (game && game.phase !== "dead" && !game.chill && !game.level) { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
     endRun(); ui.showMenu();
   },
   onBuy: (key: UpgradeKey) => {
@@ -289,7 +295,7 @@ const ui = new Ui(uiRoot, () => save, {
 
 const SNAP_KEY = "magnet-climbers:run:v1";
 function saveSnapshot() {
-  if (!game) return;
+  if (!game || game.level) return;
   const snap = game.snapshot();
   try {
     if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted }));
@@ -320,6 +326,7 @@ function runEvents() {
       if (!game) return;
       paused = true;
       clearSnapshot();
+      if (game.level) { finishLevel(game.level); return; }
       const cm = game.heightCm;
       const chill = game.chill;
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
@@ -399,6 +406,40 @@ function tickTutorial(dt: number) {
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 /** coins picked up this run, across revives; feeds the dino unlock */
 let runCoinsTotal = 0;
+/** Expedition: fixed seed, fixed team, upgrades ignored, no wall. */
+function startLevel(level: LevelDef) {
+  const go = () => {
+    rulesNow = "crew";
+    ui.clear(); clearSnapshot();
+    adUsedThisRun = false; bankedCm = 0; runCounted = false; runCoinsTotal = 0; paused = false;
+    game = new Game({ ...EXPEDITION_LEVELS } as Record<UpgradeKey, number>, runEvents(), { rules: "crew", seed: level.seed, level, lineup: lineupFor("crew") });
+    game.walletCoins = save.coins; game.walletGems = save.gems;
+    game.viewH = viewH;
+    ui.hideTip();
+    ui.setInRun(true);
+    backdropDrawn = false; appEl.classList.add("in-run");
+  };
+  if (level.intro && !save.intros.includes(level.intro)) ui.showIntro(level.intro, () => { save.intros.push(level.intro!); persist(); go(); });
+  else go();
+}
+
+function finishLevel(level: LevelDef) {
+  if (!game) return;
+  const lost = game.climbers.filter((c) => c.state === "lost").length;
+  const won = game.won;
+  const stars = won ? starsFor(level, game.flings, lost) : 0;
+  const before = save.expeditions[level.id] ?? 0;
+  // coins collected always bank; first-time stars pay a bonus
+  const bonus = Math.max(0, stars - before) * 25;
+  const earned = game.coins + (won ? bonus : 0);
+  save.coins += earned; save.gems += game.gems;
+  if (won) save.expeditions[level.id] = Math.max(before, stars);
+  game.coins = 0; game.gems = 0; game.walletCoins = save.coins;
+  persist();
+  void cloudSync("level");
+  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned });
+}
+
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;

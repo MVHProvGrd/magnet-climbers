@@ -1,53 +1,56 @@
-# Crew mode: staged rollout
+# Expeditions (crew puzzles)
 
-Crew today is solo with spare lives. This plan makes climbers need each other and do different
-things, introduced one piece at a time the way Angry Birds introduced birds: each stage adds one
-verb, ships with a fridge section that only that verb can solve, shows a two-panel card the first
-time, then mixes into the normal generator.
+Solo is the endless arcade: red line, scoreboards, chill mode, daily seed. Crew is **Expeditions**:
+hand-built puzzle levels with no red line, a fling budget and three stars. Each pack introduces one
+crew trick, Angry Birds style: a two-line card the first time, a level that only that trick solves,
+then it mixes into later levels.
 
-Stats stay equal across creatures. Verbs are *crew* abilities, usable only in Crew mode.
+## A level
 
-## Gating
+`src/game/expeditions.ts`: `{ id, name, seed, team, goalCm, flings, par, recipe, intro? }`.
+The recipe is one section per fridge segment above the solid start segment: `steel`, `band` (full-width
+glass strip; optional steel `lane` or a handle `island`), `bumper`. Segments past the recipe are plain
+steel; the goal line sits at `goalCm`. Two coins per segment, no power-ups.
 
-`save.crewStage` (0–7) advances when the stage's trigger fires; it never regresses and is
-cloud-synced. World generation takes the stage as an input and only emits a stage's section types
-once it is unlocked, so a seed plus a stage is still deterministic (stage goes in the run snapshot).
-Every new section appears first as a "showcase": one clean instance with the intro card, then joins
-the random pool at the normal rate.
+Every expedition runs with fixed stats (`EXPEDITION_LEVELS`: base upgrades, chains of two) so the puzzle
+is the same for everyone. Levels open one at a time (one star on the previous). Runs are not saved for
+resume and do not touch the scoreboards; coins collected bank, and each new star pays $25 once.
 
-| Stage | Name | Verb | Section that needs it | Trigger | Intro card |
-|---|---|---|---|---|---|
-| 0 | Fling | SYNC fling, spares as lives (today) | none | start | existing tutorial |
-| 1 | **Stack** | CLIMB onto a teammate, then fling from the top of the stack | **Glass band**: a glass strip taller than a max fling. Only a 2-stack clears it | first Crew run ends ≥ 300 cm, or 3 runs | "Stack up. Land one, CLIMB the next onto it, fling from the top." |
-| 2 | **Catch** | A climber knocked off by a bumper falls onto a teammate below and hangs instead of dying | **Bumper lane**: moving magnets across the only path, with a steel ledge below for the catcher | reach 600 cm in Crew | "Leave a catcher. A hit climber falls onto the one below." |
-| 3 | **Octopus: wide hold** | Octopus holds two hangers, so stacks can fork | **Split shelf**: two glass columns needing a 3-wide base | own Octopus (chain of 3) | "Octopus holds two. Build wide." |
-| 4 | **Gecko: wall kick** | Once per flight, tap while touching glass or plastic to kick off it | **Chimney**: two glass walls with a gap too wide for one fling | own Gecko (1000 cm solo) | "Gecko kicks off glass. Tap mid-flight." |
-| 5 | **Pair fling** | SYNC-flung climbers that land within reach auto-link; the top one gets a slingshot bonus off the bottom one | **Twin gap**: two gaps in a row, second one out of range unless boosted | 5 SYNC flings that landed together | "Land together, link, boost." |
-| 6 | **Robot: bumper feet** | Robot can grip a moving bumper without taking damage and ride it | **Conveyor**: the only steel is on a sliding bumper | own Robot (5 gadget rides) | "Robot rides the movers." |
-| 7 | **Tether** | An elastic string joins the crew: a stuck climber anchors an overshooting flier and yanks it back to the door | **Overhang**: a ledge you must overshoot and get pulled back onto | buy "Crew rope" (gems); tether length is the upgrade | "Roped up. Overshoot on purpose." |
+Stars: finished, at or under par, nobody lost.
 
-Frog (boost the climber flung *from* it) and Crab (shuffle sideways while stuck) follow as stages
-8 and 9 once the above has settled. Dino stays cosmetic until it earns a verb.
+## Numbers that shape puzzles (fixed stats, full pull straight up)
+
+| | rise before the magnet catches |
+|---|---|
+| one climber from steel | 212 px |
+| flung from a teammate's back (CLIMB up first) | 272 px |
+| glass band a single fling cannot clear | ≥ 210 px |
+| glass band a 2-stack still clears | ≤ 270 px |
+
+A 3-high stack is not possible (chain length adds hangers side by side). Bands are 240–260 px.
+Over glass the pull back to the door equals steel on purpose: a weaker pull would touch down later on
+the way down, i.e. lower, and punish crossing glass.
+
+`node tests/expedition-solve.mjs` random-searches every level with fling and CLIMB moves and fails if
+any level is not beatable inside its budget. Par is the solver's best plus one.
+
+## Tricks by pack
+
+| Pack | Trick | Section that needs it |
+|---|---|---|
+| 1 Stack Up (shipped) | fling budget; **STACK**: CLIMB onto a teammate, fling from its back; **CATCH**: a falling climber grabs any stuck teammate within reach | glass bands; bumpers with a catcher below |
+| 2 | Octopus: holds two hangers, so stacks fork | split shelf needing a wide base |
+| 3 | Gecko: wall-kick off glass once per flight (tap) | chimney between glass walls |
+| 4 | Pair fling: SYNC landings within reach auto-link, top one gets a slingshot bonus | twin gap |
+| 5 | Robot: rides moving bumpers unharmed | conveyor |
+| 6 | Tether: an anchor yanks an overshooting flier back | overhang |
+
+Frog (boost the climber flung from it) and Crab (shuffle sideways while stuck) after these.
+Endless crew mode is hidden from the menu for now; the code path still exists.
 
 ## Rules that keep it learnable
 
-- One verb per stage, never two. A stage does not unlock until the previous one has been *used* once
-  (the trigger fires on use, not on time).
-- The showcase section is generous: extra steel, no bumpers, wall speed frozen while the card is up.
-- The Field Guide gets a "Crew tricks" tab that fills in as stages unlock, with the same two-panel
-  diagrams.
-- Solo mode is untouched. None of the sections above spawn in Solo.
-- Creature verbs only work for that creature, so the crew tab lineup becomes a real decision. A crew
-  with no Octopus never sees Split shelves; the generator checks the lineup, not just the stage.
-
-## Build order
-
-1. Stage plumbing: `crewStage` in the save and snapshot, stage-aware generator, intro card component,
-   Field Guide tab. Ship with Stage 1 (Stack) since CLIMB and chains already exist.
-2. Stage 2 (Catch): a fall-onto-teammate rule in `damage()` plus the Bumper lane section.
-3. Stages 3 and 4: first two creature verbs. Octopus needs `maxLinks` per climber; Gecko needs a
-   tap-in-flight input and a wall-contact check.
-4. Stage 5 (Pair fling): landing-together detection plus the boost.
-5. Stage 6, then 7. Tether is the only one that touches core physics; it goes last.
-
-Each stage is its own issue and its own release. Play-test each on a phone before the next.
+- One trick per pack. The first level using it is generous: extra steel, no bumpers.
+- Each trick gets a Field Guide "Crew tricks" entry with the same two-panel card.
+- Solo is untouched; none of these sections spawn there.
+- A creature trick only works for that creature, so the crew tab lineup is a real decision.

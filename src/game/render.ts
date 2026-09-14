@@ -229,6 +229,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   ctx.fill();
   ctx.fillStyle = "#fff";
   ctx.fillText(`${g.heightCm} cm`, 20, 35);
+
   if (!g.chill && g.phase === "running") {
     const m = g.wallMult();
     ctx.font = "bold 11px system-ui, sans-serif";
@@ -271,7 +272,18 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     }
   }
 
-  if (g.chill) {
+  if (g.level) {
+    // expedition: level name in the middle, flings below it
+    const name = g.level.name.toUpperCase();
+    ctx.font = "bold 11px system-ui, sans-serif"; ctx.textAlign = "center";
+    const w = Math.max(90, ctx.measureText(name).width + 24);
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - w / 2, 10, w, 22, 8); ctx.fill();
+    ctx.fillStyle = "#ffd23f"; ctx.fillText(name, W / 2, 25);
+    const left = g.level.flings - g.flings;
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - 52, 36, 104, 22, 8); ctx.fill();
+    ctx.fillStyle = left <= 2 ? "#ff8a8a" : "#fff"; ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.fillText(`FLINGS ${left} / ${g.level.flings}`, W / 2, 51);
+  } else if (g.chill) {
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     roundRect(ctx, W / 2 - 34, 10, 68, 22, 8);
     ctx.fill();
