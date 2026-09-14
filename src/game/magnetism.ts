@@ -15,6 +15,7 @@ export function rotate(p: Vec, angle: number): Vec {
 }
 
 export function limbTip(c: Climber, limb: number): Vec {
+  if (c.handsAt && limb < 2) return c.handsAt[limb];
   const pinned = c.grip?.contacts.find((p) => p.limb === limb);
   if (pinned && c.state === "stuck") return pinned;
   let local = flightLimb(c, limb)?.tip ?? LIMB_TIPS[limb];

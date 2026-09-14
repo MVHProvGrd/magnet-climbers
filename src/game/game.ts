@@ -737,11 +737,20 @@ export class Game {
     this.stepHand(sdt);
 
     this.stepBridge(sdt);
+    for (const c of this.climbers) c.handsAt = undefined;
     for (const c of this.climbers) {
       if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
       if (c.state === "flying") this.stepFlying(c, sdt);
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
+    }
+
+    // joined magnets: a stack's base holds the feet of the climber standing on it; a hanger holds its catcher's feet
+    for (const c of this.climbers) {
+      if (c.state !== "linked" || c.parent == null) continue;
+      const p = this.byId(c.parent); if (!p || (p.state !== "stuck" && p.state !== "linked")) continue;
+      if (c.locked) p.handsAt = [limbTip(c, 2), limbTip(c, 3)];
+      else c.handsAt = [limbTip(p, 2), limbTip(p, 3)];
     }
 
     // floor claims

@@ -121,6 +121,8 @@ export interface Climber {
   launchY?: number;
   /** knocked off or fallen past its launch point: teammates may CATCH it */
   fell?: boolean;
+  /** where the hands are held this frame when joined to a teammate: a stack's base reaches up to the feet above it, a hanger holds the feet of its catcher */
+  handsAt?: Vec[];
   /** World-space magnetic tips. Optional so v1 saves remain readable. */
   grip?: MagneticGrip;
   ragdoll?: Ragdoll;
