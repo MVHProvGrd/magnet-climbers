@@ -459,7 +459,7 @@ export class Ui {
     const items = FRIDGE_ITEMS.filter((item) => item.family === family);
     p.innerHTML = `<h2>Fridge Field Guide</h2>
       <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
-      <p class="guide-legend"><b>Blue S pulls you in.</b> Its steel face catches you.<br/><b>Red N pushes you away.</b> Moving magnets knock you loose.<br/>Timed magnets switch between a blue hold and red repulsion; their countdown warns you. Blue timed holds do not pull from a distance.</p>
+      <p class="guide-legend"><b>Blue S pulls you in.</b> Its steel face catches you.<br/><b>Red N pushes you away.</b> Moving magnets knock you loose.<br/>The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.</p>
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${items.map((item) => `<article class="guide-card"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
