@@ -18,4 +18,4 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 - Obstacles load from `public/art/real-v1/obstacles/<id>.png` (`src/game/obstacle-art.ts`). Remove a file, or add its id to `NO_PHOTO` there, to fall back to the canvas drawing.
 - To restore the canvas look everywhere, empty both folders. Nothing else changes.
 
-Regenerate `01-canvas-drawn/` with `node tests/art-archive.mjs`.
+Regenerate `01-canvas-drawn/` with `node tests/art-archive.mjs`. Rebuild the browsable page (`https://magnetclimbers.com/art-archive/`, linked from the admin header) with `node scripts/art-archive-page.mjs` after adding a set.
