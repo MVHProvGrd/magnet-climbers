@@ -206,7 +206,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 9);
+  assert.equal(modern.snapshot()!.worldVersion, 10);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -475,4 +475,13 @@ test("russian strings cover the HUD and the dynamic menu lines", async () => {
   assert.equal(t("some unknown string"), "some unknown string");
   setLang("en");
   assert.equal(t("FLING"), "FLING");
+});
+
+test("v10 keeps field plates off pillar and window segments", () => {
+  const world = new World(4242, 0, 10); world.generateTo(60);
+  for (const s of world.segments) {
+    const lane = s.zones.some((z) => (z.kind === "trim" && !z.itemId && z.h >= 300) || (z.kind === "glass" && z.h >= 280 && z.w < 399));
+    const plates = s.zones.filter((z) => z.kind === "repel" || z.kind === "attract");
+    assert.ok(!(lane && plates.length), `plate on a lane segment at y ${s.y}`);
+  }
 });

@@ -53,7 +53,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 9, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 10, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -188,8 +188,11 @@ export class World {
       }
     }
 
+    // field plates never go where the steel is already a narrow lane (pillars, windows): a red plate
+    // over the only lane makes the door impassable
+    const laneSegment = this.version >= 10 && (kind === "pillar" || kind === "window");
     // repel panels show up later
-    if (i > 6 && r() < 0.25 + difficulty * 0.3) {
+    if (i > 6 && r() < 0.25 + difficulty * 0.3 && !laneSegment) {
       const rw = rangeOf(r, 70, 120);
       const rh = rangeOf(r, 70, 110);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
@@ -202,7 +205,7 @@ export class World {
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
-    if (this.version >= 5 && i > 5 && r() < 0.22 + difficulty * 0.25) {
+    if (this.version >= 5 && i > 5 && r() < 0.22 + difficulty * 0.25 && !laneSegment) {
       const aw = rangeOf(r, 64, 100);
       const ah = rangeOf(r, 64, 96);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
