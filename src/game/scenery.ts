@@ -3,6 +3,7 @@ import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
+import { drawPickupImage } from "./pickup-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
 
@@ -269,7 +270,9 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
 export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   ctx.save(); ctx.translate(p.x, p.y + Math.sin(time * 3 + p.bob) * 4);
   ctx.shadowColor = "#21374866"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
-  drawPickupObject(ctx, p.kind); ctx.restore();
+  // generated image art first; the canvas drawing stays as the fallback while images load
+  if (!drawPickupImage(ctx, p.kind)) drawPickupObject(ctx, p.kind);
+  ctx.restore();
 }
 
 /** Previous badge illustrations retained for a retro look. */

@@ -9,6 +9,7 @@ import { nameReason } from "./profanity";
 import { FRIDGE_ITEMS, type ItemFamily } from "./items";
 import { drawItemPreview } from "./scenery";
 import { gadgetArtReady } from "./gadget-art";
+import { pickupArtReady } from "./pickup-art";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -397,6 +398,7 @@ export class Ui {
     canvases.forEach(canvas => observer ? observer.observe(canvas) : queue(canvas));
     // Only gadget thumbnails depend on these images. Refresh already painted
     // fallbacks once; unseen cards use loaded art when they approach the viewport.
+    if (family === "pickup") void pickupArtReady.then(() => { if (!disposed) for (const canvas of drawn) queue(canvas); });
     if (family === "gadget") void gadgetArtReady.then(() => {
       if (disposed) return;
       artReady = true;
