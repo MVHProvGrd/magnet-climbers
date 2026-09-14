@@ -1,0 +1,200 @@
+{
+  "status": "ready-for-wiring-not-live",
+  "assets": {
+    "attract-fiji": {
+      "file": "ready/attract-fiji.webp",
+      "source": "history/fiji-s.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 73010,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.0063
+    },
+    "repel-norway": {
+      "file": "ready/repel-norway.webp",
+      "source": "history/norway-n.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 70912,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.0054
+    },
+    "attract-hawaii": {
+      "file": "ready/attract-hawaii.webp",
+      "source": "sources/attract-hawaii-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 61842,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.6111
+    },
+    "attract-bali": {
+      "file": "ready/attract-bali.webp",
+      "source": "sources/attract-bali-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 61084,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.5357
+    },
+    "repel-jurmala": {
+      "file": "ready/repel-jurmala.webp",
+      "source": "sources/repel-jurmala-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 67516,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.6343
+    },
+    "repel-kyiv": {
+      "file": "ready/repel-kyiv.webp",
+      "source": "sources/repel-kyiv-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 68858,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.5967
+    },
+    "repel-alaska": {
+      "file": "ready/repel-alaska.webp",
+      "source": "sources/repel-alaska-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 64802,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.5811
+    },
+    "repel-iceland": {
+      "file": "ready/repel-iceland.webp",
+      "source": "sources/repel-iceland-v1-magenta.png",
+      "size": [
+        384,
+        384
+      ],
+      "bytes": 66674,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.7258
+    },
+    "crayon": {
+      "file": "ready/crayon.webp",
+      "source": "history/crayon-v2-magenta.png",
+      "size": [
+        640,
+        192
+      ],
+      "bytes": 32914,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.532
+    },
+    "candy-pole": {
+      "file": "ready/candy-pole.webp",
+      "source": "history/candy-pole.png",
+      "size": [
+        640,
+        192
+      ],
+      "bytes": 31158,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.008
+    },
+    "compass-base": {
+      "file": "ready/compass-base.webp",
+      "source": "sources/compass-base-v2-magenta.png",
+      "size": [
+        512,
+        512
+      ],
+      "bytes": 66352,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.442,
+      "pivot": [
+        255.2,
+        276.9
+      ]
+    },
+    "compass-needle": {
+      "file": "ready/compass-needle.webp",
+      "source": "sources/compass-needle-v1-magenta.png",
+      "size": [
+        64,
+        384
+      ],
+      "bytes": 10040,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.372,
+      "pivot": [
+        31.87,
+        190.08
+      ]
+    },
+    "glass-door": {
+      "file": "ready/glass-door.webp",
+      "source": "sources/glass-door-v2-magenta.png",
+      "size": [
+        384,
+        640
+      ],
+      "bytes": 67380,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.9426
+    },
+    "glass-wide": {
+      "file": "ready/glass-wide.webp",
+      "source": "history/glass-bottles-v2.png",
+      "size": [
+        768,
+        384
+      ],
+      "bytes": 75846,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.0061
+    },
+    "door-gap": {
+      "file": "ready/door-gap.webp",
+      "source": "sources/door-gap-v3-magenta.png",
+      "size": [
+        768,
+        160
+      ],
+      "bytes": 19316,
+      "alpha": true,
+      "clearBorder": true,
+      "opaqueFraction": 0.8403
+    }
+  },
+  "fieldEffects": {
+    "attract": "blue inward",
+    "repel": "red outward"
+  },
+  "glassRule": "Split at world center x=195..205 (W=400); keep 8px inset at seam; use separate glass-door panels. Never nine-slice bottles.",
+  "compassRule": "Rotate needle about its manifest pivot; place that pivot at compass-base pivot. Needle drawn height = base draw width * 0.47.",
+  "gapRule": "Shallow horizontal trim texture only. Do not stretch to fill tall void collider. Keep existing procedural void treatment and NO_PHOTO until an explicit material layout integration."
+}

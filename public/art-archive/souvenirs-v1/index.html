@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Souvenir art review · Magnet Climbers</title>
+<style>body{margin:0;background:#1c252d;color:#eef3f4;font:16px/1.5 system-ui}main{max-width:1250px;margin:auto;padding:24px}a{color:#a5e2ef}h1{margin:12px 0 0}p{color:#bdc9d0}.layout{display:grid;grid-template-columns:minmax(280px,400px) 1fr;gap:28px;align-items:start}canvas{width:100%;height:auto;display:block;border-radius:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{padding:12px;background:#afbcc5;color:#192831;border-radius:12px;text-decoration:none}.card img{display:block;width:100%;height:150px;object-fit:contain}.card span{font-size:13px}button{background:#375363;color:white;border:1px solid #8099a5;padding:8px 14px;border-radius:8px;cursor:pointer}label{display:inline-block;margin:8px 12px 12px 0}small{color:#b8c5cc}#status{min-height:24px}@media(max-width:720px){.layout{grid-template-columns:1fr}canvas{max-width:400px;margin:auto}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}</style>
+<main><a href="../">← Full art archive, all previous versions</a><h1>Souvenir fridge magnets</h1><p>Eight destinations, textured gadgets, bottles behind glass. Prepared art review; these assets are not active in the game.</p>
+<label><button id="motion">Pause animation</button></label><label><button id="backdrop">Toggle card background</button></label><label><button id="glass">Show wide glass bands</button></label><div id="status">Loading prepared art…</div>
+<div class="layout"><section><canvas id="fridge" width="800" height="1600" aria-label="Art preview on actual game fridge background"></canvas><p>Actual game steel and seam, at the game's 400px logical width. Blue fields flow inward; red fields flow outward. This preview demonstrates art placement and animation, not collision changes.</p></section><section><div class="grid" id="assets"></div><p><a id="manifest">Asset dimensions and pivots</a> · <a id="handoff">Claude wiring handoff</a></p><small>All original generations, failed cutout attempts, magenta sources and previous art remain in the full archive. Card images open full size.</small></section></div></main>
+<script>
+const root=location.protocol==='file:'?'../../../art/archive/07-souvenir-ready-v1/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/07-souvenir-ready-v1/';
+const destinations=['attract-fiji','attract-hawaii','attract-bali','repel-norway','repel-alaska','repel-iceland','repel-jurmala','repel-kyiv'];
+const names=[...destinations,'compass-base','compass-needle','crayon','candy-pole','glass-door','glass-wide','door-gap'];
+const labels={'repel-jurmala':'Jūrmala, Latvija · N','repel-kyiv':'Kyiv, Ukraine · N'};
+const images={};const canvas=document.getElementById('fridge'),c=canvas.getContext('2d');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;let paused=reduced,wide=false,dark=false,clock=0,previous=0,raf=0;
+function load(name,path){return new Promise(resolve=>{const im=new Image();im.onload=()=>{images[name]=im;resolve(true)};im.onerror=()=>resolve(false);im.src=root+path;})}
+for(const name of names){const card=document.createElement('a');card.className='card';card.href=root+'ready/'+name+'.webp';card.target='_blank';const im=document.createElement('img');im.src=card.href;im.alt=labels[name]||name;const label=document.createElement('span');label.textContent=labels[name]||name.replaceAll('-',' ');card.append(im,label);document.getElementById('assets').append(card)}
+document.getElementById('manifest').href=root+'manifest.json';document.getElementById('handoff').href=root+'HANDOFF.md';
+function drawImage(name,x,y,w,h){const im=images[name];if(im)c.drawImage(im,x,y,w,h)}
+function field(x,y,time,outward){c.save();c.translate(x,y);c.strokeStyle=outward?'#ea5147':'#058cdf';c.lineWidth=1.5;for(let i=0;i<3;i++){const f=(time*.6+i/3)%1;const progress=outward?f:1-f;c.globalAlpha=.65*(1-f);c.beginPath();c.ellipse(0,0,38+24*progress,33+21*progress,0,0,Math.PI*2);c.stroke()}for(let j=0;j<6;j++){const angle=j*Math.PI/3;const p=(time*.55+j/6)%1,r=outward?42+20*p:62-20*p;c.globalAlpha=.7;c.fillStyle=outward?'#d3322e':'#0084d4';c.beginPath();c.arc(Math.cos(angle)*r,Math.sin(angle)*r,1.5,0,Math.PI*2);c.fill()}c.restore()}
+function draw(time){c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,400,800);drawImage('background',0,0,400,800);
+ if(wide){drawImage('glass-wide',12,24,175,88);drawImage('glass-wide',213,24,175,88)}else{drawImage('glass-door',12,24,175,292);drawImage('glass-door',213,24,175,292)}
+ const rowY=wide?150:366;for(let i=0;i<8;i++){const x=i%2?300:100,y=rowY+Math.floor(i/2)*94;field(x,y,time,i>=3);drawImage(destinations[i],x-38,y-38,76,76)}
+ const gy=wide?570:765;drawImage('compass-base',14,gy-48,82,82);const px=14+255.2/512*82,py=gy-48+276.9/512*82;
+ c.save();c.translate(px,py);c.rotate(Math.sin(time*.7)*.65+.3);const nh=82*.47,nw=nh*64/384;drawImage('compass-needle',-31.87/64*nw,-190.08/384*nh,nw,nh);c.restore();
+ c.save();c.translate(144,gy-9);c.rotate(Math.sin(time*.8)*.18);drawImage('crayon',-40,-12,80,24);c.restore();
+ c.save();c.translate(270,gy-9);c.rotate(Math.sin(time*.8+1)*.18);drawImage('candy-pole',-47,-14,94,28);c.restore();
+ if(wide){drawImage('door-gap',14,680,172,35);drawImage('door-gap',214,680,172,35)}
+}
+function frame(now){if(previous&&!paused)clock+=Math.min(.1,(now-previous)/1000);previous=now;draw(clock);if(!document.hidden)raf=requestAnimationFrame(frame)}
+document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);previous=0;if(!document.hidden)raf=requestAnimationFrame(frame)});
+document.getElementById('motion').onclick=()=>{paused=!paused;document.getElementById('motion').textContent=paused?'Resume animation':'Pause animation'};
+if(paused)document.getElementById('motion').textContent='Resume animation';
+document.getElementById('glass').onclick=()=>{wide=!wide;document.getElementById('glass').textContent=wide?'Show tall door windows':'Show wide glass bands'};
+document.getElementById('backdrop').onclick=()=>{dark=!dark;document.querySelectorAll('.card').forEach(el=>{el.style.background=dark?'#19232c':'#afbcc5';el.style.color=dark?'white':'#192831'})};
+Promise.all([...names.map(name=>load(name,'ready/'+name+'.webp')),load('background','previews/actual-fridge-background.png')]).then(results=>{document.getElementById('status').textContent=results.every(Boolean)?'15 prepared assets loaded · review only':'Some images failed to load. See full archive for source files.';raf=requestAnimationFrame(frame)});
+</script></html>

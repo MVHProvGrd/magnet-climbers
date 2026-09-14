@@ -1,6 +1,16 @@
 import type { Gadget, NoStickZone, Vec } from "./types";
 export const GADGET_KINDS = ["swing", "rotor", "clip", "polarity"] as const;
 export const THEMES = ["snack", "travel", "doodle"] as const;
+/** Souvenir art is cosmetic; polarity, timing, and collision remain the same for every destination. */
+export const ATTRACT_DESTINATIONS = ["attract-fiji", "attract-hawaii", "attract-bali"] as const;
+export const REPEL_DESTINATIONS = ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala", "repel-kyiv"] as const;
+export const POLARITY_DESTINATIONS = [...ATTRACT_DESTINATIONS, ...REPEL_DESTINATIONS] as const;
+export function polarityDestination(id: string, repel = false): typeof POLARITY_DESTINATIONS[number] {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+  const pool = repel ? REPEL_DESTINATIONS : ATTRACT_DESTINATIONS;
+  return pool[(hash >>> 0) % pool.length];
+}
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
   const angle = g.kind === "rotor" ? t * 0.95 : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);

@@ -1,15 +1,21 @@
 import type { Gadget } from "./types";
-import { gadgetPose, gadgetZone, THEMES } from "./gadgets";
+import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
 import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
 
 const art = new Map<string, CanvasImageSource>();
+const destinationArt = new Map<string, CanvasImageSource>();
 export function setGadgetArt(theme: string, image: CanvasImageSource) { art.set(theme, image); }
-export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() : Promise.all(THEMES.map((theme) => new Promise<void>((resolve) => {
+export function setDestinationArt(id: string, image: CanvasImageSource) { destinationArt.set(id, image); }
+const loadImage = (path: string, done: (image: CanvasImageSource) => void) => new Promise<void>((resolve) => {
   const image = new Image();
-  image.onload = () => { setGadgetArt(theme, image); resolve(); };
+  image.onload = () => { done(image); resolve(); };
   image.onerror = () => resolve();
-  image.src = `${import.meta.env.BASE_URL ?? "/"}art/gadgets/${theme}.png`;
-})));
+  image.src = `${import.meta.env.BASE_URL ?? "/"}${path}`;
+});
+export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() : Promise.all([
+  ...THEMES.map((theme) => loadImage(`art/gadgets/${theme}.png`, (image) => setGadgetArt(theme, image))),
+  ...POLARITY_DESTINATIONS.map((id) => loadImage(`art/destinations/${id}.webp`, (image) => setDestinationArt(id, image))),
+]);
 function plate(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, radius = 5) {
   ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill();
 }
@@ -17,6 +23,16 @@ function charm(ctx: CanvasRenderingContext2D, theme: string, size: number) {
   const image = art.get(theme);
   if (image) ctx.drawImage(image, -size / 2, -size / 2, size, size);
   else { plate(ctx, -size / 2, -size / 2, size, size, "#ecd397", 8); ctx.fillStyle = "#587b7b"; ctx.font = `bold ${size * .55}px system-ui`; ctx.textAlign = "center"; ctx.fillText("★", 0, size * .2); }
+}
+function polarityField(ctx: CanvasRenderingContext2D, z: { x: number; y: number; w: number; h: number }, repel: boolean, time: number) {
+  const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+  ctx.save(); ctx.strokeStyle = repel ? "#e53f43" : "#1596df"; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const p = (time * .7 + i / 3) % 1, q = repel ? p : 1 - p;
+    ctx.globalAlpha = .55 * (1 - p); ctx.beginPath();
+    ctx.ellipse(cx, cy, z.w * .58 + z.w * .38 * q, z.h * .58 + z.h * .32 * q, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
 }
 /** Bright grips use the actual collision geometry, independent of the decorative sprite. */
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
@@ -43,14 +59,20 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   }
   ctx.restore();
   if (g.kind === "polarity") {
-    drawFieldMagnet(ctx, z, p.active);
+    const destination = destinationArt.get(polarityDestination(g.id, p.active));
+    if (destination) {
+      ctx.save(); ctx.beginPath(); ctx.roundRect(z.x, z.y, z.w, z.h, 8); ctx.clip();
+      ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
+      ctx.drawImage(destination, z.x, z.y, z.w, z.h); ctx.restore();
+      polarityField(ctx, z, p.active, time);
+    } else drawFieldMagnet(ctx, z, p.active);
     ctx.shadowColor = "#22303955"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
     ctx.shadowColor = "transparent";
     const shine = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
     shine.addColorStop(0, "#ffffff66"); shine.addColorStop(.4, "#ffffff00"); shine.addColorStop(1, "#172f4d55");
     ctx.fillStyle = shine; ctx.fillRect(z.x, z.y, z.w, z.h);
-    // Small enamel pins keep the three themed versions distinct.
-    ctx.save(); ctx.translate(z.x + 9, z.y + 9); charm(ctx, theme, 12); ctx.restore();
+    // Small enamel pins keep legacy fallback versions distinct.
+    if (!destination) { ctx.save(); ctx.translate(z.x + 9, z.y + 9); charm(ctx, theme, 12); ctx.restore(); }
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "900 9px system-ui";
     const urgent = p.remaining < .65 && Math.sin(time * 25) > 0;
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);

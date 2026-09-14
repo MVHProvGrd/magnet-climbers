@@ -20,9 +20,10 @@ for (const set of (await readdir(root)).filter((n) => /^\d\d-/.test(n)).sort()) 
   const files = await walk(join(root, set));
   const n = notes[set] ?? { what: "", from: "", live: "" };
   const sheets = files.filter((f) => /sheet/.test(f)), rest = files.filter((f) => !/sheet/.test(f));
-  const tile = (f) => { const rel = f.slice(root.length + 1); return `<a class="t" href="${RAW}${rel}" target="_blank"><img loading="lazy" src="${RAW}${rel}" alt="${esc(rel)}"><span>${esc(rel.slice(set.length + 1))}</span></a>`; };
+  const relPath = (f) => f.slice(root.length + 1).replaceAll('\\', '/');
+  const tile = (f) => { const rel = relPath(f); return `<a class="t" href="${RAW}${rel}" target="_blank"><img loading="lazy" src="${RAW}${rel}" alt="${esc(rel)}"><span>${esc(rel.slice(set.length + 1))}</span></a>`; };
   sections += `<section id="${set}"><h2>${esc(set)} <small>${files.length} files</small></h2><p>${esc(n.what)}</p><p class="meta"><b>From:</b> ${esc(n.from)} · <b>Live in:</b> ${esc(n.live)}</p>
-${sheets.map((f) => `<a href="${RAW}${f.slice(root.length + 1)}" target="_blank"><img class="sheet" loading="lazy" src="${RAW}${f.slice(root.length + 1)}"></a>`).join("")}
+${sheets.map((f) => `<a href="${RAW}${relPath(f)}" target="_blank"><img class="sheet" loading="lazy" src="${RAW}${relPath(f)}"></a>`).join("")}
 <div class="grid">${rest.map(tile).join("")}</div></section>`;
 }
 const toc = (await readdir(root)).filter((n) => /^\d\d-/.test(n)).sort().map((s) => `<a href="#${s}">${s}</a>`).join(" · ");
@@ -32,7 +33,12 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 .t img{width:100%;aspect-ratio:1;object-fit:contain;background:repeating-conic-gradient(#2a2f37 0 25%,#232830 0 50%) 0 0/16px 16px;border-radius:4px}.t span{display:block;font-size:11px;margin-top:4px;word-break:break-all}
 .sheet{max-width:100%;border-radius:8px;margin-top:8px;background:#c9d1d8}nav{color:#9aa;margin-bottom:8px}nav a,.t:hover{color:#7cc}</style></head><body>
 <h1>Art archive</h1><p>Every art style so far. Images load from the GitHub repo (<code>art/archive</code>); click any to open full size. <a href="https://github.com/MVHProvGrd/magnet-climbers/tree/main/art/archive" style="color:#7cc">README with restore steps</a>.</p>
-<nav>${toc}</nav>${sections}</body></html>`;
+<p><a href="souvenirs-v1/" style="color:#7cc">New souvenir pack: animated field, compass and split-door review</a></p>
+<nav>${toc}</nav>${sections}<script>
+if(location.protocol==='file:') document.querySelectorAll('[src],[href]').forEach(el=>{
+  for(const attr of ['src','href']){const value=el.getAttribute(attr);if(value?.startsWith('${RAW}'))el.setAttribute(attr,'../../art/archive/'+value.slice('${RAW}'.length).replaceAll('\\\\','/'));}
+});
+</script></body></html>`;
 await mkdir("public/art-archive", { recursive: true });
 await writeFile("public/art-archive/index.html", html);
 console.log("wrote public/art-archive/index.html", (await stat("public/art-archive/index.html")).size, "bytes");
