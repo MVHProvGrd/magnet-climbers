@@ -507,7 +507,8 @@ export class Ui {
     canvases.forEach(canvas => observer ? observer.observe(canvas) : queue(canvas));
     // Only gadget thumbnails depend on these images. Refresh already painted
     // fallbacks once; unseen cards use loaded art when they approach the viewport.
-    if (family === "pickup" || family === "surface") void (family === 'pickup' ? pickupArtReady : obstacleArtReady).then(() => { if (!disposed) for (const canvas of drawn) queue(canvas); });
+    if (family === "pickup") void pickupArtReady.then(() => { if (!disposed) for (const canvas of drawn) queue(canvas); });
+    if (family === "surface") void Promise.all([obstacleArtReady, gadgetArtReady]).then(() => { if (!disposed) for (const canvas of drawn) queue(canvas); });
     if (family === "gadget") void gadgetArtReady.then(() => {
       if (disposed) return;
       artReady = true;

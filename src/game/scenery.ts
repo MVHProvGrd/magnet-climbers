@@ -3,7 +3,7 @@ import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
-import { drawGadget } from "./gadget-art";
+import { drawDestinationObstacle, drawDestinationPreview, drawGadget } from "./gadget-art";
 import { drawPickupImage } from "./pickup-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
@@ -193,6 +193,9 @@ function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: numb
 }
 
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
+  if ((z.kind === "attract" || z.kind === "repel") && drawDestinationObstacle(ctx, z, z.kind === "repel")) {
+    return;
+  }
   if (drawObstacleImage(ctx, z)) {
     if (z.kind === 'attract' || z.kind === 'repel') {
       ctx.save(); drawFieldArcs(ctx, z, time, z.kind === 'repel'); ctx.restore();
@@ -329,6 +332,8 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
 
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
+  if (item.family === "surface" && item.id === "attract" && drawDestinationPreview(ctx, false)) return;
+  if (item.family === "surface" && item.id === "repel" && drawDestinationPreview(ctx, true)) return;
   if (item.family === 'surface' && item.id !== 'gap' && drawObstaclePreview(ctx, item.id)) return;
   if (item.id === "handle") {
     drawZone(ctx, { x: 6, y: 39, w: 88, h: 22, kind: "void", hue: -1, itemId: item.id }, 0, 42); return;

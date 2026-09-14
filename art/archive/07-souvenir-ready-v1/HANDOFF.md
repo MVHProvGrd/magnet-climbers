@@ -36,5 +36,5 @@ The Tahiti request hit the image tool limit: HTTP 429 `usage_limit_reached`, res
 ## Integration cautions
 
 obstacle-art.ts still stretches images / nine-slices glass. Do not nine-slice bottle imagery or stretch souvenirs out of proportion.
-gadget-art.ts now loads `public/art/destinations/*.webp`; `polarityDestination(g.id, p.active)` deterministically selects an S destination while attracting and an N destination while repelling. Old gadget themes and fallback `drawFieldMagnet` remain intact.
+The level obstacle renderer now loads `public/art/destinations/*.webp`; `polarityDestination` deterministically selects a vacation S destination for attract plates and an N destination for repel plates. Timed polarity gadgets retain their original blue/red field-magnet artwork, and rotor/clip/swing gadgets retain their original artwork. Hanging clip/swing pictures retain their magnetic clip behavior; compass, crayon and candy remain review-only until they receive proper magnetic mounts.
 The live copy is pending the branch validation and deployment workflow.

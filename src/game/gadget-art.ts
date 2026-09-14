@@ -40,6 +40,27 @@ function polarityField(ctx: CanvasRenderingContext2D, z: { x: number; y: number;
   }
   ctx.restore();
 }
+function drawDestinationImage(ctx: CanvasRenderingContext2D, id: string, x: number, y: number, w: number, h: number) {
+  const image = destinationArt.get(id);
+  if (!image) return false;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(8, w * .12)); ctx.clip();
+  ctx.drawImage(image, x, y, w, h);
+  ctx.restore();
+  return true;
+}
+
+/** Destination souvenir art for the actual field-guide/level obstacle, not a gadget. */
+export function drawDestinationObstacle(ctx: CanvasRenderingContext2D, z: { x: number; y: number; w: number; h: number }, repel: boolean) {
+  const id = polarityDestination(repel ? "repel-obstacle" : "attract-obstacle", repel);
+  return drawDestinationImage(ctx, id, z.x, z.y, z.w, z.h);
+}
+
+/** Natural-proportion preview for the Obstacles tab. */
+export function drawDestinationPreview(ctx: CanvasRenderingContext2D, repel: boolean) {
+  const id = polarityDestination(repel ? "repel-preview" : "attract-preview", repel);
+  return drawDestinationImage(ctx, id, 5, 5, 90, 90);
+}
 /** Bright grips use the actual collision geometry, independent of the decorative sprite. */
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
   const p = gadgetPose(g, time), z = gadgetZone(g, time), theme = g.itemId.split("-")[1];
@@ -54,46 +75,26 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
   if (g.kind === "rotor") {
-    const compass = objectArt.get("compass-base"), needle = objectArt.get("compass-needle");
-    if (compass) {
-      ctx.drawImage(compass, -31, -31, 62, 62);
-      if (needle) {
-        ctx.save(); ctx.translate(0, 2.6); ctx.rotate(time * .95);
-        ctx.drawImage(needle, -3.85, -20.4, 7.75, 46.45); ctx.restore();
-      }
-    } else {
-      plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
-      ctx.shadowColor = "transparent";
-      ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
-      ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
-      ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
-    }
+    plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
+    ctx.shadowColor = "transparent";
+    ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
+    ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
+    ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
   } else if (g.kind !== "polarity") {
-    const object = objectArt.get(g.kind === "clip" ? "candy-pole" : "crayon");
-    if (object) {
-      const horizontal = g.kind === "clip";
-      ctx.drawImage(object, horizontal ? -30 : -31, horizontal ? -12 : -16, horizontal ? 60 : 62, horizontal ? 24 : 32);
-    } else {
-      if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
-      charm(ctx, theme, g.kind === "clip" ? 58 : 62);
-    }
+    // Hanging pictures keep their magnetic clip and paper behavior. The crayon
+    // and candy concepts stay in the review pack until they have a proper mount.
+    if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
+    charm(ctx, theme, g.kind === "clip" ? 58 : 62);
   }
   ctx.restore();
   if (g.kind === "polarity") {
-    const destination = destinationArt.get(polarityDestination(g.id, p.active));
-    if (destination) {
-      ctx.save(); ctx.beginPath(); ctx.roundRect(z.x, z.y, z.w, z.h, 8); ctx.clip();
-      ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
-      ctx.drawImage(destination, z.x, z.y, z.w, z.h); ctx.restore();
-      polarityField(ctx, z, p.active, time);
-    } else drawFieldMagnet(ctx, z, p.active);
+    drawFieldMagnet(ctx, z, p.active);
+    polarityField(ctx, z, p.active, time);
     ctx.shadowColor = "#22303955"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
     ctx.shadowColor = "transparent";
     const shine = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
     shine.addColorStop(0, "#ffffff66"); shine.addColorStop(.4, "#ffffff00"); shine.addColorStop(1, "#172f4d55");
     ctx.fillStyle = shine; ctx.fillRect(z.x, z.y, z.w, z.h);
-    // Small enamel pins keep legacy fallback versions distinct.
-    if (!destination) { ctx.save(); ctx.translate(z.x + 9, z.y + 9); charm(ctx, theme, 12); ctx.restore(); }
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "900 9px system-ui";
     const urgent = p.remaining < .65 && Math.sin(time * 25) > 0;
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
