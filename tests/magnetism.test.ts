@@ -463,3 +463,16 @@ test("v7 keeps steel clear of the door seams and thins out set pieces", () => {
   const big = (w: World) => w.segments.filter((s) => s.zones.some((z) => ["dispenser", "calendar", "vent", "ice-tray"].includes(z.itemId ?? ""))).length;
   assert.ok(big(world) < big(old), `set pieces should be rarer: ${big(world)} vs ${big(old)}`);
 });
+
+test("russian strings cover the HUD and the dynamic menu lines", async () => {
+  const { setLang, t } = await import("../src/game/i18n");
+  setLang("ru");
+  assert.equal(t("FLING"), "БРОСОК");
+  assert.equal(t("FLINGS 2 / 8"), "БРОСКИ 2 / 8");
+  assert.equal(t("12 runs · 3.4 m climbed lifetime"), "12 забегов · 3.4 м пройдено за всё время");
+  assert.equal(t("YOUR BEST · 120 cm"), "ВАШ РЕКОРД · 120 см");
+  assert.equal(t("Glass Ceiling · 4 flings (par 4)"), "Стеклянный потолок · бросков: 4 (норма 4)");
+  assert.equal(t("some unknown string"), "some unknown string");
+  setLang("en");
+  assert.equal(t("FLING"), "FLING");
+});

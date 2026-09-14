@@ -2,6 +2,7 @@ import { appearanceFor } from "./creatures";
 import { CFG, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
+import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
@@ -93,7 +94,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.fillStyle = "rgba(255,80,80,0.9)";
       ctx.font = "bold 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("nothing to hold there", sel.x, sel.y - 40);
+      ctx.fillText(tr("nothing to hold there"), sel.x, sel.y - 40);
     }
   } else if (sel && g.drag) {
     if (v) {
@@ -119,7 +120,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     ctx.fillStyle = "#fff";
     ctx.font = "bold 10px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("LADDER", c.x, c.y - 30);
+    ctx.fillText(tr("LADDER"), c.x, c.y - 30);
   }
 
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
@@ -186,7 +187,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.fillStyle = g.best.beaten ? "#1a1d24" : "#fff";
       ctx.font = "bold 11px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(g.best.beaten ? `BEST BEATEN ✓` : `YOUR BEST · ${g.best.cm} cm`, 69, by - 9);
+      ctx.fillText(tr(g.best.beaten ? `BEST BEATEN ✓` : `YOUR BEST · ${g.best.cm} cm`), 69, by - 9);
     }
   }
 
@@ -205,7 +206,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.fillStyle = "#1a1d24";
       ctx.font = "bold 11px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${g.target.name} · ${g.target.cm} cm ${g.target.beaten ? "✓" : ""}`, W - 80, ty - 10);
+      ctx.fillText(`${tr(g.target.name)} · ${tr(`${g.target.cm} cm`)} ${g.target.beaten ? "✓" : ""}`, W - 80, ty - 10);
     }
   }
 
@@ -218,9 +219,9 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     const fx = Math.max(half, Math.min(W - half, f.x));
     ctx.globalAlpha = Math.min(1, f.life);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillText(f.text, fx + 1, f.y + 1);
+    ctx.fillText(tr(f.text), fx + 1, f.y + 1);
     ctx.fillStyle = f.color;
-    ctx.fillText(f.text, fx, f.y);
+    ctx.fillText(tr(f.text), fx, f.y);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -239,7 +240,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     roundRect(ctx, 10, 96, 138, 23, 7); ctx.fill();
     ctx.fillStyle = "#ffe393"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
     const combo = g.time - g.tricks.lastAt <= 4.5 && g.tricks.combo > 1 ? `  ×${g.tricks.combo}` : "";
-    ctx.fillText(`STYLE ${g.tricks.score}${combo}`, 19, 112);
+    ctx.fillText(tr(`STYLE ${g.tricks.score}${combo}`), 19, 112);
   }
   ctx.font = "bold 22px system-ui, sans-serif";
   ctx.textAlign = "left";
@@ -247,13 +248,13 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   roundRect(ctx, 10, 10, 120, !g.chill && g.phase === "running" ? 48 : 34, 10);
   ctx.fill();
   ctx.fillStyle = "#fff";
-  ctx.fillText(`${g.heightCm} cm`, 20, 35);
+  ctx.fillText(tr(`${g.heightCm} cm`), 20, 35);
 
   if (!g.chill && g.phase === "running") {
     const m = g.wallMult();
     ctx.font = "bold 11px system-ui, sans-serif";
     ctx.fillStyle = m >= 2.5 ? "#ff6b6b" : m >= 1.6 ? "#ffd23f" : "rgba(255,255,255,0.85)";
-    ctx.fillText(`▲ wall ${m.toFixed(1)}x`, 20, 50);
+    ctx.fillText(tr(`▲ wall ${m.toFixed(1)}x`), 20, 50);
   }
 
   ctx.font = "bold 15px system-ui, sans-serif";
@@ -270,7 +271,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (runCoins > 0 || runGems > 0) {
     ctx.font = "bold 10px system-ui, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`, W - 20, 46);
+    ctx.fillText(tr(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`), W - 20, 46);
     ctx.font = "bold 15px system-ui, sans-serif";
   }
 
@@ -293,7 +294,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
 
   if (g.level) {
     // expedition: level name in the middle, flings below it
-    const name = g.level.name.toUpperCase();
+    const name = tr(g.level.name).toUpperCase();
     ctx.font = "bold 11px system-ui, sans-serif"; ctx.textAlign = "center";
     const w = Math.max(90, ctx.measureText(name).width + 24);
     ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - w / 2, 10, w, 22, 8); ctx.fill();
@@ -301,7 +302,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     const left = g.level.flings - g.flings;
     ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - 52, 36, 104, 22, 8); ctx.fill();
     ctx.fillStyle = left <= 2 ? "#ff8a8a" : "#fff"; ctx.font = "bold 12px system-ui, sans-serif";
-    ctx.fillText(`FLINGS ${left} / ${g.level.flings}`, W / 2, 51);
+    ctx.fillText(tr(`FLINGS ${left} / ${g.level.flings}`), W / 2, 51);
   } else if (g.chill) {
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     roundRect(ctx, W / 2 - 34, 10, 68, 22, 8);
@@ -309,7 +310,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#9be15d";
     ctx.font = "bold 11px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("😌 CHILL", W / 2, 25);
+    ctx.fillText(tr("😌 CHILL"), W / 2, 25);
   }
 
   // off-screen climbers: coloured arrows at the edge, tappable
@@ -327,7 +328,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#fff";
     ctx.font = "bold 9px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`${dist} cm`, m.x, m.y + 13);
+    ctx.fillText(tr(`${dist} cm`), m.x, m.y + 13);
   }
 
   // wall indicator when the danger line is off the bottom of the screen
@@ -341,7 +342,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = "#fff";
     ctx.font = "bold 13px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`▼ wall ${dist} cm below`, W / 2, wy + 18);
+    ctx.fillText(tr(`▼ wall ${dist} cm below`), W / 2, wy + 18);
   }
 
   // active effects
@@ -362,7 +363,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillStyle = color;
     ctx.fillRect(12, ey + 16, 126 * Math.min(1, left / 8), 2);
     ctx.fillStyle = "#fff";
-    ctx.fillText(`${name} ${left.toFixed(0)}s`, 16, ey + 13);
+    ctx.fillText(tr(`${name} ${left.toFixed(0)}s`), 16, ey + 13);
     ey += 26;
   }
 
@@ -375,28 +376,28 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     roundRect(ctx, b.mode.x, b.mode.y, b.mode.w, b.mode.h, 12);
     ctx.fill();
     ctx.fillStyle = "#1a1d24";
-    ctx.fillText(g.mode === "fling" ? "FLING" : "CLIMB", b.mode.x + b.mode.w / 2, b.mode.y + 27);
+    ctx.fillText(tr(g.mode === "fling" ? "FLING" : "CLIMB"), b.mode.x + b.mode.w / 2, b.mode.y + 27);
   }
   if (g.rules === "crew" && !g.level) {
     ctx.fillStyle = g.sync ? "#c77dff" : "rgba(0,0,0,0.45)";
     roundRect(ctx, b.sync.x, b.sync.y, b.sync.w, b.sync.h, 12);
     ctx.fill();
     ctx.fillStyle = g.sync ? "#1a1d24" : "#fff";
-    ctx.fillText(g.sync ? "SYNC ON" : "SYNC", b.sync.x + b.sync.w / 2, b.sync.y + 27);
+    ctx.fillText(tr(g.sync ? "SYNC ON" : "SYNC"), b.sync.x + b.sync.w / 2, b.sync.y + 27);
   }
   if (g.freeCam) {
     ctx.fillStyle = "#fff";
     roundRect(ctx, b.recenter.x, b.recenter.y, b.recenter.w, b.recenter.h, 12);
     ctx.fill();
     ctx.fillStyle = "#1a1d24";
-    ctx.fillText("◎ RECENTER", b.recenter.x + b.recenter.w / 2, b.recenter.y + 27);
+    ctx.fillText(tr("◎ RECENTER"), b.recenter.x + b.recenter.w / 2, b.recenter.y + 27);
   }
   if (g.rules === "crew" && g.reserves > 0) {
     ctx.fillStyle = "#9be15d";
     roundRect(ctx, b.reserve.x, b.reserve.y, b.reserve.w, b.reserve.h, 12);
     ctx.fill();
     ctx.fillStyle = "#1a1d24";
-    ctx.fillText(`+1 RESERVE (${g.reserves})`, b.reserve.x + b.reserve.w / 2, b.reserve.y + 27);
+    ctx.fillText(tr(`+1 RESERVE (${g.reserves})`), b.reserve.x + b.reserve.w / 2, b.reserve.y + 27);
   }
 
   if (g.phase === "idle") {
@@ -407,12 +408,12 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fill();
     ctx.fillStyle = "#fff";
     if (g.rules === "solo") {
-      ctx.fillText("Drag back anywhere, release to fling.", W / 2, hb + 37);
-      ctx.fillText("Stick to steel. Outrun the red line.", W / 2, hb + 59);
+      ctx.fillText(tr("Drag back anywhere, release to fling."), W / 2, hb + 37);
+      ctx.fillText(tr("Stick to steel. Outrun the red line."), W / 2, hb + 59);
     } else {
-      ctx.fillText("Drag back from a climber, release to fling.", W / 2, hb + 26);
-      ctx.fillText("SYNC flings the whole crew. CLIMB crawls to a teammate.", W / 2, hb + 48);
-      ctx.fillText("Tap dots to switch. Drag empty steel to look around.", W / 2, hb + 70);
+      ctx.fillText(tr("Drag back from a climber, release to fling."), W / 2, hb + 26);
+      ctx.fillText(tr("SYNC flings the whole crew. CLIMB crawls to a teammate."), W / 2, hb + 48);
+      ctx.fillText(tr("Tap dots to switch. Drag empty steel to look around."), W / 2, hb + 70);
     }
   }
 }

@@ -8,6 +8,8 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Text sizes are part of the layout: ignore the phone's font scaling and Chrome's font boosting. */
+html { -webkit-text-size-adjust: none; text-size-adjust: none; font-size: 16px; }
 html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); touch-action: none; -webkit-user-select: none; user-select: none; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
 #menubg { position: fixed; inset: 0; width: 100vw; height: 100dvh; display: block; background: #252e38; }
 #menubg[hidden] { display: none; }

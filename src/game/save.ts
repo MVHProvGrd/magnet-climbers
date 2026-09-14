@@ -12,6 +12,8 @@ export interface SaveData {
   upgrades: Record<UpgradeKey, number>;
   sound: boolean;
   music: boolean;
+  /** "" = follow the browser language */
+  lang: "" | "en" | "ru";
   reserves: number;
   /** legacy skin fields; migrated into `pattern`/`patterns` on load and kept for older clients */
   skin: string;
@@ -63,6 +65,7 @@ function defaults(): SaveData {
     upgrades,
     sound: true,
     music: true,
+    lang: "",
     reserves: 0,
     skin: "classic",
     skins: ["classic"],

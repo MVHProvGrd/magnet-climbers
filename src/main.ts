@@ -1,4 +1,5 @@
 import "./style.css";
+import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
 import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
@@ -158,6 +159,7 @@ canvas.addEventListener("touchmove", (e) => { if ((e as TouchEvent).touches.leng
 let lastTouchEnd = 0;
 canvas.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
 
+setLang(save.lang || detectLang());
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
   onPlayLevel: (id) => { const l = levelById(id); if (l) startLevel(l); },
@@ -223,6 +225,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
+  onSetLang: (l) => { save.lang = l; setLang(l); persist(); },
   onToggleMute: () => {
     const on = !save.sound && !save.music;
     save.sound = on; save.music = on; setSound(on); setMusic(on); persist();

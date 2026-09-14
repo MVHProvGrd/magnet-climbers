@@ -12,6 +12,7 @@ import { drawItemPreview } from "./scenery";
 import { gadgetArtReady } from "./gadget-art";
 import { pickupArtReady } from "./pickup-art";
 import { obstacleArtReady } from "./obstacle-art";
+import { LANGS, lang, t, translateTree, watchTree } from "./i18n";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -37,6 +38,7 @@ export interface UiHandlers {
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
+  onSetLang(lang: "en" | "ru"): void;
   onSetName(name: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
@@ -87,13 +89,20 @@ export class Ui {
     this.muteBtn.addEventListener("click", () => { this.h.onToggleMute(); this.refreshMute(); });
     root.appendChild(this.muteBtn);
     this.refreshMute();
+    watchTree(root);
+  }
+
+  /** Re-render the fixed buttons after a language change. */
+  refreshLang() {
+    this.pauseBtn.textContent = t("☰ MENU");
+    this.refreshMute();
   }
 
   refreshMute() {
     const s = this.save();
     const muted = !s.sound && !s.music;
     this.muteBtn.textContent = muted ? "🔇" : "🔊";
-    this.muteBtn.title = muted ? "Unmute" : "Mute";
+    this.muteBtn.title = t(muted ? "Unmute" : "Mute");
     this.muteBtn.setAttribute("aria-label", this.muteBtn.title);
   }
 
@@ -108,13 +117,14 @@ export class Ui {
       backdrop.addEventListener("click", () => exit.click());
       this.root.appendChild(backdrop);
       const arrow = el("button", "back-arrow", "‹");
-      arrow.setAttribute("aria-label", exit.textContent?.trim() || "Back");
+      arrow.setAttribute("aria-label", exit.textContent?.trim() || t("Back"));
       arrow.addEventListener("click", () => exit.click());
       panel.prepend(arrow);
       panel.classList.add("has-arrow");
       // scrolling panels lose their bottom button; the arrow replaces it
       if (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("field-guide") || panel.classList.contains("expeditions")) exit.hidden = true;
     }
+    translateTree(panel);
     this.root.appendChild(panel);
   }
 
@@ -517,6 +527,10 @@ export class Ui {
       <h3>Preferences</h3>
       <div class="rows">
         <div class="row">
+          <div class="info"><b>Language</b><span>English · Русский</span></div>
+          <button class="buy" data-a="lang">${LANGS.find((l) => l.id === lang())?.name ?? "English"}</button>
+        </div>
+        <div class="row">
           <div class="info"><b>Sound effects</b><span>Rubber twangs, steel clicks and hand swishes</span></div>
           <button class="buy" data-a="sound">${s.sound ? "ON" : "OFF"}</button>
         </div>
@@ -537,6 +551,7 @@ export class Ui {
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
+      if (a === "lang") { const i = LANGS.findIndex((l) => l.id === lang()); this.h.onSetLang(LANGS[(i + 1) % LANGS.length].id); this.refreshLang(); this.showSettings(); return; }
       if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
       if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
       if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
