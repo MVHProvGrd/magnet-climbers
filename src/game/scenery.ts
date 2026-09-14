@@ -1,6 +1,7 @@
 import type { Bumper, NoStickZone, PowerUp } from "./types";
 import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
+import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
@@ -45,6 +46,7 @@ export function drawSurface(ctx: CanvasRenderingContext2D, top: number, bottom: 
 
 /** Small cartoon illustrations are drawn in a 100x100 square inside the real paper collider. */
 function doodle(ctx: CanvasRenderingContext2D, variant: number) {
+  if (variant >= 100) { drawPaperPrint(ctx, variant - 100); return; }
   if (variant >= 12) { drawObject(ctx, variant); return; }
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   switch (variant % 8) {
@@ -158,7 +160,6 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
     polygon(ctx, [0, h * 0.65, w, h * 0.08, w, h * 0.24, 0, h * 0.81], "rgba(205,243,244,0.13)");
     line(ctx, [8, h * 0.83, w - 8, h * 0.26], "rgba(231,253,255,0.3)", 1);
     ctx.strokeStyle = "#354958"; ctx.lineWidth = 5; ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
-    text(ctx, "GLASS", w / 2, h - 12, 8, "#accbd4");
   }
   ctx.restore();
 }
@@ -189,6 +190,13 @@ function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: numb
 }
 
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
+  if (z.kind === "attract" || z.kind === "repel") {
+    ctx.save(); drawFieldMagnet(ctx, z, z.kind === "repel");
+    drawFieldArcs(ctx, z, time, z.kind === "repel"); ctx.restore(); return;
+  }
+  if (z.hue === -1 && artVariant(z.x, z.y, seed, 3) !== 0) {
+    drawHardwareGrip(ctx, z, artVariant(z.x,z.y,seed,4)); return;
+  }
   if (["dispenser", "calendar", "ice-tray"].includes(z.itemId ?? "")) {
     ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
     drawObject(ctx, z.itemId === "dispenser" ? 20 : z.itemId === "calendar" ? 21 : 22);
@@ -197,15 +205,10 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
   // Keep Claude's handles, vents, gaps and glowing repel plates; mix both glass
   // treatments, and retain his four card styles alongside the 12 new drawings.
   const variant = artVariant(z.x, z.y, seed, 16);
-  const material = z.hue === -1 || z.kind === "trim" || z.kind === "void" || z.kind === "repel" || z.kind === "attract"
+  const material = z.hue === -1 || z.kind === "trim" || z.kind === "void"
     || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && !z.itemId && variant >= 12);
   if (material) {
     ctx.save(); drawMaterialZone(ctx, z, time);
-    if (z.kind === "repel" || z.kind === "attract") {
-      // magnet-style field: semicircle arcs fan out from the top and bottom
-      // edges; they travel outward on a repel plate and inward on an attract one.
-      drawFieldArcs(ctx, z, time, z.kind === "repel");
-    }
     ctx.restore();
     return;
   }
@@ -225,6 +228,11 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 
 export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
   const item = fridgeItem(b.itemId);
+  if (item?.art != null && item.art >= 100) {
+    ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.w / 100, b.h / 60);
+    ctx.shadowColor = "#24374766"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+    drawBusinessMagnet(ctx, item.art - 100); ctx.restore(); return;
+  }
   if (!item && (b.label.length <= 1 || artVariant(b.minX, b.minY, b.hue, 7) >= 5)) {
     ctx.save(); drawMaterialBumper(ctx, b); ctx.restore(); return;
   }
@@ -255,6 +263,13 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
 }
 
 export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
+  ctx.save(); ctx.translate(p.x, p.y + Math.sin(time * 3 + p.bob) * 4);
+  ctx.shadowColor = "#21374866"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+  drawPickupObject(ctx, p.kind); ctx.restore();
+}
+
+/** Previous badge illustrations retained for a retro look. */
+export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   const bob = Math.sin(time * 3 + p.bob), y = p.y + bob * 4;
   const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0" };
   ctx.save(); ctx.translate(p.x, y); ctx.lineCap = "round";
@@ -299,6 +314,9 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
 
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
+  if (item.id === "handle") {
+    drawZone(ctx, { x: 6, y: 39, w: 88, h: 22, kind: "void", hue: -1, itemId: item.id }, 0, 42); return;
+  }
   if (item.behavior) { drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior, x: 50, y: 59, phase: 0 }, 0); return; }
   if (item.power) { ctx.save(); ctx.translate(50, 48); ctx.scale(2.2, 2.2); drawPower(ctx, { x: 0, y: 0, kind: item.power, taken: false, bob: 0 }, 0); ctx.restore(); }
   else if (item.family === "bumper") drawBumper(ctx, { x: 5, y: 25, w: 90, h: 50, vx: 0, minX: 0, maxX: 100, label: item.label!, hue: item.hue!, itemId: item.id, motion: "slide", vy: 0, minY: 25, maxY: 25 });

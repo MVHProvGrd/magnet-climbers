@@ -56,6 +56,9 @@ const el = (tag: string, cls: string, html = "") => {
 export class Ui {
   root: HTMLElement;
   private panel: HTMLElement | null = null;
+  private panelCleanup: (() => void) | null = null;
+  /** The guide is a reading surface; keep its background still while scrolling. */
+  get readingGuide() { return this.panel?.classList.contains("field-guide") ?? false; }
   private pauseBtn: HTMLButtonElement;
   private muteBtn: HTMLButtonElement;
 
@@ -90,6 +93,10 @@ export class Ui {
   }
 
   clear() {
+    this.panelCleanup?.();
+    this.panelCleanup = null;
+    if (this.previewLoop !== null) cancelAnimationFrame(this.previewLoop);
+    this.previewLoop = null;
     this.panel?.remove();
     this.panel = null;
   }
@@ -290,14 +297,10 @@ export class Ui {
     const items = FRIDGE_ITEMS.filter((item) => item.family === family);
     p.innerHTML = `<h2>Fridge Field Guide</h2>
       <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
+      <p class="guide-legend"><b>Blue S pulls you in.</b> Its steel face catches you.<br/><b>Red N pushes you away.</b> Moving magnets knock you loose.<br/>Timed magnets switch between a blue hold and red repulsion; their countdown warns you. Blue timed holds do not pull from a distance.</p>
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${items.map((item) => `<article class="guide-card"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
-    const drawCards = () => p.querySelectorAll("canvas").forEach((canvas, i) => {
-      const ctx = canvas.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100); drawItemPreview(ctx, items[i]);
-    });
-    drawCards();
-    void gadgetArtReady.then(() => { if (p.isConnected) drawCards(); });
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       const category = target?.dataset.category;
@@ -305,6 +308,53 @@ export class Ui {
       if (target?.dataset.a === "back") this.showMenu();
     });
     this.show(p);
+    const canvases = Array.from(p.querySelectorAll("canvas"));
+    const pending = new Set<HTMLCanvasElement>();
+    const drawn = new Set<HTMLCanvasElement>();
+    let frame: number | null = null;
+    let disposed = false;
+    let artReady = false;
+    const paint = () => {
+      frame = null;
+      if (disposed) return;
+      // Limit each batch so category changes do not monopolize a frame.
+      const start = performance.now();
+      for (const canvas of pending) {
+        pending.delete(canvas);
+        const ctx = canvas.getContext("2d")!;
+        ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
+        drawItemPreview(ctx, items[canvases.indexOf(canvas)]);
+        drawn.add(canvas);
+        if (performance.now() - start >= 4) break;
+      }
+      if (pending.size) frame = requestAnimationFrame(paint);
+    };
+    const queue = (canvas: HTMLCanvasElement) => {
+      pending.add(canvas);
+      if (frame === null) frame = requestAnimationFrame(paint);
+    };
+    const observer = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        const canvas = entry.target as HTMLCanvasElement;
+        if (entry.isIntersecting) {
+          if (!drawn.has(canvas)) queue(canvas);
+          if (artReady || family !== "gadget") observer?.unobserve(canvas);
+        } else pending.delete(canvas);
+      }
+    }, { root: p, rootMargin: "200px 0px" });
+    canvases.forEach(canvas => observer ? observer.observe(canvas) : queue(canvas));
+    // Only gadget thumbnails depend on these images. Refresh already painted
+    // fallbacks once; unseen cards use loaded art when they approach the viewport.
+    if (family === "gadget") void gadgetArtReady.then(() => {
+      if (disposed) return;
+      artReady = true;
+      for (const canvas of drawn) queue(canvas);
+    });
+    this.panelCleanup = () => {
+      disposed = true; observer?.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+      pending.clear(); drawn.clear();
+    };
   }
 
   /** Profile, preferences and appearance in one place. */

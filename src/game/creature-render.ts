@@ -9,12 +9,12 @@ export interface CreatureAppearance {
 }
 export const CREATURE_FORMS = {
   human: { width: 8, limb: 6, headX: 7.5, headY: 7.5, color: "#ff8a3d", accent: "#fff0ba" },
-  gecko: { width: 10, limb: 5, headX: 10, headY: 6, color: "#76cb73", accent: "#e7f5a7" },
-  frog: { width: 16, limb: 6, headX: 11, headY: 7, color: "#64bca4", accent: "#e4ef9a" },
-  crab: { width: 21, limb: 5, headX: 8, headY: 4, color: "#f17e67", accent: "#ffe0a2" },
-  octopus: { width: 15, limb: 6, headX: 11, headY: 12, color: "#b18cde", accent: "#f4c6df" },
+  gecko: { width: 9, limb: 4.5, headX: 12, headY: 6, color: "#76cb73", accent: "#e7f5a7" },
+  frog: { width: 25, limb: 7, headX: 14, headY: 8, color: "#64bca4", accent: "#e4ef9a" },
+  crab: { width: 32, limb: 4.5, headX: 8, headY: 4, color: "#f17e67", accent: "#ffe0a2" },
+  octopus: { width: 20, limb: 5, headX: 14, headY: 16, color: "#b18cde", accent: "#f4c6df" },
   robot: { width: 14, limb: 5, headX: 10, headY: 8, color: "#7ab7d4", accent: "#b9ffe2" },
-  dino: { width: 13, limb: 6, headX: 11, headY: 7, color: "#e4b359", accent: "#77a894" },
+  dino: { width: 17, limb: 6, headX: 14, headY: 9, color: "#e4b359", accent: "#77a894" },
 } as const;
 export function creatureStyle(c: Climber, appearance: CreatureAppearance = {}) {
   const id = appearance.creatureId && Object.prototype.hasOwnProperty.call(CREATURE_FORMS, appearance.creatureId)
@@ -49,10 +49,15 @@ export function drawCreatureDecorations(ctx: CanvasRenderingContext2D, c: Climbe
   if (s.id === "octopus") {
     for (let i = 0; i < 4; i++) {
       const side = i < 2 ? -1 : 1, n = i % 2;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.moveTo(side * 4, 2 + n * 4);
-      ctx.bezierCurveTo(side * (13 + n * 3), 12, side * (18 + wave), 24 + n * 4,
-        side * (9 + n * 4) + motion * 5, 20 + n * 3 + wave); ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(side * 6, -4 + n * 7);
+      ctx.bezierCurveTo(side * (29 + n * 3), -6 + n * 12, side * (35 + wave), 16 + n * 6,
+        side * (22 + n * 4) + motion * 5, 10 + n * 10 + wave); ctx.stroke();
+      if (!shadow) {
+        ctx.fillStyle = s.accent;
+        oval(ctx, side * (22 + n * 4) + motion * 5, 10 + n * 10 + wave, 1.5, 1.5);
+        ctx.fillStyle = s.color;
+      }
     }
   }
   if (s.id === "robot") {
@@ -63,8 +68,8 @@ export function drawCreatureDecorations(ctx: CanvasRenderingContext2D, c: Climbe
   if (s.id === "crab") {
     ctx.lineWidth = 2.5;
     for (const side of [-1, 1]) for (let n = 0; n < 2; n++) {
-      ctx.beginPath(); ctx.moveTo(side * 8, n * 5);
-      ctx.lineTo(side * 16, 4 + n * 6 + wave); ctx.lineTo(side * 19, 10 + n * 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(side * 12, n * 5);
+      ctx.lineTo(side * 22, 2 + n * 7 + wave); ctx.lineTo(side * 27, 10 + n * 7); ctx.stroke();
     }
   }
 }
@@ -76,12 +81,27 @@ export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle
   if (s.id === "robot") {
     if (torso) { ctx.beginPath(); ctx.roundRect(-7, -8, 14, 19, 3); ctx.fill(); }
     if (head) { ctx.beginPath(); ctx.roundRect(-10, -22, 20, 16, 4); ctx.fill(); }
+  } else if (s.id === "crab") {
+    if (torso) {
+      ctx.beginPath(); ctx.moveTo(-16, 3); ctx.bezierCurveTo(-18, -13, 18, -13, 16, 3);
+      ctx.quadraticCurveTo(0, 16, -16, 3); ctx.fill();
+    }
+    if (head) {
+      ctx.strokeStyle = shadow ? ctx.fillStyle : material; ctx.lineWidth = 3;
+      for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * 8, -5); ctx.lineTo(side * 10, -19); ctx.stroke(); oval(ctx, side * 10, -19, 4, 4); }
+    }
+  } else if (s.id === "dino") {
+    if (torso) oval(ctx, 0, 2, 8.5, 12);
+    if (head) {
+      ctx.beginPath(); ctx.roundRect(-9, -26, 18, 22, 7); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-5, -23, 24, 12, 5); ctx.fill();
+    }
   } else {
-    if (torso) oval(ctx, 0, 1, s.width / 2, s.id === "crab" ? 7 : 11);
-    if (head) oval(ctx, 0, -14, s.headX, s.headY);
+    if (torso) oval(ctx, 0, s.id === "octopus" ? -1 : 1, s.width / 2, s.id === "octopus" ? 7 : 11);
+    if (head) oval(ctx, 0, s.id === "octopus" ? -18 : -14, s.headX, s.headY);
   }
-  if (head && (s.id === "frog" || s.id === "crab" || s.id === "gecko")) {
-    for (const side of [-1, 1]) oval(ctx, side * 7, s.id === "crab" ? -19 : -20, 3.5, 4);
+  if (head && (s.id === "frog" || s.id === "gecko")) {
+    for (const side of [-1, 1]) oval(ctx, side * 7, -20, 3.5, 4);
   }
   if (shadow) return;
   ctx.fillStyle = s.accent;
@@ -91,17 +111,21 @@ export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle
     ctx.fillStyle = "#315462";
     if (head) for (const x of [-4, 4]) ctx.fillRect(x - 1, -17, 2, 4);
   } else {
-    if (torso) oval(ctx, 0, 3, Math.max(3, s.width / 2 - 2), 5);
+    if (torso && s.id !== "octopus") oval(ctx, 0, 3, Math.max(3, s.width / 2 - 3), s.id === "frog" ? 8 : 4);
     if (!head) return;
     ctx.fillStyle = "#f7fff3";
-    const eyeY = ["frog", "gecko", "crab"].includes(s.id) ? -20 : -15;
-    const gap = s.id === "crab" || s.id === "frog" ? 7 : 5;
+    const eyeY = ["frog", "gecko"].includes(s.id) ? -20 : s.id === "crab" ? -19 : s.id === "dino" ? -22 : -15;
+    const gap = s.id === "crab" ? 10 : s.id === "frog" ? 7 : 5;
     for (const side of [-1, 1]) {
       oval(ctx, side * gap, eyeY, 2.5, 3);
       ctx.fillStyle = "#253748"; oval(ctx, side * gap + .5, eyeY, 1.2, 1.8); ctx.fillStyle = "#f7fff3";
     }
     ctx.strokeStyle = "#34464e"; ctx.lineWidth = .8;
     ctx.beginPath(); ctx.moveTo(-3, -10); ctx.quadraticCurveTo(0, -8, 3, -10); ctx.stroke();
+    if (s.id === "dino") {
+      ctx.fillStyle = "#34464e"; oval(ctx, 15, -19, 1, 1);
+      ctx.fillStyle = "#fff5d9"; ctx.beginPath(); ctx.moveTo(7, -13); ctx.lineTo(9, -10); ctx.lineTo(11, -13); ctx.fill();
+    }
   }
   ctx.fillStyle = s.accent;
   if (torso && (s.marking === "spots" || s.id === "gecko")) {
@@ -118,9 +142,9 @@ export function drawCreatureCap(ctx: CanvasRenderingContext2D, s: CreatureStyle,
   if (s.id === "frog" || s.id === "gecko") {
     for (const dx of [-4, 0, 4]) oval(ctx, dx, -3, 2, 2.5);
   } else if (s.id === "crab" && limb < 2) {
-    oval(ctx, 0, 0, 6, 6);
-    ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-5, -10); ctx.lineTo(-1, -5); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(5, -2); ctx.lineTo(5, -10); ctx.lineTo(1, -5); ctx.fill();
+    oval(ctx, 0, -2, 8, 8);
+    ctx.beginPath(); ctx.moveTo(-7, -4); ctx.quadraticCurveTo(-11, -15, -2, -17); ctx.lineTo(-2, -7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(7, -4); ctx.quadraticCurveTo(11, -15, 2, -17); ctx.lineTo(2, -7); ctx.fill();
   } else if (s.id === "robot") {
     ctx.beginPath(); ctx.roundRect(-5, -4, 10, 8, 2); ctx.fill();
   } else if (s.id === "octopus") {

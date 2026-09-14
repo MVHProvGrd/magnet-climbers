@@ -151,9 +151,9 @@ if ("ResizeObserver" in window) new ResizeObserver(() => resize(true)).observe(c
 resize(true);
 // iOS Safari ignores user-scalable=no; block pinch/double-tap zoom explicitly
 document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive: false });
-document.addEventListener("touchmove", (e) => { if ((e as TouchEvent).touches.length > 1) e.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchmove", (e) => { if ((e as TouchEvent).touches.length > 1) e.preventDefault(); }, { passive: false });
 let lastTouchEnd = 0;
-document.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
+canvas.addEventListener("touchend", (e) => { const now = Date.now(); if (now - lastTouchEnd < 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
 
 const ui = new Ui(uiRoot, () => save, {
   onPlay: (rules) => startRun(rules),
@@ -500,11 +500,15 @@ document.addEventListener("visibilitychange", () => {
 let last = performance.now();
 let acc = 0;
 const STEP = 1 / 120;
+let guideBackgroundDrawn = false;
 function frame(now: number) {
   updateAudio(!document.hidden && !paused, game && !game.chill ? Math.max(0, 1 - (game.floorY - Math.max(game.highestY, ...game.alive.map((c) => c.y))) / 400) : 0, game?.chill ?? true);
-  resize();
+  // ResizeObserver and viewport events handle sizing without a layout read on
+  // every scrolling frame. Keep the polling fallback for older WebViews.
+  if (!("ResizeObserver" in window)) resize();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  if (!ui.readingGuide || game) guideBackgroundDrawn = false;
   if (game) {
     if (!paused) {
       acc += dt;
@@ -522,8 +526,12 @@ function frame(now: number) {
     const bw = window.innerWidth, bh = window.innerHeight;
     if (menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
       menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
+      guideBackgroundDrawn = false;
     }
-    renderMenuBackground(menubgCtx, bh, dpr, now / 1000, bw);
+    if (!guideBackgroundDrawn) {
+      const ready = renderMenuBackground(menubgCtx, bh, dpr, now / 1000, bw);
+      guideBackgroundDrawn = ui.readingGuide && ready;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, viewH);
   }

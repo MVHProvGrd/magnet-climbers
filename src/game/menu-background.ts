@@ -39,13 +39,14 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
       joint.angle += Math.sin(time * 1.8 + i + limb * 1.7) * 0.55;
       joint.bend += Math.sin(time * 2.1 + i * 2 + limb) * 0.7;
     }
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 1;
     const look = appearanceFor(c);
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.translate(-x, -y);
     drawClimberShadow(ctx, c, time, look); drawClimber(ctx, c, false, time, look);
     ctx.restore();
   }
   ctx.restore();
+  return scene.complete;
 }
 
 /** Static blurred kitchen behind the game column, for windows wider than 9:16 (tablets, desktops). */
