@@ -193,6 +193,38 @@ export function drawPickupObject(c: CanvasRenderingContext2D, kind: PowerKind) {
   c.restore();
 }
 
+/** Big non-magnetic fridge objects. They should read by silhouette, not by a caption. */
+export function drawObstacleObject(c: CanvasRenderingContext2D, kind: "glass" | "plastic" | "gap" | "vent") {
+  c.save(); c.lineCap = "round"; c.lineJoin = "round";
+  const ink = "#263241";
+  if (kind === "glass") {
+    box(c, 3, 3, 94, 94, ink, 9); box(c, 8, 8, 84, 84, "#8ed4dc", 6);
+    box(c, 13, 13, 74, 74, "#467f96", 3);
+    for (const [x, y, w, h, color] of [[20, 24, 22, 19, "#d99767"], [56, 24, 24, 19, "#e9c967"], [26, 51, 18, 17, "#83b879"], [55, 52, 25, 16, "#ce7a87"]] as const) box(c, x, y, w, h, color, 4);
+    line(c, [17, 46, 83, 23], "rgba(232,255,255,.72)", 4); line(c, [27, 81, 79, 53], "rgba(232,255,255,.28)", 2);
+    oval(c, 28, 31, 3, 3, "#fff5cc"); oval(c, 67, 62, 3, 3, "#fff5cc");
+  }
+  if (kind === "plastic") {
+    box(c, 5, 8, 90, 84, ink, 12); box(c, 10, 13, 80, 74, "#d8e55e", 8);
+    box(c, 18, 20, 64, 60, "#7f9d59", 5); for (let x = 24; x <= 76; x += 10) { box(c, x, 23, 4, 54, "#d2e78a", 2); line(c, [x + 1, 25, x + 1, 74], "#5e754e", 1); }
+    for (const x of [17, 83]) { oval(c, x, 51, 5, 5, "#f0f3ce"); oval(c, x, 51, 2, 2, "#71837a"); }
+    line(c, [18, 17, 82, 17], "rgba(255,255,255,.8)", 3);
+  }
+  if (kind === "gap") {
+    box(c, 5, 4, 90, 92, ink, 9); box(c, 16, 10, 68, 80, "#101820", 5);
+    const g = c.createLinearGradient(0, 15, 0, 88); g.addColorStop(0, "#27323b"); g.addColorStop(.5, "#05080c"); g.addColorStop(1, "#33424c");
+    c.fillStyle = g; c.fillRect(25, 12, 50, 76);
+    for (let y = 20; y < 84; y += 12) line(c, [29, y, 71, y], "rgba(113,138,148,.28)", 2);
+    for (const [x, y] of [[20, 28], [78, 64], [82, 19]]) { oval(c, x, y, 3, 3, "#bcebf0"); line(c, [x - 4, y + 5, x + 2, y + 11], "#78c4d2", 1.5); }
+  }
+  if (kind === "vent") {
+    box(c, 4, 8, 92, 84, ink, 12); box(c, 10, 14, 80, 72, "#5c6c76", 8);
+    for (let y = 24; y <= 72; y += 12) { box(c, 19, y, 62, 5, "#1c2933", 2); line(c, [22, y + 1, 77, y + 1], "#a7bac0", 1); }
+    oval(c, 27, 26, 2, 2, "#e5fbfa"); oval(c, 73, 74, 2, 2, "#e5fbfa");
+  }
+  c.restore();
+}
+
 /** Machined tabs, spring clips and knurled bars all fill the legal silver hold. */
 export function drawHardwareGrip(c: CanvasRenderingContext2D, z: { x: number; y: number; w: number; h: number }, variant: number) {
   c.save(); c.translate(z.x,z.y); c.scale(z.w/100,z.h/24);

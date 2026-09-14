@@ -1,7 +1,7 @@
 import type { Bumper, NoStickZone, PowerUp } from "./types";
 import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
-import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip } from "./fridge-art";
+import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
@@ -194,6 +194,10 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     ctx.save(); drawFieldMagnet(ctx, z, z.kind === "repel");
     drawFieldArcs(ctx, z, time, z.kind === "repel"); ctx.restore(); return;
   }
+  if (z.itemId === "glass" || z.itemId === "plastic" || z.itemId === "gap" || z.itemId === "vent") {
+    ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
+    drawObstacleObject(ctx, z.itemId); ctx.restore(); return;
+  }
   if (z.hue === -1 && artVariant(z.x, z.y, seed, 3) !== 0) {
     drawHardwareGrip(ctx, z, artVariant(z.x,z.y,seed,4)); return;
   }
@@ -316,6 +320,9 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
   if (item.id === "handle") {
     drawZone(ctx, { x: 6, y: 39, w: 88, h: 22, kind: "void", hue: -1, itemId: item.id }, 0, 42); return;
+  }
+  if (item.id === "glass" || item.id === "plastic" || item.id === "gap" || item.id === "vent") {
+    ctx.save(); ctx.translate(4, 4); ctx.scale(.92, .92); drawObstacleObject(ctx, item.id); ctx.restore(); return;
   }
   if (item.behavior) { drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior, x: 50, y: 59, phase: 0 }, 0); return; }
   if (item.power) { ctx.save(); ctx.translate(50, 48); ctx.scale(2.2, 2.2); drawPower(ctx, { x: 0, y: 0, kind: item.power, taken: false, bob: 0 }, 0); ctx.restore(); }
