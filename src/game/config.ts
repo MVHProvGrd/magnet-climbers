@@ -25,7 +25,7 @@ export const CFG = {
   floorCatchupGap: 900,
   floorCatchupMult: 2.2,
   floorStartOffset: 320,
-  powerRadius: 30,
+  powerRadius: 36,
   bumperKnock: 420,
   /** hit points per climber and the grace period after a hit */
   maxHp: 3,
