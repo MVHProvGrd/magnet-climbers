@@ -30,6 +30,19 @@ function charm(ctx: CanvasRenderingContext2D, theme: string, size: number) {
   if (image) ctx.drawImage(image, -size / 2, -size / 2, size, size);
   else { plate(ctx, -size / 2, -size / 2, size, size, "#ecd397", 8); ctx.fillStyle = "#587b7b"; ctx.font = `bold ${size * .55}px system-ui`; ctx.textAlign = "center"; ctx.fillText("★", 0, size * .2); }
 }
+/** Souvenir magnet for a static N/S plate, picked by position so it never changes frame to frame. */
+export function destinationArtFor(x: number, y: number, repel: boolean): CanvasImageSource | undefined {
+  return destinationArt.get(polarityDestination(`${Math.round(x)}:${Math.round(y)}`, repel));
+}
+/** Draw a souvenir magnet fitted inside a rectangle (whole cutout visible, slightly oversize). False while the art is still loading. */
+export function drawDestination(ctx: CanvasRenderingContext2D, image: CanvasImageSource, x: number, y: number, w: number, h: number): boolean {
+  const iw = (image as HTMLImageElement).naturalWidth || (image as HTMLCanvasElement).width || 1;
+  const ih = (image as HTMLImageElement).naturalHeight || (image as HTMLCanvasElement).height || 1;
+  const s = Math.min(w / iw, h / ih) * 1.08, dw = iw * s, dh = ih * s;
+  ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.clip();
+  ctx.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); ctx.restore();
+  return true;
+}
 function polarityField(ctx: CanvasRenderingContext2D, z: { x: number; y: number; w: number; h: number }, repel: boolean, time: number) {
   const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
   ctx.save(); ctx.strokeStyle = repel ? "#e53f43" : "#1596df"; ctx.lineWidth = 1.5;
@@ -39,27 +52,6 @@ function polarityField(ctx: CanvasRenderingContext2D, z: { x: number; y: number;
     ctx.ellipse(cx, cy, z.w * .58 + z.w * .38 * q, z.h * .58 + z.h * .32 * q, 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
-}
-function drawDestinationImage(ctx: CanvasRenderingContext2D, id: string, x: number, y: number, w: number, h: number) {
-  const image = destinationArt.get(id);
-  if (!image) return false;
-  ctx.save();
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(8, w * .12)); ctx.clip();
-  ctx.drawImage(image, x, y, w, h);
-  ctx.restore();
-  return true;
-}
-
-/** Destination souvenir art for the actual field-guide/level obstacle, not a gadget. */
-export function drawDestinationObstacle(ctx: CanvasRenderingContext2D, z: { x: number; y: number; w: number; h: number }, repel: boolean) {
-  const id = polarityDestination(repel ? "repel-obstacle" : "attract-obstacle", repel);
-  return drawDestinationImage(ctx, id, z.x, z.y, z.w, z.h);
-}
-
-/** Natural-proportion preview for the Obstacles tab. */
-export function drawDestinationPreview(ctx: CanvasRenderingContext2D, repel: boolean) {
-  const id = polarityDestination(repel ? "repel-preview" : "attract-preview", repel);
-  return drawDestinationImage(ctx, id, 5, 5, 90, 90);
 }
 /** Bright grips use the actual collision geometry, independent of the decorative sprite. */
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
@@ -81,20 +73,36 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
     ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
   } else if (g.kind !== "polarity") {
-    // Hanging pictures keep their magnetic clip and paper behavior. The crayon
-    // and candy concepts stay in the review pack until they have a proper mount.
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
     charm(ctx, theme, g.kind === "clip" ? 58 : 62);
   }
   ctx.restore();
   if (g.kind === "polarity") {
-    drawFieldMagnet(ctx, z, p.active);
-    polarityField(ctx, z, p.active, time);
-    ctx.shadowColor = "#22303955"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
+    // the switching magnets are the tactile toys: compass (travel), crayon (doodle), candy pole (snack)
+    const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+    const compass = objectArt.get("compass-base"), needle = objectArt.get("compass-needle");
+    const object = theme === "travel" ? compass : objectArt.get(theme === "snack" ? "candy-pole" : "crayon");
+    if (object) {
+      polarityField(ctx, z, p.active, time);
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
+      if (theme === "travel") {
+        ctx.drawImage(object, -31, -31, 62, 62);
+        if (needle) {
+          // the needle swings to the live pole and spins as the switch nears
+          ctx.shadowColor = "transparent";
+          const spin = p.remaining < .65 ? time * 18 : 0;
+          ctx.save(); ctx.translate(0, 2.6); ctx.rotate((p.active ? Math.PI : 0) + spin);
+          ctx.drawImage(needle, -3.85, -20.4, 7.75, 46.45); ctx.restore();
+        }
+      } else if (theme === "snack") { ctx.rotate(-Math.PI / 2); ctx.drawImage(object, -30, -12, 60, 24); }
+      else ctx.drawImage(object, -31, -16, 62, 32);
+      ctx.restore();
+      // pole tint: a red or blue wash over the toy says which way it is pushing
+      ctx.save(); ctx.globalAlpha = .28; ctx.fillStyle = p.active ? "#e53f43" : "#1596df";
+      ctx.beginPath(); ctx.roundRect(z.x, z.y, z.w, z.h, 10); ctx.fill(); ctx.restore();
+    } else drawFieldMagnet(ctx, z, p.active);
     ctx.shadowColor = "transparent";
-    const shine = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-    shine.addColorStop(0, "#ffffff66"); shine.addColorStop(.4, "#ffffff00"); shine.addColorStop(1, "#172f4d55");
-    ctx.fillStyle = shine; ctx.fillRect(z.x, z.y, z.w, z.h);
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "900 9px system-ui";
     const urgent = p.remaining < .65 && Math.sin(time * 25) > 0;
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);

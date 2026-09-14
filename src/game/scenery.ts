@@ -3,7 +3,8 @@ import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
-import { drawDestinationObstacle, drawDestinationPreview, drawGadget } from "./gadget-art";
+import { drawGadget } from "./gadget-art";
+import { destinationArtFor, drawDestination } from "./gadget-art";
 import { drawPickupImage } from "./pickup-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
@@ -193,9 +194,6 @@ function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: numb
 }
 
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, seed: number) {
-  if ((z.kind === "attract" || z.kind === "repel") && drawDestinationObstacle(ctx, z, z.kind === "repel")) {
-    return;
-  }
   if (drawObstacleImage(ctx, z)) {
     if (z.kind === 'attract' || z.kind === 'repel') {
       ctx.save(); drawFieldArcs(ctx, z, time, z.kind === 'repel'); ctx.restore();
@@ -203,8 +201,15 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     return;
   }
   if (z.kind === "attract" || z.kind === "repel") {
-    ctx.save(); drawFieldMagnet(ctx, z, z.kind === "repel");
-    drawFieldArcs(ctx, z, time, z.kind === "repel"); ctx.restore(); return;
+    const repel = z.kind === "repel";
+    const souvenir = destinationArtFor(z.x, z.y, repel);
+    ctx.save();
+    if (souvenir) {
+      ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
+      drawDestination(ctx, souvenir, z.x, z.y, z.w, z.h);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+    } else drawFieldMagnet(ctx, z, repel);
+    drawFieldArcs(ctx, z, time, repel); ctx.restore(); return;
   }
   if (z.itemId === "glass" || z.itemId === "plastic" || z.itemId === "vent") {
     ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.w / 100, z.h / 100);
@@ -332,9 +337,7 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
 
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
-  if (item.family === "surface" && item.id === "attract" && drawDestinationPreview(ctx, false)) return;
-  if (item.family === "surface" && item.id === "repel" && drawDestinationPreview(ctx, true)) return;
-  if (item.family === 'surface' && item.id !== 'gap' && drawObstaclePreview(ctx, item.id)) return;
+  if (item.family === 'surface' && item.id !== 'gap' && item.kind !== 'attract' && item.kind !== 'repel' && drawObstaclePreview(ctx, item.id)) return;
   if (item.id === "handle") {
     drawZone(ctx, { x: 6, y: 39, w: 88, h: 22, kind: "void", hue: -1, itemId: item.id }, 0, 42); return;
   }
