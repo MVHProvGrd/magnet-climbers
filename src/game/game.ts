@@ -870,7 +870,8 @@ export class Game {
         // clamp to reach
         const dx = c.x - a.x, dy = c.y - a.y;
         const d = Math.hypot(dx, dy) || 1;
-        const r = Math.min(d, this.currentReach() - 4);
+        // pulled in until the hands actually hold the catcher's feet, not left dangling at arm's reach
+        const r = Math.min(d, falling ? CFG.stackHeight - 8 : this.currentReach() - 4);
         c.x = a.x + (dx / d) * r;
         c.y = a.y + (dy / d) * r;
         c.angle = Math.atan2(dy, dx) + Math.PI / 2;
