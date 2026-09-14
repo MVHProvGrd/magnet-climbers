@@ -26,6 +26,14 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 /** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
 export const SEAM_MARGIN = 36;
 
+/** v8+: an x for a box of width w that keeps it on one door, clear of the centre seam. */
+function onOneDoor(r: Rng, w: number, min = 0): number {
+  const left = DOOR_SEAM.x - 8 - w, right = DOOR_SEAM.x + DOOR_SEAM.w + 8;
+  const canLeft = left >= min, canRight = right + w <= W - min;
+  if (canLeft && canRight ? r() < 0.5 : canLeft) return rangeOf(r, min, left);
+  return rangeOf(r, right, W - w - min);
+}
+
 /** The vertical seam between the two fridge doors. Always non-stick. */
 export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 
@@ -45,7 +53,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 7, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 8, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -149,8 +157,8 @@ export class World {
       case "window": {
         // big glass panel, metal only on the sides (or one side)
         // glass panel with a usable steel strip (≥ 56px) on at least one side
-        const gw = rangeOf(r, 180, 220 + difficulty * 60);
-        const gx = r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
+        const gw = this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
+        const gx = this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
         // a handle across the glass now and then, as a mid-way hold
         if (r() < 0.5) {
@@ -185,7 +193,8 @@ export class World {
       const rw = rangeOf(r, 70, 120);
       const rh = rangeOf(r, 70, 110);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
-      zones.push({ x: rangeOf(r, 10, W - rw - 10), y: y + rangeOf(r, m, h - rh - m), w: rw, h: rh, kind: "repel" });
+      const rx = this.version >= 8 ? onOneDoor(r, rw, 10) : rangeOf(r, 10, W - rw - 10);
+      zones.push({ x: rx, y: y + rangeOf(r, m, h - rh - m), w: rw, h: rh, kind: "repel" });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
@@ -193,7 +202,7 @@ export class World {
       const aw = rangeOf(r, 64, 100);
       const ah = rangeOf(r, 64, 96);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
-      const ax = rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, m, h - ah - m);
+      const ax = this.version >= 8 ? onOneDoor(r, aw, 10) : rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, m, h - ah - m);
       const clash = zones.some((o) => ax < o.x + o.w + 16 && ax + aw > o.x - 16 && ay < o.y + o.h + 16 && ay + ah > o.y - 16);
       if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract" });
     }
@@ -361,7 +370,7 @@ function sticker(r: Rng, y: number, h: number, version = 0): NoStickZone {
   const w = rangeOf(r, 50, 110);
   const sh = rangeOf(r, 50, 100);
   const m = version >= 7 ? SEAM_MARGIN : 0;
-  return { x: rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
+  return { x: version >= 8 ? onOneDoor(r, w) : rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
 }
 
 /** pad > 0 grows the rect; pad < 0 shrinks it. */

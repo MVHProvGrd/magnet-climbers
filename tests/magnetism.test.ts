@@ -3,7 +3,7 @@ import "./audio.test";
 import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
-import { World } from "../src/game/world";
+import { DOOR_SEAM, World } from "../src/game/world";
 import { UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
@@ -206,7 +206,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 7);
+  assert.equal(modern.snapshot()!.worldVersion, 8);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -445,7 +445,7 @@ test("Claude's super magnet protection survives the articulated swipe integratio
 
 test("v7 keeps steel clear of the door seams and thins out set pieces", () => {
   const seed = 777;
-  const world = new World(seed, 0, 7); world.generateTo(30);
+  const world = new World(seed, 0, 8); world.generateTo(30);
   const seam = 36;
   for (const s of world.segments) {
     for (const z of s.zones) {
@@ -453,6 +453,11 @@ test("v7 keeps steel clear of the door seams and thins out set pieces", () => {
       assert.ok(z.y >= s.y + seam - 1, `${z.kind} at ${z.y - s.y} sits on the top seam`);
       assert.ok(z.y + z.h <= s.y + s.h - seam + 1, `${z.kind} ends ${s.y + s.h - (z.y + z.h)} px from the bottom seam`);
     }
+  }
+  for (const s of world.segments) for (const z of s.zones) {
+    if (z.w >= 399 || z.hue === -1) continue; // full-width bands are the puzzle; metal islands are holds
+    const crosses = z.x < DOOR_SEAM.x + DOOR_SEAM.w && z.x + z.w > DOOR_SEAM.x;
+    assert.ok(!crosses || z.kind === "trim" && !z.itemId, `${z.kind} ${z.itemId ?? ""} at x ${z.x.toFixed(0)}..${(z.x + z.w).toFixed(0)} crosses the centre seam`);
   }
   const old = new World(seed, 0, 6); old.generateTo(30);
   const big = (w: World) => w.segments.filter((s) => s.zones.some((z) => ["dispenser", "calendar", "vent", "ice-tray"].includes(z.itemId ?? ""))).length;
