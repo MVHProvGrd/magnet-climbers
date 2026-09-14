@@ -216,3 +216,8 @@ belongs to the user; do not remove or fold it into an unrelated change.
   Consider keeping power-up spawns off sticker rects in world gen.
 - Handles inside glass windows sit visually "on" the pane. The solver treats the
   handle rect as steel, so this matches gameplay.
+
+## Creature roster split (Sep 14)
+See issue #17. Codex: creature bodies/animation in `climber-render.ts` (gecko, frog, octopus, robot first;
+decorative parts never grip). Claude: creature + pattern model in `save.ts`, unlock triggers, shop split,
+prize machine, per-climber crew picker. Four magnets stay the physics contract; no stat perks on skins.
