@@ -4,8 +4,10 @@ import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
 
 const art = new Map<string, CanvasImageSource>();
 const destinationArt = new Map<string, CanvasImageSource>();
+const objectArt = new Map<string, CanvasImageSource>();
 export function setGadgetArt(theme: string, image: CanvasImageSource) { art.set(theme, image); }
 export function setDestinationArt(id: string, image: CanvasImageSource) { destinationArt.set(id, image); }
+export function setObjectArt(id: string, image: CanvasImageSource) { objectArt.set(id, image); }
 const loadImage = (path: string, done: (image: CanvasImageSource) => void) => new Promise<void>((resolve) => {
   const image = new Image();
   image.onload = () => { done(image); resolve(); };
@@ -15,6 +17,10 @@ const loadImage = (path: string, done: (image: CanvasImageSource) => void) => ne
 export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() : Promise.all([
   ...THEMES.map((theme) => loadImage(`art/gadgets/${theme}.png`, (image) => setGadgetArt(theme, image))),
   ...POLARITY_DESTINATIONS.map((id) => loadImage(`art/destinations/${id}.webp`, (image) => setDestinationArt(id, image))),
+  loadImage("art/gadgets/compass-base.webp", (image) => setObjectArt("compass-base", image)),
+  loadImage("art/gadgets/compass-needle.webp", (image) => setObjectArt("compass-needle", image)),
+  loadImage("art/gadgets/crayon.webp", (image) => setObjectArt("crayon", image)),
+  loadImage("art/gadgets/candy-pole.webp", (image) => setObjectArt("candy-pole", image)),
 ]);
 function plate(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, radius = 5) {
   ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill();
@@ -48,14 +54,29 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
   if (g.kind === "rotor") {
-    plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
-    ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
-    ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
-    ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
+    const compass = objectArt.get("compass-base"), needle = objectArt.get("compass-needle");
+    if (compass) {
+      ctx.drawImage(compass, -31, -31, 62, 62);
+      if (needle) {
+        ctx.save(); ctx.translate(0, 2.6); ctx.rotate(time * .95);
+        ctx.drawImage(needle, -3.85, -20.4, 7.75, 46.45); ctx.restore();
+      }
+    } else {
+      plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
+      ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
+      ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
+    }
   } else if (g.kind !== "polarity") {
-    if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
-    charm(ctx, theme, g.kind === "clip" ? 58 : 62);
+    const object = objectArt.get(g.kind === "clip" ? "candy-pole" : "crayon");
+    if (object) {
+      const horizontal = g.kind === "clip";
+      ctx.drawImage(object, horizontal ? -30 : -31, horizontal ? -12 : -16, horizontal ? 60 : 62, horizontal ? 24 : 32);
+    } else {
+      if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
+      charm(ctx, theme, g.kind === "clip" ? 58 : 62);
+    }
   }
   ctx.restore();
   if (g.kind === "polarity") {
