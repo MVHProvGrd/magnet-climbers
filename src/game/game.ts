@@ -225,11 +225,18 @@ export class Game {
       return;
     }
     if (best) {
-      this.selectedId = best.id;
-      if (this.isLadder(best)) {
-        this.floats.push({ x: best.x, y: best.y - 34, text: "someone's hanging on you", life: 1, color: "#ff6b6b" });
-        return;
+      // a ladder (someone hangs on it) cannot fling: hand the aim to the climber on top of it instead
+      if (this.isLadder(best) && this.mode === "fling") {
+        const top = this.climbers.filter((o) => o.parent === best!.id && o.state === "linked").sort((a, b) => a.y - b.y)[0];
+        if (top) {
+          best = top;
+          this.floats.push({ x: top.x, y: top.y - 34, text: "flinging the top climber", life: 1, color: "#fff" });
+        } else {
+          this.floats.push({ x: best.x, y: best.y - 34, text: "someone's hanging on you", life: 1, color: "#ff6b6b" });
+          return;
+        }
       }
+      this.selectedId = best.id;
       this.drag = { start: p, cur: p };
       return;
     }
