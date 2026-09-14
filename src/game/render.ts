@@ -39,8 +39,23 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
 
+  // CLIMB mode: how far the selected climber can crawl, and who it can climb onto
+  const climber = g.byId(g.selectedId);
+  if (g.rules === "crew" && g.mode === "move" && climber && (climber.state === "stuck" || climber.state === "linked") && g.phase !== "dead") {
+    ctx.strokeStyle = "rgba(79,195,247,0.55)"; ctx.setLineDash([6, 8]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(climber.x, climber.y, g.pullRange(), 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    const pulse = 0.5 + Math.sin(g.time * 5) * 0.5;
+    for (const o of g.climbTargets(climber)) {
+      ctx.strokeStyle = `rgba(155,225,93,${0.5 + pulse * 0.5})`; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(o.x, o.y - 6, 26 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(155,225,93,0.95)"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("▲", o.x, o.y - CFG.stackHeight - 4);
+    }
+  }
+
   // reach rings on anchored climbers when aiming
-  if (g.drag) {
+  if (g.drag && g.mode !== "move") {
     const reach = g.currentReach();
     for (const c of g.anchored) {
       if (g.chainDepthAbove(c) >= g.stats.maxLinks) continue;

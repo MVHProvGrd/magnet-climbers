@@ -447,14 +447,10 @@ export class Game {
     let tx = p.x, ty = p.y;
     if (d > range) { tx = c.x + ((p.x - c.x) / d) * range; ty = c.y + ((p.y - c.y) / d) * range; }
     tx = Math.max(CFG.climberRadius, Math.min(W - CFG.climberRadius, tx));
-    // dropped onto a teammate: stack on its shoulders, whatever the steel underneath
-    const onto = this.anchored.find((o) => o.id !== c.id && Math.hypot(o.x - tx, o.y - ty) < 34);
-    if (onto) {
-      let q: Climber | undefined = onto; let cyc = false;
-      for (let i = 0; q && i < 20; i++) { if (q.parent === c.id) { cyc = true; break; } q = this.byId(q.parent); }
-      const taken = this.climbers.some((o) => o.parent === onto.id && o.state === "linked" && o.locked && o.id !== c.id);
-      if (!cyc && !taken && this.stackDepth(onto) < CFG.stackMax && Math.hypot(onto.x - c.x, onto.y - c.y) <= range) return { x: onto.x, y: onto.y - CFG.stackHeight, parent: onto.id };
-    }
+    // dropped onto a teammate: climb to the top of whatever it is part of and stand there, whatever
+    // the steel underneath. Anything anchored counts, as long as the structure holds metal somewhere.
+    const onto = this.stackTarget(c, tx, ty);
+    if (onto) return { x: onto.x, y: onto.y - CFG.stackHeight, parent: onto.id };
     // short shuffle on bare metal: needs three of four tips on steel, so nobody inches across glass on one toe
     if (Math.hypot(tx - c.x, ty - c.y) <= this.currentReach() * 1.1 && findContacts(
       { ...c, x: tx, y: ty, angle: 0, state: "flying", grip: undefined },
@@ -484,8 +480,37 @@ export class Game {
   }
 
   /** How many climbers stand in the stack that ends at `c` (c included). */
+  /** The teammate c would end up standing on if dropped near (tx, ty): the top of that stack, if it has room
+   * and c is not already holding it up. Null when nobody is there. */
+  stackTarget(c: Climber, tx: number, ty: number): Climber | null {
+    const near = this.anchored.filter((o) => o.id !== c.id && Math.hypot(o.x - tx, o.y - ty) < CFG.stackSnap)
+      .sort((a, b) => Math.hypot(a.x - tx, a.y - ty) - Math.hypot(b.x - tx, b.y - ty));
+    for (const o of near) {
+      const top = this.stackTop(o);
+      if (top.id === c.id) continue;
+      let q: Climber | undefined = top; let cyc = false;
+      for (let i = 0; q && i < 20; i++) { if (q.parent === c.id) { cyc = true; break; } q = this.byId(q.parent); }
+      if (cyc || this.stackDepth(top) >= CFG.stackMax) continue;
+      if (Math.hypot(top.x - c.x, top.y - c.y) > this.pullRange()) continue;
+      return top;
+    }
+    return null;
+  }
+
+  /** Teammates the selected climber could climb onto right now: shown as targets in CLIMB mode. */
+  climbTargets(c: Climber): Climber[] {
+    const out: Climber[] = [];
+    for (const o of this.anchored) {
+      if (o.id === c.id) continue;
+      const top = this.stackTop(o);
+      if (top.id === c.id || out.includes(top)) continue;
+      if (this.stackTarget(c, top.x, top.y) === top) out.push(top);
+    }
+    return out;
+  }
+
   /** The climber standing highest in the stack that o belongs to. */
-  private stackTop(o: Climber): Climber {
+  stackTop(o: Climber): Climber {
     let top = o;
     for (let i = 0; i < 20; i++) {
       const above = this.climbers.find((k) => k.parent === top.id && k.state === "linked" && k.locked);
