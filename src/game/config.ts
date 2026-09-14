@@ -96,10 +96,11 @@ export function upgradeCost(def: UpgradeDef, level: number): number {
 export function statsFor(levels: Record<UpgradeKey, number>) {
   return {
     teamSize: 3 + levels.team,
-    /** px the climber may be outside metal and still snap */
-    magnetRadius: 4 + levels.magnet * 5,
-    /** max upward velocity at which the magnet can still catch (px/s) */
-    magnetCatch: 40 + levels.magnet * 55,
+    /** px the climber may be outside metal and still snap (4 → 16 at max; more grabbed across gaps) */
+    magnetRadius: 4 + levels.magnet * 2,
+    /** max upward velocity at which the magnet can still catch (px/s). Kept well under fling speed so
+     *  a maxed magnet never kills a fling on the way up: 40 → 100 at max (was 370). */
+    magnetCatch: 40 + levels.magnet * 10,
     reach: 70 + levels.reach * 9,
     maxLinks: 1 + levels.links,
     launchMult: 1 + levels.power * 0.09,
