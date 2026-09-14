@@ -88,6 +88,8 @@ export class Game {
   private handCount = 0;
   /** friend's height to beat, from a challenge link */
   target: { cm: number; name: string; beaten: boolean } | null = null;
+  /** the player's own best in this mode, drawn as a line on the door; beaten once per run */
+  best: { cm: number; beaten: boolean } | null = null;
   /** flying climbers latch onto teammates they pass; disabled, see stepFlying */
   autoGrab = false;
   private pendingLaunches: { id: number; v: Vec; at: number }[] = [];
@@ -1011,6 +1013,12 @@ export class Game {
 
   private markHeight(c: Climber) {
     if (c.y < this.highestY) this.highestY = c.y;
+    if (this.best && !this.best.beaten && this.heightCm > this.best.cm) {
+      this.best.beaten = true;
+      sfx.power();
+      this.floats.push({ x: c.x, y: c.y - 40, text: "NEW BEST!", life: 1.6, color: "#9be15d" });
+      this.burst(c.x, c.y, "#9be15d", 14);
+    }
     if (this.target && !this.target.beaten && this.heightCm > this.target.cm) {
       this.target.beaten = true;
       sfx.power();

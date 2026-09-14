@@ -171,6 +171,25 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   // the kid's hand
   if (g.hand) drawKidHand(ctx, g.hand);
 
+  // your own best: a quiet line to beat, green once you pass it
+  if (g.best && g.best.cm > 0) {
+    const by = g.startY - g.best.cm * CFG.pxPerCm;
+    if (by > top && by < bottom) {
+      ctx.strokeStyle = g.best.beaten ? "rgba(155,225,93,0.9)" : "rgba(255,255,255,0.75)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = g.best.beaten ? "rgba(155,225,93,0.9)" : "rgba(0,0,0,0.5)";
+      roundRect(ctx, 10, by - 22, 118, 18, 6);
+      ctx.fill();
+      ctx.fillStyle = g.best.beaten ? "#1a1d24" : "#fff";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(g.best.beaten ? `BEST BEATEN ✓` : `YOUR BEST · ${g.best.cm} cm`, 69, by - 9);
+    }
+  }
+
   // challenge target line
   if (g.target) {
     const ty = g.startY - g.target.cm * CFG.pxPerCm;

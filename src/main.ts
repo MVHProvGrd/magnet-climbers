@@ -372,6 +372,10 @@ function resumeRun() {
   ui.clear();
   paused = false;
   game = Game.restore(save.upgrades, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
+  if (!game.chill) {
+    const best = game.rules === "solo" ? save.bestSolo : save.bestCm;
+    if (best > 0) game.best = { cm: best, beaten: game.heightCm > best };
+  }
   game.walletCoins = save.coins; game.walletGems = save.gems;
   game.viewH = viewH;
   game.effects.slowmo = Math.max(game.effects.slowmo, 1.5);
@@ -453,6 +457,10 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   const lineup = lineupFor(rules);
   game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  if (!withTutorial && !save.chill) {
+    const best = rules === "solo" ? save.bestSolo : save.bestCm;
+    if (best > 0) game.best = { cm: best, beaten: false };
+  }
   if (pendingChallenge && pendingChallenge.mode === rules) {
     game.target = { cm: pendingChallenge.cm, name: pendingChallenge.name, beaten: false };
     pendingChallenge = null;
