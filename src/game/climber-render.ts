@@ -1,6 +1,8 @@
 import { bodyLift, limbTip, rotate } from "./magnetism";
 import type { Climber, Vec } from "./types";
 import { flightLimb, LIMB_ROOTS, plantedJoint } from "./ragdoll";
+import { creatureStyle, drawCreatureBody, drawCreatureCap, drawCreatureDecorations, type CreatureAppearance } from "./creature-render";
+export type { CreatureAppearance } from "./creature-render";
 
 interface Point extends Vec { z: number }
 
@@ -51,14 +53,23 @@ function tube(ctx: CanvasRenderingContext2D, start: Vec, middle: Vec, end: Vec) 
   ctx.lineTo(end.x, end.y); ctx.stroke();
 }
 
-export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber) {
+export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t = 0, appearance: CreatureAppearance = {}) {
   const shape = geometry(c);
+  const style = creatureStyle(c, appearance);
   ctx.save();
   const opacity = Math.max(0.07, 0.23 - shape.lift * 0.004);
   ctx.strokeStyle = ctx.fillStyle = `rgba(31,37,48,${opacity})`;
   ctx.shadowColor = `rgba(31,37,48,${opacity})`;
   ctx.shadowBlur = 1 + shape.lift * 0.22;
-  ctx.lineCap = "round"; ctx.lineWidth = 7;
+  ctx.lineCap = "round"; ctx.lineWidth = style.limb + 1;
+  if (style.id !== "human") {
+    const origin = project({ x: c.x, y: c.y, z: shape.lift }, true);
+    ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
+    drawCreatureDecorations(ctx, c, style, t, true);
+    drawCreatureBody(ctx, style, "", true); ctx.restore();
+    for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+    ctx.restore(); return;
+  }
   for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
   ctx.lineWidth = 9;
   tube(ctx, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
@@ -68,8 +79,9 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber) {
 }
 
 /** Flexible toy geometry, metallic tips, and a common window light in world coordinates. */
-export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number) {
+export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number, appearance: CreatureAppearance = {}) {
   const shape = geometry(c);
+  const style = creatureStyle(c, appearance);
   ctx.save();
   if (selected) {
     ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5;
@@ -77,17 +89,23 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     ctx.beginPath(); ctx.arc(c.x, c.y, 33, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   }
   const material = ctx.createLinearGradient(c.x - 25, c.y - 25, c.x + 25, c.y + 25);
-  material.addColorStop(0, "#ffffff"); material.addColorStop(0.22, c.color);
-  material.addColorStop(0.8, c.color); material.addColorStop(1, "#47505c");
+  material.addColorStop(0, "#ffffff"); material.addColorStop(0.22, style.color);
+  material.addColorStop(0.8, style.color); material.addColorStop(1, "#47505c");
   ctx.lineCap = "round";
-  for (const limb of shape.limbs) {
+  const origin = project({ x: c.x, y: c.y, z: shape.lift }, false);
+  if (style.id !== "human") {
+    ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
+    drawCreatureDecorations(ctx, c, style, t, false); ctx.restore();
+  }
+  for (const [index, limb] of shape.limbs.entries()) {
     const start = project(limb.start, false), middle = project(limb.middle, false), end = project(limb.end, false);
-    ctx.strokeStyle = "rgba(45,37,42,0.32)"; ctx.lineWidth = 7.5;
+    ctx.strokeStyle = "rgba(45,37,42,0.32)"; ctx.lineWidth = style.limb + 1.5;
     tube(ctx, start, middle, end);
-    ctx.strokeStyle = material; ctx.lineWidth = 6;
+    ctx.strokeStyle = material; ctx.lineWidth = style.limb;
     tube(ctx, start, middle, end);
     ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = 1.4;
     tube(ctx, { x: start.x - 1, y: start.y - 1 }, { x: middle.x - 1, y: middle.y - 1 }, { x: end.x - 1, y: end.y - 1 });
+    drawCreatureCap(ctx, style, end.x, end.y, c.angle, index);
     const metal = ctx.createLinearGradient(end.x - 4, end.y - 4, end.x + 4, end.y + 4);
     metal.addColorStop(0, "#ffffff"); metal.addColorStop(0.4, "#dce4eb"); metal.addColorStop(1, "#657181");
     ctx.fillStyle = metal; ctx.strokeStyle = "rgba(45,54,64,0.65)"; ctx.lineWidth = 0.8;
@@ -102,12 +120,17 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
       }
     }
   }
+  if (style.id !== "human") {
+    ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
+    drawCreatureBody(ctx, style, material, false); ctx.restore();
+    ctx.restore(); return;
+  }
   const shoulder = project(shape.shoulder, false), hip = project(shape.hip, false);
   ctx.strokeStyle = material; ctx.lineWidth = 8;
   tube(ctx, shoulder, hip, hip);
   const head = project(shape.head, false);
   const plastic = ctx.createRadialGradient(head.x - 3, head.y - 4, 0.5, head.x, head.y, 8);
-  plastic.addColorStop(0, "#ffffff"); plastic.addColorStop(0.25, c.color); plastic.addColorStop(1, c.color);
+  plastic.addColorStop(0, "#ffffff"); plastic.addColorStop(0.25, style.color); plastic.addColorStop(1, style.color);
   ctx.fillStyle = plastic;
   ctx.beginPath(); ctx.arc(head.x, head.y, 7.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
