@@ -495,8 +495,9 @@ export class Game {
   /** A crew climber that comes down on a teammate lands on its shoulders and locks in: no CLIMB needed to stack. */
   private landOnTeammate(c: Climber): boolean {
     if (this.rules !== "crew") return false;
-    const onto = this.anchored.find((o) => o.id !== c.id && (o.state === "stuck" || o.locked) && Math.hypot(o.x - c.x, o.y - c.y) < 34);
+    const onto = this.anchored.find((o) => o.id !== c.id && (o.state === "stuck" || o.locked) && Math.hypot(o.x - c.x, o.y - c.y) < CFG.stackSnap);
     if (!onto) return false;
+    if (c.state === "linked" || this.climbers.some((k) => k.parent === c.id && k.state === "linked")) return false;
     const top = this.stackTop(onto);
     if (top.id === c.id || this.stackDepth(top) >= CFG.stackMax) return false;
     c.state = "linked"; c.locked = true; c.parent = top.id; c.grip = undefined;
@@ -878,9 +879,14 @@ export class Game {
 
     // magnet catch: only once the toy is back on the door (z = 0) over metal
     if ((c.noStick ?? 0) > 0) c.noStick = Math.max(0, (c.noStick ?? 0) - dt);
+    // low over a teammate: land on its shoulders even before touching the door
+    if ((c.z ?? 0) <= 15 && c.airTime > 0.15 && c.leftLauncher && !(c.noStick && c.noStick > 0) && this.landOnTeammate(c)) return;
     if ((c.z ?? 0) <= 0 && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
-      if (this.landOnTeammate(c)) return;
-      if (this.stick(c)) return;
+      if (this.stick(c)) {
+        // caught steel right next to a teammate: that is a stack, not two climbers sharing a spot
+        if (c.leftLauncher) this.landOnTeammate(c);
+        return;
+      }
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
       const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
       const closest = candidates.map((p) => {
