@@ -429,8 +429,6 @@ export function teamDots(g: Game): { id: number; x: number; y: number }[] {
   return out;
 }
 
-const inRectPlain = (x: number, y: number, r: { x: number; y: number; w: number; h: number }) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
-
 /**
  * Aim preview. Integrates the same forces the flyer feels (gravity, repel plates,
  * wall bounce) at 1/60 s so the dotted path bends where the real path bends.
@@ -439,8 +437,13 @@ const inRectPlain = (x: number, y: number, r: { x: number; y: number; w: number;
 function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v: { x: number; y: number }, color: string, every = 5, taper = false) {
   let vx = v.x, vy = v.y;
   const dt = 1 / 60;
+  // same hop model as the sim: pop off the door with the pull, get pulled back by magnetism
+  const full = CFG.maxDrag * CFG.launchScale * g.stats.launchMult;
+  const pull = Math.max(0, Math.min(1, Math.hypot(v.x, v.y) / full));
+  let z = 0, vz = CFG.hop.liftMin + (CFG.hop.liftFull - CFG.hop.liftMin) * pull;
+  const magnet = 1 + g.levels.magnet * CFG.hop.magnetPerLevel;
   ctx.fillStyle = color;
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 110; i++) {
     vy += CFG.gravity * dt;
     const rz = g.world.repelAt(x, y);
     if (rz) {
@@ -457,16 +460,25 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
       const d = Math.max(20, Math.hypot(dx, dy));
       vx += (dx / d) * 1500 * dt;
       vy += (dy / d) * 1500 * dt;
-      // the preview ends where the plate would catch the climber
-      if (inRectPlain(x, y, az)) { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); break; }
     }
+    let gz = CFG.hop.zGravity * magnet;
+    if (!g.world.isMetal(x, y, 6)) gz *= CFG.hop.offMetal;
+    if (az) gz += CFG.hop.attractPull;
+    if (g.effects.superMagnet > 0) gz *= CFG.hop.superMagnet;
+    vz -= gz * dt; z = Math.max(0, z + vz * dt);
     x += vx * dt;
     y += vy * dt;
     if (x < CFG.climberRadius) { x = CFG.climberRadius; vx = Math.abs(vx) * 0.5; }
     if (x > W - CFG.climberRadius) { x = W - CFG.climberRadius; vx = -Math.abs(vx) * 0.5; }
+    // landed on steel: this is where the magnet catches. A bigger dot marks it.
+    if (i > 5 && z === 0 && g.world.isMetal(x, y, CFG.magnetism.snapDistance + g.stats.magnetRadius)) {
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); break;
+    }
     if (i % every === 0) {
+      // dots shrink as the toy comes back toward the door
+      const r = (taper ? 3.5 - i / 40 : 2.5) + z * 0.03;
       ctx.beginPath();
-      ctx.arc(x, y, taper ? 3.5 - i / 30 : 2.5, 0, Math.PI * 2);
+      ctx.arc(x, y, Math.max(1, r), 0, Math.PI * 2);
       ctx.fill();
     }
   }

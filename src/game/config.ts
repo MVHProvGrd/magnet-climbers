@@ -34,6 +34,27 @@ export const CFG = {
   coinValue: 5,
   /** 10px of fridge = 1cm of score */
   pxPerCm: 10,
+  /**
+   * Off-the-door hop. A fling pops the toy away from the fridge in proportion to the pull; magnetism
+   * pulls it back. Steel can only catch a toy that has come back down (z = 0), so the preview arc and
+   * the real flight agree, and a long pull always clears a short obstacle.
+   */
+  hop: {
+    /** z speed at a full pull (px/s); hang time = 2 * lift / zGravity ≈ 1.0 s at full pull */
+    liftFull: 150,
+    /** z speed at the shortest pull */
+    liftMin: 40,
+    /** pull back toward the door over steel (px/s²) at magnet level 0 */
+    zGravity: 300,
+    /** stronger magnets pull the toy back sooner: +6% per upgrade level */
+    magnetPerLevel: 0.06,
+    /** over glass, plastic and paper there is no steel to pull; the toy floats longer */
+    offMetal: 0.55,
+    /** extra pull inside a blue attract plate's field */
+    attractPull: 900,
+    /** SUPER MAGNET slams the toy back onto the door */
+    superMagnet: 3,
+  },
   magnetism: {
     attractionRange: 13,
     attractionAccel: 260,
@@ -80,7 +101,7 @@ export type UpgradeKey =
 
 export const UPGRADES: UpgradeDef[] = [
   { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9 },
-  { key: "magnet", name: "Magnet strength", desc: "Stick sooner and closer to the edges of metal", max: 6, baseCost: 40, costGrowth: 1.7 },
+  { key: "magnet", name: "Magnet strength", desc: "Pulls you back onto the door sooner, so you land nearer the top of your arc", max: 6, baseCost: 40, costGrowth: 1.7 },
   { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7 },
   { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0 },
   { key: "power", name: "Slingshot power", desc: "Launch further", max: 5, baseCost: 50, costGrowth: 1.8 },

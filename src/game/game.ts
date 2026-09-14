@@ -1,6 +1,6 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
-import type { ActiveEffects, Climber, PowerUp, Vec } from "./types";
+import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
@@ -106,7 +106,7 @@ export class Game {
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
@@ -313,6 +313,10 @@ export class Game {
     c.vx = v.x;
     c.vy = v.y;
     c.spin = v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 8;
+    // pop off the door in proportion to the pull; the magnet brings it back
+    const full = CFG.maxDrag * CFG.launchScale * this.stats.launchMult;
+    const pull = Math.max(0, Math.min(1, Math.hypot(v.x, v.y) / full));
+    c.z = 0; c.vz = CFG.hop.liftMin + (CFG.hop.liftFull - CFG.hop.liftMin) * pull;
     resetRagdoll(c);
     c.leftLauncher = false;
     c.launcherId = this.launcherFor(c)?.id ?? null;
@@ -644,6 +648,15 @@ export class Game {
     }
   }
 
+  /** Pull toward the door at this spot: the fridge's own steel, upgrades, plates and power-ups. */
+  private zPull(c: Climber, attract: NoStickZone | null): number {
+    let g = CFG.hop.zGravity * (1 + this.levels.magnet * CFG.hop.magnetPerLevel);
+    if (!this.world.isMetal(c.x, c.y, 6)) g *= CFG.hop.offMetal;
+    if (attract) g += CFG.hop.attractPull;
+    if (this.effects.superMagnet > 0) g *= CFG.hop.superMagnet;
+    return g;
+  }
+
   private stepFlying(c: Climber, dt: number) {
     c.airTime += dt;
     c.vy += CFG.gravity * dt;
@@ -665,6 +678,10 @@ export class Game {
       c.vx += (dx / d) * 1500 * dt;
       c.vy += (dy / d) * 1500 * dt;
     }
+    // height off the door: only a toy back at z = 0 can be caught
+    c.vz = (c.vz ?? 0) - this.zPull(c, az) * dt;
+    c.z = Math.max(0, (c.z ?? 0) + (c.vz ?? 0) * dt);
+    if (c.z === 0 && (c.vz ?? 0) < 0) c.vz = 0;
     c.x += c.vx * dt;
     c.y += c.vy * dt;
     c.angle += c.spin * dt;
@@ -702,10 +719,9 @@ export class Game {
       if (!l || Math.hypot(l.x - c.x, l.y - c.y) > this.currentReach() + 6) c.leftLauncher = true;
     }
 
-    // magnet catch: on/after apex (or super magnet: any time) over metal
-    const catchUp = this.effects.superMagnet > 0 ? 9999 : this.stats.magnetCatch;
+    // magnet catch: only once the toy is back on the door (z = 0) over metal
     if ((c.noStick ?? 0) > 0) c.noStick = Math.max(0, (c.noStick ?? 0) - dt);
-    if (c.vy > -catchUp && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
+    if ((c.z ?? 0) <= 0 && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
       if (this.stick(c)) return;
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
       const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);

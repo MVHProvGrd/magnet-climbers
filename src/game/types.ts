@@ -106,6 +106,9 @@ export interface Climber {
   launcherId: number | null;
   airTime: number;
   squash: number;
+  /** height off the fridge door (px, visual). Only a climber at z = 0 can be caught by steel. Optional for old saves. */
+  z?: number;
+  vz?: number;
   /** hit points; bumpers take one each, zero = lost */
   hp: number;
   /** seconds of invulnerability left after a hit */

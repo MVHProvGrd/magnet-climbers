@@ -125,7 +125,8 @@ export function stepGrip(c: Climber, dt: number): void {
 
 /** Apparent height off the door, in logical pixels. It never changes the flight arc. */
 export function bodyLift(c: Climber): number {
-  if (c.state === "flying") return 3 + Math.min(32, Math.sin(Math.min(1, c.airTime / 1.4) * Math.PI) * 32);
+  // real height off the door when the sim tracks it; the old airtime curve for older saves
+  if (c.state === "flying") return c.z != null ? 3 + Math.min(40, c.z * 0.45) : 3 + Math.min(32, Math.sin(Math.min(1, c.airTime / 1.4) * Math.PI) * 32);
   if (c.state === "linked") return 10;
   const grip = c.grip;
   return grip ? grip.lift + Math.exp(-grip.age * 9) * Math.sin(grip.age * 24) * 3 : 2;
