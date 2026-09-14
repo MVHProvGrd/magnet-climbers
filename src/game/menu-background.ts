@@ -21,10 +21,12 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
   }
   ctx.fillStyle = "rgba(12,20,32,0.36)"; ctx.fillRect(0, 0, width, height);
   // more toys on wider windows, spread across the full width
-  const count = Math.max(7, Math.min(16, Math.round(width / 60)));
+  // toys are drawn at game scale (about 60 px tall); blow them up on big windows so they read as toys, not confetti
+  const scale = Math.max(1.6, Math.min(2.6, width / 420));
+  const count = Math.max(6, Math.min(14, Math.round(width / (60 * scale) + 4)));
   for (let i = 0; i < count; i++) {
-    const cycle = height + 160;
-    const y = ((time * (18 + (i % 7) * 3) + i * cycle / count) % cycle) - 80;
+    const cycle = height + 160 * scale;
+    const y = ((time * (18 + (i % 7) * 3) + i * cycle / count) % cycle) - 80 * scale;
     const x = 28 + ((i * 97) % Math.max(1, width - 56)) + Math.sin(time * 0.45 + i) * 15;
     const c: Climber = {
       id: i, x, y, vx: 0, vy: 20, angle: time * (i % 2 ? -0.35 : 0.28) + i,
@@ -37,9 +39,11 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
       joint.angle += Math.sin(time * 1.8 + i + limb * 1.7) * 0.55;
       joint.bend += Math.sin(time * 2.1 + i * 2 + limb) * 0.7;
     }
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha = 0.85;
     const look = appearanceFor(c);
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.translate(-x, -y);
     drawClimberShadow(ctx, c, time, look); drawClimber(ctx, c, false, time, look);
+    ctx.restore();
   }
   ctx.restore();
 }
