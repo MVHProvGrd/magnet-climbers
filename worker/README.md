@@ -79,3 +79,20 @@ prints the height when that player's scoreboard best in the mode covers it, othe
 `share.magnetclimbers.com` (see `wrangler.toml`); the game builds its share links against it
 (`VITE_SHARE_URL` overrides, `off` falls back to plain `?c=` links). Cards are rendered from SVG
 with `@resvg/resvg-wasm` and a subset of Liberation Sans in `assets/`.
+
+## Global chat and the admin panel
+
+`GET /chat?after=<id>` and `POST /chat` back the in-game global chat: one public room, 160 characters,
+profanity starred out, links replaced, 3 s per player, token-checked against the cloud save, newest
+500 kept. Mutes live in `chat_mutes`.
+
+`/admin` is the owner panel (chat moderation, mutes, score removal, renames, lifetime fixes, player
+lookup). It needs a secret:
+
+```
+npx wrangler secret put ADMIN_KEY
+```
+
+Then open https://magnet-climbers-api.magnetclimbers.workers.dev/admin (or share.magnetclimbers.com/admin),
+paste the key once; it stays in that browser's local storage. Run `npm run db:init` after pulling so the
+`chat` and `chat_mutes` tables exist.

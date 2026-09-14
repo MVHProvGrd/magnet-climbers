@@ -4,7 +4,7 @@ import { drawClimber, drawClimberShadow } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { SaveData } from "./save";
-import { leaderboard, leaderboardEnabled, type BoardMode, type ScoreRow } from "./leaderboard";
+import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { nameReason } from "./profanity";
 import { FRIDGE_ITEMS, type ItemFamily } from "./items";
 import { drawItemPreview } from "./scenery";
@@ -39,6 +39,8 @@ export interface UiHandlers {
   onTutorial(): void;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
+  /** Global chat send; resolves to an error string or null on success. */
+  onChat(text: string): Promise<string | null>;
 }
 
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
@@ -116,6 +118,7 @@ export class Ui {
         <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
         <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
         <span class="grow"></span>
+        ${leaderboardEnabled ? `<button class="icon" data-a="chat" title="Global chat" aria-label="Global chat">💬</button>` : ""}
         <button class="icon" data-a="story" title="Story" aria-label="Story">📜</button>
         <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
         <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
@@ -141,6 +144,7 @@ export class Ui {
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
+      <p class="fine legal"><a href="${import.meta.env.BASE_URL}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${import.meta.env.BASE_URL}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${import.meta.env.BASE_URL}contact/" target="_blank" rel="noopener">Contact</a></p>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
@@ -148,6 +152,7 @@ export class Ui {
       if (a === "solo") this.h.onPlay("solo");
       if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
+      if (a === "chat") this.showChat();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
       if (a === "guide") this.showFieldGuide();
@@ -289,6 +294,48 @@ export class Ui {
     });
     this.show(p);
     this.startPreviews(p);
+  }
+
+  /** One public room for everyone. Polls while open; the Worker filters words and rate-limits. */
+  private chatTimer: number | null = null;
+  showChat() {
+    const s = this.save();
+    const p = el("div", "panel chat");
+    p.innerHTML = `<h2>Global chat</h2>
+      <p class="fine">Everyone playing right now. Be kind. No personal info, no links. <span class="online"></span></p>
+      <div class="chat-log" aria-live="polite"><p class="fine">Loading…</p></div>
+      <form class="chat-form"><input type="text" maxlength="160" placeholder="Say something as ${esc(s.name)}" autocomplete="off" enterkeyhint="send" /><button class="primary" type="submit">SEND</button></form>
+      <p class="fine err" hidden></p>
+      <button class="ghost" data-a="back">BACK</button>`;
+    const log = p.querySelector<HTMLElement>(".chat-log")!, online = p.querySelector<HTMLElement>(".online")!, err = p.querySelector<HTMLElement>(".err")!;
+    const input = p.querySelector<HTMLInputElement>("input")!;
+    let lastId = 0; const seen = new Map<number, ChatMessage>();
+    const render = () => {
+      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-60);
+      log.innerHTML = rows.length ? rows.map((m) => `<div class="msg ${m.player_id === s.playerId ? "me" : ""}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join("") : `<p class="fine">Nobody has said anything yet. You could be first.</p>`;
+      log.scrollTop = log.scrollHeight;
+    };
+    const poll = async () => {
+      if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }
+      const r = await chat.list(lastId);
+      if (!r || !p.isConnected) return;
+      for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
+      online.textContent = r.online ? `· ${r.online} chatting lately` : "";
+      if (r.messages.length || !seen.size) render();
+    };
+    if (this.chatTimer) clearInterval(this.chatTimer);
+    void poll(); this.chatTimer = window.setInterval(poll, 4000);
+    p.querySelector("form")!.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim(); if (!text) return;
+      input.value = ""; err.hidden = true;
+      const problem = await this.h.onChat(text);
+      if (problem) { err.textContent = problem; err.hidden = false; input.value = text; }
+      else void poll();
+    });
+    p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });
+    this.show(p);
+    input.focus();
   }
 
   showFieldGuide(family: ItemFamily = "surface") {

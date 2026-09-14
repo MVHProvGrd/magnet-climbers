@@ -8,7 +8,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { UPGRADES, W, upgradeCost, RESERVE_COST, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
-import { leaderboard, leaderboardEnabled, cloud } from "./game/leaderboard";
+import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
 /**
@@ -278,6 +278,13 @@ const ui = new Ui(uiRoot, () => save, {
     if (!save.name) ui.showNamePrompt(go); else go();
   },
   onAcceptChallenge: (mode) => startRun(mode),
+  onChat: async (text) => {
+    if (!leaderboardEnabled) return "Chat is offline";
+    if (save.cloudRev === 0) await cloudSync("chat");
+    const r = await chat.send(save.playerId, save.token, save.name, text);
+    if (!r) return "Could not reach the chat";
+    return "error" in r ? r.error : null;
+  },
 });
 
 const SNAP_KEY = "magnet-climbers:run:v1";
