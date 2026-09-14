@@ -505,6 +505,7 @@ document.addEventListener("visibilitychange", () => {
 
 // ---------- loop ----------
 let last = performance.now();
+let lastBgFrame = 0;
 let acc = 0;
 const STEP = 1 / 120;
 let guideBackgroundDrawn = false;
@@ -515,7 +516,7 @@ function frame(now: number) {
   if (!("ResizeObserver" in window)) resize();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (!ui.readingGuide || game) guideBackgroundDrawn = false;
+  if (!ui.staticBackground || game) guideBackgroundDrawn = false;
   if (game) {
     if (!paused) {
       acc += dt;
@@ -529,15 +530,17 @@ function frame(now: number) {
       backdropDrawn = renderRunBackdrop(menubgCtx, bw, bh, dpr);
     }
   } else {
-    // draw the title scene across the whole window (behind the centred game column)
-    const bw = window.innerWidth, bh = window.innerHeight;
-    if (menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
-      menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
+    // draw the title scene across the whole window (behind the centred game column).
+    // It is decorative: capped pixel density and 30 fps keep it cheap on phones and big monitors.
+    const bw = window.innerWidth, bh = window.innerHeight, bgDpr = Math.min(dpr, 1.5);
+    if (menubg.width !== Math.round(bw * bgDpr) || menubg.height !== Math.round(bh * bgDpr)) {
+      menubg.width = Math.round(bw * bgDpr); menubg.height = Math.round(bh * bgDpr);
       guideBackgroundDrawn = false;
     }
-    if (!guideBackgroundDrawn) {
-      const ready = renderMenuBackground(menubgCtx, bh, dpr, now / 1000, bw);
-      guideBackgroundDrawn = ui.readingGuide && ready;
+    if (!guideBackgroundDrawn && now - lastBgFrame >= 1000 / 30) {
+      lastBgFrame = now;
+      const ready = renderMenuBackground(menubgCtx, bh, bgDpr, now / 1000, bw);
+      guideBackgroundDrawn = ui.staticBackground && ready;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, viewH);

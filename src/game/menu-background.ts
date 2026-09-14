@@ -1,4 +1,4 @@
-import { drawClimber, drawClimberShadow } from "./climber-render";
+import { drawClimber } from "./climber-render";
 import { CLIMBER_COLORS, W } from "./config";
 import { CREATURES, appearanceFor } from "./creatures";
 import type { Climber } from "./types";
@@ -9,17 +9,32 @@ scene.src = `${import.meta.env.BASE_URL}art/title-fridge.webp`;
 // Title toys always fall: decorative, slow, and the owner wants them moving even under OS "reduce motion".
 
 /** Decorative falling toys over the user's kitchen artwork; never touches run state. */
+/** The photo pre-scaled and tinted once per canvas size; per frame it is a 1:1 blit instead of a resample. */
+let plate: { key: string; canvas: HTMLCanvasElement; x: number; y: number } | null = null;
+function scenePlate(width: number, height: number, dpr: number) {
+  const key = `${width}x${height}@${dpr}`;
+  if (plate?.key === key) return plate;
+  const scale = Math.max(width / scene.naturalWidth, height / scene.naturalHeight) * 1.06;
+  const w = Math.ceil(scene.naturalWidth * scale), h = Math.ceil(scene.naturalHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(w * dpr); canvas.height = Math.ceil(h * dpr);
+  const g = canvas.getContext("2d")!; g.scale(dpr, dpr);
+  g.drawImage(scene, 0, 0, w, h);
+  g.fillStyle = "rgba(12,20,32,0.36)"; g.fillRect(0, 0, w, h);
+  plate = { key, canvas, x: (width - w) / 2, y: (height - h) / 2 };
+  return plate;
+}
+
 export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: number, dpr: number, seconds: number, width = W) {
   const time = seconds;
   ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#252e38"; ctx.fillRect(0, 0, width, height);
   if (scene.complete && scene.naturalWidth > 0) {
-    const scale = Math.max(width / scene.naturalWidth, height / scene.naturalHeight) * 1.06;
-    const imgW = scene.naturalWidth * scale, imageHeight = scene.naturalHeight * scale;
+    const p = scenePlate(width, height, dpr);
     const drift = Math.sin(time * 0.12) * height * 0.018;
-    ctx.drawImage(scene, (width - imgW) / 2, (height - imageHeight) / 2 + drift, imgW, imageHeight);
+    ctx.drawImage(p.canvas, 0, 0, p.canvas.width, p.canvas.height, p.x, p.y + drift, p.canvas.width / dpr, p.canvas.height / dpr);
+  } else {
+    ctx.fillStyle = "#252e38"; ctx.fillRect(0, 0, width, height);
   }
-  ctx.fillStyle = "rgba(12,20,32,0.36)"; ctx.fillRect(0, 0, width, height);
   // more toys on wider windows, spread across the full width
   // toys are drawn at game scale (about 60 px tall); blow them up on big windows so they read as toys, not confetti
   const scale = Math.max(1.6, Math.min(2.6, width / 420));
@@ -42,7 +57,8 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
     ctx.globalAlpha = 1;
     const look = appearanceFor(c);
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.translate(-x, -y);
-    drawClimberShadow(ctx, c, time, look); drawClimber(ctx, c, false, time, look);
+    // no drop shadow here: its blur pass is the single most expensive thing on a full-window canvas
+    drawClimber(ctx, c, false, time, look);
     ctx.restore();
   }
   ctx.restore();

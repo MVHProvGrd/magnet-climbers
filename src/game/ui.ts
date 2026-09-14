@@ -1,6 +1,6 @@
 import { RESERVE_COST, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
-import { drawClimber, drawClimberShadow } from "./climber-render";
+import { drawClimber } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { SaveData } from "./save";
@@ -61,6 +61,8 @@ export class Ui {
   private panelCleanup: (() => void) | null = null;
   /** The guide is a reading surface; keep its background still while scrolling. */
   get readingGuide() { return this.panel?.classList.contains("field-guide") ?? false; }
+  /** Only the title menu gets the animated kitchen; every other panel sits on a still frame so it stays smooth. */
+  get staticBackground() { return !!this.panel && !this.panel.classList.contains("menu"); }
   private pauseBtn: HTMLButtonElement;
   private muteBtn: HTMLButtonElement;
 
@@ -184,15 +186,18 @@ export class Ui {
       resetRagdoll(c); return c;
     });
     const t0 = performance.now();
+    let lastDraw = 0;
     const tick = (now: number) => {
       if (!p.isConnected) { this.previewLoop = null; return; }
+      // 20 fps is plenty for an idle wiggle and keeps scrolling smooth on phones
+      if (now - lastDraw < 50) { this.previewLoop = requestAnimationFrame(tick); return; }
+      lastDraw = now;
       const t = (now - t0) / 1000;
       cards.forEach((cv, i) => {
         const ctx = cv.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
         const c = climbers[i]; c.angle = Math.sin(t * 1.3 + i) * 0.12; c.squash = Math.sin(t * 2.2 + i) * 0.08;
         for (const [limb, joint] of c.ragdoll!.limbs.entries()) { joint.angle = Math.sin(t * 1.6 + i + limb * 1.7) * 0.25; joint.bend = Math.sin(t * 1.9 + i * 2 + limb) * 0.3; }
-        const look = appearanceFor(c);
-        drawClimberShadow(ctx, c, t, look); drawClimber(ctx, c, false, t, look);
+        drawClimber(ctx, c, false, t, appearanceFor(c));
       });
       this.previewLoop = requestAnimationFrame(tick);
     };
