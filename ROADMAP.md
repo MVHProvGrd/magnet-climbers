@@ -24,28 +24,32 @@ verified share cards, PWA auto-update, generated music loops.
    draws, Claude wires unlocks, shop and save.
 5. **Prize machine.** Spend 100 coins, spin, win a random pattern; duplicates
    refund. The coin sink the economy is missing.
-6. **Instant restart and "so close".** One tap from game over to a new run;
+6. **Crew staged rollout (#18, `CREW_DESIGN.md`).** One crew verb per release:
+   Stack → Catch → Octopus wide hold → Gecko wall kick → Pair fling → Robot
+   bumper feet → Tether. Each ships with a section only it solves and an
+   intro card. Stage 1 first; CLIMB and chains already exist.
+7. **Instant restart and "so close".** One tap from game over to a new run;
    best height and any challenge line drawn on the fridge so every run ends
    with a near miss.
 
 ## Next — social and progression
-7. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
+8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
    promote, bottom 10 drop. Tier badge on the scoreboard.
-8. **Input recorder:** log every fling/climb/reserve as `{tick, id, vector}`
+9. **Input recorder:** log every fling/climb/reserve as `{tick, id, vector}`
    per run. Foundation for replay, ghosts and score validation.
-9. **Ghost of your best run** drawn live on the fridge (uses the recorder).
-10. **Async race:** race a friend's recorded run as a ghost from a share link.
-11. **Live ghost race:** Durable Object per match relaying inputs over
+10. **Ghost of your best run** drawn live on the fridge (uses the recorder).
+11. **Async race:** race a friend's recorded run as a ghost from a share link.
+12. **Live ghost race:** Durable Object per match relaying inputs over
     WebSocket; goal height; result settled by server replay.
-12. **Themed fridges:** monthly skin of the fridge (stickers, plates, palette)
+13. **Themed fridges:** monthly skin of the fridge (stickers, plates, palette)
     with one limited climber skin. Gives each update something to post.
-13. **Accounts:** Sign in with Google/Apple on top of the current link codes
+14. **Accounts:** Sign in with Google/Apple on top of the current link codes
     (needs OAuth client ids from the owner).
 
 ## Later — platform and money
-14. Capacitor wrap for Android/iOS; AdMob rewarded revive (hook exists in
+15. Capacitor wrap for Android/iOS; AdMob rewarded revive (hook exists in
     `main.ts`); store IAP for gems.
-15. Offline "stretch" income, prestige, season pass, roster gacha per DESIGN.md.
-16. Colour abilities (green reach, yellow light, black strong magnet).
-17. Feel pass from real-phone play: fling scale, gap sizes, wall ramp, link
+16. Offline "stretch" income, prestige, season pass, roster gacha per DESIGN.md.
+17. Colour abilities: superseded by creature verbs in `CREW_DESIGN.md`.
+18. Feel pass from real-phone play: fling scale, gap sizes, wall ramp, link
     radius. Numbers live in `config.ts`. Ongoing.
