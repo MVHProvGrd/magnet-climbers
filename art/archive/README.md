@@ -1,0 +1,21 @@
+# Art archive
+
+Every art style the game has used, kept here so any of them can come back. Each folder is a
+complete set. Git history has the code that drew or loaded each one; the commit is listed.
+
+| Folder | What | Where it came from | Live in |
+|---|---|---|---|
+| `01-canvas-drawn/` | Hand-drawn Canvas 2D art rendered to PNG at 4x: badge pickups (`pickups-badges`, the first style), object pickups (`pickups-objects`), obstacles (glass, plastic, gap, vent, attract, repel, handles, dispenser, calendar, ice tray), 24 sticker prints, bumpers | Claude, `src/game/fridge-art.ts`, `item-art.ts`, `scenery.ts` (`drawLegacyPower`) | 75f276c (scenery pass) → still the fallback when an image fails to load |
+| `02-gemini-generated/` | Raw Gemini renders from `art/ASSET_SPEC.md`, 7 pickups and 10 obstacles, plus the contact sheet | Google Gemini via `art/generated/generate.mjs` | c6e2d61 (review set) |
+| `03-gemini-cutouts-in-game/` | The Gemini pickups after `rembg` background removal, exactly as shipped | Claude | d2f7521 → current pickups |
+| `04-codex-photo-real-v1/` | Photographic pickups and obstacles Codex imported as "approved" | Codex, `art/approved-import/` | 3a84acf → current obstacles (gap photo retired in aa3fdad) |
+| `05-gadgets-and-title/` | Gadget theme sheets (snack, travel, doodle), title fridge photo and logo | Claude | 371a9d0, fe0297a |
+| `06-review-alternatives/` | Side-by-side review sheets (Claude vs Gemini, pocket-pal option) | mixed | never shipped |
+
+## Going back to a set
+
+- Pickups load from `public/art/pickups/<kind>.png` (`src/game/pickup-art.ts`). Drop a set there; missing files fall back to the canvas drawing.
+- Obstacles load from `public/art/real-v1/obstacles/<id>.png` (`src/game/obstacle-art.ts`). Remove a file, or add its id to `NO_PHOTO` there, to fall back to the canvas drawing.
+- To restore the canvas look everywhere, empty both folders. Nothing else changes.
+
+Regenerate `01-canvas-drawn/` with the render snippet in the commit that added this file.
