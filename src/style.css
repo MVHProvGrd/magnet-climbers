@@ -178,3 +178,9 @@ html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); tou
 .panel button.level b { font-size: 22px; } .panel button.level span { font-size: 11px; font-weight: 600; opacity: 0.85; line-height: 1.2; } .panel button.level i { font-style: normal; color: var(--coin); font-size: 13px; letter-spacing: 1px; }
 .panel button.level.done { border-color: var(--coin); } .panel button.level.locked { opacity: 0.4; }
 .panel .big.stars { color: var(--coin); font-size: 48px; letter-spacing: 4px; }
+
+/* leave a panel: tap outside it, or the arrow at its top-left */
+.backdrop { position: absolute; inset: 0; background: transparent; }
+.panel { position: relative; }
+.panel.has-arrow { padding-top: 52px; }
+.panel button.back-arrow { position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; padding: 0 0 4px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; font-size: 30px; line-height: 1; font-weight: 800; }

@@ -100,10 +100,26 @@ export class Ui {
   private show(panel: HTMLElement) {
     this.clear();
     this.panel = panel;
+    // Any panel with a bottom "back"-style button also gets a top-left arrow and a tap-outside
+    // backdrop that do the same thing, so nobody has to scroll to the bottom to leave.
+    const exit = panel.querySelector<HTMLButtonElement>('button.ghost[data-a="back"], button.ghost[data-a="menu"], button.ghost[data-a="map"]');
+    if (exit && !panel.classList.contains("menu")) {
+      const backdrop = el("div", "backdrop");
+      backdrop.addEventListener("click", () => exit.click());
+      this.root.appendChild(backdrop);
+      const arrow = el("button", "back-arrow", "‹");
+      arrow.setAttribute("aria-label", exit.textContent?.trim() || "Back");
+      arrow.addEventListener("click", () => exit.click());
+      panel.prepend(arrow);
+      panel.classList.add("has-arrow");
+      // scrolling panels lose their bottom button; the arrow replaces it
+      if (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("field-guide") || panel.classList.contains("expeditions")) exit.hidden = true;
+    }
     this.root.appendChild(panel);
   }
 
   clear() {
+    this.root.querySelectorAll(".backdrop").forEach((b) => b.remove());
     this.panelCleanup?.();
     this.panelCleanup = null;
     if (this.previewLoop !== null) cancelAnimationFrame(this.previewLoop);
