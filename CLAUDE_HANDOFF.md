@@ -221,3 +221,10 @@ belongs to the user; do not remove or fold it into an unrelated change.
 See issue #17. Codex: creature bodies/animation in `climber-render.ts` (gecko, frog, octopus, robot first;
 decorative parts never grip). Claude: creature + pattern model in `save.ts`, unlock triggers, shop split,
 prize machine, per-climber crew picker. Four magnets stay the physics contract; no stat perks on skins.
+
+## Creature roster wired (Sep 14)
+Codex's `codex/creature-renderers` merged. `appearanceFor(climber)` in `creatures.ts` maps
+creature + pattern to the renderer's `CreatureAppearance` (color, accent, marking); "toy" → "human".
+Every draw call (run, title scene, collection previews) passes it. Patterns may set `marking`/`accent`.
+Not merged: the manual `codex-creatures` branch (items.ts 200-item pass + local roadmap edits) — Codex
+flagged that pass as reused artwork; revisit when the items get real drawings.

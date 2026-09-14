@@ -1,5 +1,6 @@
 import { drawClimber, drawClimberShadow } from "./climber-render";
 import { CLIMBER_COLORS, W } from "./config";
+import { CREATURES, appearanceFor } from "./creatures";
 import type { Climber } from "./types";
 import { resetRagdoll } from "./ragdoll";
 
@@ -29,6 +30,7 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
       id: i, x, y, vx: 0, vy: 20, angle: time * (i % 2 ? -0.35 : 0.28) + i,
       spin: 0, state: "flying", color: CLIMBER_COLORS[i % CLIMBER_COLORS.length], parent: null,
       leftLauncher: true, launcherId: null, airTime: 0.5, squash: 0, hp: 3, iframes: 0,
+      creature: CREATURES[i % CREATURES.length].id,
     };
     resetRagdoll(c);
     for (const [limb, joint] of c.ragdoll!.limbs.entries()) {
@@ -36,7 +38,8 @@ export function renderMenuBackground(ctx: CanvasRenderingContext2D, height: numb
       joint.bend += Math.sin(time * 2.1 + i * 2 + limb) * 0.7;
     }
     ctx.globalAlpha = 0.8;
-    drawClimberShadow(ctx, c); drawClimber(ctx, c, false, time);
+    const look = appearanceFor(c);
+    drawClimberShadow(ctx, c, time, look); drawClimber(ctx, c, false, time, look);
   }
   ctx.restore();
 }

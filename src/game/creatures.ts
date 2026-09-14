@@ -37,6 +37,10 @@ export interface PatternDef {
   colors: string[];
   /** optional renderer effect hint; ignored by renderers that do not know it */
   effect?: "glow" | "sparkle" | "chrome";
+  /** body marking the renderer draws in the accent colour */
+  marking?: "plain" | "spots" | "stripes";
+  /** accent colour for markings, bellies and eyes; defaults to a lightened first colour */
+  accent?: string;
 }
 
 /** What one climber wears. */
@@ -59,14 +63,14 @@ export const PATTERNS: PatternDef[] = [
   { id: "bubblegum", name: "Bubblegum", rarity: "common", colors: ["#ff9ad5", "#ff7cc8", "#ffb6e1", "#ff5fbf", "#ffa8db", "#ff8ad0"] },
   { id: "ocean", name: "Ocean", rarity: "common", colors: ["#4fc3f7", "#29b6f6", "#81d4fa", "#03a9f4", "#5fcbf8", "#39bdf6"] },
   { id: "candy", name: "Candy", rarity: "common", colors: ["#ff9ad5", "#ffd1a1", "#a1e3ff", "#d3a1ff", "#a1ffb8", "#fff3a1"] },
-  { id: "watermelon", name: "Watermelon", rarity: "rare", colors: ["#ff5c7a", "#5ad46b", "#ff7a93", "#3cc352", "#ff6b86", "#6ee07e"] },
-  { id: "tiger", name: "Tiger", rarity: "rare", colors: ["#ff9f1c", "#ffb84d", "#ff8c00", "#ffae42", "#ff9a2e", "#ffc266"] },
+  { id: "watermelon", name: "Watermelon", rarity: "rare", colors: ["#ff5c7a", "#5ad46b", "#ff7a93", "#3cc352", "#ff6b86", "#6ee07e"], marking: "spots", accent: "#1f3d2a" },
+  { id: "tiger", name: "Tiger", rarity: "rare", colors: ["#ff9f1c", "#ffb84d", "#ff8c00", "#ffae42", "#ff9a2e", "#ffc266"], marking: "stripes", accent: "#3a2410" },
   { id: "lava", name: "Lava", rarity: "rare", colors: ["#ff4e1c", "#ff7a2e", "#ff3d00", "#ff9140", "#ff5a1f", "#ff6f3c"], effect: "glow" },
   { id: "stealth", name: "Stealth", rarity: "rare", colors: ["#3a3f47", "#5b6470", "#8a94a1", "#2c3036", "#b0b8c2", "#6f7986"] },
   { id: "glow", name: "Glow in the dark", rarity: "rare", colors: ["#c8ff5a", "#9bff8a", "#e6ffb0", "#7cf0c8", "#d4ff3d", "#b8ffe0"], effect: "glow" },
-  { id: "galaxy", name: "Galaxy", rarity: "epic", colors: ["#7c4dff", "#536dfe", "#b388ff", "#3d5afe", "#9575ff", "#6a5cff"], effect: "sparkle" },
+  { id: "galaxy", name: "Galaxy", rarity: "epic", colors: ["#7c4dff", "#536dfe", "#b388ff", "#3d5afe", "#9575ff", "#6a5cff"], effect: "sparkle", marking: "spots", accent: "#ffe9a8" },
   { id: "chrome", name: "Chrome", rarity: "epic", colors: ["#d8dde2", "#c0c8d0", "#eef1f4", "#aeb7c0", "#cfd6dc", "#e3e8ec"], effect: "chrome" },
-  { id: "midnight", name: "Midnight", rarity: "epic", colors: ["#1b2340", "#22305a", "#2c3c70", "#17203a", "#253466", "#1f2b4f"], effect: "sparkle" },
+  { id: "midnight", name: "Midnight", rarity: "epic", colors: ["#1b2340", "#22305a", "#2c3c70", "#17203a", "#253466", "#1f2b4f"], effect: "sparkle", marking: "spots", accent: "#8fb8ff" },
 ];
 
 export const PRIZE_COST = 100;
@@ -128,4 +132,19 @@ export function drawPrize(owned: string[], roll: () => number = Math.random): Pa
   for (const t of available) { r -= PRIZE_ODDS[t]; if (r <= 0) { tier = t; break; } }
   const choices = pool.filter((p) => p.rarity === tier);
   return choices[Math.floor(roll() * choices.length)];
+}
+
+/** Lighten a hex colour toward white; used for default accents. */
+function lighten(hex: string, amount = 0.55): string {
+  const n = parseInt(hex.slice(1), 16); if (!Number.isFinite(n)) return "#fff0ba";
+  const ch = (v: number) => Math.round(v + (255 - v) * amount).toString(16).padStart(2, "0");
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
+}
+
+/** Renderer-facing appearance for a climber: the renderer takes resolved colours, not ids. */
+export interface CreatureAppearance { creatureId?: string; color?: string; accent?: string; marking?: "plain" | "spots" | "stripes" }
+export function appearanceFor(c: { creature?: string; pattern?: string; color: string }): CreatureAppearance {
+  const creatureId = !c.creature || c.creature === "toy" ? "human" : c.creature;
+  const pattern = c.pattern ? patternById(c.pattern) : null;
+  return { creatureId, color: c.color, accent: pattern?.accent ?? lighten(c.color), marking: pattern?.marking ?? "plain" };
 }

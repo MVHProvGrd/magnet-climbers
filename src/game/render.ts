@@ -1,3 +1,4 @@
+import { appearanceFor } from "./creatures";
 import { CFG, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
@@ -86,7 +87,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
       ctx.lineTo(t.x, t.y);
       ctx.stroke();
       ctx.globalAlpha = 0.55;
-      drawClimber(ctx, { ...sel, x: t.x, y: t.y, angle: 0, squash: 0, grip: undefined }, false, g.time);
+      drawClimber(ctx, { ...sel, x: t.x, y: t.y, angle: 0, squash: 0, grip: undefined }, false, g.time, appearanceFor(sel));
       ctx.globalAlpha = 1;
     } else {
       ctx.fillStyle = "rgba(255,80,80,0.9)";
@@ -122,12 +123,12 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
 
   // climbers (lost ones are gone)
-  for (const c of g.climbers) if (c.state !== "lost") drawClimberShadow(ctx, c);
+  for (const c of g.climbers) if (c.state !== "lost") drawClimberShadow(ctx, c, g.time, appearanceFor(c));
   for (const c of g.climbers) {
     if (c.state === "lost") continue;
     const flicker = c.iframes > 0 && Math.floor(g.time * 18) % 2 === 0;
     if (flicker) ctx.globalAlpha = 0.45;
-    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time);
+    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, appearanceFor(c));
     ctx.globalAlpha = 1;
     // hp pips above the head, only once someone has taken a hit
     if (c.hp < CFG.maxHp) {

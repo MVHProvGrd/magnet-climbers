@@ -1,5 +1,5 @@
 import { RESERVE_COST, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
-import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
+import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber, drawClimberShadow } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
@@ -179,7 +179,8 @@ export class Ui {
         const ctx = cv.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
         const c = climbers[i]; c.angle = Math.sin(t * 1.3 + i) * 0.12; c.squash = Math.sin(t * 2.2 + i) * 0.08;
         for (const [limb, joint] of c.ragdoll!.limbs.entries()) { joint.angle = Math.sin(t * 1.6 + i + limb * 1.7) * 0.25; joint.bend = Math.sin(t * 1.9 + i * 2 + limb) * 0.3; }
-        drawClimberShadow(ctx, c); drawClimber(ctx, c, false, t);
+        const look = appearanceFor(c);
+        drawClimberShadow(ctx, c, t, look); drawClimber(ctx, c, false, t, look);
       });
       this.previewLoop = requestAnimationFrame(tick);
     };
