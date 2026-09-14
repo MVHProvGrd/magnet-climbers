@@ -133,6 +133,7 @@ safeProbe.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:0;paddi
 document.body.appendChild(safeProbe);
 
 let lastCw = 0, lastCh = 0;
+let uiReady = false;
 function resize(force = false) {
   const r = canvas.getBoundingClientRect();
   const cw = r.width || window.innerWidth;
@@ -141,8 +142,9 @@ function resize(force = false) {
   lastCw = cw; lastCh = ch;
   // Panels are laid out for a 400 x 780 CSS-px phone. When the viewport is effectively smaller
   // (system font / page zoom on Android, tiny phones) they shrink to fit instead of overflowing.
-  const fit = Math.min(1, window.innerWidth / 400, window.innerHeight / 780);
+  const fit = Math.min(1, window.innerWidth / 400);
   uiRoot.style.setProperty("--fit", fit.toFixed(3));
+  if (uiReady) ui.refit();
   dpr = Math.min(2, window.devicePixelRatio || 1);
   const scale = cw / W;
   viewH = ch / scale;
@@ -299,6 +301,7 @@ const ui = new Ui(uiRoot, () => save, {
     return "error" in r ? r.error : null;
   },
 });
+uiReady = true;
 
 const SNAP_KEY = "magnet-climbers:run:v1";
 function saveSnapshot() {

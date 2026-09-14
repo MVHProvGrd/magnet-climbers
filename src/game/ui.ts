@@ -79,7 +79,7 @@ export class Ui {
     this.root = root;
     this.pauseBtn = document.createElement("button");
     this.pauseBtn.className = "pause-btn";
-    this.pauseBtn.textContent = "☰ MENU";
+    this.pauseBtn.textContent = t("☰ MENU");
     this.pauseBtn.hidden = true;
     this.pauseBtn.addEventListener("click", () => this.showPause());
     root.appendChild(this.pauseBtn);
@@ -126,6 +126,26 @@ export class Ui {
     }
     translateTree(panel);
     this.root.appendChild(panel);
+    this.fit(panel);
+  }
+
+  /** Re-measure the open panel after a viewport change. */
+  refit() { if (this.panel) this.fit(this.panel); }
+
+  /** Scale a panel so its whole content fits the screen (phone text/page zoom shrinks the viewport).
+   * Reading panels that are meant to scroll only shrink a little; menus and dialogs shrink until they fit. */
+  private fit(panel: HTMLElement) {
+    const scroller = panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("field-guide") || panel.classList.contains("board") || panel.classList.contains("chat");
+    panel.style.zoom = "1"; panel.style.width = "";
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const need = panel.scrollHeight + 24;
+    let z = Math.min(1, vw / 400, vh / need);
+    z = Math.max(scroller ? 0.85 : 0.6, z);
+    if (z >= 0.999) return;
+    panel.style.zoom = z.toFixed(3);
+    // vw units shrink with zoom too; keep the panel at its full designed width
+    panel.style.width = `min(${(92 / z).toFixed(1)}vw, 380px)`;
+    panel.style.maxHeight = `${(92 / z).toFixed(1)}vh`;
   }
 
   clear() {

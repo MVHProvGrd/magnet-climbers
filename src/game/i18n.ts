@@ -181,7 +181,8 @@ const RU: Record<string, string> = {
 
 const RU_RULES: Rule[] = [
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} забегов · ${m[2]} м пройдено за всё время`],
-  [/^Build (\S+) · $/, (m) => `Сборка ${m[1]} · `],
+  [/^Build (.+?) · $/, (m) => `Сборка ${m[1]} · `],
+  [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · видно в таблице рекордов`],
   [/^🌍 Everyone together: (.+?) over ([\d,.]+) runs? by ([\d,.]+) climbers?$/, (m) => `🌍 Все вместе: ${m[1]} за ${m[2]} забегов, ${m[3]} альпинистов`],
   [/^Crew puzzles\. No red line, a fling budget, three stars\.\s*(★ \d+)?$/, (m) => `Головоломки для команды. Без красной линии, запас бросков, три звезды. ${m[1] ?? ""}`],
   [/^CREATURES (\d+\/\d+)$/, (m) => `СУЩЕСТВА ${m[1]}`], [/^PATTERNS (\d+\/\d+)$/, (m) => `УЗОРЫ ${m[1]}`],
