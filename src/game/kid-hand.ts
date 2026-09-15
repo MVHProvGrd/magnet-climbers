@@ -1,4 +1,5 @@
 import { CFG, W } from "./config";
+import { objectArtById } from "./gadget-art";
 import type { Vec } from "./types";
 
 export interface KidHand {
@@ -83,6 +84,30 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
   return false;
 }
 
+/** Codex's photographed arm (pack 12): fingers up, wrist at 39% of the height, sleeve running off the bottom.
+ * The hand is rigid about the same wrist point and angle the hit-test uses; the forearm piece is stretched along
+ * the drawn arm's line so the cuff always ends offscreen. Fractions of the image, so any export size works. */
+const ARM = { tipRow: 0.04, wristRow: 0.395, centreCol: 0.50 };
+function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource) {
+  const iw = (arm as HTMLImageElement).naturalWidth || (arm as HTMLCanvasElement).width || 1;
+  const ih = (arm as HTMLImageElement).naturalHeight || (arm as HTMLCanvasElement).height || 1;
+  const tip = ARM.tipRow * ih, wristRow = ARM.wristRow * ih, c0 = ARM.centreCol * iw;
+  // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62
+  const s = 96 / (wristRow - tip);
+  const wrist = { x: pose.point.x - Math.cos(pose.angle) * 34, y: pose.point.y - Math.sin(pose.angle) * 34 };
+  const reach = Math.hypot(pose.anchor.x - wrist.x, pose.anchor.y - wrist.y) + 80;
+  const lean = Math.atan2(pose.anchor.y - wrist.y, pose.anchor.x - wrist.x);
+  ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
+  // forearm: rows below the wrist, run from the wrist to past the anchor (mirrored so the thumb lands on the drawn side)
+  ctx.save(); ctx.translate(wrist.x, wrist.y); ctx.rotate(lean);
+  ctx.transform(0, s, reach / (ih - wristRow), 0, 0, -c0 * s); // +x toward the anchor, thumb side kept consistent with the hand
+  ctx.drawImage(arm, 0, wristRow - 6, iw, ih - wristRow + 6, 0, 0, iw, ih - wristRow + 6 - 0); ctx.restore();
+  // hand: rigid about the wrist, fingers along the pose angle
+  ctx.save(); ctx.translate(pose.point.x, pose.point.y); ctx.rotate(pose.angle);
+  ctx.transform(0, -s, -s, 0, 62 + tip * s, c0 * s);
+  ctx.drawImage(arm, 0, 0, iw, wristRow + 12, 0, 0, iw, wristRow + 12); ctx.restore();
+  ctx.restore();
+}
 export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
   const pose = handPose(h);
   ctx.save();
@@ -109,6 +134,8 @@ export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
       } ctx.stroke();
     }
   }
+  const arm = objectArtById("kid-arm");
+  if (arm) { drawPhotoArm(ctx, pose, arm); ctx.restore(); return; }
   const wrist = { x: pose.point.x - Math.cos(pose.angle) * 28, y: pose.point.y - Math.sin(pose.angle) * 28 };
   // A continuous tapered forearm connects the wrist to an offscreen sleeve.
   ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;

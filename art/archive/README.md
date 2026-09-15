@@ -16,7 +16,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
-| `12-motion-studies-v1/` | Realistic kid arm, enamel reach badge, lemon pendulum and side/bottom swipe animation reviews. Interactive page /art-archive/motion-v1/ | Codex image generation and isolated review animation | enamel reach badge LIVE in `real-v1/pickups/reach.png`; kid arm review-only |
+| `12-motion-studies-v1/` | Realistic kid arm, enamel reach badge, lemon pendulum and side/bottom swipe animation reviews. Interactive page /art-archive/motion-v1/ | Codex image generation and isolated review animation | enamel reach badge LIVE in `real-v1/pickups/reach.png`; kid arm LIVE in `real-v1/kid-arm.webp` (rigid hand about the wrist, forearm stretched along the drawn arm line, same hitbox) |
 
 | `10-reach-badge-v1/` | Reach pickup as a glossy blue button badge with a navy double-headed arrow (pack-01 badge meaning, physical style); replaces the tape measure | Claude, @napi-rs/canvas `render.mjs` | superseded by pack 12 enamel badge (owner pick) |
 | `10-hanging-keepsakes-v1/` | Five realistic hanging assemblies: seaside postcard, cat photo, dinosaur drawing, pancake recipe and lemon keychain. Sources, cutouts, alpha manifest and light/dark review sheet | Codex built-in image generation and magenta keying | LIVE: lemon keychain = snack swing (rotates about its hook), pancake/postcard/dinosaur = the three clip gadgets, cat photo = Cat Nap Club card; via `prepare-live.py` |
