@@ -1,0 +1,94 @@
+[
+  {
+    "file": "ready/paper-10-v1.webp",
+    "size": [
+      1536,
+      1024
+    ],
+    "bbox": [
+      237,
+      130,
+      1297,
+      893
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 767112,
+      "semi": 900,
+      "opaque": 804852
+    },
+    "edge_pixels": 3611,
+    "magenta_tinted_opaque": 93,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/paper-11-v1.webp",
+    "size": [
+      1225,
+      1284
+    ],
+    "bbox": [
+      158,
+      87,
+      1066,
+      1195
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 654006,
+      "semi": 2801,
+      "opaque": 916093
+    },
+    "edge_pixels": 6810,
+    "magenta_tinted_opaque": 632,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/paper-7-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      123,
+      113,
+      1128,
+      1121
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 592354,
+      "semi": 1151,
+      "opaque": 979011
+    },
+    "edge_pixels": 3782,
+    "magenta_tinted_opaque": 26,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/paper-9-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      238,
+      236,
+      1011,
+      1009
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1004110,
+      "semi": 586,
+      "opaque": 567820
+    },
+    "edge_pixels": 2874,
+    "magenta_tinted_opaque": 1,
+    "clean": true,
+    "reasons": []
+  }
+]
