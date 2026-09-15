@@ -170,12 +170,12 @@ export class Ui {
     const p = el("div", "panel menu");
     p.innerHTML = `
       <div class="rail">
-        <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
-        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
+        <button class="icon" data-a="settings" title="Settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
+        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide"><img src="${import.meta.env.BASE_URL}art/ui/guide.webp" alt="" /></button>
         <span class="grow"></span>
-        <button class="icon" data-a="story" title="Story" aria-label="Story">📜</button>
-        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
-        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
+        <button class="icon" data-a="story" title="Story" aria-label="Story"><img src="${import.meta.env.BASE_URL}art/ui/story.webp" alt="" /></button>
+        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play"><img src="${import.meta.env.BASE_URL}art/ui/help.webp" alt="" /></button>
+        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard"><img src="${import.meta.env.BASE_URL}art/ui/board.webp" alt="" /></button>
       </div>
       <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
       <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun the kid.</p>
@@ -195,7 +195,7 @@ export class Ui {
         ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
         <button data-a="collection">🎨 CREATURES</button>
       </div>
-      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble">💬</span><span class="lines"><i>Global chat</i></span></button>` : ""}
+      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /></span><span class="lines"><i>Global chat</i></span></button>` : ""}
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>

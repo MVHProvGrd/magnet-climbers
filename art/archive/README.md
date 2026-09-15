@@ -16,6 +16,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
+| `15-ui-icons-v1/` | Menu icons as enamel fridge magnets: gear, guide book, story scroll, help, trophy, chat bubble | Claude, Gemini 2.5 Flash Image + chroma-cutout | LIVE in `public/art/ui/` |
+
 | `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | LIVE: donut, duck, robot, dino, POP! as `public/art/bumpers/bumper-0..4.webp`, hung on the lemon's hook and chain at draw time (visual pendulum); COOL penguin still canvas |
 
 | `13-business-magnets-v1/` | Section A1: plumber, noodles, library, school bus and bakery, business-3..7; all five cutouts pass cleanup checks | Codex built-in generation and repo chroma key | LIVE: `public/art/business/business-3..7.webp` via `prepare-live.py` |
