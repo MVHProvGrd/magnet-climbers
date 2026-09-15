@@ -574,7 +574,7 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
 // Keyboard (PC): hold Space to charge the pull-back, WASD or arrows to aim (W up, S down, A/D sideways),
-// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recentres.
+// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recenters.
 const keys = new Set<string>();
 let charge = 0;
 const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.("input, textarea, select") != null;

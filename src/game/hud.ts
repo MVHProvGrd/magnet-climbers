@@ -391,5 +391,5 @@ export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, 
     button(ctx, b.mode, climbing ? "CLIMB" : "FLING", climbing ? SLAB : ACCENT, climbing ? CLIMB : INK);
     button(ctx, b.sync, "SYNC", g.sync ? SYNC : SLAB, g.sync ? INK : "#fff");
   }
-  if (g.freeCam) button(ctx, b.recenter, "◎ RECENTRE", "#f4f4f4", INK);
+  if (g.freeCam) button(ctx, b.recenter, "◎ RECENTER", "#f4f4f4", INK);
 }
