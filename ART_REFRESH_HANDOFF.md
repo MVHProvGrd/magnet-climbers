@@ -36,7 +36,36 @@ Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid 
 
 Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-studies-v1`: realistic kid hand/forearm, enamel reach-badge alternative, interactive lemon bump-and-settle, side-swipe and bottom-entry left/right sweep previews. Review page `public/art-archive/motion-v1/index.html`; full instructions in pack HANDOFF.md. Single-pose hand and approximate source-rectangle lemon split are animation studies, not production articulated rigs. This supersedes older exclusions below for hand/reach art exploration only. No src/game changes. Hanging assets in `10-hanging-keepsakes-v1` remain available too.
 
-## Codex queue — 2026-09-15 (v2, owner-approved; replaces the earlier queue)
+## Codex queue v3 — 2026-09-15 (replaces v2; packs 19 and 20 are LIVE)
+
+**Delivery, unchanged:** generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md + HANDOFF.md), add a README row, `node scripts/art-archive-page.mjs`, `git push origin codex/art-ready-pack`. Next free pack number is **21**. Never write to `public/art/`; Claude fits and wires every batch as it lands. Full source margins are fine, Claude crops to alpha bounds. 8 to 12 images per session.
+
+### DONE (live in game, do not redo)
+business-0..7, bumper-0..5 (robot v2 and COOL penguin from pack 19), paper-1, paper-8, paper-0/2/3/4/5/6 (pack 19), paper-7/9/10/11 (pack 20), lemon keychain (swing-snack), clip papers snack/travel/doodle, 7 S + 7 N destinations, kid arm long, cat paw long with claws, reach badge, six menu icons, glass-door + glass-wide (one design each).
+
+### A. Still canvas-drawn, in priority order
+
+| # | What | Count | Naming and spec |
+|---|---|---|---|
+| 1 | **Paper, old set, rest**: 12 Donut Worry (done in pack 21, uncommitted), 13 Avo Good Climb, 14 Tiny Dinosaur, 15 Rain Check, 16 Lucky Duck, 17 Sundae Summit, 18 Gone Fishing, 19 Beep Boop | 7 | `paper-13..19-v1`. Same as packs 19/20: one real object (postcard, kid drawing, sticker sheet, note, greeting card, cut-out), photographed flat, portrait or landscape or square, no magnet or clip on it. |
+| 2 | **Paper, new set** (index order): 0 Midnight Pizza Menu, 1 Lost Sock Notice, 2 Moon Camp Postcard, 3 Tiny Chef Recipe, 4 School Aquarium Trip (letter), 5 Kitchen Gig Ticket, 6 Fridge Family Portrait, 7 Secret Treasure Map, 8 Plant Watering Rota, 9 Monster Math Homework, 10 Breakfast Blueprint, 11 Dog Ate My Shopping List | 12 | `paper-new-0..11-v1`. Same spec as row 1. |
+| 3 | **Keyring swings**, lemon style: trail keyring (travel theme: compass/hiking boot/mountain charm), star keyring (doodle theme: glitter star or smiley) | 2 | `swing-travel-v1`, `swing-doodle-v1`. Whole assembly: round magnetic hook at top centre, split ring, short chain, charm below, 1024x1536 portrait like lemon. Note the hook pivot pixel in prompts.md. |
+| 4 | **Rotor letters** as moulded plastic alphabet magnets, square-ish, centred: A (snack, red), B (travel, blue), C (doodle, green) | 3 | `rotor-snack-v1`, `rotor-travel-v1`, `rotor-doodle-v1`. Straight-on, glossy, 1024x1024. The letter spins in game, so no baked shadow direction. |
+| 5 | **Door gap trim**: shallow horizontal plastic/rubber gasket strip between doors | 1 | `door-gap-v4`, 768x160 landscape, tileable left to right. |
+| 6 | **Silver grip bar**: the brushed steel bar climbers hold on swings and clips | 1 | `grip-bar-v1`, 512x128, straight-on, tileable. |
+| 7 | **Glass door variants**, same frame style as pack 07: tall 384x640 x2 (yoghurt jars and berries; sodas and pickles), wide 768x384 x2 (dairy row; sauces and jars). Windows repeat one door today. | 4 | `glass-door-v3`, `glass-door-v4`, `glass-wide-v3`, `glass-wide-v4`. Closed glass, contents behind it, frame edges complete. |
+| 8 | **Candy Drop pickup** icon: wrapped hard candy, enamel-badge style matching coin/gem/reach badges | 1 | `pickup-candy-v1`, 1024x1024. |
+| 9 | **Obstacle refresh** (older renders, not photoreal cutouts): water dispenser panel, paper calendar, ice tray (photo aspect, no handle), door handle, plastic drawer front, vent grille | 6 | `obstacle-<name>-v2`. Straight-on, flat fridge lighting. Sizes: dispenser 384x640, calendar 512x640, ice-tray 768x384, handle 768x160, plastic 768x384, vent 768x256. |
+
+### B. New variety after A (pools grow; Claude adds items, cards, translations)
+- Hanging assemblies (swing pool): keys on a ring with car fob, bottle opener on a chain, mini disco ball, rubber duck keychain, bead lanyard with ID badge, carabiner with whistle, wind chime, baby shoe on a ribbon, scissors by one loop, measuring spoons, souvenir spoon, fishing lure. `swing-<name>-v1`, lemon spec.
+- Rotors: wall clock magnet, pinwheel, dial thermometer, fidget spinner. `rotor-<name>-v1`.
+- Clip papers: concert ticket, report card, takeout receipt, birthday invite, lost cat poster, coupon sheet, polaroid of grandma. `clip-<name>-v1`, silver clip at top centre.
+- Bumpers (keychain toys, no hardware baked in): toy taxi, race car, banana, space shuttle, letter block, plastic brick, gummy bear. `bumper-<name>-v1`.
+- Business magnets (horizontal card like pack 08): taxi, locksmith, sushi, car wash, realtor with headshot, tax prep, pool cleaner, tattoo parlour. `business-<name>-v1`.
+- Destinations, pairs only, 4 S + 4 N: Maldives, Zanzibar, Phuket, Cancun; Tromso, Banff, Hokkaido, Svalbard. Pack 09 spec.
+
+## Codex queue — 2026-09-15 (v2, superseded by v3 above; kept for history)
 
 Rules: generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, put each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md), add a README row, run `node scripts/art-archive-page.mjs`, push with `git push origin HEAD`. Claude wires. Never overwrite `public/art/`.
 Hanging assemblies (lemon style): whole object on its hook, hook at top centre, fingers/paper/chain complete, clear margins; note the hook pivot pixel in prompts.md. Clip papers: silver clip at top centre, paper below, portrait or landscape. Bumpers: wide chunky silhouette readable at 90x50. Business magnets: horizontal card like pack 08.
