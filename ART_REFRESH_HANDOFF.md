@@ -25,6 +25,7 @@ Hanging assemblies (lemon style): whole object on its hook, hook at top centre, 
 | 6 | Rotor letters as real moulded plastic alphabet magnets A, B, C, square-ish, centred | 3 | `rotor-snack-v1` (A), `rotor-travel-v1` (B), `rotor-doodle-v1` (C) |
 | 7 | Door gap trim, shallow horizontal 768x160 | 1 | `door-gap-v4` |
 | 8 | Silver grip bar (the steel hardware on swings and clips), 512x128, brushed | 1 | `grip-bar-v1` |
+| 9 | Glass door variants, same frame style as pack 07: tall 384x640 x2 (different bottles/produce: yoghurt jars and berries; sodas and pickles), wide 768x384 x2 (dairy row; sauces and jars). Windows repeat the one door now | 4 | `glass-door-v3`, `glass-door-v4`, `glass-wide-v3`, `glass-wide-v4` |
 
 ### B. New variety (pools grow; Claude adds items, cards, translations)
 

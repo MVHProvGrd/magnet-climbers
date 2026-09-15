@@ -313,8 +313,12 @@ export class World {
         const kind = GADGET_KINDS[(i / 4 - 1) % 4];
         segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
         segment.bumpers = [];
+        const themes = [...THEMES]; let first = "";
         segment.gadgets = [0, 1].map((n) => {
-          const theme = pick(art, [...THEMES]);
+          let theme = pick(art, themes);
+          // v12: the two gadgets on a door are never the same theme (no two pancake clips side by side)
+          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * 2)) % themes.length];
+          first = theme;
           const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
           if (kind === "swing" && this.version >= 12) g.swing = { angle: 0, vel: 0, cool: 0 };
           return g;
