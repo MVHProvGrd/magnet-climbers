@@ -504,7 +504,8 @@ test("v13 keeps magnets on bare steel: no plate or bumper path over glass, plast
     const world = new World(seed, 0, 13); world.generateTo(80);
     for (const s of world.segments) {
       for (const z of s.zones) if (z.kind === "repel" || z.kind === "attract") assert.ok(!hits(z, s.zones), `${z.kind} plate over non-steel, seed ${seed} y ${s.y}`);
-      for (const b of s.bumpers) assert.ok(!hits({ x: b.minX, y: b.minY, w: b.maxX - b.minX + b.w, h: b.maxY - b.minY + b.h }, s.zones), `bumper path over non-steel, seed ${seed} y ${s.y}`);
+      // a lift (vx 0) only ever occupies its own column; sliders and zigzags sweep the full width
+      for (const b of s.bumpers) assert.ok(!hits(b.vx === 0 ? { x: b.x, y: b.minY, w: b.w, h: b.maxY - b.minY + b.h } : { x: b.minX, y: b.minY, w: b.maxX - b.minX + b.w, h: b.maxY - b.minY + b.h }, s.zones), `bumper path over non-steel, seed ${seed} y ${s.y}`);
     }
   }
 });

@@ -314,18 +314,22 @@ export class World {
       const span = this.version > 0 ? rangeOf(r, 90, 160) : 0;
       let minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
       const vy = motion === "slide" ? 0 : rangeOf(r, 50, 70 + difficulty * 80) * (r() < 0.5 ? 1 : -1);
-      // v13: the whole travel box must be steel (a slider crosses the full width; lifts and zigzags climb too)
-      let travel = { x: 0, y: motion === "slide" ? by : minY, w: W, h: motion === "slide" ? bh : maxY - minY + bh };
-      let ok = !(this.version >= 13 && blocked(zones, travel, 8));
-      for (let k = 0; k < 4 && !ok; k++) {
-        const ny = y + rangeOf(r, 30, h - 60);
+      // v13: the whole travel box must be clear of EVERY zone (magnets included; a slider covering a plate ruins both).
+      // Sliders and zigzags cross the full width; a lift stays in its own column, so it also picks that column here.
+      let bx = rangeOf(r, 0, W - bw);
+      const box = (yy: number, lo: number, hi: number, xx: number) => motion === "slide"
+        ? { x: 0, y: yy, w: W, h: bh } : motion === "lift" ? { x: xx, y: lo, w: bw, h: hi - lo + bh } : { x: 0, y: lo, w: W, h: hi - lo + bh };
+      let travel = box(by, minY, maxY, bx);
+      let ok = !(this.version >= 13 && (blocked(zones, travel, 8, true) || (motion !== "slide" && maxY - minY < 120)));
+      for (let k = 0; k < 6 && !ok; k++) {
+        const ny = y + rangeOf(r, 30, h - 60), nx = motion === "lift" ? (r() < 0.5 ? rangeOf(r, 10, DOOR_SEAM.x - bw - 10) : rangeOf(r, DOOR_SEAM.x + DOOR_SEAM.w + 10, W - bw - 10)) : bx;
         const nMin = Math.max(y + 10, ny - span / 2), nMax = Math.min(y + h - bh - 10, ny + span / 2);
-        travel = { x: 0, y: motion === "slide" ? ny : nMin, w: W, h: motion === "slide" ? bh : nMax - nMin + bh };
-        if (!blocked(zones, travel, 8)) { ok = true; minY = nMin; maxY = nMax; travel.y = motion === "slide" ? ny : nMin; }
+        const t = box(ny, nMin, nMax, nx);
+        if (!blocked(zones, t, 8, true) && (motion === "slide" || nMax - nMin >= 120)) { ok = true; minY = nMin; maxY = nMax; bx = nx; travel = t; travel.y = motion === "slide" ? ny : nMin; }
       }
       if (this.version >= 13 && motion === "slide") { minY = travel.y; maxY = travel.y; }
       if (ok) bumpers.push({
-        x: rangeOf(r, 0, W - bw), y: motion === "slide" ? travel.y : Math.min(Math.max(by, minY), maxY), w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
+        x: bx, y: motion === "slide" ? travel.y : Math.min(Math.max(by, minY), maxY), w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
         minX: 0, maxX: W - bw, motion, vy, minY, maxY,
         label: pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
         hue: Math.floor(r() * 360),
