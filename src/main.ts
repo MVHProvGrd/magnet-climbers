@@ -666,7 +666,19 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+// The canvas HUD is set in Barlow Condensed; starting before the face is ready paints one
+// frame in the fallback and reflows every number. Never block the loop for long, though.
+const hudFontReady = typeof document !== "undefined" && document.fonts
+  ? Promise.race([
+      Promise.all([
+        document.fonts.load('900 46px "Barlow Condensed"'),
+        document.fonts.load('800 12px "Barlow Condensed"'),
+        document.fonts.load('700 16px "Barlow Condensed"'),
+      ]),
+      new Promise((done) => setTimeout(done, 1200)),
+    ])
+  : Promise.resolve();
+void hudFontReady.then(() => requestAnimationFrame(frame));
 
 /** Pull the cloud copy if another device moved it forward. Safe to call often. */
 async function cloudPull(quiet = false) {

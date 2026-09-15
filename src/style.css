@@ -5,6 +5,34 @@
   --coin: #ffd23f;
   --gem: #7ef0ff;
   --text: #f4f4f4;
+  /* HUD redesign tokens (design_handoff_hud_menus/README.md "Design tokens") */
+  --slab: rgba(20, 22, 28, 0.88);
+  --slab-panel: rgba(20, 22, 28, 0.9);
+  --danger: #ff506e;
+  --danger-light: #ff8aa3;
+  --chill: #9be15d;
+  --climb: #4fc3f7;
+  --sync: #c77dff;
+  --hp: #ff5c8a;
+  --ink: #1a1d24;
+  --text-2: rgba(255, 255, 255, 0.55);
+  --text-3: rgba(255, 255, 255, 0.5);
+  --row-fill: rgba(255, 255, 255, 0.05);
+  --control-fill: rgba(255, 255, 255, 0.1);
+  --btn-2: #2b2f38;
+  --btn-go: #f4f4f4;
+  --r-slab: 18px;
+  --r-tile: 12px;
+  --r-tile-lg: 14px;
+  --r-chip: 10px;
+  --r-chip-sm: 8px;
+  --r-tag: 5px;
+  --gutter: 12px;
+  --gap-sib: 8px;
+  --gap-grid: 6px;
+  --tap: 44px;
+  --slab-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --display: "Barlow Condensed", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
