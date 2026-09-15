@@ -8,33 +8,34 @@ Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid 
 
 Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-studies-v1`: realistic kid hand/forearm, enamel reach-badge alternative, interactive lemon bump-and-settle, side-swipe and bottom-entry left/right sweep previews. Review page `public/art-archive/motion-v1/index.html`; full instructions in pack HANDOFF.md. Single-pose hand and approximate source-rectangle lemon split are animation studies, not production articulated rigs. This supersedes older exclusions below for hand/reach art exploration only. No src/game changes. Hanging assets in `10-hanging-keepsakes-v1` remain available too.
 
-## Codex queue — 2026-09-15 (from Claude, owner-approved: "we need tons of variety")
+## Codex queue — 2026-09-15 (v2, owner-approved; replaces the earlier queue)
 
-Everything below is generate-on-#FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, drop into a new pack `art/archive/11-variety-v1/` (sources/ + ready/ + prompts.md), add to `art/archive/README.md`, run `node scripts/art-archive-page.mjs`. Claude wires. Do not overwrite anything in `public/art/`.
+Rules: generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, put each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md), add a README row, run `node scripts/art-archive-page.mjs`, push with `git push origin HEAD`. Claude wires. Never overwrite `public/art/`.
+Hanging assemblies (lemon style): whole object on its hook, hook at top centre, fingers/paper/chain complete, clear margins; note the hook pivot pixel in prompts.md. Clip papers: silver clip at top centre, paper below, portrait or landscape. Bumpers: wide chunky silhouette readable at 90x50. Business magnets: horizontal card like pack 08.
 
-### A. Modernize what is still canvas-drawn (priority order)
+### A. Regenerate what is still canvas-drawn (priority order)
 
-| # | What | Count | Style ref | Naming |
-|---|---|---|---|---|
-| 1 | Business magnets: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY | 5 | pack 08 dentist/pizza/vet (horizontal card, real printed vinyl, thin magnetic backing) | `business-3..7-v1` (order = `BUSINESS_MAGNETS` in `src/game/fridge-art.ts`) |
-| 2 | Legacy toy bumpers: donut, duck, robot, dino, "POP!", "COOL" | 6 | chunky 3-D novelty fridge magnets (resin/rubber), wide silhouette, must read at ~90x50 px | `bumper-0..5-v1` |
-| 3 | Paper cards, old set (20): pizza postcard, cat drawing, kid climbing drawing, scenic route, space cadet, home sweet fridge, seed packet, stay cool, snack list (done), you got this, don't let go, more magnets, donut, avocado, tiny dinosaur, rain check, lucky duck, sundae, gone fishing, beep boop robot | 19 | pack 08 grocery: real paper (photo, postcard, crayon drawing, sticky note, ticket), portrait or square, torn/taped/curled edges, NO magnet or pin | `paper-<index>-v1` (index = position in `paperNames`, `src/game/items.ts`) |
-| 4 | Paper cards, new set (12): pizza menu, lost sock notice, moon camp postcard, tiny chef recipe, aquarium trip letter, gig ticket, family portrait, treasure map, watering rota, monster math homework, breakfast blueprint, dog-ate-list | 12 | same as 3 | `paper-new-<index>-v1` |
-| 5 | Door gap trim (`gap`, the only obstacle still canvas) | 1 | shallow horizontal seam texture, 768x160, see pack 07 gapRule | `door-gap-v4` |
-| 6 | Gadget charms `snack.png`, `travel.png`, `doodle.png` (rotor/swing/clip) | 3 | already photo but low-res PNG; regenerate as keyed WebP, 512 px | `charm-<theme>-v2` |
+| # | What | Count | Naming |
+|---|---|---|---|
+| 1 | Business magnets: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY | 5 | `business-3..7-v1` (order = `BUSINESS_MAGNETS`, `src/game/fridge-art.ts`) |
+| 2 | Toy bumpers: donut, duck, robot, dino, POP! pop-it, COOL penguin | 6 | `bumper-0..5-v1` |
+| 3 | Paper, old set (18, Cat Nap Club and Snack List done): pizza postcard, kid climbing drawing, scenic route, space cadet, home sweet fridge, seed packet, stay cool, you got this, don't let go, more magnets, donut, avocado, tiny dinosaur, rain check, lucky duck, sundae, gone fishing, beep boop | 18 | `paper-<index>-v1` (index in `paperNames`, `src/game/items.ts`) |
+| 4 | Paper, new set: pizza menu, lost sock notice, moon camp postcard, tiny chef recipe, aquarium trip letter, gig ticket, family portrait, treasure map, watering rota, monster math homework, breakfast blueprint, dog-ate-list | 12 | `paper-new-<index>-v1` |
+| 5 | Keyring swings, lemon style: trail keyring (travel), star keyring (doodle) | 2 | `swing-travel-v1`, `swing-doodle-v1` |
+| 6 | Rotor letters as real moulded plastic alphabet magnets A, B, C, square-ish, centred | 3 | `rotor-snack-v1` (A), `rotor-travel-v1` (B), `rotor-doodle-v1` (C) |
+| 7 | Door gap trim, shallow horizontal 768x160 | 1 | `door-gap-v4` |
+| 8 | Silver grip bar (the steel hardware on swings and clips), 512x128, brushed | 1 | `grip-bar-v1` |
 
-Not to touch: creatures/climbers (canvas by design), kid hand, pickups (all photo), destinations, compass/crayon/candy pole, title art.
+### B. New variety (pools grow; Claude adds items, cards, translations)
 
-### B. New variety (each is a pool entry; pairs keep N/S balance)
+- **Hanging assemblies (swing pool)**: keys on a ring with car fob, bottle opener on a chain, mini disco ball, rubber duck keychain, bead lanyard with ID badge, carabiner with whistle, three-tube wind chime, baby shoe on a ribbon, scissors by one loop, measuring spoons on a ring, souvenir spoon, fishing lure. Naming `swing-<name>-v1`.
+- **Rotors**: wall clock magnet, pinwheel, dial thermometer, fidget spinner. `rotor-<name>-v1`.
+- **Clip papers**: concert ticket, report card, takeout receipt, birthday invite, lost cat poster, coupon sheet, polaroid of grandma. `clip-<name>-v1`.
+- **Bumpers**: rubber ducky, toy taxi, race car, banana, space shuttle, letter block, plastic brick, gummy bear. `bumper-<name>-v1`.
+- **Business magnets**: taxi, locksmith, sushi, car wash, realtor with headshot, tax prep, pool cleaner, tattoo parlour. `business-<name>-v1`.
+- **Destinations**: pairs only, 4 S + 4 N: Maldives, Zanzibar, Phuket, Cancún; Tromsø, Banff, Hokkaido, Svalbard. Same spec as pack 09.
 
-1. **Destinations, 4 more pairs (8):** S: Maldives, Zanzibar, Phuket, Cancún. N: Reykjavík swap not needed; use Tromsø, Banff, Hokkaido, Svalbard. Same spec as pack 09.
-2. **Business magnets (6):** taxi, locksmith, sushi, car wash, real-estate agent with headshot, tax prep. Same spec as pack 08.
-3. **Toy bumpers (6):** rubber ducky, toy taxi, race car, cartoon banana, space shuttle, alphabet letter block.
-4. **Paper (10):** takeout receipt, concert wristband, kid's report card, coupon sheet, polaroid, birthday invite, sports schedule, doctor appointment card, cereal box-top, wanted poster (lost cat).
-5. **Handles/hardware (metal, climbable, 3):** brushed-steel bar handle, chrome bottle opener, steel hook strip. 768x192 horizontal. Style: pack 07 compass-grade realism.
-6. **Fridge surfaces (3 full-width textures, 800x340, tileable vertically):** brushed stainless, cream enamel with scuffs, black matte. For a future "fridge skin" unlock.
-
-Send 8–12 per session; Claude wires each batch as it lands.
+8 to 12 per session. Claude wires each batch as it lands.
 
 ## Status 2026-09-15: packs 08 and 09 are WIRED and LIVE (Claude). `art/archive/prepare-live.py` fits ready cutouts into `public/art/`. Destination pools are now 7 S / 7 N. Reach pickup done by Claude (pack 10).
 
