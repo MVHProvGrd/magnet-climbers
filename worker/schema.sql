@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS scores (
   name TEXT NOT NULL,
   mode TEXT NOT NULL,
   cm INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  -- run duration of the best, so a fast climb and a slow one both show what they were
+  seconds INTEGER
 );
 -- one best row per player per mode keeps the table small and the query cheap
 CREATE UNIQUE INDEX IF NOT EXISTS scores_player_mode ON scores(player_id, mode);

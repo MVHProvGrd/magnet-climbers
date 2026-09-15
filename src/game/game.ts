@@ -5,6 +5,7 @@ import { World, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
+import { pawPose, PAW_DURATION, type CatPaw } from "./cat-paw";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
@@ -19,9 +20,11 @@ export interface RunSnapshot {
   seed: number;
   worldVersion?: number;
   gadgetTime?: number;
+  runTime?: number;
   feats?: RunFeats;
   tricks?: TrickState;
   hand?: Omit<KidHand, "hit"> & { hit: number[] };
+  paw?: Omit<CatPaw, "hit"> & { hit: number[] };
   handCount?: number;
   nextHandAt?: number;
   generated: number;
@@ -60,7 +63,7 @@ export class Game {
   world: World;
   climbers: Climber[] = [];
   stats: ReturnType<typeof statsFor>;
-  effects: ActiveEffects = { superMagnet: 0, slowmo: 0, reach: 0 };
+  effects: ActiveEffects = { superMagnet: 0, slowmo: 0, reach: 0, candy: 0 };
   phase: Phase = "idle";
   camY = 0;
   floorY: number;
@@ -82,6 +85,8 @@ export class Game {
   panning: { lastY: number } | null = null;
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /** the cat's paw tapping down from the top of the screen (v13); null when idle */
+  paw: CatPaw | null = null;
   /** the kid's hand sweeping across the door; null when idle */
   hand: KidHand | null = null;
   nextHandAt = CFG.handFirstAfter;
@@ -654,10 +659,14 @@ export class Game {
   }
 
   /** Stepped ramp per 50cm, capped, with a catch-up nudge when the crew is far ahead. */
+  /** seconds the run has actually been running (idle aiming before the first fling does not count) */
+  runTime = 0;
   wallSpeed(): number {
     if (this.chill) return 0;
     const steps = Math.floor(this.heightCm / CFG.floorStepCm);
     let mult = Math.min(CFG.floorCapMult, 1 + steps * CFG.floorStepMult);
+    mult *= Math.min(CFG.floorCreepCap, 1 + CFG.floorCreepPer10s * (this.runTime / 10));
+    if (this.effects.candy > 0) mult *= CFG.candySlow;
     const alive = this.alive;
     if (alive.length) {
       const lowest = Math.max(...alive.map((c) => c.y));
@@ -675,13 +684,14 @@ export class Game {
       seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx, by: b.y, vy: b.vy }));
     }
     return {
-      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated,
+      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated, runTime: this.runTime,
       climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip), ragdoll: cloneRagdoll(c.ragdoll) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
       effects: { ...this.effects }, time: this.time, sync: this.sync, selectedId: this.selectedId,
       taken, bumpers, pendingLaunches: this.pendingLaunches.map((p) => ({ ...p, v: { ...p.v } })),
       hand: this.hand ? { ...this.hand, hit: [...this.hand.hit], ...(this.hand.near ? { near: [...this.hand.near] } : {}) } : undefined,
+      paw: this.paw ? { ...this.paw, hit: [...this.paw.hit] } : undefined,
       handCount: this.handCount, nextHandAt: this.nextHandAt,
       gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks), feats: { ...this.feats },
     };
@@ -692,7 +702,7 @@ export class Game {
     const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, lineup, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
     if (snap.feats) g.feats = { ...g.feats, ...snap.feats };
     g.world.generateTo(snap.generated);
-    g.world.gadgetTime = snap.gadgetTime ?? 0;
+    g.world.gadgetTime = snap.gadgetTime ?? 0; g.runTime = snap.runTime ?? 0;
     g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();
     if (!snap.tricks) g.tricks.frontierY = snap.highestY;
     for (const seg of g.world.segments) {
@@ -711,11 +721,12 @@ export class Game {
     g.pendingLaunches = (snap.pendingLaunches ?? []).map((p) => ({ ...p, v: { ...p.v } }));
     g.nextId = snap.nextId;
     g.hand = snap.hand ? { ...snap.hand, hit: new Set(snap.hand.hit), ...(snap.hand.near ? { near: [...snap.hand.near] } : {}) } : null;
+    g.paw = snap.paw ? { ...snap.paw, hit: new Set(snap.paw.hit) } : null;
     g.handCount = snap.handCount ?? 0;
     g.nextHandAt = snap.nextHandAt ?? snap.time + CFG.handFirstAfter;
     g.floorY = snap.floorY; g.highestY = snap.highestY; g.camY = snap.camY;
     g.coins = snap.coins; g.gems = snap.gems; g.reserves = snap.reserves; g.revivesLeft = snap.revivesLeft;
-    g.effects = { ...snap.effects }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
+    g.effects = { ...snap.effects, candy: snap.effects.candy ?? 0 }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
     g.phase = "running";
     g.world.ensure(g.camY - g.viewH);
     return g;
@@ -732,11 +743,12 @@ export class Game {
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
     if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
+    this.world.superGrip = this.effects.superMagnet > 0;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }
 
-    if (this.phase === "running") this.floorY -= this.wallSpeed() * sdt;
+    if (this.phase === "running") { this.runTime += sdt; this.floorY -= this.wallSpeed() * sdt; }
     if (this.chill) this.floorY = this.camY + this.viewH + 1e6;
 
     if (this.pendingLaunches.length) {
@@ -770,7 +782,10 @@ export class Game {
     for (const c of this.climbers) c.handsAt = undefined;
     for (const c of this.climbers) {
       if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
-      if (c.state === "flying") { this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx); }
+      if (c.state === "flying") {
+        this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
+        const pop = this.world.popped; if (pop) { this.world.popped = null; (pop.inward ? sfx.popIn : [sfx.pop1, sfx.pop2, sfx.pop3][pop.index % 3])(); }
+      }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
     }
@@ -1079,14 +1094,41 @@ export class Game {
   }
 
   /** Warn on a fixed curved route, reach across the door, then recoil to the same edge. */
+  /** Cat paw: warn, three taps (the second deepest), retreat. Only the pad and toes hit; the foreleg is decorative. */
+  private stepPaw(dt: number) {
+    const paw = this.paw; if (!paw) return;
+    paw.t += dt;
+    const pose = pawPose(paw, this.camY, this.viewH);
+    if (pose.contact) for (const c of this.climbers) {
+      if (c.state === "lost" || paw.hit.has(c.id) || c.iframes > 0) continue;
+      const dx = (c.x - pose.x) / 46, dy = (c.y - pose.y) / 36;
+      if (dx * dx + dy * dy > 1) continue;
+      paw.hit.add(c.id); sfx.paw();
+      if (this.effects.superMagnet > 0 && c.state !== "flying") { c.squash = 1; this.floats.push({ x: c.x, y: c.y - 50, text: "HELD ON!", life: 1, color: "#ff4d4d" }); continue; }
+      c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; c.fell = true;
+      c.vx = (c.x < pose.x ? -1 : 1) * 180; c.vy = CFG.handShove * 0.8; c.spin = 6; c.noStick = 0.3; resetRagdoll(c);
+      this.damage(c, true);
+      if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
+    }
+    if (paw.t >= PAW_DURATION) {
+      this.paw = null;
+      const climbed = Math.max(0, this.startY - this.highestY) / 1000;
+      const interval = Math.max(CFG.handIntervalMin, CFG.handIntervalBase - climbed * 3);
+      const random = makeRng(this.world.seed ^ Math.imul(this.handCount, 1274126177));
+      this.nextHandAt = this.time + interval * (0.75 + random() * 0.5);
+    }
+  }
   private stepHand(dt: number) {
     if (this.phase !== "running" || this.chill) return;
+    if (this.paw) { this.stepPaw(dt); return; }
     if (!this.hand) {
       if (this.time < this.nextHandAt) return;
       const anchored = this.anchored;
       const focus = anchored.length ? anchored.reduce((m, c) => (c.y < m.y ? c : m)) : this.alive[0];
       if (!focus) return;
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
+      // v13: about a third of the attacks are the cat, tapping down from the top of the screen
+      if (this.world.version >= 13 && random() < 0.35) { this.paw = { x: 60 + random() * (W - 120), t: 0, hit: new Set() }; sfx.warning(); return; }
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
       // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
@@ -1168,6 +1210,7 @@ export class Game {
       case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
       case "magnet": this.effects.superMagnet = d.superMagnet; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
       case "slowmo": this.effects.slowmo = d.slowmo; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
+      case "candy": this.effects.candy = d.candy; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" }); break;
       case "heart": {
         const healed = c.hp < CFG.maxHp;
         c.hp = Math.min(CFG.maxHp, c.hp + 1);

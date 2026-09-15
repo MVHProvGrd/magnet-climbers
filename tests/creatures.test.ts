@@ -17,11 +17,12 @@ test("creature contract: ids unique, every pattern has six colours, every rule h
 });
 
 test("creatures unlock from run facts; chill runs never unlock by height or coins", () => {
-  const base = { mode: "solo" as const, cm: 0, chill: false, maxChain: 0, gadgetRides: 0, coins: 0, hitsTotal: 0 };
+  const base = { mode: "solo" as const, cm: 0, chill: false, maxChain: 0, gadgetRides: 0, coins: 0, hitsTotal: 0, stars: 0 };
   assert.deepEqual(creaturesEarned(["toy"], base), []);
   assert.deepEqual(creaturesEarned(["toy"], { ...base, cm: 1000 }).map((c) => c.id), ["gecko"]);
   assert.deepEqual(creaturesEarned(["toy"], { ...base, cm: 5000, chill: true, coins: 99 }), []);
-  assert.deepEqual(creaturesEarned(["toy"], { ...base, mode: "crew", cm: 1200, maxChain: 3 }).map((c) => c.id).sort(), ["frog", "octopus"]);
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, stars: 9, maxChain: 3 }).map((c) => c.id).sort(), ["frog", "octopus"]);
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, mode: "crew", cm: 1200 }), [], "crew height no longer unlocks anything");
   assert.deepEqual(creaturesEarned(["toy", "crab"], { ...base, hitsTotal: 15, gadgetRides: 5, coins: 40 }).map((c) => c.id).sort(), ["dino", "robot"]);
 });
 

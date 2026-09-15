@@ -18,7 +18,8 @@ export type UnlockRule =
   | { kind: "chain"; size: number }
   | { kind: "gadgets"; rides: number }
   | { kind: "hits"; total: number }
-  | { kind: "coins"; perRun: number };
+  | { kind: "coins"; perRun: number }
+  | { kind: "stars"; total: number };
 
 export interface CreatureDef {
   id: CreatureId;
@@ -49,7 +50,7 @@ export interface Look { creature: string; pattern: PatternId }
 export const CREATURES: CreatureDef[] = [
   { id: "toy", name: "Magnet Person", blurb: "The original fridge toy. Rubbery, cheerful, indestructible.", detail: "classic bendy limbs", unlock: { kind: "start" } },
   { id: "gecko", name: "Gecko", blurb: "Huge sticky toe pads and a tail that whips on every fling.", detail: "toe pads on the magnets, whipping tail", unlock: { kind: "height", mode: "solo", cm: 1000 } },
-  { id: "frog", name: "Tree Frog", blurb: "Big fingertips, legs tucked in flight, stretchy catches.", detail: "tucked legs mid-air, throat puff on landing", unlock: { kind: "height", mode: "crew", cm: 1200 } },
+  { id: "frog", name: "Tree Frog", blurb: "Big fingertips, legs tucked in flight, stretchy catches.", detail: "tucked legs mid-air, throat puff on landing", unlock: { kind: "stars", total: 9 } },
   { id: "octopus", name: "Octopus", blurb: "Four arms grip, four more curl along for the ride.", detail: "four decorative curling arms", unlock: { kind: "chain", size: 3 } },
   { id: "robot", name: "Robot", blurb: "Spring joints, four grippers and a little face screen.", detail: "face screen reacts to landings", unlock: { kind: "gadgets", rides: 5 } },
   { id: "crab", name: "Crab", blurb: "Two claws and two feet grip. Sideways stance, frantic tumbles.", detail: "claws as magnets, sideways idle", unlock: { kind: "hits", total: 15 } },
@@ -90,6 +91,7 @@ export function unlockText(rule: UnlockRule): string {
     case "gadgets": return `Ride ${rule.rides} gadgets in one run`;
     case "hits": return `Take ${rule.total} bumper hits (lifetime)`;
     case "coins": return `Collect ${rule.perRun} coins in one run`;
+    case "stars": return `Earn ${rule.total} expedition stars`;
   }
 }
 
@@ -103,6 +105,8 @@ export interface RunFacts {
   coins: number;
   /** lifetime bumper hits after this run */
   hitsTotal: number;
+  /** expedition stars held after this run or level */
+  stars: number;
 }
 
 /** Creatures this run newly earns. Chill runs unlock nothing height-based. */
@@ -117,6 +121,7 @@ export function creaturesEarned(owned: string[], f: RunFacts): CreatureDef[] {
       case "gadgets": return f.gadgetRides >= r.rides;
       case "hits": return f.hitsTotal >= r.total;
       case "coins": return !f.chill && f.coins >= r.perRun;
+      case "stars": return f.stars >= r.total;
     }
   });
 }

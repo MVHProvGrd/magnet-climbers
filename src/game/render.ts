@@ -4,6 +4,7 @@ import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
+import { drawCatPaw } from "./cat-paw";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
@@ -186,6 +187,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // the kid's hand
   if (g.hand) drawKidHand(ctx, g.hand);
+  if (g.paw) drawCatPaw(ctx, g.paw, g.camY, viewH);
 
   // your own best: a quiet line to beat, green once you pass it
   if (g.best && g.best.cm > 0) {
@@ -367,6 +369,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
     ["SLOW-MO", g.effects.slowmo, "#c77dff"],
     ["LONG ARMS", g.effects.reach, "#9be15d"],
+    ["CANDY", g.effects.candy, "#ff8fb0"],
   ];
   ctx.font = "bold 12px system-ui, sans-serif";
   ctx.textAlign = "left";

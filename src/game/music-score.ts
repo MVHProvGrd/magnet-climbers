@@ -29,5 +29,12 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
   over: [{ frequency: 330, duration: 0.25, gain: 0.07, type: "triangle" }, { frequency: 261, duration: 0.3, delay: 0.16, gain: 0.07, type: "triangle" }, { frequency: 196, duration: 0.45, delay: 0.33, gain: 0.07, type: "sine" }],
   warning: [{ frequency: 740, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 988, duration: 0.12, delay: 0.18, gain: 0.08, type: "sine" }],
   swipe: [{ frequency: 550, endFrequency: 3200, duration: 0.30, gain: 0.11, type: "noise" }],
+  // POP! bubbles: short pitch-drop pops, three flavours, and a duller one for pushing a bubble back in
+  pop1: [{ frequency: 1500, endFrequency: 600, duration: 0.07, gain: 0.09, type: "sine" }, { frequency: 2400, duration: 0.03, gain: 0.03, type: "noise" }],
+  pop2: [{ frequency: 1900, endFrequency: 750, duration: 0.06, gain: 0.09, type: "sine" }, { frequency: 3000, duration: 0.03, gain: 0.03, type: "noise" }],
+  pop3: [{ frequency: 1200, endFrequency: 480, duration: 0.08, gain: 0.09, type: "sine" }, { frequency: 2000, duration: 0.035, gain: 0.03, type: "noise" }],
+  popIn: [{ frequency: 700, endFrequency: 330, duration: 0.09, gain: 0.08, type: "triangle" }],
+  // cat paw tap: a soft thud with a brush of fur
+  paw: [{ frequency: 170, endFrequency: 70, duration: 0.14, gain: 0.14, type: "sine" }, { frequency: 900, endFrequency: 400, duration: 0.09, gain: 0.04, type: "noise" }],
   trick: [{ frequency: 784, duration: 0.1, gain: 0.07, type: "sine" }, { frequency: 1175, duration: 0.16, delay: 0.08, gain: 0.06, type: "sine" }, { frequency: 1568, duration: 0.2, delay: 0.14, gain: 0.04, type: "sine" }],
 };

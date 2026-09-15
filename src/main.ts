@@ -6,7 +6,7 @@ import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from ".
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
-import { UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
+import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
@@ -356,7 +356,7 @@ function runEvents() {
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal });
+      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, stars: totalStars() });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
@@ -437,6 +437,7 @@ function startLevel(level: LevelDef) {
   else go();
 }
 
+const totalStars = () => Object.values(save.expeditions).reduce((a, b) => a + b, 0);
 function finishLevel(level: LevelDef) {
   if (!game) return;
   const lost = game.climbers.filter((c) => c.state === "lost").length;
@@ -448,10 +449,14 @@ function finishLevel(level: LevelDef) {
   const earned = game.coins + (won ? bonus : 0);
   save.coins += earned; save.gems += game.gems;
   if (won) save.expeditions[level.id] = Math.max(before, stars);
+  save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+  // expeditions earn creatures too (stars, chains, gadget rides, hits)
+  const unlocked = creaturesEarned(save.creatures, { mode: "crew", cm: 0, chill: false, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: earned, hitsTotal: save.hitsTotal, stars: totalStars() });
+  for (const c of unlocked) save.creatures.push(c.id);
   game.coins = 0; game.gems = 0; game.walletCoins = save.coins;
   persist();
   void cloudSync("level");
-  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned });
+  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned, unlocked });
 }
 
 function startRun(rules: "solo" | "crew", withTutorial = false) {
@@ -494,9 +499,10 @@ function resubmitBests() {
 /** Push the run to the global board (best per player is kept server-side). */
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
+  const seconds = game ? Math.round(game.runTime) : 0;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, rulesNow, cm).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
       ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
@@ -548,6 +554,53 @@ canvas.addEventListener("pointerdown", (e) => {
   game.pointerDown(toWorld(e));
 });
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
+// Keyboard (PC): hold Space to charge the pull-back, WASD or arrows to aim (W up, S down, A/D sideways),
+// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recentres.
+const keys = new Set<string>();
+let charge = 0;
+const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.("input, textarea, select") != null;
+window.addEventListener("keydown", (e) => {
+  if (typing(e) || !game || paused) return;
+  const k = e.key.toLowerCase();
+  if ([" ", "w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { e.preventDefault(); keys.add(k); }
+  if (k === " " && !e.repeat) charge = 0;
+  if (k === "tab" || k === "q" || k === "e") {
+    e.preventDefault();
+    const pool = game.anchored.filter((c) => !game!.climbers.some((o) => o.parent === c.id && o.state === "linked")).sort((a, b) => a.x - b.x);
+    if (pool.length) { const i = pool.findIndex((c) => c.id === game!.selectedId); game.select(pool[(i + (k === "q" ? pool.length - 1 : 1)) % pool.length].id); }
+  }
+  if (k === "c" && game.rules === "crew") game.mode = game.mode === "fling" ? "move" : "fling";
+  if (k === "x" && game.rules === "crew") game.sync = !game.sync;
+  if (k === "r") game.recenter();
+});
+window.addEventListener("keyup", (e) => {
+  const k = e.key.toLowerCase(); keys.delete(k);
+  if (k === " " && game && !paused && game.drag && keyDrag) { keyDrag = false; game.pointerUp(); charge = 0; }
+});
+window.addEventListener("blur", () => { keys.clear(); if (game && keyDrag) { game.drag = null; keyDrag = false; } });
+let keyDrag = false;
+let aimAngle = 0; // radians from straight up, positive = right
+/** Per frame: build the drag vector from the held keys so the usual aim dots and launch code apply. */
+function tickKeys(dt: number) {
+  if (!game || paused) return;
+  if (!keys.has(" ")) { if (keyDrag) { game.drag = null; keyDrag = false; } return; }
+  const c = game.byId(game.selectedId);
+  if (!c || (c.state !== "stuck" && c.state !== "linked")) return;
+  charge = Math.min(CFG.maxDrag, charge + CFG.maxDrag * dt / 0.9); // full pull after about a second
+  // aim is an angle from straight up that the keys steer smoothly: A/D swing it sideways, W brings it back up,
+  // S tips it on down past the horizontal. It is kept between flings so a second shot starts where the last one aimed.
+  const rate = 1.7 * dt; // radians per second
+  if (keys.has("a") || keys.has("arrowleft")) aimAngle -= rate;
+  if (keys.has("d") || keys.has("arrowright")) aimAngle += rate;
+  if (keys.has("w") || keys.has("arrowup")) aimAngle -= Math.sign(aimAngle) * Math.min(Math.abs(aimAngle), rate);
+  if (keys.has("s") || keys.has("arrowdown")) aimAngle += (aimAngle < 0 ? -1 : 1) * rate;
+  aimAngle = Math.max(-Math.PI * 0.95, Math.min(Math.PI * 0.95, aimAngle));
+  const ax = Math.sin(aimAngle), ay = -Math.cos(aimAngle);
+  const start = { x: c.x, y: c.y };
+  // launch = start - cur, so the pull-back point sits opposite the aim
+  game.drag = { start, cur: { x: start.x - ax * charge, y: start.y - ay * charge } };
+  keyDrag = true;
+}
 canvas.addEventListener("pointerup", () => { if (game && !paused) game.pointerUp(); });
 canvas.addEventListener("pointercancel", () => { if (game) game.drag = null; });
 // Android back gesture / browser back: open the pause menu instead of leaving the run
@@ -579,6 +632,7 @@ function frame(now: number) {
   if (game) {
     if (!paused) {
       acc += dt;
+      tickKeys(dt);
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
       tickTutorial(dt);
     }

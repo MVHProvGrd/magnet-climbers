@@ -52,6 +52,8 @@ export interface UiHandlers {
 }
 
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
+/** m:ss for a run duration */
+const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -170,13 +172,12 @@ export class Ui {
     const p = el("div", "panel menu");
     p.innerHTML = `
       <div class="rail">
-        <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
-        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
+        <button class="icon" data-a="settings" title="Settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
+        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide"><img src="${import.meta.env.BASE_URL}art/ui/guide.webp" alt="" /></button>
         <span class="grow"></span>
-        ${leaderboardEnabled ? `<button class="icon" data-a="chat" title="Global chat" aria-label="Global chat">💬</button>` : ""}
-        <button class="icon" data-a="story" title="Story" aria-label="Story">📜</button>
-        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
-        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
+        <button class="icon" data-a="story" title="Story" aria-label="Story"><img src="${import.meta.env.BASE_URL}art/ui/story.webp" alt="" /></button>
+        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play"><img src="${import.meta.env.BASE_URL}art/ui/help.webp" alt="" /></button>
+        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard"><img src="${import.meta.env.BASE_URL}art/ui/board.webp" alt="" /></button>
       </div>
       <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
       <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun the kid.</p>
@@ -196,6 +197,7 @@ export class Ui {
         ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
         <button data-a="collection">🎨 CREATURES</button>
       </div>
+      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /></span><span class="lines"><i>Global chat</i></span></button>` : ""}
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
@@ -432,7 +434,7 @@ export class Ui {
     this.show(p);
   }
 
-  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number }) {
+  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number; unlocked?: CreatureDef[] }) {
     const p = el("div", "panel small");
     const next = nextLevel(o.level.id);
     p.innerHTML = `
@@ -441,11 +443,14 @@ export class Ui {
       <p class="tag">${esc(o.level.name)} · ${o.flings} flings${o.won ? ` (par ${o.level.par})` : ""}${o.lost ? ` · ${o.lost} lost` : ""}</p>
       ${o.won && o.stars < 3 ? `<p class="fine">${o.flings > o.level.par ? "Under par for a star. " : ""}${o.lost ? "Lose nobody for a star." : ""}</p>` : ""}
       <p class="tag">Earned <span class="coin">$${o.earned}</span></p>
+      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
       ${o.won && next ? `<button class="primary" data-a="next">NEXT LEVEL</button>` : ""}
       <button class="${o.won ? "" : "primary"}" data-a="retry">${o.won ? "PLAY AGAIN" : "TRY AGAIN"}</button>
       <button class="ghost" data-a="map">ALL LEVELS</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
+      const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
+      if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); return; }
       if (a === "next") { this.clear(); this.h.onQuitRun(); this.h.onNextLevel(o.level.id); }
       if (a === "retry") { this.clear(); this.h.onQuitRun(); this.h.onPlayLevel(o.level.id); }
       if (a === "map") { this.clear(); this.h.onQuitRun(); this.showExpeditions(); }
@@ -466,6 +471,12 @@ export class Ui {
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${groups.map((g) => `<h3 class="guide-section">${esc(g.title)} <em>${g.items.length}</em></h3>${g.items.map(card).join("")}`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
+    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines");
+    if (ticker) void chat.list(0).then((r) => {
+      if (!r || !p.isConnected) return;
+      const last = r.messages.slice(-2);
+      ticker.innerHTML = last.length ? last.map((m) => `<span><b>${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
+    });
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       const category = target?.dataset.category;
@@ -759,7 +770,7 @@ export class Ui {
     const p = el("div", "panel board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
-        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span></div>`).join("")
+        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span>${r.seconds ? `<span class="t" title="run time">${fmtTime(r.seconds)}</span>` : ""}</div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
       const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : mode === "crew" ? s.bestCm : s.bestSolo;
       const fmt = (n: number) => mode === "coins" ? `$${n.toLocaleString()}` : fmtDistance(n);
