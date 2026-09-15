@@ -448,7 +448,7 @@ export function itemPhoto(item: FridgeItem): CanvasImageSource | undefined {
   if (item.family === "surface" && item.id !== "gap" && item.id !== "seam") return obstacleImage(item.id);
   return objectArtById(item.id);
 }
-/** Actual game artwork, also used for field-guide thumbnails and QA. */
+/** Actual game artwork, also used by the offline art-review previews in tests/. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
   if (item.id === "seam") {
     ctx.save(); ctx.beginPath(); ctx.roundRect(6, 6, 88, 88, 10); ctx.clip();

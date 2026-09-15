@@ -1,4 +1,5 @@
-// Builds public/art-archive/index.html: one page showing every set in art/archive, images served from GitHub raw.
+// Builds art/archive/index.html: one page showing every set in art/archive, images served from GitHub raw.
+// Deliberately NOT under public/ — this is a reference gallery for the owner and Codex, not part of the shipped game.
 import { readdir, readFile, writeFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 const RAW = "https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/";
@@ -38,9 +39,9 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 <p><a href="souvenirs-v1/" style="color:#7cc">New souvenir pack: animated field, compass and split-door review</a></p>
 <nav>${toc}</nav>${sections}<script>
 if(location.protocol==='file:') document.querySelectorAll('[src],[href]').forEach(el=>{
-  for(const attr of ['src','href']){const value=el.getAttribute(attr);if(value?.startsWith('${RAW}'))el.setAttribute(attr,'../../art/archive/'+value.slice('${RAW}'.length).replaceAll('\\\\','/'));}
+  for(const attr of ['src','href']){const value=el.getAttribute(attr);if(value?.startsWith('${RAW}'))el.setAttribute(attr,'./'+value.slice('${RAW}'.length).replaceAll('\\\\','/'));}
 });
 </script></body></html>`;
-await mkdir("public/art-archive", { recursive: true });
-await writeFile("public/art-archive/index.html", html);
-console.log("wrote public/art-archive/index.html", (await stat("public/art-archive/index.html")).size, "bytes");
+
+await writeFile("art/archive/index.html", html);
+console.log("wrote art/archive/index.html", (await stat("art/archive/index.html")).size, "bytes");

@@ -46,7 +46,7 @@
   }
   globalThis.MotionReview={drawScene,armPose,step,bump,state};
   if(typeof document==='undefined')return;
-  const base=location.protocol==='file:'?'../../../art/archive/': 'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/';
+  const base=location.protocol==='file:'?'../': 'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/';
   const paths={lemon:'10-hanging-keepsakes-v1/ready/lemon-keychain-v1.webp',arm:'12-motion-studies-v1/ready/kid-arm-open-v1.webp',reach:'12-motion-studies-v1/ready/reach-enamel-v2.webp',oldReach:'10-reach-badge-v1/reach-badge-v1.png'};
   const art={};let time=0,last=0,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
   const play=document.querySelector('#play');play.textContent=playing?'Pause previews':'Play previews';

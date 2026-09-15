@@ -7,7 +7,8 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
-import { FRIDGE_ITEMS, BUMPER_ITEMS, guideGroups, itemZone } from "../src/game/items";
+import { FRIDGE_ITEMS, BUMPER_ITEMS, itemZone } from "../src/game/items";
+import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
 import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
@@ -178,7 +179,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 90);
+  assert.equal(FRIDGE_ITEMS.length, 91);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -486,16 +487,6 @@ test("v10 keeps field plates off pillar and window segments", () => {
   }
 });
 
-test("the field guide lists every item exactly once, in named groups", () => {
-  const seen = new Map<string, number>();
-  for (const family of ["surface", "gadget", "bumper", "pickup", "paper"] as const) for (const g of guideGroups(family)) {
-    assert.notEqual(g.title, "More", `${family} has ungrouped items: ${g.items.map((i) => i.id).join(", ")}`);
-    for (const item of g.items) { assert.equal(item.family, family); seen.set(item.id, (seen.get(item.id) ?? 0) + 1); }
-  }
-  for (const item of FRIDGE_ITEMS) assert.equal(seen.get(item.id), 1, `${item.id} listed ${seen.get(item.id) ?? 0} times`);
-  assert.ok(!BUMPER_ITEMS.some((i) => i.hazard), "hazard cards never spawn");
-});
-
 test("v13 keeps magnets on bare steel: no plate or bumper path over glass, plastic, paper or gaps", () => {
   const soft = new Set(["glass", "trim", "void", "sticker"]);
   const hits = (a: { x: number; y: number; w: number; h: number }, zones: { x: number; y: number; w: number; h: number; kind: string }[]) =>
@@ -521,4 +512,31 @@ test("super magnet grips glass, plastic and paper but never an open gap or a han
   assert.equal(world.isMetal(50, seg.y + 60), true, "glass grips under super magnet");
   assert.equal(world.isMetal(150, seg.y + 60), false, "gaps never grip");
   assert.equal(world.isMetal(250, seg.y + 40), false, "toys never grip");
+});
+
+test("how to play covers every surface and family, with counts derived from the real item list", () => {
+  const sections = howToSections();
+  const rows = sections.flatMap((s) => s.rows);
+  // A zero count means a derivation predicate broke; the page would quietly claim a rule covers nothing.
+  for (const row of rows) if (row.count !== undefined) assert.ok(row.count > 0, `"${row.name}" counts nothing`);
+  // Every surface must be explained by exactly one rule, so a new kind can never ship unmentioned.
+  const surfaces = FRIDGE_ITEMS.filter((i) => i.family === "surface");
+  const byRule = {
+    attract: surfaces.filter((i) => i.kind === "attract").length,
+    repel: surfaces.filter((i) => i.kind === "repel").length,
+    metal: surfaces.filter((i) => i.metal && i.kind !== "attract").length,
+    nonMetal: surfaces.filter((i) => !i.metal && ["glass", "trim", "void", "sticker"].includes(i.kind!)).length,
+  };
+  assert.equal(byRule.attract + byRule.repel + byRule.metal + byRule.nonMetal, surfaces.length, "a surface kind is missing from the how-to page");
+  // Every mechanic must be NAMED, not merely counted: a count moves on its own when an item is
+  // added, the prose beside it does not, and that is how candy and the cat paw went missing.
+  // Boost and hazard rows are generated from these same lists, so today this cannot fail --
+  // it is a tripwire for the regression of hand-writing those rows again, which is what broke.
+  const named = rows.map((r) => `${r.name} ${r.text}`).join("   ");
+  for (const item of [...boostItems(), ...hazardItems()])
+    assert.ok(named.includes(item.name), `"${item.name}" exists in the game but the how-to page never names it`);
+  assert.ok(sections.some((s) => /hurt/i.test(s.title)) && sections.some((s) => /hold/i.test(s.title)), "page must keep its helps/hurts split");
+  // The guide used to guarantee this; it is the item list's own invariant, so it outlives that screen.
+  const ids = FRIDGE_ITEMS.map((i) => i.id);
+  assert.equal(new Set(ids).size, ids.length, "duplicate item id");
 });
