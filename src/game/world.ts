@@ -349,7 +349,8 @@ export class World {
           if (aspect) {
             const others = zones.filter((o) => o !== zone);
             let cw = zone.w, ch = Math.round(cw / aspect);
-            while (ch > 120 || zone.y + ch > y + h - SEAM_MARGIN || blocked(others, { x: zone.x, y: zone.y, w: cw, h: ch }, 8, true)) {
+            // only ever shrink inside the card's own rectangle, so nothing placed earlier can be overlapped
+            while (ch > zone.h || blocked(others, { x: zone.x, y: zone.y, w: cw, h: ch }, 8, true)) {
               cw -= 6; ch = Math.round(cw / aspect); if (cw < 40) break;
             }
             if (cw >= 40) { zone.w = cw; zone.h = ch; }
