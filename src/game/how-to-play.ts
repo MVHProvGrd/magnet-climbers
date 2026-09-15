@@ -22,6 +22,12 @@ export interface HowToRow {
   text: string;
   /** Shown as "N kinds" when a single rule covers a pool of art. */
   count?: number;
+  /** Art for the 4-column tile grid (handoff 3c), relative to BASE_URL. Absent = swatch. */
+  art?: string;
+  /** Swatch class when there is no photograph: brushed steel, or the red line. */
+  swatch?: "steel" | "redline";
+  /** Short note under the tile name. */
+  note?: string;
 }
 export interface HowToSection {
   title: string;
@@ -42,8 +48,15 @@ const ICONS: Record<string, string> = {
   magnet: "🧲", reach: "📏", slowmo: "⏱️", extra: "🧍", candy: "🍬",
   "kid-hand": "✋", "cat-paw": "🐾",
 };
+/** Tile art for the generated rows; pickups are named by their power kind. */
+const ART: Record<string, string> = {
+  coin: "art/real-v1/pickups/coin.png", gem: "art/real-v1/pickups/gem.png", heart: "art/real-v1/pickups/heart.png",
+  magnet: "art/real-v1/pickups/magnet.png", extra: "art/real-v1/pickups/extra.png",
+  slowmo: "art/real-v1/pickups/slowmo.png", reach: "art/real-v1/pickups/reach.png", candy: "art/real-v1/pickups/candy.png",
+  "kid-hand": "art/real-v1/kid-arm.webp", "cat-paw": "art/real-v1/cat-paw.webp",
+};
 const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;
-const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({ icon: iconFor(item, fallback), name: item.name, text: item.description });
+const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({ icon: iconFor(item, fallback), name: item.name, text: item.description, art: ART[item.id] ?? ART[item.power ?? ""] });
 
 export function howToSections(): HowToSection[] {
   return [
@@ -51,37 +64,38 @@ export function howToSections(): HowToSection[] {
       title: "What holds you",
       blurb: "Magnets only catch on bare steel. Everything else is something to cross.",
       rows: [
-        { icon: "🔩", name: "Bare steel", text: "The shiny door itself. Hands and feet catch here, and nowhere else." },
-        { icon: "🪝", name: "Silver handles", text: "Real metal islands laid across slippery panels. A legal hold in the middle of glass." },
-        { icon: "🧲", name: "S souvenirs (blue)", text: "Pull you in from a distance and catch you. The aim dots turn blue where one bends your flight.", count: tally((i) => i.kind === "attract") },
-        { icon: "⛓️", name: "Gadget grips", text: "Keyrings swing, letters rotate, clips dangle. Only the silver part grips — ride it, then fling.", count: tally((i) => i.family === "gadget") },
+        { icon: "🔩", name: "Bare steel", swatch: "steel", note: "the only hold", text: "The shiny door itself. Hands and feet catch here, and nowhere else." },
+        { icon: "🪝", name: "Handles", art: "art/real-v1/obstacles/handle.png", note: "metal island", text: "Real metal islands laid across slippery panels. A legal hold in the middle of glass." },
+        { icon: "🧲", name: "S souvenirs", art: "art/destinations/attract-bali.webp", note: "pull you in", text: "Pull you in from a distance and catch you. The aim dots turn blue where one bends your flight.", count: tally((i) => i.kind === "attract") },
+        { icon: "⛓️", name: "Gadget grips", art: "art/gadgets/swing-snack.webp", note: "ride, then fling", text: "Keyrings swing, letters rotate, clips dangle. Only the silver part grips — ride it, then fling.", count: tally((i) => i.family === "gadget") },
       ],
     },
     {
       title: "What won't",
       blurb: "No grip at all. Cross these in flight, or go around by the steel at the edges.",
       rows: [
-        { icon: "🫙", name: "Glass", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
-        { icon: "🧊", name: "Plastic", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
-        { icon: "📄", name: "Paper", text: "Drawings, notes, prints and the calendar. Catch the bare door around them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
-        { icon: "🕳️", name: "Open gaps", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
+        { icon: "🫙", name: "Glass", art: "art/real-v1/obstacles/glass.png", note: "no catch", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
+        { icon: "🧊", name: "Plastic", art: "art/real-v1/obstacles/plastic.png", note: "no hold", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
+        { icon: "📄", name: "Paper", art: "art/real-v1/obstacles/calendar.png", note: "blocks a catch", text: "Drawings, notes, prints and the calendar. Catch the bare door around them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
+        { icon: "🕳️", name: "Open gaps", art: "art/real-v1/obstacles/gap.png", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
       ],
     },
     {
       title: "What pushes and hurts",
       rows: [
-        { icon: "🔴", name: "The red line", text: "Cooper's reach, rising the whole time — and faster the higher you get. Anything below it is lost." },
-        { icon: "🧲", name: "N souvenirs (red)", text: "Push you away mid-flight. The wider the arcs the stronger it is; the big ones are slingshots.", count: tally((i) => i.kind === "repel") },
-        { icon: "🚚", name: "Advertising magnets", text: "Moving magnets on sideways, vertical or zigzag paths. Contact knocks you loose and costs a heart.", count: tally((i) => /^business-/.test(i.id)) },
-        { icon: "🧸", name: "Toy keychains", text: "Toys hanging on chains. Brushing one gives you a small push and sets it swinging — no damage.", count: tally((i) => /^bumper-\d/.test(i.id)) },
+        { icon: "🔴", name: "The red line", swatch: "redline", note: "never stops", text: "Cooper's reach, rising the whole time — and faster the higher you get. Anything below it is lost." },
+        { icon: "🧲", name: "N souvenirs", art: "art/destinations/repel-iceland.webp", note: "push you away", text: "Push you away mid-flight. The wider the arcs the stronger it is; the big ones are slingshots.", count: tally((i) => i.kind === "repel") },
+        { icon: "🚚", name: "Advertising", art: "art/business/business-0.webp", note: "costs a heart", text: "Moving magnets on sideways, vertical or zigzag paths. Contact knocks you loose and costs a heart.", count: tally((i) => /^business-/.test(i.id)) },
+        { icon: "🧸", name: "Toy keychains", art: "art/bumpers/bumper-0.webp", note: "a small push", text: "Toys hanging on chains. Brushing one gives you a small push and sets it swinging — no damage.", count: tally((i) => /^bumper-\d/.test(i.id)) },
         ...hazardItems().map((i) => fromItem(i, "⚠️")),
       ],
     },
     {
       title: "What to grab",
       rows: [
-        { icon: "🪙", name: "Coins and gems", text: "Currency for the prize machine and revives. Chill mode pays neither." },
-        { icon: "❤️", name: "Hearts", text: "Restore one heart to whoever collects it, up to three." },
+        { icon: "🪙", name: "Coin", art: ART.coin, note: "prize machine", text: "Currency for the prize machine. Chill mode pays none." },
+        { icon: "💎", name: "Gem", art: ART.gem, note: "revives", text: "Rare currency, spent on revives. Chill mode pays none." },
+        { icon: "❤️", name: "Heart", art: ART.heart, note: "up to three", text: "Restores one heart to whoever collects it, up to three." },
         ...boostItems().map((i) => fromItem(i, "✨")),
       ],
     },
