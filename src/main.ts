@@ -356,7 +356,7 @@ function runEvents() {
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal });
+      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, stars: totalStars() });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
@@ -437,6 +437,7 @@ function startLevel(level: LevelDef) {
   else go();
 }
 
+const totalStars = () => Object.values(save.expeditions).reduce((a, b) => a + b, 0);
 function finishLevel(level: LevelDef) {
   if (!game) return;
   const lost = game.climbers.filter((c) => c.state === "lost").length;
@@ -448,10 +449,14 @@ function finishLevel(level: LevelDef) {
   const earned = game.coins + (won ? bonus : 0);
   save.coins += earned; save.gems += game.gems;
   if (won) save.expeditions[level.id] = Math.max(before, stars);
+  save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+  // expeditions earn creatures too (stars, chains, gadget rides, hits)
+  const unlocked = creaturesEarned(save.creatures, { mode: "crew", cm: 0, chill: false, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: earned, hitsTotal: save.hitsTotal, stars: totalStars() });
+  for (const c of unlocked) save.creatures.push(c.id);
   game.coins = 0; game.gems = 0; game.walletCoins = save.coins;
   persist();
   void cloudSync("level");
-  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned });
+  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned, unlocked });
 }
 
 function startRun(rules: "solo" | "crew", withTutorial = false) {

@@ -432,7 +432,7 @@ export class Ui {
     this.show(p);
   }
 
-  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number }) {
+  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number; unlocked?: CreatureDef[] }) {
     const p = el("div", "panel small");
     const next = nextLevel(o.level.id);
     p.innerHTML = `
@@ -441,11 +441,14 @@ export class Ui {
       <p class="tag">${esc(o.level.name)} · ${o.flings} flings${o.won ? ` (par ${o.level.par})` : ""}${o.lost ? ` · ${o.lost} lost` : ""}</p>
       ${o.won && o.stars < 3 ? `<p class="fine">${o.flings > o.level.par ? "Under par for a star. " : ""}${o.lost ? "Lose nobody for a star." : ""}</p>` : ""}
       <p class="tag">Earned <span class="coin">$${o.earned}</span></p>
+      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
       ${o.won && next ? `<button class="primary" data-a="next">NEXT LEVEL</button>` : ""}
       <button class="${o.won ? "" : "primary"}" data-a="retry">${o.won ? "PLAY AGAIN" : "TRY AGAIN"}</button>
       <button class="ghost" data-a="map">ALL LEVELS</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
+      const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
+      if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); return; }
       if (a === "next") { this.clear(); this.h.onQuitRun(); this.h.onNextLevel(o.level.id); }
       if (a === "retry") { this.clear(); this.h.onQuitRun(); this.h.onPlayLevel(o.level.id); }
       if (a === "map") { this.clear(); this.h.onQuitRun(); this.showExpeditions(); }
