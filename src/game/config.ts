@@ -88,7 +88,7 @@ export const CLIMBER_COLORS = [
   "#4fc3f7", // blue
   "#9be15d", // green
   "#c77dff", // purple
-  "#f4f4f4", // white
+  "#2fd4c2", // teal
   "#ff4d4d", // red
 ];
 

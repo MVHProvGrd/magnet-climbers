@@ -84,6 +84,13 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t =
   ctx.restore();
 }
 
+/** Blend a hex colour toward another (0 = colour, 1 = target). Non-hex input passes through. */
+function mix(hex: string, target: string, amount: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  const a = parseInt(hex.slice(1), 16), b = parseInt(target.slice(1), 16);
+  const ch = (s: number) => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * amount).toString(16).padStart(2, "0");
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
 /** Creature body in body-local space; the gloss gradient is built there too so it lines up after the rotate. */
 function drawBodyLocal(ctx: CanvasRenderingContext2D, origin: Vec, angle: number, style: ReturnType<typeof creatureStyle>, part: "all" | "torso" | "head" = "all") {
   ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(angle);
@@ -104,9 +111,10 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
     ctx.setLineDash([3, 4]); ctx.lineDashOffset = -t * 24;
     ctx.beginPath(); ctx.arc(c.x, c.y, 33, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   }
-  const material = ctx.createLinearGradient(c.x - 25, c.y - 25, c.x + 25, c.y + 25);
-  material.addColorStop(0, "#ffffff"); material.addColorStop(0.22, style.color);
-  material.addColorStop(0.8, style.color); material.addColorStop(1, "#47505c");
+  // limbs can reach well past the body; the ends are tints of the toy's own colour so a far limb never clamps to white or grey
+  const material = ctx.createLinearGradient(c.x - 40, c.y - 40, c.x + 40, c.y + 40);
+  material.addColorStop(0, mix(style.color, "#ffffff", 0.75)); material.addColorStop(0.3, style.color);
+  material.addColorStop(0.78, style.color); material.addColorStop(1, mix(style.color, "#2a3038", 0.55));
   ctx.lineCap = "round";
   const origin = project({ x: c.x, y: c.y, z: shape.lift }, false);
   if (style.id !== "human") {
