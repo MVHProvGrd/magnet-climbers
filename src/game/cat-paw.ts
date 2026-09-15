@@ -47,8 +47,16 @@ export function drawCatPaw(ctx: CanvasRenderingContext2D, p: CatPaw, camY: numbe
   if (art) {
     const iw = (art as HTMLImageElement).naturalWidth || 1, ih = (art as HTMLImageElement).naturalHeight || 1;
     const s = 246 / iw; // about 120 px of paw, like the study
+    const x0 = pose.x - iw * (510 / 1024) * s, y0 = pose.y - ih * (1080 / 1536) * s;
     ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 12; ctx.shadowOffsetX = 8; ctx.shadowOffsetY = 12;
-    ctx.drawImage(art, pose.x - iw * (510 / 1024) * s, pose.y - ih * (1080 / 1536) * s, iw * s, ih * s); ctx.restore();
+    ctx.drawImage(art, x0, y0, iw * s, ih * s);
+    // the leg never ends on screen: repeat a plain band of foreleg fur upward past the camera's top edge
+    const band0 = Math.round(ih * 0.06), band = Math.round(ih * 0.12);
+    for (let y = y0, flip = false; y > camY - 40; y -= band * s, flip = !flip) {
+      if (!flip) ctx.drawImage(art, 0, band0, iw, band, x0, y - band * s, iw * s, band * s);
+      else { ctx.save(); ctx.translate(0, (y - band * s) + y); ctx.scale(1, -1); ctx.drawImage(art, 0, band0, iw, band, x0, y - band * s, iw * s, band * s); ctx.restore(); }
+    }
+    ctx.restore();
   } else {
     ctx.save(); ctx.fillStyle = "#e8a25c"; ctx.beginPath(); ctx.ellipse(pose.x, pose.y, 46, 36, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(pose.x - 30, camY - 400, 60, pose.y - camY + 400); ctx.restore();

@@ -53,11 +53,8 @@ export function drawCreatureDecorations(ctx: CanvasRenderingContext2D, c: Climbe
       ctx.beginPath(); ctx.moveTo(side * 6, -4 + n * 7);
       ctx.bezierCurveTo(side * (29 + n * 3), -6 + n * 12, side * (35 + wave), 16 + n * 6,
         side * (22 + n * 4) + motion * 5, 10 + n * 10 + wave); ctx.stroke();
-      if (!shadow) {
-        ctx.fillStyle = s.accent;
-        oval(ctx, side * (22 + n * 4) + motion * 5, 10 + n * 10 + wave, 1.5, 1.5);
-        ctx.fillStyle = s.color;
-      }
+      // rounded arm tips in the body colour (the pale accent read as odd light spots at game size)
+      if (!shadow) oval(ctx, side * (22 + n * 4) + motion * 5, 10 + n * 10 + wave, 2, 2);
     }
   }
   if (s.id === "robot") {

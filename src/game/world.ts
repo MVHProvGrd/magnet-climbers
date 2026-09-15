@@ -175,7 +175,8 @@ export class World {
     }
     const segment: Segment = { y, h, zones, powerUps, bumpers };
     const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
-    for (const bumper of bumpers) { const item = pick(art, BUMPER_ITEMS); bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!; }
+    const sliders = BUMPER_ITEMS.filter((item) => !item.id.startsWith("bumper-")); // toys hang, they never slide
+    for (const bumper of bumpers) { const item = pick(art, sliders); bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!; }
     return segment;
   }
 

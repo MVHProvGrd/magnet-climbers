@@ -165,5 +165,13 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
   plastic.addColorStop(0, "#ffffff"); plastic.addColorStop(0.25, style.color); plastic.addColorStop(1, style.color);
   ctx.fillStyle = plastic;
   ctx.beginPath(); ctx.arc(head.x, head.y, 7.5, 0, Math.PI * 2); ctx.fill();
+  // a face, like the creatures have: two eyes and a smile, turning with the body
+  ctx.save(); ctx.translate(head.x, head.y); ctx.rotate(c.angle);
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = "#f7fff3"; ctx.beginPath(); ctx.ellipse(side * 2.6, -1, 1.9, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#253748"; ctx.beginPath(); ctx.ellipse(side * 2.6 + 0.4, -1, 0.9, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = "#34464e"; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2.2, 2.6); ctx.quadraticCurveTo(0, 4.2, 2.2, 2.6); ctx.stroke();
+  ctx.restore();
   ctx.restore();
 }
