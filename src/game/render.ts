@@ -11,6 +11,9 @@ import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./
 
 let lastRenderTime = 0;
 
+/** true on a mouse-and-keyboard device: the idle hint explains Space and WASD instead of dragging */
+let keyboardHints = false;
+export function setKeyboardHints(on: boolean) { keyboardHints = on; }
 export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dpr: number) {
   // ease the visual arm stretch toward its target while LONG ARMS is active
   {
@@ -425,7 +428,11 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     roundRect(ctx, 20, hb, W - 40, 82, 12);
     ctx.fill();
     ctx.fillStyle = "#fff";
-    if (g.rules === "solo") {
+    if (keyboardHints) {
+      ctx.fillText(tr("Hold SPACE to charge, WASD to aim, release to fling."), W / 2, hb + 26);
+      ctx.fillText(tr("Stick to steel. Outrun the red line."), W / 2, hb + 48);
+      ctx.fillText(tr("TAB picks a climber · C move/fling · X sync · R recentre"), W / 2, hb + 70);
+    } else if (g.rules === "solo") {
       ctx.fillText(tr("Drag back anywhere, release to fling."), W / 2, hb + 37);
       ctx.fillText(tr("Stick to steel. Outrun the red line."), W / 2, hb + 59);
     } else {

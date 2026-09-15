@@ -2,7 +2,7 @@ import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
+import { render, setKeyboardHints, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
@@ -397,8 +397,10 @@ function resumeRun() {
 /** Guided first run: a solo run on a fixed seed with coaching tips driven by game state. */
 const TUTORIAL_SEED = 20260913;
 let tutorial: { step: number; t: number } | null = null;
+const keyboardDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches && !("ontouchstart" in window);
+setKeyboardHints(keyboardDevice);
 const tutorialSteps: { tip: string; done: (g: Game, t: number) => boolean }[] = [
-  { tip: "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.", done: (g) => g.phase === "running" },
+  { tip: keyboardDevice ? "⌨️ Hold SPACE to charge the pull-back, aim with WASD, let go to fling." : "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.", done: (g) => g.phase === "running" },
   { tip: "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.", done: (g) => g.heightCm >= 15 },
   { tip: "🟡 Grab coins on the way. They feed the prize machine for new patterns.", done: (g, t) => g.coins > 0 || t > 12 },
   { tip: "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.", done: (_g, t) => t > 6 },
