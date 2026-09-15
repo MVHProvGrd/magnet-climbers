@@ -31,8 +31,11 @@ function artId(z: NoStickZone): string | undefined {
 /** Whole-door bottle art for a glass zone: the tall door for portrait windows (under 0.7:1), the squat one otherwise; none for full-width bands. */
 function doorArt(z: NoStickZone): HTMLImageElement | undefined {
   if (z.w > 260) return undefined;
-  const id = z.w / z.h < 0.7 ? 'glass-door' : 'glass-wide';
-  return images.get(id) ?? images.get('glass-door');
+  const tall = images.get('glass-door'), wide = images.get('glass-wide');
+  if (!tall || !wide) return tall ?? wide;
+  // whichever door is nearer the window's proportions (log ratio), so a stretch stays mild
+  const a = z.w / z.h;
+  return Math.abs(Math.log(a / (tall.width / tall.height))) <= Math.abs(Math.log(a / (wide.width / wide.height))) ? tall : wide;
 }
 /** Fill the real collision rectangle; nine-slice preserves the molded frame thickness. */
 export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): boolean {
@@ -45,9 +48,10 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
   } else if (id === 'glass' && doorArt(z)) {
     // one-door window: the bottle door itself (tall or squat by aspect), cover-fit and clipped so the frame stays proportional
     const door = doorArt(z)!;
-    const s = Math.max(z.w / door.width, z.h / door.height), dw = door.width * s, dh = door.height * s;
+    const sx = z.w / door.width, sy = z.h / door.height, stretch = Math.max(sx, sy) / Math.min(sx, sy);
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 6); c.clip();
-    c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
+    if (stretch <= 1.7) c.drawImage(door, z.x, z.y, z.w, z.h); // whole door stretched across the one panel, frame intact
+    else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
