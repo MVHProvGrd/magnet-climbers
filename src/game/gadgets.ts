@@ -13,7 +13,7 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
 }
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
-  const angle = g.kind === "rotor" ? t * 0.95 : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
+  const angle = g.kind === "rotor" ? t * 0.95 : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
   const x = g.x + (g.kind === "swing" || g.kind === "clip" ? Math.sin(angle) * 45 : 0);
   const y = g.y + (g.kind === "swing" || g.kind === "clip" ? (1 - Math.cos(angle)) * 45 : 0);
   const active = g.kind === "polarity" && t % 6 >= 3;

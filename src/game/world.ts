@@ -1,5 +1,5 @@
 import { CFG, W } from "./config";
-import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
+import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
@@ -40,6 +40,33 @@ export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 export class World {
   gadgetTime = 0;
   segments: Segment[] = [];
+  /** cosmetic memory (v12): the last few paper cards and bumpers, so neighbouring doors do not repeat */
+  private recentPapers: string[] = [];
+  private recentBumpers: string[] = [];
+  private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
+  /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
+  stepGadgets(dt: number) {
+    for (const g of this.gadgets) {
+      const s = g.swing; if (!s) continue;
+      s.cool = Math.max(0, s.cool - dt);
+      s.vel += (-9.8 * Math.sin(s.angle) - 1.4 * s.vel) * dt;
+      s.angle += s.vel * dt;
+    }
+  }
+  /** Knock a swing: dir is the travel direction (sign of x velocity), strength 0..1. Capped at ±3 rad/s like the study. */
+  bumpGadget(id: string, dir: number, strength = 1) {
+    const g = this.gadgets.find((g) => g.id === id); const s = g?.swing; if (!s) return;
+    s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (dir || 1) * Math.max(0.25, strength)));
+    s.cool = 0.3;
+  }
+  /** A flying climber passing through the hanging charm knocks it (once per pass). */
+  knockSwings(p: Vec, vx: number) {
+    for (const g of this.gadgets) {
+      const s = g.swing; if (!s || s.cool > 0) continue;
+      const pose = gadgetPose(g, this.gadgetTime);
+      if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+    }
+  }
   rng: Rng;
   /** y of the top-most generated segment */
   private topY: number;
@@ -53,7 +80,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 11, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 12, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -157,8 +184,9 @@ export class World {
       case "window": {
         // big glass panel, metal only on the sides (or one side)
         // glass panel with a usable steel strip (≥ 56px) on at least one side
-        const gw = this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
-        const gx = this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
+        // v12: the window fills its door like the set pieces do (176 wide, 12 px in from the edge and the seam)
+        const gw = this.version >= 12 ? 176 : this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
+        const gx = this.version >= 12 ? (r() < 0.5 ? 12 : 212) : this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
         // a handle across the glass now and then, as a mid-way hold
         if (r() < 0.5) {
@@ -252,19 +280,25 @@ export class World {
       const bumperPool = this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
       if (this.version >= 3) {
         const used = new Set<string>([this.lastCardId]);
+        // v12: also avoid anything shown in the last few doors, so a big library actually reads as variety
+        for (const id of this.version >= 12 ? this.recentPapers : []) used.add(id);
         for (const zone of zones) {
           if (zone.kind !== "sticker") continue;
           let choice = pick(art, paperPool);
-          for (let k = 0; k < 6 && used.has(choice.id); k++) choice = pick(art, paperPool);
+          for (let k = 0; k < 10 && used.has(choice.id); k++) choice = pick(art, paperPool);
           used.add(choice.id);
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
+          this.remember(this.recentPapers, choice.id, 10);
         }
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
+      const usedBumpers = new Set<string>(this.version >= 12 ? this.recentBumpers : []);
       for (const bumper of bumpers) {
-        const item = pick(art, bumperPool);
+        let item = pick(art, bumperPool);
+        for (let k = 0; k < 10 && this.version >= 12 && usedBumpers.has(item.id); k++) item = pick(art, bumperPool);
+        usedBumpers.add(item.id); this.remember(this.recentBumpers, item.id, 8);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
       // set pieces: every third door before v7, every fifth since (they filled the doors and sat on the seams)
@@ -275,7 +309,9 @@ export class World {
         segment.bumpers = [];
         segment.gadgets = [0, 1].map((n) => {
           const theme = pick(art, [...THEMES]);
-          return { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+          const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+          if (kind === "swing" && this.version >= 12) g.swing = { angle: 0, vel: 0, cool: 0 };
+          return g;
         });
         if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }
       }

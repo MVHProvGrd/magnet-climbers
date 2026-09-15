@@ -333,6 +333,8 @@ export class Game {
     for (const o of this.climbers) {
       if (o.parent === c.id && o.state === "linked") this.detach(o);
     }
+    // kicking off a hanging gadget swings it the other way
+    for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -729,7 +731,7 @@ export class Game {
     this.time += dt;
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
-    if (this.phase === "running") this.world.gadgetTime += sdt;
+    if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }
@@ -768,7 +770,7 @@ export class Game {
     for (const c of this.climbers) c.handsAt = undefined;
     for (const c of this.climbers) {
       if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
-      if (c.state === "flying") this.stepFlying(c, sdt);
+      if (c.state === "flying") { this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx); }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
     }
@@ -1011,6 +1013,8 @@ export class Game {
     if (!contacts.length) return false;
     if ((flat || !braceLanding(c, this.world)) && !attachGrip(c, contacts, flat)) return false;
     settleGrip(c, this.world);
+    // grabbing a hanging gadget swings it in the direction you arrived
+    for (const k of c.grip!.contacts) if (k.carrierId) this.world.bumpGadget(k.carrierId, Math.sign(c.vx), Math.min(1, Math.abs(c.vx) / 300));
     c.state = "stuck";
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;
