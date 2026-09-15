@@ -171,9 +171,11 @@ export class World {
         // horizontal non-stick band across the full width. Tall bands need a chain ladder.
         // a solo jump clears ~250px of height; bands stay under that, and the tall ones
         // always carry a metal handle as a stepping stone
-        const bandH = rangeOf(r, 110, 150 + difficulty * 60);
-        const by = y + rangeOf(r, 40, h - bandH - 40);
+        let bandH = rangeOf(r, 110, 150 + difficulty * 60);
         const bandKind = pick(r, ["trim", "glass", "void"] as const);
+        // v12: a glass band is the wide bottle door at its own 2:1 proportions, so it is never shorter than 190
+        if (bandKind === "glass" && this.version >= 12) bandH = Math.max(bandH, 190);
+        const by = y + rangeOf(r, 40, h - bandH - 40);
         zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
         if (bandH > 165 || r() < 0.45) {
           const hw = rangeOf(r, 40, 70);
