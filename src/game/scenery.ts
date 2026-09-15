@@ -321,8 +321,10 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper, time = 0) {
   const hardware = objectArtById("swing-snack");
   if (photo && hardware && item.id.startsWith("bumper-")) { drawKeychainBumper(ctx, b, photo, hardware, time); return; }
   if (photo) {
+    // advertising magnets draw 1.5x their collider (the sliders are only 44-64 px wide): the hit stays in the middle
+    const k = 1.5, w = b.w * k, h = b.h * k, x = b.x + (b.w - w) / 2, y = b.y + (b.h - h) / 2;
     ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
-    drawDestination(ctx, photo, b.x, b.y, b.w, b.h); ctx.restore(); return;
+    drawDestination(ctx, photo, x, y, w, h); ctx.restore(); return;
   }
   if (item?.art != null && item.art >= 100) {
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.w / 100, b.h / 60);
