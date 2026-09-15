@@ -917,6 +917,14 @@ export class Game {
         c.vx += closest.dx / distance * force;
         c.vy += closest.dy / distance * force;
       }
+      // v13: no steel under the toy, so it slides down whatever it is on. Each material drags differently:
+      // ice lets it shoot, glass squeaks, plastic scrubs, paper nearly stops it.
+      const k = this.world.version >= 13 ? this.world.slideFriction(c.x, c.y) : undefined;
+      if (k != null) {
+        const f = Math.min(1, k * dt);
+        c.vx -= c.vx * f; if (c.vy > 0) c.vy -= c.vy * f * 0.75; c.spin -= c.spin * f;
+        if (k >= 1.8 && c.vy > 0) c.vy = Math.min(c.vy, k >= 3 ? 110 : 260); // paper and plastic cap the slide speed
+      }
     }
     // teammate grab: after apex, within reach of an anchored teammate with chain room.
     // Off by default: it made flings unpredictable. CLIMB is the deliberate way to chain.

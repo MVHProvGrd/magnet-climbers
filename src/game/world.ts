@@ -376,6 +376,23 @@ export class World {
     return segment;
   }
 
+  /** v13: how much a non-steel surface drags a toy sliding down it (per second). Undefined = nothing to slide on (open gap, bare steel).
+   * Ice barely slows anything, glass a little, plastic more, paper grips hardest. */
+  slideFriction(x: number, y: number): number | undefined {
+    for (const s of this.segments) {
+      if (y < s.y - 60 || y > s.y + s.h + 60) continue;
+      for (const z of s.zones) {
+        if (x < z.x || x > z.x + z.w || y < z.y || y > z.y + z.h) continue;
+        if (z.hue === -1 && z.kind === "void") return undefined; // metal island
+        if (z.itemId === "ice-tray") return 0.08;
+        if (z.kind === "glass" || z.kind === "repel") return 0.7;
+        if (z.kind === "trim") return 1.8;
+        if (z.kind === "sticker") return 3.6;
+        if (z.kind === "void") return undefined;
+      }
+    }
+    return undefined;
+  }
   /** Whether a point is on stickable stainless steel. */
   isMetal(x: number, y: number, pad = 0): boolean {
     if (x < -pad || x > W + pad) return false;
