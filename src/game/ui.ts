@@ -60,7 +60,6 @@ const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-const expeditionStars = (s: SaveData) => { const n = Object.values(s.expeditions).reduce((a, b) => a + b, 0); return n ? `★ ${n}` : ""; };
 const el = (tag: string, cls: string, html = "") => {
   const e = document.createElement(tag);
   e.className = cls;
@@ -74,7 +73,7 @@ export class Ui {
   private panel: HTMLElement | null = null;
   private panelCleanup: (() => void) | null = null;
   /** Only the title menu gets the animated kitchen; every other panel sits on a still frame so it stays smooth. */
-  get staticBackground() { return !!this.panel && !this.panel.classList.contains("menu"); }
+  get staticBackground() { return !!this.panel && !this.panel.classList.contains("home"); }
   private pauseBtn: HTMLButtonElement;
   private muteBtn: HTMLButtonElement;
 
@@ -138,6 +137,7 @@ export class Ui {
   /** Scale a panel so its whole content fits the screen (phone text/page zoom shrinks the viewport).
    * Reading panels that are meant to scroll only shrink a little; menus and dialogs shrink until they fit. */
   private fit(panel: HTMLElement) {
+    if (panel.classList.contains("home")) return; // full-bleed, positions itself
     const scroller = panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("how-to") || panel.classList.contains("board") || panel.classList.contains("chat");
     panel.style.zoom = "1"; panel.style.width = "";
     const vw = window.innerWidth, vh = window.innerHeight;
@@ -212,72 +212,63 @@ export class Ui {
   showMenu() {
     const s = this.save();
     if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
-    const p = el("div", "panel menu");
+    // No full-height panel: the title fridge is the background, a scrim carries the text (handoff 2a).
+    const p = el("div", "home");
+    const stars = Object.values(s.expeditions).reduce((a, b) => a + b, 0);
+    const icon = (a: string, art: string, text: string) =>
+      `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
     p.innerHTML = `
-      <div class="rail">
-        <button class="icon" data-a="settings" title="Settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
-        <span class="grow"></span>
-        <button class="icon" data-a="story" title="Story" aria-label="Story"><img src="${import.meta.env.BASE_URL}art/ui/story.webp" alt="" /></button>
-        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play"><img src="${import.meta.env.BASE_URL}art/ui/help.webp" alt="" /></button>
-        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard"><img src="${import.meta.env.BASE_URL}art/ui/board.webp" alt="" /></button>
+      <div class="home-top">
+        <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
+        <button class="wallet-chip" data-a="collection" aria-label="Creatures &amp; patterns">
+          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b><b class="star">★ ${groupNum(stars)}</b>
+        </button>
       </div>
-      <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
-      <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
-      <div class="stats">
-        <div><span>Stars</span><b>★ ${Object.values(s.expeditions).reduce((a, b) => a + b, 0)}</b></div>
-        <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
-        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Coins</span><b class="coin">$${s.coins}</b></button>
-        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
+      <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
+      <p class="home-tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
+      <div class="home-bottom">
+      <div class="home-icons">
+        ${icon("story", "story", "STORY")}
+        ${icon("board", "board", "BOARD")}
+        ${icon("tutorial", "help", "HOW TO")}
       </div>
-      <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, endless fridge, outrun the line.</small></button>
-      <button class="primary mode" data-a="expeditions"><b>EXPEDITIONS</b><small>Crew puzzles. No red line, a fling budget, three stars. ${expeditionStars(s)}</small></button>
-      <label class="switch-row ${s.chill ? "on" : ""}">
-        <span><b>😌 Chill mode</b><small>${s.chill ? "No red line, no rush. No coins or records; metres still count for the world." : "No red line. No coins or records; metres still count for the world."}</small></span>
-        <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i></i>
-      </label>
-      <div class="pair">
-        ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
-        <button data-a="collection">🎨 CREATURES</button>
+      <div class="home-dock">
+        <div class="home-modes">
+          <button class="mode-tile solo" data-a="solo">
+            <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
+            <i>BEST ${groupNum(s.bestSolo)} CM</i>
+          </button>
+          <button class="mode-tile exp" data-a="expeditions">
+            <b>EXPEDITIONS</b><small>Crew puzzles, a fling budget, three stars.</small>
+            <i>★ ${groupNum(stars)}</i>
+          </button>
+        </div>
+        <label class="home-row ${s.chill ? "on" : ""}">
+          <b class="chill">CHILL</b><small>no red line</small>
+          <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
+        </label>
+        <button class="home-row" data-a="collection">
+          <b>CREATURES</b>
+          <canvas class="home-creature" width="34" height="34" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>
+        </button>
       </div>
-      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>Global chat</i></span></button>` : ""}
-      <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
-      <p class="fine global" hidden></p>
-      <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
-      <p class="fine legal"><a href="${import.meta.env.BASE_URL}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${import.meta.env.BASE_URL}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${import.meta.env.BASE_URL}contact/" target="_blank" rel="noopener">Contact</a></p>
+      </div>
     `;
-    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines"), badge = p.querySelector<HTMLElement>(".chat-ticker .badge");
-    if (ticker) void chat.list(0).then((r) => {
-      if (!r || !p.isConnected) return;
-      const last = r.messages.slice(-2);
-      ticker.innerHTML = last.length ? last.map((m) => `<span><b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
-      const seen = chatSeen(); const unread = r.messages.filter((m) => m.id > seen).length;
-      if (badge && unread) { badge.textContent = unread > 99 ? "99+" : String(unread); badge.hidden = false; }
-    });
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
-      if (a === "crew") this.h.onPlay("crew");
       if (a === "expeditions") this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
-      if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
-      if (a === "chat") this.showChat();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
-      if (a === "update") this.h.onUpdate();
       if (a === "tutorial") this.showHowToPlay();
       if (a === "story") this.showStory(() => this.showMenu());
-      if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
-    if (leaderboardEnabled) {
-      void leaderboard.stats().then((st) => {
-        if (!st || this.panel !== p) return;
-        const g = p.querySelector<HTMLElement>(".global");
-        if (g) { const pl = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
-        g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
-      });
-    }
+    // the chat strip lives on the home screen too, with the same unread badge
+    this.setChatStripVisible(leaderboardEnabled);
+    this.startPreviews(p);
   }
 
   /** Animated preview canvases: one fake climber per card, idling on the fridge. */
