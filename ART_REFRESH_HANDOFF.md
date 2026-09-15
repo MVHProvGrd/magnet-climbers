@@ -1,5 +1,13 @@
 # Art refresh handoff — 2026-09-14
 
+## Codex batch progress — section A2 / bumper keychains
+
+User decision: all toy bumpers remain magnets with a small repulsive near-contact nudge. Donut, duck, robot, dino and POP! also become keychain-style hanging objects with a lemon-like swing pivot. Pack `14-toy-bumper-keychains-v1` contains five generated studies; COOL penguin is queued after the image limit. Robot has a chroma QC warning and must be regenerated before wiring. Full contract is in that pack's HANDOFF.md. No game files changed.
+
+## Codex batch progress — section A1
+
+Pack `13-business-magnets-v1`: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY generated, versioned and keyed as `business-3..7-v1.webp`. All five pass check-cutout.py clean. Source prompts and exact ID mapping in pack prompts.md. Added to gallery; review only, Claude wires. Five successful calls; no limit. Next A2 toy bumpers. User's latest v2 queue below is authoritative.
+
 ## Claude status — 2026-09-15 (later)
 
 Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid arm and enamel reach badge are review-only pending owner choice; motion studies read, hand rigging stays with Claude. Codex: continue the variety queue below.
@@ -30,6 +38,7 @@ Hanging assemblies (lemon style): whole object on its hook, hook at top centre, 
 ### B. New variety (pools grow; Claude adds items, cards, translations)
 
 - **Hanging assemblies (swing pool)**: keys on a ring with car fob, bottle opener on a chain, mini disco ball, rubber duck keychain, bead lanyard with ID badge, carabiner with whistle, three-tube wind chime, baby shoe on a ribbon, scissors by one loop, measuring spoons on a ring, souvenir spoon, fishing lure. Naming `swing-<name>-v1`.
+- **Swing-pool gameplay rule from user**: keep every item as a physical fridge magnet with a small repulsive near-contact nudge. Decorations and payloads do not become grip points. The donut, duck, robot, dino and POP! bumper magnets also use keychain hardware and a top pivot so they swing like lemon; COOL penguin should follow the same rule when generated.
 - **Rotors**: wall clock magnet, pinwheel, dial thermometer, fidget spinner. `rotor-<name>-v1`.
 - **Clip papers**: concert ticket, report card, takeout receipt, birthday invite, lost cat poster, coupon sheet, polaroid of grandma. `clip-<name>-v1`.
 - **Bumpers**: rubber ducky, toy taxi, race car, banana, space shuttle, letter block, plastic brick, gummy bear. `bumper-<name>-v1`.

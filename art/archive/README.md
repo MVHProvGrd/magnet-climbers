@@ -16,6 +16,10 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
+| `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | REVIEW ONLY; robot needs regeneration, Claude wires |
+
+| `13-business-magnets-v1/` | Section A1: plumber, noodles, library, school bus and bakery, business-3..7; all five cutouts pass cleanup checks | Codex built-in generation and repo chroma key | REVIEW ONLY; Claude wires |
+
 | `12-motion-studies-v1/` | Realistic kid arm, enamel reach badge, lemon pendulum and side/bottom swipe animation reviews. Interactive page /art-archive/motion-v1/ | Codex image generation and isolated review animation | enamel reach badge LIVE in `real-v1/pickups/reach.png`; kid arm LIVE in `real-v1/kid-arm.webp` (rigid hand about the wrist, forearm stretched along the drawn arm line, same hitbox) |
 
 | `10-reach-badge-v1/` | Reach pickup as a glossy blue button badge with a navy double-headed arrow (pack-01 badge meaning, physical style); replaces the tape measure | Claude, @napi-rs/canvas `render.mjs` | superseded by pack 12 enamel badge (owner pick) |

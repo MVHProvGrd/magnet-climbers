@@ -1,0 +1,67 @@
+[
+  {
+    "file": "ready/business-3-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/business-4-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/business-5-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/business-6-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/business-7-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  }
+]
