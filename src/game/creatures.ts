@@ -148,8 +148,17 @@ function lighten(hex: string, amount = 0.55): string {
 
 /** Renderer-facing appearance for a climber: the renderer takes resolved colours, not ids. */
 export interface CreatureAppearance { creatureId?: string; color?: string; accent?: string; marking?: "plain" | "spots" | "stripes" }
+/** Resolved appearances are pure and few; the render loop asks for the same ones every frame. */
+const appearanceCache = new Map<string, CreatureAppearance>();
 export function appearanceFor(c: { creature?: string; pattern?: string; color: string }): CreatureAppearance {
+  const key = `${c.creature ?? ""}|${c.pattern ?? ""}|${c.color}`;
+  const hit = appearanceCache.get(key);
+  if (hit) return hit;
   const creatureId = !c.creature || c.creature === "toy" ? "human" : c.creature;
   const pattern = c.pattern ? patternById(c.pattern) : null;
-  return { creatureId, color: c.color, accent: pattern?.accent ?? lighten(c.color), marking: pattern?.marking ?? "plain" };
+  // Treated as read-only by every caller (the renderer resolves colours, it does not own them).
+  const out: CreatureAppearance = { creatureId, color: c.color, accent: pattern?.accent ?? lighten(c.color), marking: pattern?.marking ?? "plain" };
+  if (appearanceCache.size > 256) appearanceCache.clear();
+  appearanceCache.set(key, out);
+  return out;
 }

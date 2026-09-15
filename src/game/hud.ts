@@ -94,7 +94,12 @@ export const inDanger = (g: Game) => !g.chill && !g.level && g.phase === "runnin
 
 /* ------------------------------------------------------------------ crew tiles */
 
-/** One cached offscreen avatar per climber id; creature/pattern changes bust the key. */
+/**
+ * One cached offscreen tile per climber id: the slab, the rounded crop and the avatar are
+ * all baked in, so a frame costs one drawImage per tile instead of a fill, a clip and a
+ * stroke per tile. Clipping per climber per frame is exactly the cost the crew complains
+ * about, and it scales with how many toys are out.
+ */
 const avatars = new Map<number, { key: string; canvas: HTMLCanvasElement }>();
 function avatarFor(c: Climber, w: number, h: number): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
@@ -107,6 +112,11 @@ function avatarFor(c: Climber, w: number, h: number): HTMLCanvasElement | null {
   const g2 = canvas.getContext("2d");
   if (!g2) return null;
   g2.scale(dpr, dpr);
+  // the slab and its rounded crop are baked here, once, rather than clipped every frame
+  roundRect(g2, 0, 0, w, h, 12);
+  g2.fillStyle = "rgba(20,22,28,.7)";
+  g2.fill();
+  g2.clip();
   // a still, upright copy of this climber: the tile is an identity badge, not an animation
   const pose: Climber = {
     ...c, id: -1 - c.id, x: w / 2, y: h * 0.62, vx: 0, vy: 0, angle: 0, spin: 0,
@@ -159,24 +169,23 @@ function drawCrew(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     const sel = c.id === g.selectedId;
     const w = sel ? TILE.sel.w : TILE.w, h = sel ? TILE.sel.h : TILE.h;
     const x = dot.x - w / 2, y = d.y - 8 - h - (sel ? TILE.lift : 0);
-    ctx.save();
-    ctx.fillStyle = "rgba(20,22,28,.7)";
-    roundRect(ctx, x, y, w, h, 12); ctx.fill();
-    ctx.save(); roundRect(ctx, x, y, w, h, 12); ctx.clip();
+    // one blit: slab, rounded crop and avatar are already baked into the tile
     const av = avatarFor(c, w, h);
     if (av) ctx.drawImage(av, x, y, w, h);
-    else { ctx.fillStyle = c.color; ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.45, w * 0.26, 0, Math.PI * 2); ctx.fill(); }
-    // hp bar along the bottom: partial width = hearts lost
+    else {
+      ctx.save(); ctx.fillStyle = "rgba(20,22,28,.7)"; roundRect(ctx, x, y, w, h, 12); ctx.fill();
+      ctx.fillStyle = c.color; ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.45, w * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    // live state on top, as flat rects and text: no clip, no rounded path per frame
     const bar = 3;
-    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(x, y + h - bar, w, bar);
-    ctx.fillStyle = "#ff5c8a"; ctx.fillRect(x, y + h - bar, w * Math.max(0, Math.min(1, c.hp / CFG.maxHp)), bar);
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(x + 2, y + h - bar, w - 4, bar);
+    ctx.fillStyle = "#ff5c8a"; ctx.fillRect(x + 2, y + h - bar, (w - 4) * Math.max(0, Math.min(1, c.hp / CFG.maxHp)), bar);
     if (g.isLadder(c)) {
-      ctx.fillStyle = "rgba(20,22,28,.85)"; ctx.fillRect(x, y, w, 12);
+      ctx.fillStyle = "rgba(20,22,28,.85)"; ctx.fillRect(x + 2, y + 2, w - 4, 12);
       ctx.font = font(800, 9); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.letterSpacing = "0.4px";
-      ctx.fillText(tr("LADDER"), x + w / 2, y + 9);
+      ctx.fillText(tr("LADDER"), x + w / 2, y + 11);
       ctx.letterSpacing = "0px";
     }
-    ctx.restore();
     if (sel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; roundRect(ctx, x + 1, y + 1, w - 2, h - 2, 11); ctx.stroke(); }
     if (c.state === "flying") {
       ctx.font = font(900, 14); ctx.fillStyle = "#fff"; ctx.textAlign = "right";
@@ -231,6 +240,28 @@ function chip(ctx: CanvasRenderingContext2D, x: number, y: number, text: string,
 
 /* ------------------------------------------------------------------ the dock */
 
+/** The slab and its drop shadow never change within a state; bake them once and blit. */
+let slabCache: { key: string; canvas: HTMLCanvasElement; pad: number } | null = null;
+function slabFor(w: number, h: number, danger: boolean): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const dpr = Math.min(3, (typeof devicePixelRatio === "number" ? devicePixelRatio : 1) || 1);
+  const key = `${w}x${h}|${danger}|${dpr}`;
+  if (slabCache?.key === key) return slabCache.canvas;
+  const pad = 40;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil((w + pad * 2) * dpr); canvas.height = Math.ceil((h + pad * 2) * dpr);
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  c.scale(dpr, dpr);
+  c.shadowColor = danger ? "rgba(255,80,110,.6)" : "rgba(0,0,0,.35)";
+  c.shadowBlur = danger ? 24 : 30; c.shadowOffsetY = danger ? 0 : 10;
+  c.fillStyle = SLAB; roundRect(c, pad, pad, w, h, 18); c.fill();
+  c.shadowColor = "transparent"; c.shadowBlur = 0; c.shadowOffsetY = 0;
+  c.fillStyle = "rgba(255,255,255,.12)"; c.fillRect(pad, pad, w, 1);
+  slabCache = { key, canvas, pad };
+  return canvas;
+}
+
 export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
   const d = dockRect(viewH), cells = cellRects(viewH);
   const danger = inDanger(g);
@@ -244,16 +275,14 @@ export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, 
     ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.scale(k, k); ctx.translate(-(d.x + d.w / 2), -(d.y + d.h / 2));
   }
 
-  // slab
-  ctx.save();
-  ctx.shadowColor = danger ? "rgba(255,80,110,.6)" : "rgba(0,0,0,.35)";
-  ctx.shadowBlur = danger ? 24 : 30; ctx.shadowOffsetY = danger ? 0 : 10;
-  ctx.fillStyle = SLAB; roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.fill();
-  ctx.restore();
-  // top highlight
-  ctx.save(); roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.clip();
-  ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(d.x, d.y, d.w, 1);
-  ctx.restore();
+  // slab: one blit of a pre-rendered shadow instead of a blur pass every frame
+  const slab = slabFor(d.w, d.h, danger);
+  if (slab) {
+    const pad = slabCache!.pad;
+    ctx.drawImage(slab, d.x - pad, d.y - pad, d.w + pad * 2, d.h + pad * 2);
+  } else {
+    ctx.fillStyle = SLAB; roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.fill();
+  }
 
   /* cell 1 — height, or the charge meter while a drag is held */
   const c1 = cells[0];

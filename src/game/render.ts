@@ -146,12 +146,14 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
   const visible = g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
-  for (const c of visible) drawClimberShadow(ctx, c, g.time, appearanceFor(c));
-  for (const c of visible) {
+  // one resolve per climber, shared by the shadow pass and the body pass
+  const looks = visible.map((c) => appearanceFor(c));
+  for (let i = 0; i < visible.length; i++) drawClimberShadow(ctx, visible[i], g.time, looks[i]);
+  for (const [i, c] of visible.entries()) {
     const flicker = c.iframes > 0 && Math.floor(g.time * 18) % 2 === 0;
     // Hit flash: a white halo without a blur pass.
     if (flicker) { ctx.shadowColor = "rgba(255,255,255,0.9)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 1.5; }
-    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, appearanceFor(c));
+    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, looks[i]);
     ctx.shadowBlur = 0; ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
     // hp pips above the head, only once someone has taken a hit

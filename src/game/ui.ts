@@ -44,6 +44,8 @@ export interface UiHandlers {
   onOpenBoard(): void;
   onEnterCode(code: string): void;
   onTutorial(): void;
+  /** Frame-time report for on-device performance QA (see main.ts perfReport). */
+  onPerf(): unknown;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
   /** Global chat send; resolves to an error string or null on success. */
@@ -127,7 +129,10 @@ export class Ui {
         panel.classList.add("has-arrow");
       }
       // scrolling panels lose their bottom button; the arrow replaces it
-      if (panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("expeditions") || panel.classList.contains("how-to")) exit.hidden = true;
+      // Scrolling panels used to lose their bottom BACK button because the floating arrow
+      // replaced it. A shell panel's exit IS its header back button, so hiding it leaves
+      // the panel with no way out but the backdrop.
+      if (!ownsBack && (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("expeditions"))) exit.hidden = true;
     }
     translateTree(panel);
     this.root.appendChild(panel);
@@ -529,6 +534,9 @@ export class Ui {
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
+        <p class="sec-label">Performance</p>
+        ${row("Frame times", "Last 600 frames of the most recent run, split into simulation and drawing.", chip("perf", "SHOW"))}
+        <pre class="perf-out" hidden></pre>
       </div>
       <span class="shell-fade"></span>
       <div class="shell-foot">
@@ -540,6 +548,11 @@ export class Ui {
       const a = t.dataset.a;
       if (a === "collection") { this.showCollection(); return; }
       if (a === "update") { this.h.onUpdate(); return; }
+      if (a === "perf") {
+        const out = p.querySelector<HTMLElement>(".perf-out");
+        if (out) { out.textContent = JSON.stringify(this.h.onPerf(), null, 1); out.hidden = false; }
+        return;
+      }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }

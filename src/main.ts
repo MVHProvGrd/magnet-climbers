@@ -286,6 +286,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
+  onPerf: () => perfReport(),
   onShare: (c) => {
     const go = () => void shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId }).then((r) => {
       if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
