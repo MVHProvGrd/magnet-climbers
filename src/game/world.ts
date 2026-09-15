@@ -211,8 +211,9 @@ export class World {
         const gw = this.version >= 12 ? 176 : this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
         const gx = this.version >= 12 ? (r() < 0.5 ? 12 : 212) : this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
-        // a handle across the glass now and then, as a mid-way hold
-        if (r() < 0.5) {
+        // a handle across the glass now and then, as a mid-way hold (dropped in v13: nothing bolts to a glass door;
+        // since v8 the window sits on one door and the other door is the lane)
+        if (r() < 0.5 && this.version < 13) {
           const hw = rangeOf(r, 50, 80);
           zones.push({ x: gx + rangeOf(r, 10, gw - hw - 10), y: y + rangeOf(r, 90, h - 120), w: hw, h: 24, kind: "void", hue: -1 });
         }
