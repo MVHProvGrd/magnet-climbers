@@ -49,7 +49,8 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     const door = doorArt(z)!;
     const sx = z.w / door.width, sy = z.h / door.height, stretch = Math.max(sx, sy) / Math.min(sx, sy);
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 6); c.clip();
-    if (stretch <= 2) c.drawImage(door, z.x, z.y, z.w, z.h); // whole door stretched across the panel or band, frame intact
+    // full-width bands always show the whole door (owner's call); one-door windows crop only past a 2x stretch
+    if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
