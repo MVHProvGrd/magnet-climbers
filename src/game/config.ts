@@ -22,13 +22,16 @@ export const CFG = {
   climberRadius: 18,
   /** floor (danger line) speed in px/s at height 0 and growth per 1000px climbed */
   floorBase: 22,
-  /** stepped ramp: +15% per 50cm, capped at 2.5x base */
+  /** stepped ramp: +15% per 50cm, capped at 5x base (about two thirds of a clean climbing pace) */
   floorStepCm: 50,
   floorStepMult: 0.15,
-  floorCapMult: 3.5,
+  floorCapMult: 5,
   /** catch-up: if the lowest climber is more than this many px above the wall, the wall hurries */
-  floorCatchupGap: 900,
+  floorCatchupGap: 500,
   floorCatchupMult: 2.2,
+  /** time creep: +2% per 10 s of running time on top of the height ramp (dithering costs), capped at 2x */
+  floorCreepPer10s: 0.02,
+  floorCreepCap: 2,
   floorStartOffset: 320,
   powerRadius: 36,
   bumperKnock: 420,

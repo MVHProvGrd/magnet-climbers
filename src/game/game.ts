@@ -19,6 +19,7 @@ export interface RunSnapshot {
   seed: number;
   worldVersion?: number;
   gadgetTime?: number;
+  runTime?: number;
   feats?: RunFeats;
   tricks?: TrickState;
   hand?: Omit<KidHand, "hit"> & { hit: number[] };
@@ -654,10 +655,13 @@ export class Game {
   }
 
   /** Stepped ramp per 50cm, capped, with a catch-up nudge when the crew is far ahead. */
+  /** seconds the run has actually been running (idle aiming before the first fling does not count) */
+  runTime = 0;
   wallSpeed(): number {
     if (this.chill) return 0;
     const steps = Math.floor(this.heightCm / CFG.floorStepCm);
     let mult = Math.min(CFG.floorCapMult, 1 + steps * CFG.floorStepMult);
+    mult *= Math.min(CFG.floorCreepCap, 1 + CFG.floorCreepPer10s * (this.runTime / 10));
     const alive = this.alive;
     if (alive.length) {
       const lowest = Math.max(...alive.map((c) => c.y));
@@ -675,7 +679,7 @@ export class Game {
       seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx, by: b.y, vy: b.vy }));
     }
     return {
-      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated,
+      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated, runTime: this.runTime,
       climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip), ragdoll: cloneRagdoll(c.ragdoll) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,
@@ -692,7 +696,7 @@ export class Game {
     const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, lineup, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
     if (snap.feats) g.feats = { ...g.feats, ...snap.feats };
     g.world.generateTo(snap.generated);
-    g.world.gadgetTime = snap.gadgetTime ?? 0;
+    g.world.gadgetTime = snap.gadgetTime ?? 0; g.runTime = snap.runTime ?? 0;
     g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();
     if (!snap.tricks) g.tricks.frontierY = snap.highestY;
     for (const seg of g.world.segments) {
@@ -737,7 +741,7 @@ export class Game {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }
 
-    if (this.phase === "running") this.floorY -= this.wallSpeed() * sdt;
+    if (this.phase === "running") { this.runTime += sdt; this.floorY -= this.wallSpeed() * sdt; }
     if (this.chill) this.floorY = this.camY + this.viewH + 1e6;
 
     if (this.pendingLaunches.length) {
