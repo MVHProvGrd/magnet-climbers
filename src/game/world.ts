@@ -287,8 +287,9 @@ export class World {
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
-      const bw = rangeOf(r, 44, 64);
-      const bh = 34;
+      // v13: sliders are real advertising magnets, drawn at collider size, so the collider is magnet-sized
+      const bw = this.version >= 13 ? rangeOf(r, 72, 100) : rangeOf(r, 44, 64);
+      const bh = this.version >= 13 ? 48 : 34;
       const by = y + rangeOf(r, 30, h - 60);
       const speed = rangeOf(r, 60, 90 + difficulty * 120) * (r() < 0.5 ? 1 : -1);
       // motion: sideways early; lifts and zig-zags appear as difficulty rises
