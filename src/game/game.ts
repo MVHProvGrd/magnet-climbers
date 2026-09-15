@@ -121,6 +121,8 @@ export class Game {
   walletCoins = 0;
   walletGems = 0;
   particles: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [];
+  /** a candy drop on its way down to the kid: cosmetic, it tumbles to the red line and vanishes */
+  drops: { x: number; y: number; vx: number; vy: number; spin: number }[] = [];
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
@@ -829,6 +831,12 @@ export class Game {
 
     // particles / floats
     for (const p of this.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; }
+    // the candy tumbles down to the red line (the kid), bouncing off the door edges on the way
+    for (const d of this.drops) {
+      d.x += d.vx * dt; d.y += d.vy * dt; d.vy = Math.min(900, d.vy + 900 * dt); d.spin += (d.vx > 0 ? 6 : -6) * dt;
+      if (d.x < 16 || d.x > W - 16) { d.vx = -d.vx * 0.7; d.x = Math.max(16, Math.min(W - 16, d.x)); }
+    }
+    this.drops = this.drops.filter((d) => d.y < this.floorY + 20 && d.y < this.camY + this.viewH + 200);
     this.particles = this.particles.filter((p) => p.life > 0);
     for (const f of this.floats) { f.y -= 40 * dt; f.life -= dt; }
     this.floats = this.floats.filter((f) => f.life > 0);
@@ -1223,7 +1231,8 @@ export class Game {
       case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
       case "magnet": this.effects.superMagnet = d.superMagnet; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
       case "slowmo": this.effects.slowmo = d.slowmo; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
-      case "candy": this.effects.candy = d.candy; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" }); break;
+      case "candy": this.effects.candy = d.candy; sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });
+        this.drops.push({ x: p.x, y: p.y, vx: (this.simNoise(p.x) - 0.5) * 120, vy: -120, spin: 0 }); break;
       case "heart": {
         const healed = c.hp < CFG.maxHp;
         c.hp = Math.min(CFG.maxHp, c.hp + 1);

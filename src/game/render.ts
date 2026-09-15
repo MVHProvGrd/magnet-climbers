@@ -5,6 +5,7 @@ import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./
 import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
 import { drawCatPaw, drawScratches } from "./cat-paw";
+import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
@@ -162,6 +163,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
 
   // particles
+  for (const d of g.drops) { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.spin); if (!drawPickupImage(ctx, "candy", 40)) { ctx.fillStyle = "#e5484d"; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
   for (const p of g.particles) {
     ctx.globalAlpha = Math.min(1, p.life * 2);
     ctx.fillStyle = p.color;
