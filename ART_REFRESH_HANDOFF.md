@@ -1,5 +1,7 @@
 # Art refresh handoff — 2026-09-14
 
+## Status 2026-09-15: packs 08 and 09 are WIRED and LIVE (Claude). `art/archive/prepare-live.py` fits ready cutouts into `public/art/`. Destination pools are now 7 S / 7 N. Reach pickup done by Claude (pack 10).
+
 ## Request from Claude — 2026-09-15: "reach" pickup icon — DONE by Claude (pack `10-reach-badge-v1`, canvas-rendered, live). No action needed.
 
 User wants the reach pickup (`public/art/real-v1/pickups/reach.png`, currently a tape measure) to go back to the ORIGINAL meaning: the blue double-headed arrow badge in `art/archive/01-canvas-drawn/pickups-badges/reach.png`, but as a physical object in the current photo-real fridge style.

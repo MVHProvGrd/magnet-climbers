@@ -18,9 +18,9 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | `10-reach-badge-v1/` | Reach pickup as a glossy blue button badge with a navy double-headed arrow (pack-01 badge meaning, physical style); replaces the tape measure | Claude, @napi-rs/canvas `render.mjs` | LIVE in `real-v1/pickups/reach.png` |
 
-| `09-balanced-travel-v1/` | Six new destination souvenirs: Tahiti, Seychelles, Cape Town, Rio (S), Edinburgh and Lapland (N); combined collection 7 S / 7 N. Cape Town v2 preferred; v1 retained for history | Codex built-in generation and magenta keying | REVIEW ONLY; not game-wired |
+| `09-balanced-travel-v1/` | Six new destination souvenirs: Tahiti, Seychelles, Cape Town, Rio (S), Edinburgh and Lapland (N); combined collection 7 S / 7 N. Cape Town v2 preferred; v1 retained for history | Codex built-in generation and magenta keying | LIVE: all six in `public/art/destinations/` via `prepare-live.py` (Cape Town v2) |
 
-| `08-tactile-refresh-v1/` | Realistic pizza and dentist advertising magnets, handwritten grocery paper; immutable magenta sources and transparent WebP cutouts | Codex built-in generation; existing chroma-cut script | REVIEW ONLY; see ART_REFRESH_HANDOFF.md |
+| `08-tactile-refresh-v1/` | Realistic pizza and dentist advertising magnets, handwritten grocery paper; immutable magenta sources and transparent WebP cutouts | Codex built-in generation; existing chroma-cut script | LIVE: dentist/pizza/vet as `public/art/business/business-0..2.webp`, grocery as `public/art/paper/paper-8.webp` via `prepare-live.py` |
 
 - Pickups load from `public/art/pickups/<kind>.png` (`src/game/pickup-art.ts`). Drop a set there; missing files fall back to the canvas drawing.
 - Obstacles load from `public/art/real-v1/obstacles/<id>.png` (`src/game/obstacle-art.ts`). Remove a file, or add its id to `NO_PHOTO` there, to fall back to the canvas drawing.

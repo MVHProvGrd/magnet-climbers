@@ -71,6 +71,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N 极纪念磁贴", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "标着 N 的冰箱纪念磁贴。红色磁场推开空中的攀登者；弧线越宽推力越大。大的就是弹弓。",
   "S Souvenir Magnet": "S 极纪念磁贴", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "标着 S 的冰箱纪念磁贴。蓝色磁场远距离把空中的攀登者拉过来，表面能接住你。瞄准点在它弯曲你飞行的地方会变蓝。",
   "Fiji (S)": "斐济 (S)", "Hawaii (S)": "夏威夷 (S)", "Bali (S)": "巴厘岛 (S)", "Norway (N)": "挪威 (N)", "Alaska (N)": "阿拉斯加 (N)", "Iceland (N)": "冰岛 (N)", "Jūrmala (N)": "尤尔马拉 (N)", "Kyiv (N)": "基辅 (N)",
+  "Tahiti (S)": "塔希提 (S)", "Seychelles (S)": "塞舌尔 (S)", "Cape Town (S)": "开普敦 (S)", "Rio (S)": "里约 (S)", "Edinburgh (N)": "爱丁堡 (N)", "Lapland (N)": "拉普兰 (N)",
   "Glass Panel": "玻璃板", "Glass blocks catches. Use steel at the sides or a silver handle across it.": "玻璃吸不住。用两侧的钢板或横跨的银色把手。",
   "Plastic Trim": "塑料饰条", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "塑料没有磁力。飞过去，或者用金属小岛。",
   "Door Gap": "门缝", "Nothing to stick to here. Fling across or land on a metal handle.": "这里没东西可吸。甩过去或落在金属把手上。",

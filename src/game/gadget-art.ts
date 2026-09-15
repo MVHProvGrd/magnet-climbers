@@ -21,7 +21,12 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   loadImage("art/gadgets/compass-needle.webp", (image) => setObjectArt("compass-needle", image)),
   loadImage("art/gadgets/crayon.webp", (image) => setObjectArt("crayon", image)),
   loadImage("art/gadgets/candy-pole.webp", (image) => setObjectArt("candy-pole", image)),
+  // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
+  ...["business-0", "business-1", "business-2"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
+  loadImage("art/paper/paper-8.webp", (image) => setObjectArt("paper-8", image)),
 ]);
+/** Photographic object art by item id (bumpers, paper). */
+export const objectArtById = (id: string) => objectArt.get(id);
 function plate(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, radius = 5) {
   ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill();
 }

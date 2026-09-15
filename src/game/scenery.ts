@@ -4,7 +4,7 @@ import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
-import { destinationArtFor, destinationArtById, drawDestination } from "./gadget-art";
+import { destinationArtFor, destinationArtById, drawDestination, objectArtById } from "./gadget-art";
 import { drawPickupImage } from "./pickup-art";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
@@ -131,6 +131,15 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   const w = z.w, h = z.h;
   const variant = fridgeItem(z.itemId)?.art ?? artVariant(z.x, z.y, seed ^ (z.hue ?? 0), 12);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
+  const photo = z.kind === "sticker" && z.itemId ? objectArtById(z.itemId) : undefined;
+  if (photo) {
+    const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
+    const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
+    const s = Math.max(w / iw, h / ih) * 1.04, dw = iw * s, dh = ih * s;
+    box(ctx, 0, 0, w, h, "#f6efdd");
+    ctx.drawImage(photo, (w - dw) / 2, Math.min(0, -(dh - h) * 0.15), dw, dh);
+    ctx.restore(); return;
+  }
   if (z.kind === "sticker") {
     const note = variant >= 8 && variant < 12;
     box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
@@ -249,6 +258,11 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 
 export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
   const item = fridgeItem(b.itemId);
+  const photo = item && objectArtById(item.id);
+  if (photo) {
+    ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+    drawDestination(ctx, photo, b.x, b.y, b.w, b.h); ctx.restore(); return;
+  }
   if (item?.art != null && item.art >= 100) {
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.w / 100, b.h / 60);
     ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
