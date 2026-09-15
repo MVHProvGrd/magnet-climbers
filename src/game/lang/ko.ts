@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "높이", "RED LINE": "레드 라인", "MODE": "모드", "CHILL": "휴식", "HOW TO": "플레이 방법", "STORY": "이야기", "BOARD": "순위표", "BANKED": "적립됨", "CLIMB AGAIN": "다시 오르기", "REVIVE THE CREW": "팀 부활", "TRY IT": "해보기", "online": "온라인",
+
   "Settings": "설정", "Fridge field guide": "냉장고 도감", "Global chat": "전체 채팅", "Story": "이야기",
   "How to play": "게임 방법", "Scoreboard": "순위표",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "고무 자석 인형을 끝없는 냉장고 위로 날려요. 철에 붙고, 아이한테서 도망치세요.",

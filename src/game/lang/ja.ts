@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "たかさ", "RED LINE": "レッドライン", "MODE": "モード", "CHILL": "のんびり", "HOW TO": "あそびかた", "STORY": "ストーリー", "BOARD": "ランキング", "BANKED": "かくとく", "CLIMB AGAIN": "もういちど", "REVIVE THE CREW": "なかまをふっかつ", "TRY IT": "ためす", "online": "オンライン",
+
   "Settings": "設定", "Fridge field guide": "冷蔵庫図鑑", "Global chat": "グローバルチャット", "Story": "ストーリー",
   "How to play": "遊び方", "Scoreboard": "ランキング",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "ゴムのマグネット人形を果てしない冷蔵庫へ飛ばそう。鉄にくっつき、子どもから逃げろ。",

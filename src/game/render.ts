@@ -8,7 +8,7 @@ import { drawCatPaw, drawScratches } from "./cat-paw";
 import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
-import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom } from "./hud";
+import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
 
 
 let lastRenderTime = 0;
@@ -172,7 +172,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
   ctx.globalAlpha = 1;
 
-  // floor / danger line: the kid's reach, rendered as a rising shadow (absent in chill)
+  // floor / danger line: Cooper's reach, rendered as a rising shadow (absent in chill)
   const fy = g.floorY;
   if (g.chill) { /* no wall */ } else {
   const grad = ctx.createLinearGradient(0, fy - 60, 0, fy + 40);
@@ -183,7 +183,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.strokeStyle = "rgba(255,80,110,0.9)";
   ctx.lineWidth = 3;
   ctx.setLineDash([10, 8]);
-  ctx.lineDashOffset = -g.time * 40;
+  // marching dashes are motion; reduced-motion keeps the red line, drops the march
+  ctx.lineDashOffset = prefersReducedMotion() ? 0 : -g.time * 40;
   ctx.beginPath();
   ctx.moveTo(0, fy);
   ctx.lineTo(W, fy);

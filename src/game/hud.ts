@@ -32,6 +32,16 @@ const DOCK_H = 84, DOCK_X = 12, DOCK_W = W - 24;
 /** Cells are grid 1.2fr 1fr 1fr across the dock's inner width. */
 const CELLS = [1.2, 1, 1];
 
+/** Queried once and kept fresh by the listener; matchMedia per frame is a style read per frame. */
+let reducedMotion = false;
+if (typeof matchMedia === "function") {
+  const mq = matchMedia("(prefers-reduced-motion: reduce)");
+  reducedMotion = mq.matches;
+  mq.addEventListener?.("change", (e) => { reducedMotion = e.matches; });
+}
+/** Throb, blink and dash marching are off under reduced motion; colour changes stay. */
+export const prefersReducedMotion = () => reducedMotion;
+
 let safeBottom = 28;
 export function setHudSafeBottom(px: number) { safeBottom = Math.max(28, px); }
 /** Raised when the chat strip is showing, so the dock clears it (handoff 1a). */
@@ -225,7 +235,7 @@ function chip(ctx: CanvasRenderingContext2D, x: number, y: number, text: string,
 export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
   const d = dockRect(viewH), cells = cellRects(viewH);
   const danger = inDanger(g);
-  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = reducedMotion;
 
   ctx.save();
   ctx.textBaseline = "alphabetic";

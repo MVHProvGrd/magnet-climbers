@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "HAUTEUR", "RED LINE": "LIGNE ROUGE", "MODE": "MODE", "CHILL": "CALME", "HOW TO": "COMMENT", "STORY": "HISTOIRE", "BOARD": "CLASSEMENT", "BANKED": "ENCAISSÉ", "CLIMB AGAIN": "REGRIMPER", "REVIVE THE CREW": "RANIMER L'ÉQUIPE", "TRY IT": "ESSAYER", "online": "en ligne",
+
   "Settings": "Réglages", "Fridge field guide": "Guide du frigo", "Global chat": "Chat mondial", "Story": "Histoire",
   "How to play": "Comment jouer", "Scoreboard": "Classement",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "Catapultez des bonshommes aimantés sur un frigo sans fin. Collez à l'acier. Semez l'enfant.",

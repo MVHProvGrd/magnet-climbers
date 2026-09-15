@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "ВЫСОТА", "RED LINE": "КРАСНАЯ ЛИНИЯ", "MODE": "РЕЖИМ", "CHILL": "СПОКОЙНО", "HOW TO": "КАК ИГРАТЬ", "STORY": "ИСТОРИЯ", "BOARD": "РЕКОРДЫ", "BANKED": "ЗАЧИСЛЕНО", "CLIMB AGAIN": "СНОВА ВВЕРХ", "REVIVE THE CREW": "ОЖИВИТЬ КОМАНДУ", "TRY IT": "ПОПРОБОВАТЬ", "online": "в сети",
+
   // menu
   "Settings": "Настройки", "Fridge field guide": "Справочник холодильника", "Global chat": "Общий чат", "Story": "История",
   "How to play": "Как играть", "Scoreboard": "Таблица рекордов",

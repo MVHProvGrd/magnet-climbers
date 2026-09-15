@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "高度", "RED LINE": "紅線", "MODE": "模式", "CHILL": "悠閒", "HOW TO": "玩法", "STORY": "故事", "BOARD": "排行榜", "BANKED": "已入帳", "CLIMB AGAIN": "再爬一次", "REVIVE THE CREW": "復活隊伍", "TRY IT": "試試看", "online": "在線",
+
   "Settings": "設定", "Fridge field guide": "冰箱圖鑑", "Global chat": "全球聊天", "Story": "故事",
   "How to play": "玩法", "Scoreboard": "排行榜",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "把橡膠磁鐵小人甩上無盡的冰箱。吸住鋼板，甩開小孩。",

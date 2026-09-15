@@ -189,6 +189,7 @@ export class Ui {
     el.setAttribute("aria-label", t("Global chat"));
     el.innerHTML = `<span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>${t("Global chat")}</i></span>`;
     el.addEventListener("click", () => this.showChat());
+    translateTree(el);
     this.root.appendChild(el);
     this.chatStrip = el;
     // the dock rides 74 px up instead of 34 so it clears the strip
