@@ -157,7 +157,7 @@ export const exact: Record<string, string> = {
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ Вот и всё. Командный режим бросает всех разом. Вперёд.",
   // HUD (canvas)
   "nothing to hold there": "там не за что держаться", "LADDER": "ЛЕСТНИЦА", "BEST BEATEN ✓": "РЕКОРД ПОБИТ ✓", "😌 CHILL": "😌 СПОКОЙНО",
-  "FLING": "БРОСОК", "CLIMB": "ЛЕЗТЬ", "SYNC ON": "СИНХРОН ВКЛ", "SYNC": "СИНХРОН", "◎ RECENTER": "◎ ЦЕНТР",
+  "FLING": "БРОСОК", "CLIMB": "ЛЕЗТЬ", "SYNC ON": "СИНХРОН ВКЛ", "SYNC": "СИНХРОН",
   "Drag back anywhere, release to fling.": "Потяните назад в любом месте, отпустите — бросок.", "Stick to steel. Outrun the red line.": "Липните к стали. Убегайте от красной линии.",
   "Drag back from a climber, release to fling.": "Потяните от альпиниста, отпустите — бросок.",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "СИНХРОН бросает всю команду. ЛЕЗТЬ — ползти к товарищу.",

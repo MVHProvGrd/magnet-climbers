@@ -142,7 +142,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 빨간 선은 아이 손이 닿는 높이. 높이 갈수록 빨리 올라와요. 멈추지 마세요.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 끝! 팀 모드는 모두를 한 번에 던져요. 올라가세요.",
   "nothing to hold there": "거긴 잡을 게 없어요", "LADDER": "사다리", "BEST BEATEN ✓": "기록 경신 ✓", "😌 CHILL": "😌 느긋",
-  "FLING": "던지기", "CLIMB": "기어오르기", "SYNC ON": "동시 켬", "SYNC": "동시", "◎ RECENTER": "◎ 가운데로",
+  "FLING": "던지기", "CLIMB": "기어오르기", "SYNC ON": "동시 켬", "SYNC": "동시",
   "Drag back anywhere, release to fling.": "아무 데서나 뒤로 당기고 놓으면 던져요.", "Stick to steel. Outrun the red line.": "철에 붙으세요. 빨간 선에서 도망치세요.",
   "Drag back from a climber, release to fling.": "인형에서 뒤로 당기고 놓으면 던져요.",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "동시는 팀 전체를 던져요. 기어오르기는 동료에게 기어가요.",

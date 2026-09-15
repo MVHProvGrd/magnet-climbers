@@ -142,7 +142,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 La línea roja es el alcance del niño. Sube más rápido cuanto más alto estés. No pares.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ Eso es todo. El modo equipo lanza a toda la banda a la vez. A escalar.",
   "nothing to hold there": "ahí no hay a qué agarrarse", "LADDER": "ESCALERA", "BEST BEATEN ✓": "RÉCORD SUPERADO ✓", "😌 CHILL": "😌 TRANQUILO",
-  "FLING": "LANZAR", "CLIMB": "TREPAR", "SYNC ON": "SINCRO SÍ", "SYNC": "SINCRO", "◎ RECENTER": "◎ CENTRAR",
+  "FLING": "LANZAR", "CLIMB": "TREPAR", "SYNC ON": "SINCRO SÍ", "SYNC": "SINCRO",
   "Drag back anywhere, release to fling.": "Arrastra hacia atrás y suelta para lanzar.", "Stick to steel. Outrun the red line.": "Pégate al acero. Escapa de la línea roja.",
   "Drag back from a climber, release to fling.": "Arrastra desde un escalador y suelta para lanzar.",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "SINCRO lanza a todo el equipo. TREPAR se arrastra hasta un compañero.",

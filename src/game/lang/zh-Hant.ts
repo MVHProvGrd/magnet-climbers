@@ -142,7 +142,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 紅線是小孩夠得到的高度。你越高它漲得越快。別停。",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 就這些。隊伍模式一次甩全隊。去爬吧。",
   "nothing to hold there": "那裡沒東西可抓", "LADDER": "人梯", "BEST BEATEN ✓": "已破紀錄 ✓", "😌 CHILL": "😌 休閒",
-  "FLING": "甩出", "CLIMB": "攀爬", "SYNC ON": "同步 開", "SYNC": "同步", "◎ RECENTER": "◎ 回中",
+  "FLING": "甩出", "CLIMB": "攀爬", "SYNC ON": "同步 開", "SYNC": "同步",
   "Drag back anywhere, release to fling.": "任意處向後拖曳，放開甩出。", "Stick to steel. Outrun the red line.": "吸住鋼板。甩開紅線。",
   "Drag back from a climber, release to fling.": "從攀登者處向後拖曳，放開甩出。",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "同步一次甩全隊。攀爬爬向隊友。",
