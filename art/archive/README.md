@@ -16,6 +16,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
+| `12-motion-studies-v1/` | Realistic kid arm, enamel reach badge, lemon pendulum and side/bottom swipe animation reviews. Interactive page /art-archive/motion-v1/ | Codex image generation and isolated review animation | REVIEW ONLY; Claude owns implementation |
+
 | `10-reach-badge-v1/` | Reach pickup as a glossy blue button badge with a navy double-headed arrow (pack-01 badge meaning, physical style); replaces the tape measure | Claude, @napi-rs/canvas `render.mjs` | LIVE in `real-v1/pickups/reach.png` |
 | `10-hanging-keepsakes-v1/` | Five realistic hanging assemblies: seaside postcard, cat photo, dinosaur drawing, pancake recipe and lemon keychain. Sources, cutouts, alpha manifest and light/dark review sheet | Codex built-in image generation and magenta keying | REVIEW ONLY; assemblies not rigged |
 

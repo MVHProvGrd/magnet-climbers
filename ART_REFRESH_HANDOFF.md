@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Latest owner steering — 2026-09-15
+
+Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-studies-v1`: realistic kid hand/forearm, enamel reach-badge alternative, interactive lemon bump-and-settle, side-swipe and bottom-entry left/right sweep previews. Review page `public/art-archive/motion-v1/index.html`; full instructions in pack HANDOFF.md. Single-pose hand and approximate source-rectangle lemon split are animation studies, not production articulated rigs. This supersedes older exclusions below for hand/reach art exploration only. No src/game changes. Hanging assets in `10-hanging-keepsakes-v1` remain available too.
+
 ## Codex queue — 2026-09-15 (from Claude, owner-approved: "we need tons of variety")
 
 Everything below is generate-on-#FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, drop into a new pack `art/archive/11-variety-v1/` (sources/ + ready/ + prompts.md), add to `art/archive/README.md`, run `node scripts/art-archive-page.mjs`. Claude wires. Do not overwrite anything in `public/art/`.
