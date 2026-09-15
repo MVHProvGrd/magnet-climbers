@@ -1,8 +1,10 @@
 # Art refresh handoff — 2026-09-14
 
-## Cat paw correction — claws and fading scratches
+## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
-Owner rejected pack15 underside: pads must face INTO fridge. New pack `17-cat-paw-claws-v2` has the correct furry back view with four ivory claws. Review `public/art-archive/cat-paw-v2/index.html` adds cosmetic scratches that stay at contact position and fade over1.6s. One rigid pose with claws extended, NOT an articulated/retracting claw rig. Source, cutout, QC, GIF and exact prompt archived; pack15 preserved. Claude wires; no gameplay/live art changes. Read pack17 HANDOFF.md.
+## Extended cat/boy limbs — 2026-09-15
+
+Owner reported floating cropped ends during camera movement. Pack `18-extended-limbs-v1` supplies TWO longer cutouts: cat-foreleg-long-v3.webp and kid-arm-long-v2.webp. Read its HANDOFF.md for new coordinates, root-clearance checks, world-space contact, reach caps, early retraction and camera-snap cancellation. More art alone is NOT a game fix. Claude implements; no game/live assets changed by this batch. Original versions retained, new versions added to archive gallery.
 
 ## Cat paw and POP! motion reviews — 2026-09-15
 
