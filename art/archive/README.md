@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `17-cat-paw-claws-v2/` | Corrected furry BACK view with ivory claws; three-tap preview with fading scratches. Supersedes pack15 underside, which stays archived. | Codex built-in imagegen; isolated motion/effect review | Review only: /art-archive/cat-paw-v2/; Claude wires |
 | `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | Review only: /art-archive/cat-paw-v1/; Claude wires |
 | `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | Review only: /art-archive/pop-it-v1/; Claude wires |
 | `01-canvas-drawn/` | Hand-drawn Canvas 2D art rendered to PNG at 4x: badge pickups (`pickups-badges`, the first style), object pickups (`pickups-objects`), obstacles (glass, plastic, gap, vent, attract, repel, handles, dispenser, calendar, ice tray), 24 sticker prints, bumpers | Claude, `src/game/fridge-art.ts`, `item-art.ts`, `scenery.ts` (`drawLegacyPower`) | 75f276c (scenery pass) → still the fallback when an image fails to load |
