@@ -44,7 +44,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "extra", name: "Pocket Pal", family: "pickup", power: "extra", description: "Adds another climber to your run." },
   { id: "slowmo", name: "Kitchen Timer", family: "pickup", power: "slowmo", description: "Temporarily slows the action." },
   { id: "reach", name: "Reach Badge", family: "pickup", power: "reach", description: "Temporarily stretches the distance you can climb to a teammate." },
-  { id: "candy", name: "Candy Drop", family: "pickup", power: "candy", description: "The kid stops for a sweet: the red line crawls for a while." },
+  { id: "candy", name: "Candy Drop", family: "pickup", power: "candy", description: "Cooper stops for a sweet: the red line crawls for a while." },
   { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Climb the steel beside it or its silver handle." },
   { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", description: "A big paper calendar. Follow the open steel side lane." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
@@ -68,7 +68,8 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
     family: "bumper", label, hue: [332, 45, 200, 125, 280, 175][i], art: [12, 16, 19, 14, 17, 7][i],
     description: "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.",
   })),
-  { id: "kid-hand", name: "The Kid's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },
+  { id: "kid-hand", name: "Cooper's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },
+  { id: "cat-paw", name: "The Cat's Paw", family: "bumper", hazard: true, description: "A paw drops in from the top and taps three times, the second one deepest. A ring warns where it will land; a hit knocks you loose and costs a heart." },
 ];
 export const PAPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "paper");
 /** Width/height of the photographed papers, so a v13 card takes the photo's shape instead of cropping it. */

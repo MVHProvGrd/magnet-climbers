@@ -405,7 +405,7 @@ const tutorialSteps: { tip: string; done: (g: Game, t: number) => boolean }[] = 
   { tip: keyboardDevice ? "⌨️ Hold SPACE to charge the pull-back, aim with WASD, let go to fling." : "👆 Put a finger anywhere, drag DOWN to pull back, let go to fling up.", done: (g) => g.phase === "running" },
   { tip: "🧲 Magnets stick to steel. Aim for the shiny metal, not glass or stickers.", done: (g) => g.heightCm >= 15 },
   { tip: "🟡 Grab coins on the way. They feed the prize machine for new patterns.", done: (g, t) => g.coins > 0 || t > 12 },
-  { tip: "🔴 The red line is the kid's reach. It rises faster the higher you get. Keep moving.", done: (_g, t) => t > 6 },
+  { tip: "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.", done: (_g, t) => t > 6 },
   { tip: "✅ That's it. Crew mode flings the whole gang at once. Go climb.", done: (_g, t) => t > 5 },
 ];
 function tickTutorial(dt: number) {

@@ -2,8 +2,17 @@
  * The "how to play" page: the rules grouped by what they DO to you, not by item family.
  *
  * Replaces the old Field Guide, which was a catalogue of every variant, one card each:
- * one row per rule instead, with a live count of how many variants sit behind it. Counts and
- * families are derived from FRIDGE_ITEMS, so adding art can never leave this page stale.
+ * one row per rule instead, with a live count of how many variants sit behind it.
+ *
+ * Anything that is its own mechanic — every boost, every hazard — is generated from
+ * FRIDGE_ITEMS rather than written out here, because a hand-written sentence silently
+ * goes stale the moment someone adds an item. Counts alone are not enough: they move
+ * without the prose moving with them, which is how the candy drop and the cat's paw came
+ * to be missing from a page whose numbers had already updated around them.
+ *
+ * Keep these rows generated. `tests/magnetism.test.ts` asserts every boost and hazard is
+ * named here; while the rows come from FRIDGE_ITEMS that holds by construction, and the
+ * assertion is there to fail the day someone writes the list out by hand again.
  */
 import { FRIDGE_ITEMS, type FridgeItem } from "./items";
 
@@ -22,6 +31,19 @@ export interface HowToSection {
 
 const tally = (fn: (item: FridgeItem) => boolean) => FRIDGE_ITEMS.filter(fn).length;
 const surfaces = (kind: FridgeItem["kind"]) => tally((i) => i.family === "surface" && i.kind === kind && !i.metal);
+
+/** Currency and health read as their own rules; everything else in the pickup pool is a boost. */
+const CARRIED = ["coin", "gem", "heart"];
+export const boostItems = () => FRIDGE_ITEMS.filter((i) => i.family === "pickup" && !CARRIED.includes(i.power ?? ""));
+export const hazardItems = () => FRIDGE_ITEMS.filter((i) => i.hazard);
+
+/** One icon per mechanic; anything new falls back to a neutral mark rather than vanishing. */
+const ICONS: Record<string, string> = {
+  magnet: "🧲", reach: "📏", slowmo: "⏱️", extra: "🧍", candy: "🍬",
+  "kid-hand": "✋", "cat-paw": "🐾",
+};
+const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;
+const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({ icon: iconFor(item, fallback), name: item.name, text: item.description });
 
 export function howToSections(): HowToSection[] {
   return [
@@ -48,11 +70,11 @@ export function howToSections(): HowToSection[] {
     {
       title: "What pushes and hurts",
       rows: [
-        { icon: "🔴", name: "The red line", text: "The kid's reach, rising the whole time — and faster the higher you get. Anything below it is lost." },
+        { icon: "🔴", name: "The red line", text: "Cooper's reach, rising the whole time — and faster the higher you get. Anything below it is lost." },
         { icon: "🧲", name: "N souvenirs (red)", text: "Push you away mid-flight. The wider the arcs the stronger it is; the big ones are slingshots.", count: tally((i) => i.kind === "repel") },
         { icon: "🚚", name: "Advertising magnets", text: "Moving magnets on sideways, vertical or zigzag paths. Contact knocks you loose and costs a heart.", count: tally((i) => /^business-/.test(i.id)) },
         { icon: "🧸", name: "Toy keychains", text: "Toys hanging on chains. Brushing one gives you a small push and sets it swinging — no damage.", count: tally((i) => /^bumper-\d/.test(i.id)) },
-        { icon: "✋", name: "The kid's hand", text: "Swipes across the door now and then. Watch for the LOOK OUT warning and get clear of the curved path." },
+        ...hazardItems().map((i) => fromItem(i, "⚠️")),
       ],
     },
     {
@@ -60,7 +82,7 @@ export function howToSections(): HowToSection[] {
       rows: [
         { icon: "🪙", name: "Coins and gems", text: "Currency for the prize machine and revives. Chill mode pays neither." },
         { icon: "❤️", name: "Hearts", text: "Restore one heart to whoever collects it, up to three." },
-        { icon: "✨", name: "Boosts", text: "Super Magnet catches earlier and farther, Reach Badge stretches your climb, Kitchen Timer slows everything, Pocket Pal adds a climber.", count: tally((i) => i.family === "pickup") },
+        ...boostItems().map((i) => fromItem(i, "✨")),
       ],
     },
     {
