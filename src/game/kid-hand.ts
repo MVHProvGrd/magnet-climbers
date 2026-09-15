@@ -110,7 +110,9 @@ function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof han
   // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62 (the hit-test's geometry).
   // The photo is drawn ARM_SCALE bigger than that, about the palm centre (x = 14): the hitbox stays inside the palm.
   const s = ARM_SCALE * 96 / (wristRow - tip), tipX = 14 + 48 * ARM_SCALE;
-  const reach = Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 120;
+  // the sleeve must still run offscreen when the camera drops below the arm (a bottom-entry hand seen from above), so
+  // extend well past the anchor: tiles are cheap
+  const reach = Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 1000;
   ctx.save(); ctx.translate(pose.point.x, pose.point.y); ctx.rotate(pose.angle);
   ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
   // image (col,row) -> local (62 + (tip - row) * s, (c0 - col) * s): thumb lands on the drawn hand's side
