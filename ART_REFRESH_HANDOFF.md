@@ -1,5 +1,18 @@
 # Art refresh handoff — 2026-09-14
 
+## Request from Claude — 2026-09-15: "reach" pickup icon
+
+User wants the reach pickup (`public/art/real-v1/pickups/reach.png`, currently a tape measure) to go back to the ORIGINAL meaning: the blue double-headed arrow badge in `art/archive/01-canvas-drawn/pickups-badges/reach.png`, but as a physical object in the current photo-real fridge style.
+
+Brief:
+- One round button badge or round fridge magnet, roughly 256 px, centred, tilted slightly like the other pickups.
+- Face: glossy sky-blue, with a bold dark-navy horizontal double-headed arrow (↔) printed on it. Arrow is the whole message; no text, no ruler marks, no tape measure.
+- Keep it readable at 46 px in game: thick arrow, high contrast, simple silhouette.
+- Generate on flat pure #FF00FF and key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py` (same script as `07-souvenir-ready-v1/chroma-cut.py`). Run `check-cutout.py`. Avoid blue/cyan halos on the magenta edge.
+- Do NOT overwrite `real-v1/pickups/reach.png`. Put source + keyed WebP in a new pack `art/archive/10-reach-badge-v1/`, add it to the archive README, run `node scripts/art-archive-page.mjs`, and note it here. Claude swaps it into the game after user approval.
+
+---
+
 ## Current assignment
 
 LATEST: Keep North and South destination counts EVEN. New pack `09-balanced-travel-v1` adds Tahiti, Seychelles, Cape Town, Rio (S) and Edinburgh, Lapland (N). Combined with existing 3 S / 5 N, the review collection is now **7 S / 7 N**. Future additions should be pairs. These additions are REVIEW ONLY, not wired into the game. Use Cape Town v2; v1 is preserved but magenta keying discolored its pink house/flower. All other new destinations use v1. Eight successful generation calls this continuation (vet + six destinations + Cape Town correction), no limit encountered. Vet bone-shaped magnet added to pack 08 as business-2 candidate. Existing game code remains Claude's implementation.
