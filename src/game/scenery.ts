@@ -7,7 +7,7 @@ import { drawGadget } from "./gadget-art";
 import { destinationArtFor, destinationArtById, drawDestination, objectArtById } from "./gadget-art";
 import { drawPickupImage, pickupImage } from "./pickup-art";
 import { drawKidHand, handPose } from "./kid-hand";
-import { DOOR_SEAM } from "./world";
+import { DOOR_SEAM, POP_BUBBLES, POP_RADIUS } from "./world";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
 
@@ -215,7 +215,12 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     // toy stuck straight on the door by its magnet backing: a weak N field, so it gets small arcs
     const toy = objectArtById(z.itemId);
     ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
-    if (toy) drawDestination(ctx, toy, z.x, z.y, z.w, z.h);
+    if (toy) {
+      const iw = (toy as HTMLImageElement).naturalWidth || 1, ih = (toy as HTMLImageElement).naturalHeight || 1;
+      const s = Math.min(z.w / iw, z.h / ih), dw = iw * s, dh = ih * s, dx = z.x + (z.w - dw) / 2, dy = z.y + (z.h - dh) / 2;
+      ctx.drawImage(toy, dx, dy, dw, dh);
+      if (z.pops != null) { ctx.shadowColor = "transparent"; drawPops(ctx, dx, dy, dw, dh, z.pops); }
+    }
     else { const item = fridgeItem(z.itemId); drawBumper(ctx, { x: z.x, y: z.y, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 }); }
     // a hint of a field: faint, tight arcs
     ctx.restore(); ctx.save(); drawFieldArcs(ctx, z, time, true, 0.5); ctx.restore(); return;
@@ -223,7 +228,7 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
   if (z.swing && z.itemId) {
     // toy keychain: plain resin on a chain, no field; it just swings when brushed
     const toy = objectArtById(z.itemId), hardware = objectArtById("swing-snack");
-    if (toy && hardware) { drawKeychain(ctx, z, toy, hardware, z.swing.angle); return; }
+    if (toy && hardware) { drawKeychain(ctx, z, toy, hardware, z.swing.angle, z.pops); return; }
     if (hardware) {
       // no photo yet (COOL penguin): the drawn toy card hangs from the chain until Codex's art lands
       const card = document.createElement("canvas"); card.width = Math.ceil(z.w * 2); card.height = Math.ceil(z.h * 2);
@@ -284,8 +289,19 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 const keychainSwing = new WeakMap<Bumper, { angle: number; vel: number; time: number; vx: number }>();
 /** Hook and chain rows of the lemon keychain image (fractions of its height); the pivot is the hook's ring. */
 const CHAIN = { pivotX: 510 / 1024, pivotY: 285 / 1536, chainEnd: 0.615 };
+/** POP! bubbles pushed in: a concave shadow over each bubble whose bit is set, drawn over the toy image rect. */
+function drawPops(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pops: number) {
+  const r = POP_RADIUS * w;
+  POP_BUBBLES.forEach(([u, v], i) => {
+    if (!(pops & (1 << i))) return;
+    const cx = x + u * w, cy = y + v * h;
+    const g = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.25, r * 0.1, cx, cy, r);
+    g.addColorStop(0, "rgba(20,25,35,0.55)"); g.addColorStop(0.75, "rgba(20,25,35,0.28)"); g.addColorStop(1, "rgba(255,255,255,0.25)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  });
+}
 /** A toy on the lemon's hook and chain: hook fixed above the rect, chain + toy rotated by `angle` about the ring. */
-export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, toy: CanvasImageSource, hardware: CanvasImageSource, angle: number) {
+export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, toy: CanvasImageSource, hardware: CanvasImageSource, angle: number, pops?: number) {
   const hw = (hardware as HTMLImageElement).naturalWidth || (hardware as HTMLCanvasElement).width || 1;
   const hh = (hardware as HTMLImageElement).naturalHeight || (hardware as HTMLCanvasElement).height || 1;
   const tw = (toy as HTMLImageElement).naturalWidth || (toy as HTMLCanvasElement).width || 1;
@@ -301,6 +317,7 @@ export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: n
   ctx.drawImage(hardware, 0, CHAIN.pivotY * hh, hw, (CHAIN.chainEnd - CHAIN.pivotY) * hh, -CHAIN.pivotX * hw * s, 0, hw * s, chain);
   const f = Math.min(b.w / tw, b.h / th) * 1.1, dw = tw * f, dh = th * f;
   ctx.drawImage(toy, -dw / 2, chain - 2, dw, dh);
+  if (pops != null) { ctx.shadowColor = "transparent"; drawPops(ctx, -dw / 2, chain - 2, dw, dh, pops); }
   ctx.restore();
 }
 /** Old-world sliding toy: the pendulum is visual only, kicked by the slider's reversals. */

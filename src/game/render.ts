@@ -4,6 +4,7 @@ import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
+import { drawCatPaw } from "./cat-paw";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
 
@@ -186,6 +187,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // the kid's hand
   if (g.hand) drawKidHand(ctx, g.hand);
+  if (g.paw) drawCatPaw(ctx, g.paw, g.camY, viewH);
 
   // your own best: a quiet line to beat, green once you pass it
   if (g.best && g.best.cm > 0) {

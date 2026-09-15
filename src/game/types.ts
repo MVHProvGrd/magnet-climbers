@@ -22,6 +22,9 @@ export interface NoStickZone extends Rect {
   power?: number;
   /** v13 toy keychains: hang still, swing when brushed (same pendulum as gadgets) */
   swing?: { angle: number; vel: number; cool: number };
+  /** POP! toy: ten bubble states as bits (1 = pushed in), plus a per-toy debounce */
+  pops?: number;
+  popCool?: number;
 }
 
 export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart" | "candy";

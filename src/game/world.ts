@@ -26,6 +26,9 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 /** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
 export const SEAM_MARGIN = 36;
 
+/** POP! bubble centres as fractions of the toy image (5 columns x 2 rows) and their radius as a fraction of width. */
+export const POP_BUBBLES: readonly [number, number][] = [[0.158, 0.279], [0.329, 0.279], [0.498, 0.279], [0.666, 0.279], [0.843, 0.279], [0.158, 0.679], [0.329, 0.679], [0.498, 0.679], [0.666, 0.679], [0.843, 0.679]];
+export const POP_RADIUS = 0.0695;
 /** v13: true when a rect overlaps any zone a magnet cannot sit on (glass, plastic, paper, open gaps). */
 function blocked(zones: NoStickZone[], rect: Rect, pad = 16, anyZone = false): boolean {
   return zones.some((o) => (anyZone || o.kind === "glass" || o.kind === "trim" || o.kind === "void" || o.kind === "sticker")
@@ -59,6 +62,7 @@ export class World {
     return [...this.gadgets, ...this.segments.flatMap((s) => s.zones.filter((z) => z.swing))];
   }
   stepGadgets(dt: number) {
+    for (const seg of this.segments) for (const z of seg.zones) if (z.popCool) z.popCool = Math.max(0, z.popCool - dt);
     for (const g of this.hanging) {
       const s = g.swing; if (!s) continue;
       s.cool = Math.max(0, s.cool - dt);
@@ -80,12 +84,23 @@ export class World {
       if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
     }
     for (const seg of this.segments) for (const z of seg.zones) {
+      const inside = p.x > z.x - 12 && p.x < z.x + z.w + 12 && p.y > z.y - 12 && p.y < z.y + z.h + 12;
+      // POP! toy: the nearest bubble flips on contact (debounced per toy); report which for the sound
+      if (inside && z.pops != null && (z.popCool ?? 0) <= 0) {
+        const u = (p.x - z.x) / z.w, v = (p.y - z.y) / z.h;
+        let best = 0, bd = 9;
+        POP_BUBBLES.forEach(([bx, by], i) => { const d = Math.hypot((u - bx) * 2.3, v - by); if (d < bd) { bd = d; best = i; } });
+        z.pops ^= 1 << best; z.popCool = 0.16;
+        this.popped = { index: best, inward: !!(z.pops & (1 << best)) };
+      }
       const s = z.swing; if (!s || s.cool > 0) continue;
-      if (p.x > z.x - 12 && p.x < z.x + z.w + 12 && p.y > z.y - 12 && p.y < z.y + z.h + 12) {
+      if (inside) {
         s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (Math.sign(vx) || 1) * Math.max(0.25, Math.min(1, Math.abs(vx) / 300)))); s.cool = 0.3;
       }
     }
   }
+  /** last bubble flipped this frame (the game turns it into a sound), cleared by the game */
+  popped: { index: number; inward: boolean } | null = null;
   rng: Rng;
   /** y of the top-most generated segment */
   private topY: number;
@@ -366,6 +381,7 @@ export class World {
         let item = pick(art, toys);
         for (let k = 0; k < 6 && this.recentToys.includes(item.id); k++) item = pick(art, toys);
         this.remember(this.recentToys, item.id, 4); zone.itemId = item.id;
+        if (item.id === "bumper-4") { zone.pops = 0b0101010101; zone.popCool = 0; }
       }
       const usedBumpers = new Set<string>(this.version >= 12 ? this.recentBumpers : []);
       for (const bumper of bumpers) {
