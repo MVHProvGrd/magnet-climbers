@@ -20,6 +20,8 @@ export interface NoStickZone extends Rect {
   hue?: number;
   /** field magnets: strength multiplier (1 = the original plates); reach and push scale with it */
   power?: number;
+  /** v13 toy keychains: hang still, swing when brushed (same pendulum as gadgets) */
+  swing?: { angle: number; vel: number; cool: number };
 }
 
 export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart";

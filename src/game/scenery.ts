@@ -211,6 +211,19 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     }
     return;
   }
+  if (z.swing && z.itemId) {
+    // toy keychain: a hanging magnet with a small push, no arcs (it is a nudge, not a field)
+    const toy = objectArtById(z.itemId), hardware = objectArtById("swing-snack");
+    if (toy && hardware) { drawKeychain(ctx, z, toy, hardware, z.swing.angle); return; }
+    if (hardware) {
+      // no photo yet (COOL penguin): the drawn toy card hangs from the chain until Codex's art lands
+      const card = document.createElement("canvas"); card.width = Math.ceil(z.w * 2); card.height = Math.ceil(z.h * 2);
+      const g = card.getContext("2d")!; g.scale(2, 2);
+      const item = fridgeItem(z.itemId);
+      drawBumper(g, { x: 0, y: 0, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 });
+      drawKeychain(ctx, z, card, hardware, z.swing.angle); return;
+    }
+  }
   if (z.kind === "attract" || z.kind === "repel") {
     const repel = z.kind === "repel";
     const souvenir = destinationArtFor(z.x, z.y, repel);
@@ -262,16 +275,8 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 const keychainSwing = new WeakMap<Bumper, { angle: number; vel: number; time: number; vx: number }>();
 /** Hook and chain rows of the lemon keychain image (fractions of its height); the pivot is the hook's ring. */
 const CHAIN = { pivotX: 510 / 1024, pivotY: 285 / 1536, chainEnd: 0.615 };
-function drawKeychainBumper(ctx: CanvasRenderingContext2D, b: Bumper, toy: CanvasImageSource, hardware: CanvasImageSource, time: number) {
-  const st = keychainSwing.get(b) ?? { angle: 0, vel: 0, time, vx: b.vx };
-  const dt = Math.min(0.05, Math.max(0, time - st.time));
-  if (dt > 0) {
-    // pivot acceleration kicks the pendulum (a reversal at the rail is the big one), capped like the lemon study
-    const kick = Math.max(-3, Math.min(3, -(b.vx - st.vx) / 90));
-    st.vel += kick + (-9.8 * Math.sin(st.angle) - 1.4 * st.vel) * dt;
-    st.angle += st.vel * dt;
-  }
-  st.time = time; st.vx = b.vx; keychainSwing.set(b, st);
+/** A toy on the lemon's hook and chain: hook fixed above the rect, chain + toy rotated by `angle` about the ring. */
+export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, toy: CanvasImageSource, hardware: CanvasImageSource, angle: number) {
   const hw = (hardware as HTMLImageElement).naturalWidth || (hardware as HTMLCanvasElement).width || 1;
   const hh = (hardware as HTMLImageElement).naturalHeight || (hardware as HTMLCanvasElement).height || 1;
   const tw = (toy as HTMLImageElement).naturalWidth || (toy as HTMLCanvasElement).width || 1;
@@ -283,11 +288,23 @@ function drawKeychainBumper(ctx: CanvasRenderingContext2D, b: Bumper, toy: Canva
   // hook: fixed to the slider
   ctx.drawImage(hardware, 0, 0, hw, CHAIN.pivotY * hh, px - CHAIN.pivotX * hw * s, py - CHAIN.pivotY * hh * s, hw * s, CHAIN.pivotY * hh * s);
   // chain and toy: one rigid piece about the ring
-  ctx.translate(px, py); ctx.rotate(st.angle);
+  ctx.translate(px, py); ctx.rotate(angle);
   ctx.drawImage(hardware, 0, CHAIN.pivotY * hh, hw, (CHAIN.chainEnd - CHAIN.pivotY) * hh, -CHAIN.pivotX * hw * s, 0, hw * s, chain);
   const f = Math.min(b.w / tw, b.h / th) * 1.1, dw = tw * f, dh = th * f;
   ctx.drawImage(toy, -dw / 2, chain - 2, dw, dh);
   ctx.restore();
+}
+/** Old-world sliding toy: the pendulum is visual only, kicked by the slider's reversals. */
+function drawKeychainBumper(ctx: CanvasRenderingContext2D, b: Bumper, toy: CanvasImageSource, hardware: CanvasImageSource, time: number) {
+  const st = keychainSwing.get(b) ?? { angle: 0, vel: 0, time, vx: b.vx };
+  const dt = Math.min(0.05, Math.max(0, time - st.time));
+  if (dt > 0) {
+    const kick = Math.max(-3, Math.min(3, -(b.vx - st.vx) / 90));
+    st.vel += kick + (-9.8 * Math.sin(st.angle) - 1.4 * st.vel) * dt;
+    st.angle += st.vel * dt;
+  }
+  st.time = time; st.vx = b.vx; keychainSwing.set(b, st);
+  drawKeychain(ctx, b, toy, hardware, st.angle);
 }
 
 export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper, time = 0) {

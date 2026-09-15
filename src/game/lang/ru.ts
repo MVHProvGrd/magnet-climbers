@@ -84,7 +84,7 @@ export const exact: Record<string, string> = {
   "Plastic Trim": "Пластиковая накладка", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "Пластик не магнитится. Перелетайте или используйте металлический островок.",
   "Door Gap": "Щель двери", "Nothing to stick to here. Fling across or land on a metal handle.": "Здесь не за что зацепиться. Перелетайте или садитесь на ручку.",
   "Cold Air Vent": "Вентиляция", "Non-magnetic plastic grille. Jump across or use the steel sides.": "Пластиковая решётка. Перепрыгивайте или идите по стали сбоку.",
-  "Moving magnet: knocks you loose, even from a planted grip. Time your fling.": "Движущийся магнит: сбивает даже с крепкого захвата. Выбирайте момент броска.",
+  "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.": "Игрушка на брелоке. Не сталь: заденешь — слегка оттолкнёт и закачается.",
   "Rolling Donut": "Катящийся пончик", "Duck Dash": "Уточка", "Robot Patrol": "Робот-патруль", "Dino Slide": "Дино", "Pop Magnet": "Поп-магнит", "Cool Cruiser": "Крутой круизёр",
   "Swinging silver grip carries you. Fling from it to cross the panel.": "Качающийся захват везёт вас. Бросайтесь с него через панель.",
   "A rotating letter carries a silver grip around its face. Time your launch.": "Вращающаяся буква возит захват по кругу. Ловите момент.",

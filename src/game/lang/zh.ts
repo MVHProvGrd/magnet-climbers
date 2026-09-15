@@ -77,7 +77,7 @@ export const exact: Record<string, string> = {
   "Plastic Trim": "塑料饰条", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "塑料没有磁力。飞过去，或者用金属小岛。",
   "Door Gap": "门缝", "Nothing to stick to here. Fling across or land on a metal handle.": "这里没东西可吸。甩过去或落在金属把手上。",
   "Cold Air Vent": "冷气口", "Non-magnetic plastic grille. Jump across or use the steel sides.": "不吸磁的塑料格栅。跳过去或走两侧钢板。",
-  "Moving magnet: knocks you loose, even from a planted grip. Time your fling.": "移动磁铁：就算抓稳了也会被撞掉。掐准时机甩。",
+  "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.": "钥匙扣上的玩具。不是钢：碰到它会被轻轻推开，它也会晃起来。",
   "Rolling Donut": "滚动甜甜圈", "Duck Dash": "冲刺小鸭", "Robot Patrol": "机器人巡逻", "Dino Slide": "滑行小恐龙", "Pop Magnet": "波普磁铁", "Cool Cruiser": "酷炫巡航",
   "Swinging silver grip carries you. Fling from it to cross the panel.": "摆动的银色抓点带你走。从它上面甩出穿过面板。",
   "A rotating letter carries a silver grip around its face. Time your launch.": "旋转的字母带着银色抓点转圈。掐准时机出发。",

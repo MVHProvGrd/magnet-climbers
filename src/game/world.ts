@@ -27,8 +27,8 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 export const SEAM_MARGIN = 36;
 
 /** v13: true when a rect overlaps any zone a magnet cannot sit on (glass, plastic, paper, open gaps). */
-function blocked(zones: NoStickZone[], rect: Rect, pad = 16): boolean {
-  return zones.some((o) => (o.kind === "glass" || o.kind === "trim" || o.kind === "void" || o.kind === "sticker")
+function blocked(zones: NoStickZone[], rect: Rect, pad = 16, anyZone = false): boolean {
+  return zones.some((o) => (anyZone || o.kind === "glass" || o.kind === "trim" || o.kind === "void" || o.kind === "sticker")
     && rect.x < o.x + o.w + pad && rect.x + rect.w > o.x - pad && rect.y < o.y + o.h + pad && rect.y + rect.h > o.y - pad);
 }
 /** v8+: an x for a box of width w that keeps it on one door, clear of the centre seam. */
@@ -49,10 +49,15 @@ export class World {
   private recentPapers: string[] = [];
   private lastKind = "";
   private recentBumpers: string[] = [];
+  private recentToys: string[] = [];
   private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
   /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
+  /** everything that hangs: gadgets and toy keychain zones */
+  private get hanging(): { swing?: { angle: number; vel: number; cool: number } }[] {
+    return [...this.gadgets, ...this.segments.flatMap((s) => s.zones.filter((z) => z.swing))];
+  }
   stepGadgets(dt: number) {
-    for (const g of this.gadgets) {
+    for (const g of this.hanging) {
       const s = g.swing; if (!s) continue;
       s.cool = Math.max(0, s.cool - dt);
       s.vel += (-9.8 * Math.sin(s.angle) - 1.4 * s.vel) * dt;
@@ -71,6 +76,12 @@ export class World {
       const s = g.swing; if (!s || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);
       if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+    }
+    for (const seg of this.segments) for (const z of seg.zones) {
+      const s = z.swing; if (!s || s.cool > 0) continue;
+      if (p.x > z.x - 12 && p.x < z.x + z.w + 12 && p.y > z.y - 12 && p.y < z.y + z.h + 12) {
+        s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (Math.sign(vx) || 1) * Math.max(0.25, Math.min(1, Math.abs(vx) / 300)))); s.cool = 0.3;
+      }
     }
   }
   rng: Rng;
@@ -257,6 +268,15 @@ export class World {
       if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract", power: this.version >= 9 ? rangeOf(r, 0.7, 1.6) : 1 });
     }
 
+    // v13: toy keychains hang on the steel: no grip (a weak N push nudges you off), swing only when brushed
+    if (this.version >= 13 && i > 3 && r() < 0.3) {
+      const tw = rangeOf(r, 60, 76), th = rangeOf(r, 40, 52);
+      const m = SEAM_MARGIN + 60; // room for the hook and chain above
+      let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
+      // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
+      for (let k = 0; k < 3 && blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
+      if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push({ ...toy, kind: "repel", power: 0.35, itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } });
+    }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
       const bw = rangeOf(r, 44, 64);
@@ -302,7 +322,8 @@ export class World {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
       const paperPool = this.version >= 6 ? PAPER_ITEMS : PAPER_ITEMS.slice(0, 20);
-      const bumperPool = this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      // v13: toys hang as keychains (zones below); only the advertising magnets slide
+      const bumperPool = this.version >= 13 ? BUMPER_ITEMS.filter(item => !item.id.startsWith("bumper-")) : this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
       if (this.version >= 3) {
         const used = new Set<string>([this.lastCardId]);
         // v12: also avoid anything shown in the last few doors, so a big library actually reads as variety
@@ -318,6 +339,12 @@ export class World {
         }
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
+      }
+      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      for (const zone of zones) if (zone.itemId?.startsWith("toy:")) {
+        let item = pick(art, toys);
+        for (let k = 0; k < 6 && this.recentToys.includes(item.id); k++) item = pick(art, toys);
+        this.remember(this.recentToys, item.id, 4); zone.itemId = item.id;
       }
       const usedBumpers = new Set<string>(this.version >= 12 ? this.recentBumpers : []);
       for (const bumper of bumpers) {

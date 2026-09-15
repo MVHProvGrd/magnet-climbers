@@ -22,6 +22,10 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
     s.zones.push(itemZone("handle", x + 28, y + 173, 70, 24));
   } else if (pattern === "busy-month") {
     const d = fit(34, 264); s.zones.push(itemZone("calendar", x, d.y, w, d.h));
+  } else if (pattern === "ice-alley" && version >= 13) {
+    // one tray, standing on end at the photo's own proportions (338x189), centred on its door, no handle
+    const d = fit(36, 264), tw = Math.round(d.h * 189 / 338);
+    s.zones.push(itemZone("ice-tray", x + Math.round((w - tw) / 2), d.y, tw, d.h));
   } else if (pattern === "ice-alley") {
     const d = fit(36, 264);
     for (let i = 0; i < 2; i++) s.zones.push(itemZone("ice-tray", x + i * trayGap, d.y, trayW, d.h));
