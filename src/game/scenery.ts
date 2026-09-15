@@ -178,7 +178,7 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   ctx.restore();
 }
 
-function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean) {
+function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean, dim = 1) {
   const cx = z.x + z.w / 2;
   const power = z.power ?? 1;
   const span = 34 * Math.sqrt(power) * (outward ? 1 + Math.max(0, power - 1) : 1); // how far the field reaches past the plate
@@ -191,7 +191,7 @@ function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: numb
   for (let i = 0; i < 3; i++) {
     const d = outward ? i * gap + phase : (i + 1) * gap - phase;
     if (d <= 0 || d > span) continue;
-    ctx.globalAlpha = (1 - d / span) * 0.45;
+    ctx.globalAlpha = (1 - d / span) * 0.45 * dim;
     const r = rx + d;
     const s = (rx + d * 0.75) / r;
     // top edge: semicircle over the plate, squashed to hug it
@@ -217,7 +217,8 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
     if (toy) drawDestination(ctx, toy, z.x, z.y, z.w, z.h);
     else { const item = fridgeItem(z.itemId); drawBumper(ctx, { x: z.x, y: z.y, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 }); }
-    ctx.restore(); ctx.save(); drawFieldArcs(ctx, z, time, true); ctx.restore(); return;
+    // a hint of a field: faint, tight arcs
+    ctx.restore(); ctx.save(); drawFieldArcs(ctx, z, time, true, 0.5); ctx.restore(); return;
   }
   if (z.swing && z.itemId) {
     // toy keychain: plain resin on a chain, no field; it just swings when brushed

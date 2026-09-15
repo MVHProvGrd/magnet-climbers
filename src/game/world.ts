@@ -283,7 +283,7 @@ export class World {
       const hanging = r() < 0.5;
       if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push(hanging
         ? { ...toy, kind: "trim", itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
-        : { ...toy, kind: "repel", power: 0.35, itemId: `toy:${Math.floor(r() * 6)}` });
+        : { ...toy, kind: "repel", power: 0.2, itemId: `toy:${Math.floor(r() * 6)}` });
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
