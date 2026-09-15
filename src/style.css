@@ -54,7 +54,9 @@ select.buy { appearance: none; -webkit-appearance: none; font: inherit; font-wei
 select.buy option { background: #1e2229; color: #fff; }
 .panel button.icon { width: 42px; height: 42px; padding: 0; border-radius: 50%; font-size: 20px; line-height: 1; background: rgba(255,255,255,0.1); }
 .panel button.icon img { width: 34px; height: 34px; display: block; margin: auto; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+.chat-ticker .bubble { position: relative; }
 .chat-ticker .bubble img { width: 28px; height: 28px; display: block; }
+.chat-ticker .badge { position: absolute; top: -7px; right: -9px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ff4d4d; color: #fff; font: 800 10px/18px system-ui, sans-serif; font-style: normal; text-align: center; }
 .panel button.mode { display: flex; flex-direction: column; gap: 2px; align-items: center; padding: 12px 16px; }
 .panel button.mode b { font-size: 18px; }
 .panel button.mode small { font-size: 12px; font-weight: 600; opacity: 0.8; letter-spacing: 0; }

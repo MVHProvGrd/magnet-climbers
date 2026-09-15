@@ -108,9 +108,12 @@ export default {
         return json(rows.results, h);
       }
       if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
+      // `seconds` arrived after launch; until the column exists the board still answers
       const rows = await env.DB.prepare(
         "SELECT name, cm, player_id, created_at, seconds FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
-      ).bind(mode, limit).all();
+      ).bind(mode, limit).all().catch(() => env.DB.prepare(
+        "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
+      ).bind(mode, limit).all());
       return json(rows.results, h);
     }
 
@@ -149,14 +152,23 @@ export default {
       }
       const now = Date.now();
       // keep only the player's best per mode; the name updates every submit
-      await env.DB.prepare(
-        `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(player_id, mode) DO UPDATE SET
-           name = excluded.name,
-           cm = MAX(scores.cm, excluded.cm),
-           seconds = CASE WHEN excluded.cm > scores.cm THEN excluded.seconds ELSE scores.seconds END,
-           created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`,
-      ).bind(playerId, name, body.mode, cm, now, secs).run();
+      const upsert = (withSeconds: boolean) => env.DB.prepare(withSeconds
+        ? `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(player_id, mode) DO UPDATE SET
+             name = excluded.name,
+             cm = MAX(scores.cm, excluded.cm),
+             seconds = CASE WHEN excluded.cm > scores.cm THEN excluded.seconds ELSE scores.seconds END,
+             created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`
+        : `INSERT INTO scores (player_id, name, mode, cm, created_at) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(player_id, mode) DO UPDATE SET
+             name = excluded.name,
+             cm = MAX(scores.cm, excluded.cm),
+             created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`);
+      // add the column on the fly if it is missing (D1 tolerates a failed ALTER), then write
+      await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(async () => {
+        await env.DB.prepare("ALTER TABLE scores ADD COLUMN seconds INTEGER").run().catch(() => {});
+        await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(() => upsert(false).bind(playerId, name, body.mode, cm, now).run());
+      });
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
     }

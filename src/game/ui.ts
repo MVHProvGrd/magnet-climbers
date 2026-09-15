@@ -51,6 +51,10 @@ export interface UiHandlers {
   onChat(text: string): Promise<string | null>;
 }
 
+/** newest chat id the player has looked at (per device) */
+const chatSeen = () => { try { return Number(localStorage.getItem("mc-chat-seen") ?? 0) || 0; } catch { return 0; } };
+/** a stable hue per name so the ticker reads like a chat */
+const nameColor = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return `hsl(${h % 360} 70% 68%)`; };
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
 /** m:ss for a run duration */
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -197,12 +201,20 @@ export class Ui {
         ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
         <button data-a="collection">🎨 CREATURES</button>
       </div>
-      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /></span><span class="lines"><i>Global chat</i></span></button>` : ""}
+      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>Global chat</i></span></button>` : ""}
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
       <p class="fine legal"><a href="${import.meta.env.BASE_URL}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${import.meta.env.BASE_URL}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${import.meta.env.BASE_URL}contact/" target="_blank" rel="noopener">Contact</a></p>
     `;
+    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines"), badge = p.querySelector<HTMLElement>(".chat-ticker .badge");
+    if (ticker) void chat.list(0).then((r) => {
+      if (!r || !p.isConnected) return;
+      const last = r.messages.slice(-2);
+      ticker.innerHTML = last.length ? last.map((m) => `<span><b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
+      const seen = chatSeen(); const unread = r.messages.filter((m) => m.id > seen).length;
+      if (badge && unread) { badge.textContent = unread > 99 ? "99+" : String(unread); badge.hidden = false; }
+    });
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "crew") this.h.onPlay("crew");
@@ -381,6 +393,7 @@ export class Ui {
       const r = await chat.list(lastId);
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
+      if (lastId > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(lastId)); } catch { /* private mode */ } }
       online.textContent = r.online ? `· ${r.online} chatting lately` : "";
       if (r.messages.length || !seen.size) render();
     };
@@ -471,12 +484,6 @@ export class Ui {
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${groups.map((g) => `<h3 class="guide-section">${esc(g.title)} <em>${g.items.length}</em></h3>${g.items.map(card).join("")}`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
-    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines");
-    if (ticker) void chat.list(0).then((r) => {
-      if (!r || !p.isConnected) return;
-      const last = r.messages.slice(-2);
-      ticker.innerHTML = last.length ? last.map((m) => `<span><b>${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
-    });
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       const category = target?.dataset.category;
