@@ -2,7 +2,7 @@ import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, setKeyboardHints, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
+import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
@@ -379,7 +379,6 @@ function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
   rulesNow = r.snap.rules;
-  uiRoot.style.setProperty("--hud-lift", rulesNow === "crew" ? "52" : "6");
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
@@ -428,7 +427,6 @@ let runCoinsTotal = 0;
 function startLevel(level: LevelDef) {
   const go = () => {
     rulesNow = "crew";
-    uiRoot.style.setProperty("--hud-lift", "52");
     ui.clear(); clearSnapshot();
     adUsedThisRun = false; bankedCm = 0; runCounted = false; runCoinsTotal = 0; paused = false;
     game = new Game({ ...EXPEDITION_LEVELS } as Record<UpgradeKey, number>, runEvents(), { rules: "crew", seed: level.seed, level, lineup: lineupFor("crew") });
@@ -467,7 +465,6 @@ function finishLevel(level: LevelDef) {
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
-  uiRoot.style.setProperty("--hud-lift", rules === "crew" ? "52" : "6");
   ui.clear();
   clearSnapshot();
   adUsedThisRun = false;
@@ -545,9 +542,9 @@ const hit = (p: { x: number; y: number }, r: { x: number; y: number; w: number; 
 canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
   const sp = toScreen(e);
-  const b = hudButtons(viewH);
-  for (const d of teamDots(game, viewH)) {
-    if (Math.hypot(d.x - sp.x, d.y - sp.y) < 17) { game.select(d.id); return; }
+  const b = hudButtons(viewH, game);
+  for (const r of teamTapRects(game, viewH)) {
+    if (hit(sp, r)) { game.select(r.id); return; }
   }
   for (const m of offscreenMarkers(game, viewH)) {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }

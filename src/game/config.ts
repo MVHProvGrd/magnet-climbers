@@ -37,6 +37,8 @@ export const CFG = {
   bumperKnock: 420,
   /** hit points per climber and the grace period after a hit */
   maxHp: 3,
+  /** HUD danger state: red-line distance in cm at or below which the dock goes red (handoff 1e) */
+  dangerCm: 15,
   hitIframes: 0.9,
   /** kid hand swipes: first one after this many seconds of running, then every base..base/2 s as height grows */
   handFirstAfter: 18,
