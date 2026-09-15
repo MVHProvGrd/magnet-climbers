@@ -42,6 +42,7 @@ export class World {
   segments: Segment[] = [];
   /** cosmetic memory (v12): the last few paper cards and bumpers, so neighbouring doors do not repeat */
   private recentPapers: string[] = [];
+  private lastKind = "";
   private recentBumpers: string[] = [];
   private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
   /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
@@ -156,7 +157,10 @@ export class World {
     const powerUps: PowerUp[] = [];
 
     const kinds = ["solid", "band", "window", "pillar", "stickers", "band", "window"] as const;
-    const kind = i < 2 ? "solid" : pick(r, kinds as unknown as (typeof kinds)[number][]);
+    let kind = i < 2 ? "solid" : pick(r, kinds as unknown as (typeof kinds)[number][]);
+    // v12: never the same layout two doors in a row (a window over a window, a band under a band)
+    if (this.version >= 12) for (let k = 0; k < 4 && kind !== "solid" && kind === this.lastKind; k++) kind = pick(r, kinds as unknown as (typeof kinds)[number][]);
+    this.lastKind = kind;
 
     switch (kind) {
       case "solid": {

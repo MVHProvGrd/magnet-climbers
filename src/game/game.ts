@@ -1081,6 +1081,8 @@ export class Game {
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
+      // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
+      if (this.world.version >= 12 && random() < 0.4) this.hand.entry = "bottom";
       sfx.warning();
       return;
     }
