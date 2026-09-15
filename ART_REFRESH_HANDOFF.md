@@ -2,6 +2,10 @@
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
+## Extended cat/boy limbs — 2026-09-15
+
+Owner reported floating cropped ends during camera movement. Pack `18-extended-limbs-v1` supplies TWO longer cutouts: cat-foreleg-long-v3.webp and kid-arm-long-v2.webp. Read its HANDOFF.md for new coordinates, root-clearance checks, world-space contact, reach caps, early retraction and camera-snap cancellation. More art alone is NOT a game fix. Claude implements; no game/live assets changed by this batch. Original versions retained, new versions added to archive gallery.
+
 ## Cat paw and POP! motion reviews — 2026-09-15
 
 Cat paw generation retry succeeded: one realistic tabby cutout, transparent hard-key version preferred, three-tap GIF and standalone review in `public/art-archive/cat-paw-v1/index.html`. Pack `15-cat-paw-attack-v1/HANDOFF.md` gives timing, source coordinates and QC exceptions. Single rigid cutout, NOT an articulated rig. Original source and rejected soft cleanup preserved.

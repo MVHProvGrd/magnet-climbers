@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `18-extended-limbs-v1/` | Longer cat foreleg and boy teal sleeve, sources, cutouts and light/dark review. Camera-safe root/retraction handoff. | Codex built-in imagegen edits | Review only; Claude wires new source coordinates and withdrawal |
 | `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | LIVE: cat paw attack (a third of attacks in v13 worlds), `real-v1/cat-paw.webp` |
 | `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | LIVE: POP! bubbles flip on contact with pop sounds |
 | `01-canvas-drawn/` | Hand-drawn Canvas 2D art rendered to PNG at 4x: badge pickups (`pickups-badges`, the first style), object pickups (`pickups-objects`), obstacles (glass, plastic, gap, vent, attract, repel, handles, dispenser, calendar, ice tray), 24 sticker prints, bumpers | Claude, `src/game/fridge-art.ts`, `item-art.ts`, `scenery.ts` (`drawLegacyPower`) | 75f276c (scenery pass) → still the fallback when an image fails to load |
