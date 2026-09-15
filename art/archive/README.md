@@ -5,8 +5,9 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
-| `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | LIVE: cat paw attack (a third of attacks in v13 worlds), `real-v1/cat-paw.webp` |
-| `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | LIVE: POP! bubbles flip on contact with pop sounds |
+| `17-cat-paw-claws-v2/` | Corrected furry BACK view with ivory claws; three-tap preview with fading scratches. Supersedes pack15 underside, which stays archived. | Codex built-in imagegen; isolated motion/effect review | Review only: /art-archive/cat-paw-v2/; Claude wires |
+| `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | Review only: /art-archive/cat-paw-v1/; Claude wires |
+| `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | Review only: /art-archive/pop-it-v1/; Claude wires |
 | `01-canvas-drawn/` | Hand-drawn Canvas 2D art rendered to PNG at 4x: badge pickups (`pickups-badges`, the first style), object pickups (`pickups-objects`), obstacles (glass, plastic, gap, vent, attract, repel, handles, dispenser, calendar, ice tray), 24 sticker prints, bumpers | Claude, `src/game/fridge-art.ts`, `item-art.ts`, `scenery.ts` (`drawLegacyPower`) | 75f276c (scenery pass) → still the fallback when an image fails to load |
 | `02-gemini-generated/` | Raw Gemini renders from `art/ASSET_SPEC.md`, 7 pickups and 10 obstacles, plus the contact sheet | Google Gemini via `art/generated/generate.mjs` | c6e2d61 (review set) |
 | `03-gemini-cutouts-in-game/` | The Gemini pickups after `rembg` background removal, exactly as shipped | Claude | d2f7521 → current pickups |
@@ -17,8 +18,6 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 | `07-souvenir-ready-v1/` | Textured Fiji S and Norway N magnets, layered brass compass, crayon, candy pole, bottle windows and gasket detail. Includes immutable source/history images, prepared WebP files, alpha checks and integration notes. | Codex built-in generation; magenta extraction using Flotillas chroma-cut (no erosion) | LIVE: souvenirs are the N/S plates, compass/crayon/candy pole are the polarity gadgets (7a1a6ac) LIVE incl. glass-door.webp (tall windows whole, wide bands tiled shelf behind the frosted frame) |
 
 ## Going back to a set
-
-| `15-ui-icons-v1/` | Menu icons as enamel fridge magnets: gear, guide book, story scroll, help, trophy, chat bubble | Claude, Gemini 2.5 Flash Image + chroma-cutout | LIVE in `public/art/ui/` |
 
 | `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | LIVE: donut, duck, robot, dino, POP! as `public/art/bumpers/bumper-0..4.webp`, hung on the lemon's hook and chain at draw time (visual pendulum); COOL penguin still canvas |
 

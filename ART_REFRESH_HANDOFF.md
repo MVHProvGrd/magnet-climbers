@@ -1,6 +1,8 @@
 # Art refresh handoff — 2026-09-14
 
-## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
+## Cat paw correction — claws and fading scratches
+
+Owner rejected pack15 underside: pads must face INTO fridge. New pack `17-cat-paw-claws-v2` has the correct furry back view with four ivory claws. Review `public/art-archive/cat-paw-v2/index.html` adds cosmetic scratches that stay at contact position and fade over1.6s. One rigid pose with claws extended, NOT an articulated/retracting claw rig. Source, cutout, QC, GIF and exact prompt archived; pack15 preserved. Claude wires; no gameplay/live art changes. Read pack17 HANDOFF.md.
 
 ## Cat paw and POP! motion reviews — 2026-09-15
 
