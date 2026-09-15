@@ -1,5 +1,33 @@
 # Art refresh handoff — 2026-09-14
 
+## Codex queue — 2026-09-15 (from Claude, owner-approved: "we need tons of variety")
+
+Everything below is generate-on-#FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, drop into a new pack `art/archive/11-variety-v1/` (sources/ + ready/ + prompts.md), add to `art/archive/README.md`, run `node scripts/art-archive-page.mjs`. Claude wires. Do not overwrite anything in `public/art/`.
+
+### A. Modernize what is still canvas-drawn (priority order)
+
+| # | What | Count | Style ref | Naming |
+|---|---|---|---|---|
+| 1 | Business magnets: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY | 5 | pack 08 dentist/pizza/vet (horizontal card, real printed vinyl, thin magnetic backing) | `business-3..7-v1` (order = `BUSINESS_MAGNETS` in `src/game/fridge-art.ts`) |
+| 2 | Legacy toy bumpers: donut, duck, robot, dino, "POP!", "COOL" | 6 | chunky 3-D novelty fridge magnets (resin/rubber), wide silhouette, must read at ~90x50 px | `bumper-0..5-v1` |
+| 3 | Paper cards, old set (20): pizza postcard, cat drawing, kid climbing drawing, scenic route, space cadet, home sweet fridge, seed packet, stay cool, snack list (done), you got this, don't let go, more magnets, donut, avocado, tiny dinosaur, rain check, lucky duck, sundae, gone fishing, beep boop robot | 19 | pack 08 grocery: real paper (photo, postcard, crayon drawing, sticky note, ticket), portrait or square, torn/taped/curled edges, NO magnet or pin | `paper-<index>-v1` (index = position in `paperNames`, `src/game/items.ts`) |
+| 4 | Paper cards, new set (12): pizza menu, lost sock notice, moon camp postcard, tiny chef recipe, aquarium trip letter, gig ticket, family portrait, treasure map, watering rota, monster math homework, breakfast blueprint, dog-ate-list | 12 | same as 3 | `paper-new-<index>-v1` |
+| 5 | Door gap trim (`gap`, the only obstacle still canvas) | 1 | shallow horizontal seam texture, 768x160, see pack 07 gapRule | `door-gap-v4` |
+| 6 | Gadget charms `snack.png`, `travel.png`, `doodle.png` (rotor/swing/clip) | 3 | already photo but low-res PNG; regenerate as keyed WebP, 512 px | `charm-<theme>-v2` |
+
+Not to touch: creatures/climbers (canvas by design), kid hand, pickups (all photo), destinations, compass/crayon/candy pole, title art.
+
+### B. New variety (each is a pool entry; pairs keep N/S balance)
+
+1. **Destinations, 4 more pairs (8):** S: Maldives, Zanzibar, Phuket, Cancún. N: Reykjavík swap not needed; use Tromsø, Banff, Hokkaido, Svalbard. Same spec as pack 09.
+2. **Business magnets (6):** taxi, locksmith, sushi, car wash, real-estate agent with headshot, tax prep. Same spec as pack 08.
+3. **Toy bumpers (6):** rubber ducky, toy taxi, race car, cartoon banana, space shuttle, alphabet letter block.
+4. **Paper (10):** takeout receipt, concert wristband, kid's report card, coupon sheet, polaroid, birthday invite, sports schedule, doctor appointment card, cereal box-top, wanted poster (lost cat).
+5. **Handles/hardware (metal, climbable, 3):** brushed-steel bar handle, chrome bottle opener, steel hook strip. 768x192 horizontal. Style: pack 07 compass-grade realism.
+6. **Fridge surfaces (3 full-width textures, 800x340, tileable vertically):** brushed stainless, cream enamel with scuffs, black matte. For a future "fridge skin" unlock.
+
+Send 8–12 per session; Claude wires each batch as it lands.
+
 ## Status 2026-09-15: packs 08 and 09 are WIRED and LIVE (Claude). `art/archive/prepare-live.py` fits ready cutouts into `public/art/`. Destination pools are now 7 S / 7 N. Reach pickup done by Claude (pack 10).
 
 ## Request from Claude — 2026-09-15: "reach" pickup icon — DONE by Claude (pack `10-reach-badge-v1`, canvas-rendered, live). No action needed.
