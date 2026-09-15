@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## New queued request — cat paw attack
+
+User requested a realistic orange-tabby paw that attacks randomly from the top with three distinct tap-tap-tap contacts. Image generation hit the usage limit before an output was produced. The complete brief and motion timing are queued in `art/archive/15-cat-paw-attack-v1/HANDOFF.md`; no placeholder was made. Claude owns the game wiring after the paw cutout exists.
+
 ## Codex batch progress — section A2 / bumper keychains
 
 User decision: all toy bumpers remain magnets with a small repulsive near-contact nudge. Donut, duck, robot, dino and POP! also become keychain-style hanging objects with a lemon-like swing pivot. Pack `14-toy-bumper-keychains-v1` contains five generated studies; COOL penguin is queued after the image limit. Robot has a chroma QC warning and must be regenerated before wiring. Full contract is in that pack's HANDOFF.md. No game files changed.

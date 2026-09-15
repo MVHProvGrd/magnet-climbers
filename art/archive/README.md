@@ -16,6 +16,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
+| `15-cat-paw-attack-v1/` | Queued realistic orange-tabby paw hazard: seeded random top entry, three-tap attack, exact art prompt and timing brief | Codex brief; image generation blocked by current usage limit | QUEUED; no bitmap yet |
+
 | `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | REVIEW ONLY; robot needs regeneration, Claude wires |
 
 | `13-business-magnets-v1/` | Section A1: plumber, noodles, library, school bus and bakery, business-3..7; all five cutouts pass cleanup checks | Codex built-in generation and repo chroma key | REVIEW ONLY; Claude wires |
