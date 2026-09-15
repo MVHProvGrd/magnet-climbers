@@ -203,3 +203,9 @@ select.buy option { background: #1e2229; color: #fff; }
 .panel { position: relative; }
 .panel.has-arrow { padding-top: 52px; }
 .panel button.back-arrow { position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; padding: 0 0 4px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; font-size: 30px; line-height: 1; font-weight: 800; }
+/* menu chat ticker: the last two lines of global chat, tap to open */
+.chat-ticker { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; margin-top: 4px; border-radius: 12px; background: rgba(255,255,255,.07); text-align: left; font: inherit; color: inherit; }
+.chat-ticker .bubble { font-size: 20px; flex: 0 0 auto; }
+.chat-ticker .lines { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; line-height: 1.3; color: #ccd6df; }
+.chat-ticker .lines span, .chat-ticker .lines i { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
+.chat-ticker .lines b { color: #ffd166; font-weight: 700; }

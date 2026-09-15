@@ -173,7 +173,6 @@ export class Ui {
         <button class="icon" data-a="settings" title="Settings" aria-label="Settings">⚙</button>
         <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide">📖</button>
         <span class="grow"></span>
-        ${leaderboardEnabled ? `<button class="icon" data-a="chat" title="Global chat" aria-label="Global chat">💬</button>` : ""}
         <button class="icon" data-a="story" title="Story" aria-label="Story">📜</button>
         <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play">❔</button>
         <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard">🏆</button>
@@ -196,6 +195,7 @@ export class Ui {
         ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
         <button data-a="collection">🎨 CREATURES</button>
       </div>
+      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble">💬</span><span class="lines"><i>Global chat</i></span></button>` : ""}
       <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
       <p class="fine global" hidden></p>
       <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
@@ -469,6 +469,12 @@ export class Ui {
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
       <div class="guide-grid">${groups.map((g) => `<h3 class="guide-section">${esc(g.title)} <em>${g.items.length}</em></h3>${g.items.map(card).join("")}`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
+    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines");
+    if (ticker) void chat.list(0).then((r) => {
+      if (!r || !p.isConnected) return;
+      const last = r.messages.slice(-2);
+      ticker.innerHTML = last.length ? last.map((m) => `<span><b>${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
+    });
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       const category = target?.dataset.category;
