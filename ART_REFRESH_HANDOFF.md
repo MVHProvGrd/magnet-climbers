@@ -45,6 +45,8 @@ Brief:
 
 ## Current assignment
 
+2026-09-15: New hanging-items batch in `art/archive/10-hanging-keepsakes-v1`: seaside postcard, cat snapshot, dinosaur crayon drawing, pancake recipe, lemon keychain. Five successful image generations, no limit. Preserved sources, transparent cutouts, dark/light review sheet and per-pack HANDOFF.md. These are review assemblies with baked-in hardware; rigging/pivots are not prepared. No game renderer changes. N/S balance unchanged at 7/7.
+
 LATEST: Keep North and South destination counts EVEN. New pack `09-balanced-travel-v1` adds Tahiti, Seychelles, Cape Town, Rio (S) and Edinburgh, Lapland (N). Combined with existing 3 S / 5 N, the review collection is now **7 S / 7 N**. Future additions should be pairs. These additions are REVIEW ONLY, not wired into the game. Use Cape Town v2; v1 is preserved but magenta keying discolored its pink house/flower. All other new destinations use v1. Eight successful generation calls this continuation (vet + six destinations + Cape Town correction), no limit encountered. Vet bone-shaped magnet added to pack 08 as business-2 candidate. Existing game code remains Claude's implementation.
 
 User wants Codex to focus on ART WORK: upgrade untouched art where it fits the realistic, tactile fridge style, then add each version to the existing admin-linked art archive. Preserve all prior art. This batch is review-only, with no game renderer or physics changes.

@@ -1,0 +1,67 @@
+[
+  {
+    "file": "ready/cat-snapshot-v1.webp",
+    "size": [
+      1225,
+      1284
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/dinosaur-drawing-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/lemon-keychain-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/pancake-recipe-v1.webp",
+    "size": [
+      1536,
+      1024
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/seaside-postcard-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  }
+]

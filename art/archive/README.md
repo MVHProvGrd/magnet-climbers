@@ -17,6 +17,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 ## Going back to a set
 
 | `10-reach-badge-v1/` | Reach pickup as a glossy blue button badge with a navy double-headed arrow (pack-01 badge meaning, physical style); replaces the tape measure | Claude, @napi-rs/canvas `render.mjs` | LIVE in `real-v1/pickups/reach.png` |
+| `10-hanging-keepsakes-v1/` | Five realistic hanging assemblies: seaside postcard, cat photo, dinosaur drawing, pancake recipe and lemon keychain. Sources, cutouts, alpha manifest and light/dark review sheet | Codex built-in image generation and magenta keying | REVIEW ONLY; assemblies not rigged |
 
 | `09-balanced-travel-v1/` | Six new destination souvenirs: Tahiti, Seychelles, Cape Town, Rio (S), Edinburgh and Lapland (N); combined collection 7 S / 7 N. Cape Town v2 preferred; v1 retained for history | Codex built-in generation and magenta keying | LIVE: all six in `public/art/destinations/` via `prepare-live.py` (Cape Town v2) |
 
