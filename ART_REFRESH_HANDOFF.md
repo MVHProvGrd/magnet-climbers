@@ -1,5 +1,11 @@
 # Art refresh handoff — 2026-09-14
 
+## Cat paw and POP! motion reviews — 2026-09-15
+
+Cat paw generation retry succeeded: one realistic tabby cutout, transparent hard-key version preferred, three-tap GIF and standalone review in `public/art-archive/cat-paw-v1/index.html`. Pack `15-cat-paw-attack-v1/HANDOFF.md` gives timing, source coordinates and QC exceptions. Single rigid cutout, NOT an articulated rig. Original source and rejected soft cleanup preserved.
+
+New owner request: POP! bubbles react individually to climber impacts with in/out states and varied sounds. Interactive photographic bubble-swap study in `public/art-archive/pop-it-v1/index.html`, ten toggles and synthesized review audio. Pack `16-pop-it-motion-v1/HANDOFF.md` gives bubble coordinates and proposed contact debounce. No new POP! generation; reuses pack 14. Both added to the existing admin-linked archive. No game or live art replacements; Claude handles implementation. Branch push does not mean deployed.
+
 ## Codex batch progress — section A2 / bumper keychains
 
 User decision: all toy bumpers remain magnets with a small repulsive near-contact nudge. Donut, duck, robot, dino and POP! also become keychain-style hanging objects with a lemon-like swing pivot. Pack `14-toy-bumper-keychains-v1` contains five generated studies; COOL penguin is queued after the image limit. Robot has a chroma QC warning and must be regenerated before wiring. Full contract is in that pack's HANDOFF.md. No game files changed.

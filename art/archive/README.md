@@ -5,6 +5,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | Review only: /art-archive/cat-paw-v1/; Claude wires |
+| `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | Review only: /art-archive/pop-it-v1/; Claude wires |
 | `01-canvas-drawn/` | Hand-drawn Canvas 2D art rendered to PNG at 4x: badge pickups (`pickups-badges`, the first style), object pickups (`pickups-objects`), obstacles (glass, plastic, gap, vent, attract, repel, handles, dispenser, calendar, ice tray), 24 sticker prints, bumpers | Claude, `src/game/fridge-art.ts`, `item-art.ts`, `scenery.ts` (`drawLegacyPower`) | 75f276c (scenery pass) → still the fallback when an image fails to load |
 | `02-gemini-generated/` | Raw Gemini renders from `art/ASSET_SPEC.md`, 7 pickups and 10 obstacles, plus the contact sheet | Google Gemini via `art/generated/generate.mjs` | c6e2d61 (review set) |
 | `03-gemini-cutouts-in-game/` | The Gemini pickups after `rembg` background removal, exactly as shipped | Claude | d2f7521 → current pickups |
