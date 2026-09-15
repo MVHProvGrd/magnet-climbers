@@ -6,7 +6,7 @@ import { render, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from ".
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
-import { UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
+import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
@@ -553,6 +553,50 @@ canvas.addEventListener("pointerdown", (e) => {
   game.pointerDown(toWorld(e));
 });
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
+// Keyboard (PC): hold Space to charge the pull-back, WASD or arrows to aim (W up, S down, A/D sideways),
+// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recentres.
+const keys = new Set<string>();
+let charge = 0;
+const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.("input, textarea, select") != null;
+window.addEventListener("keydown", (e) => {
+  if (typing(e) || !game || paused) return;
+  const k = e.key.toLowerCase();
+  if ([" ", "w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { e.preventDefault(); keys.add(k); }
+  if (k === " " && !e.repeat) charge = 0;
+  if (k === "tab" || k === "q" || k === "e") {
+    e.preventDefault();
+    const pool = game.anchored.filter((c) => !game!.climbers.some((o) => o.parent === c.id && o.state === "linked")).sort((a, b) => a.x - b.x);
+    if (pool.length) { const i = pool.findIndex((c) => c.id === game!.selectedId); game.select(pool[(i + (k === "q" ? pool.length - 1 : 1)) % pool.length].id); }
+  }
+  if (k === "c" && game.rules === "crew") game.mode = game.mode === "fling" ? "move" : "fling";
+  if (k === "x" && game.rules === "crew") game.sync = !game.sync;
+  if (k === "r") game.recenter();
+});
+window.addEventListener("keyup", (e) => {
+  const k = e.key.toLowerCase(); keys.delete(k);
+  if (k === " " && game && !paused && game.drag && keyDrag) { keyDrag = false; game.pointerUp(); charge = 0; }
+});
+window.addEventListener("blur", () => { keys.clear(); if (game && keyDrag) { game.drag = null; keyDrag = false; } });
+let keyDrag = false;
+/** Per frame: build the drag vector from the held keys so the usual aim dots and launch code apply. */
+function tickKeys(dt: number) {
+  if (!game || paused) return;
+  if (!keys.has(" ")) { if (keyDrag) { game.drag = null; keyDrag = false; } return; }
+  const c = game.byId(game.selectedId);
+  if (!c || (c.state !== "stuck" && c.state !== "linked")) return;
+  charge = Math.min(CFG.maxDrag, charge + CFG.maxDrag * dt / 0.9); // full pull after about a second
+  let ax = 0, ay = -1; // default: straight up
+  if (keys.has("a") || keys.has("arrowleft")) ax -= 1;
+  if (keys.has("d") || keys.has("arrowright")) ax += 1;
+  if (keys.has("s") || keys.has("arrowdown")) ay += 1.6;
+  if (keys.has("w") || keys.has("arrowup")) ay -= 1;
+  if (ax === 0 && ay === 0) ay = -1;
+  const len = Math.hypot(ax, ay); ax /= len; ay /= len;
+  const start = { x: c.x, y: c.y };
+  // launch = start - cur, so the pull-back point sits opposite the aim
+  game.drag = { start, cur: { x: start.x - ax * charge, y: start.y - ay * charge } };
+  keyDrag = true;
+}
 canvas.addEventListener("pointerup", () => { if (game && !paused) game.pointerUp(); });
 canvas.addEventListener("pointercancel", () => { if (game) game.drag = null; });
 // Android back gesture / browser back: open the pause menu instead of leaving the run
@@ -584,6 +628,7 @@ function frame(now: number) {
   if (game) {
     if (!paused) {
       acc += dt;
+      tickKeys(dt);
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
       tickTutorial(dt);
     }
