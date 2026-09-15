@@ -4,10 +4,14 @@ import { objectArtById } from "./gadget-art";
 /** The cat's paw: comes down from the top of the screen at a random x, taps three times, retreats. */
 export interface CatPaw { x: number; t: number; hit: Set<number>; marked?: number }
 export const PAW_DURATION = 1.65;
+/** leg length above the pad centre at game scale (pack 18 art): how deep a tap can go before the root would show */
+const PAW_LEG = 1840 * (120 / 454);
 /** when each tap first touches the door */
 export const PAW_TAPS = [0.48, 0.87, 1.25];
-/** the four claw tips relative to the pose centre (Codex's study, same 0.24 scale as the game) */
-export const CLAW_TIPS: readonly [number, number][] = [[-36, 35], [-8, 55], [21, 54], [48, 31]];
+/** Codex pack 18 long foreleg (725x2170): pad centre and claw row as fractions; the paw is drawn ~120 px wide */
+const PAW = { padX: 365 / 725, padY: 1840 / 2170, width: 454 / 725 };
+/** the four claw tips relative to the pad centre at game scale */
+export const CLAW_TIPS: readonly [number, number][] = [[-38, 50], [-13, 64], [12, 64], [37, 50]];
 /** A claw mark on the door: world coordinates, fades over SCRATCH_LIFE seconds. */
 export interface Scratch { x: number; y: number; born: number }
 export const SCRATCH_LIFE = 1.6;
@@ -27,7 +31,8 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 /** Pad centre in world coordinates (the paw hangs from the camera's top edge) and whether it is touching the door. */
 export function pawPose(p: CatPaw, camY: number, viewH: number): Vec & { contact: boolean; warn: number } {
   const t = Math.min(p.t, PAW_DURATION);
-  const reach = viewH * 0.55 + 30; // the selected climber sits at 55% of the view; the deepest tap lands on it
+  // the selected climber sits at 55% of the view; the deepest tap lands on it, capped so the leg's root never shows
+  const reach = Math.min(viewH * 0.55 + 30, PAW_LEG - 40);
   const depth = (k: number) => (k < 0 ? k : k * reach);
   let y = -70;
   for (let i = 1; i < KEYS.length; i++) if (t <= KEYS[i][0]) {
@@ -46,8 +51,8 @@ export function drawCatPaw(ctx: CanvasRenderingContext2D, p: CatPaw, camY: numbe
   }
   if (art) {
     const iw = (art as HTMLImageElement).naturalWidth || 1, ih = (art as HTMLImageElement).naturalHeight || 1;
-    const s = 246 / iw; // about 120 px of paw, like the study
-    const x0 = pose.x - iw * (510 / 1024) * s, y0 = pose.y - ih * (1080 / 1536) * s;
+    const s = 120 / (PAW.width * iw); // about 120 px of paw, like the study
+    const x0 = pose.x - iw * PAW.padX * s, y0 = pose.y - ih * PAW.padY * s;
     ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 12; ctx.shadowOffsetX = 8; ctx.shadowOffsetY = 12;
     ctx.drawImage(art, x0, y0, iw * s, ih * s);
     // the leg never ends on screen: repeat a plain band of foreleg fur upward past the camera's top edge

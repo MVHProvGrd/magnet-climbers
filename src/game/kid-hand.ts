@@ -101,7 +101,8 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
 /** Codex's photographed arm (pack 12), rigid like its motion study: fingers up, wrist at 39% of the height, cuff from 79%.
  * Hand, forearm and cuff are one piece at natural proportions along the swipe angle; only the plain sweater fabric
  * past the cuff is extended so the sleeve always runs offscreen. Fractions of the image, so any export size works. */
-const ARM = { tipRow: 0.04, wristRow: 0.395, centreCol: 0.50 };
+/** Codex pack 18 long arm (724x2172): highest fingertip row 58, wrist row 560, hand centre column 350 */
+const ARM = { tipRow: 58 / 2172, wristRow: 560 / 2172, centreCol: 350 / 724 };
 const ARM_SCALE = 1.6;
 function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource) {
   const iw = (arm as HTMLImageElement).naturalWidth || (arm as HTMLCanvasElement).width || 1;
