@@ -95,8 +95,8 @@ function mix(hex: string, target: string, amount: number): string {
 function drawBodyLocal(ctx: CanvasRenderingContext2D, origin: Vec, angle: number, style: ReturnType<typeof creatureStyle>, part: "all" | "torso" | "head" = "all") {
   ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(angle);
   const gloss = ctx.createLinearGradient(-20, -26, 20, 16);
-  gloss.addColorStop(0, "#ffffff"); gloss.addColorStop(0.18, style.color);
-  gloss.addColorStop(0.85, style.color); gloss.addColorStop(1, "#47505c");
+  gloss.addColorStop(0, mix(style.color, "#ffffff", 0.7)); gloss.addColorStop(0.18, style.color);
+  gloss.addColorStop(0.85, style.color); gloss.addColorStop(1, mix(style.color, "#2a3038", 0.55));
   drawCreatureBody(ctx, style, gloss, false, part);
   ctx.restore();
 }
