@@ -9,6 +9,7 @@ import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, t
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
+import { setChatStrip } from "./hud";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -164,6 +165,48 @@ export class Ui {
     this.pauseBtn.hidden = !inRun;
     this.muteBtn.hidden = !inRun;
     this.refreshMute();
+    this.setChatStripVisible(inRun && leaderboardEnabled);
+  }
+
+  /* ---------------------------------------------------------- in-run chat strip */
+  /** Bottom 64 px: the two latest global lines, unread badge, tap to open (handoff 1a). */
+  private chatStrip: HTMLElement | null = null;
+  private chatStripTimer: number | null = null;
+  private setChatStripVisible(on: boolean) {
+    if (on === !!this.chatStrip) return;
+    if (!on) {
+      this.chatStrip?.remove(); this.chatStrip = null;
+      if (this.chatStripTimer !== null) { clearInterval(this.chatStripTimer); this.chatStripTimer = null; }
+      this.root.classList.remove("has-chat");
+      setChatStrip(false);
+      return;
+    }
+    const el = document.createElement("button");
+    el.className = "chat-strip";
+    el.setAttribute("aria-label", t("Global chat"));
+    el.innerHTML = `<span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>${t("Global chat")}</i></span>`;
+    el.addEventListener("click", () => this.showChat());
+    this.root.appendChild(el);
+    this.chatStrip = el;
+    // the dock rides 74 px up instead of 34 so it clears the strip
+    this.root.classList.add("has-chat");
+    setChatStrip(true);
+    this.refreshChatStrip();
+    // slow poll: this is ambient furniture during a run, not the chat panel
+    this.chatStripTimer = setInterval(() => this.refreshChatStrip(), 20000) as unknown as number;
+  }
+  private refreshChatStrip() {
+    const el = this.chatStrip; if (!el) return;
+    void chat.list(0).then((r) => {
+      if (!r || el !== this.chatStrip || !el.isConnected) return;
+      const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
+      const last = r.messages.slice(-2);
+      if (lines) lines.innerHTML = last.length
+        ? last.map((m) => `<span><b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("")
+        : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
+      const unread = r.messages.filter((m) => m.id > chatSeen()).length;
+      if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
+    });
   }
 
   showMenu() {
