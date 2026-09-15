@@ -2,6 +2,10 @@
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
+## Plain-item realism batch 20 — 2026-09-15
+
+Four more prepared papers in `art/archive/20-paper-notes-v1/ready`: indices7,9,10,11 (Stay Cool, You Got This, Don't Let Go, More Magnets). All pass alpha QC; original sources/prompts and light/dark review included. Combined this continuation:12 prepared assets,14 successful generation calls (two background corrections), no limit encountered. No game/live art changes. Claude wires; next old papers12..19, then rest of priority queue. Gallery includes both packs19/20.
+
 ## Plain-item realism batch 19 — 2026-09-15
 
 Eight prepared assets in `art/archive/19-bumpers-paper-v1/ready`: robot bumper2 v2 (fixes prior chroma failure), COOL penguin bumper5, old paper indices0,2,3,4,5,6. All pass alpha QC, light/dark review supplied, ten successful generations including two backdrop corrections. Exact mapping and exclusions in pack HANDOFF.md. Paper remains nonmagnetic; these are base bumpers, chain versions still queued. No game/live files changed. Added to gallery, Claude wires.

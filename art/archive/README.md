@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `20-paper-notes-v1/` | Four realistic papers: Stay Cool, You Got This, Don't Let Go, More Magnets (7,9,10,11). Sources, alpha manifest and light/dark sheet. | Codex built-in imagegen + hard chroma key | Ready for Claude review/wiring, not deployed by this batch |
 | `19-bumpers-paper-v1/` | Clean robot replacement, COOL penguin and six realistic paper objects (0,2,3,4,5,6). Sources, corrections, alpha manifest and review sheet. | Codex built-in imagegen + hard chroma key | Ready for Claude review/wiring, not deployed by this batch |
 | `18-extended-limbs-v1/` | Longer cat foreleg and boy teal sleeve, sources, cutouts and light/dark review. Camera-safe root/retraction handoff. | Codex built-in imagegen edits | Review only; Claude wires new source coordinates and withdrawal |
 | `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | LIVE: cat paw attack (a third of attacks in v13 worlds), `real-v1/cat-paw.webp` |
