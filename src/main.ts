@@ -639,7 +639,36 @@ let last = performance.now();
 let lastBgFrame = 0;
 let acc = 0;
 const STEP = 1 / 120;
+
+/**
+ * Frame sampler for real-phone QA: read it with `__mc.perf()` on the device.
+ * A ring of the last 600 frames with sim and render timed separately, so a slow
+ * frame can be attributed instead of guessed at. Costs three numbers per frame.
+ */
+const PERF_N = 600;
+const perfFrame = new Float32Array(PERF_N), perfSim = new Float32Array(PERF_N), perfDraw = new Float32Array(PERF_N);
+let perfAt = 0, perfSeen = 0;
+function perfPush(frameMs: number, simMs: number, drawMs: number) {
+  perfFrame[perfAt] = frameMs; perfSim[perfAt] = simMs; perfDraw[perfAt] = drawMs;
+  perfAt = (perfAt + 1) % PERF_N; perfSeen++;
+}
+function perfReport() {
+  const n = Math.min(perfSeen, PERF_N);
+  if (!n) return { frames: 0 };
+  const take = (a: Float32Array) => Array.from(a.subarray(0, n)).sort((x, y) => x - y);
+  const f = take(perfFrame), sim = take(perfSim), draw = take(perfDraw);
+  const q = (a: number[], p: number) => +a[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(2);
+  return {
+    frames: n,
+    fps: +(1000 / (f[Math.floor(n * 0.5)] || 16.7)).toFixed(1),
+    frameMs: { median: q(f, 0.5), p90: q(f, 0.9), p99: q(f, 0.99), worst: q(f, 1) },
+    simMs: { median: q(sim, 0.5), p99: q(sim, 0.99), worst: q(sim, 1) },
+    drawMs: { median: q(draw, 0.5), p99: q(draw, 0.99), worst: q(draw, 1) },
+    janky: { over20ms: f.filter((x) => x > 20).length, over33ms: f.filter((x) => x > 33).length },
+  };
+}
 let guideBackgroundDrawn = false;
+let simMs = 0;
 function frame(now: number) {
   updateAudio(!document.hidden && !paused, game && !game.chill ? Math.max(0, 1 - (game.floorY - Math.max(game.highestY, ...game.alive.map((c) => c.y))) / 400) : 0, game?.chill ?? true);
   // ResizeObserver and viewport events handle sizing without a layout read on
@@ -652,11 +681,16 @@ function frame(now: number) {
     if (!paused) {
       acc += dt;
       tickKeys(dt);
+      const simT0 = performance.now();
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
+      simMs = performance.now() - simT0;
       tickTutorial(dt);
       if (game.phase === "idle") tickHint(dt); else cancelHint();
     }
+    const drawT0 = performance.now();
     render(ctx, game, viewH, dpr);
+    perfPush(dt * 1000, simMs, performance.now() - drawT0);
+    simMs = 0;
     const bw = window.innerWidth, bh = window.innerHeight;
     if (!backdropDrawn || menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
       menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
@@ -723,5 +757,5 @@ else ui.showMenu();
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
 // Scripted-playtest hook (see CLAUDE.md). `ui` is here so screenshot QA can open a
 // panel directly instead of driving the sim into the state that produces it.
-declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown; ui: Ui } } }
-window.__mc = { game: () => game, save: () => save, ui };
+declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown; ui: Ui; perf: () => unknown } } }
+window.__mc = { game: () => game, save: () => save, ui, perf: perfReport };
