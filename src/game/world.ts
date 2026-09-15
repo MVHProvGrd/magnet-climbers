@@ -26,6 +26,11 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 /** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
 export const SEAM_MARGIN = 36;
 
+/** v13: true when a rect overlaps any zone a magnet cannot sit on (glass, plastic, paper, open gaps). */
+function blocked(zones: NoStickZone[], rect: Rect, pad = 16): boolean {
+  return zones.some((o) => (o.kind === "glass" || o.kind === "trim" || o.kind === "void" || o.kind === "sticker")
+    && rect.x < o.x + o.w + pad && rect.x + rect.w > o.x - pad && rect.y < o.y + o.h + pad && rect.y + rect.h > o.y - pad);
+}
 /** v8+: an x for a box of width w that keeps it on one door, clear of the centre seam. */
 function onOneDoor(r: Rng, w: number, min = 0): number {
   const left = DOOR_SEAM.x - 8 - w, right = DOOR_SEAM.x + DOOR_SEAM.w + 8;
@@ -81,7 +86,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 12, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 13, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -236,7 +241,10 @@ export class World {
       const big = this.version >= 9 && r() < 0.2;
       const power = this.version >= 9 ? (big ? rangeOf(r, 2, 2.6) : rangeOf(r, 0.6, 1.5)) : 1;
       const rw2 = big ? rw * 1.25 : rw, rh2 = big ? rh * 1.25 : rh;
-      zones.push({ x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2, kind: "repel", power });
+      // v13: magnets only sit on bare steel; try a few heights before giving the door up
+      let plate = { x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2 };
+      for (let k = 0; k < 3 && this.version >= 13 && blocked(zones, plate); k++) plate = { ...plate, y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)) };
+      if (!(this.version >= 13 && blocked(zones, plate))) zones.push({ ...plate, kind: "repel", power });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
@@ -259,10 +267,20 @@ export class World {
       const roll = this.version > 0 ? r() : 0;
       const motion = roll < 0.55 - difficulty * 0.25 ? "slide" : roll < 0.8 ? "lift" : "zigzag";
       const span = this.version > 0 ? rangeOf(r, 90, 160) : 0;
-      const minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
+      let minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
       const vy = motion === "slide" ? 0 : rangeOf(r, 50, 70 + difficulty * 80) * (r() < 0.5 ? 1 : -1);
-      bumpers.push({
-        x: rangeOf(r, 0, W - bw), y: by, w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
+      // v13: the whole travel box must be steel (a slider crosses the full width; lifts and zigzags climb too)
+      let travel = { x: 0, y: motion === "slide" ? by : minY, w: W, h: motion === "slide" ? bh : maxY - minY + bh };
+      let ok = !(this.version >= 13 && blocked(zones, travel, 8));
+      for (let k = 0; k < 4 && !ok; k++) {
+        const ny = y + rangeOf(r, 30, h - 60);
+        const nMin = Math.max(y + 10, ny - span / 2), nMax = Math.min(y + h - bh - 10, ny + span / 2);
+        travel = { x: 0, y: motion === "slide" ? ny : nMin, w: W, h: motion === "slide" ? bh : nMax - nMin + bh };
+        if (!blocked(zones, travel, 8)) { ok = true; minY = nMin; maxY = nMax; travel.y = motion === "slide" ? ny : nMin; }
+      }
+      if (this.version >= 13 && motion === "slide") { minY = travel.y; maxY = travel.y; }
+      if (ok) bumpers.push({
+        x: rangeOf(r, 0, W - bw), y: motion === "slide" ? travel.y : Math.min(Math.max(by, minY), maxY), w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
         minX: 0, maxX: W - bw, motion, vy, minY, maxY,
         label: pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
         hue: Math.floor(r() * 360),
@@ -321,7 +339,8 @@ export class World {
           if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * 2)) % themes.length];
           first = theme;
           const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
-          if (kind === "swing" && this.version >= 12) g.swing = { angle: 0, vel: 0, cool: 0 };
+          // hanging things start still and only move when touched: keyrings since v12, clips since v13
+          if ((kind === "swing" && this.version >= 12) || (kind === "clip" && this.version >= 13)) g.swing = { angle: 0, vel: 0, cool: 0 };
           return g;
         });
         if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }
