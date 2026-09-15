@@ -542,7 +542,7 @@ canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
   const sp = toScreen(e);
   const b = hudButtons(viewH);
-  for (const d of teamDots(game)) {
+  for (const d of teamDots(game, viewH)) {
     if (Math.hypot(d.x - sp.x, d.y - sp.y) < 17) { game.select(d.id); return; }
   }
   for (const m of offscreenMarkers(game, viewH)) {

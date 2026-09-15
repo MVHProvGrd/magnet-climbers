@@ -257,49 +257,56 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 }
 
 
+/** Top of the bottom stat row (height box, wallet, wall pill): above the crew buttons when there are any. */
+export function statRowY(g: Game, viewH: number) { return viewH - safeBottom - 48 - (g.rules === "crew" ? 52 : 6); }
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
+  // the HUD lives at the bottom: the kid's hand and the cat come in from the top and sides, so the top stays clear
+  const sy = statRowY(g, viewH);
   if (g.tricks.score > 0) {
     ctx.fillStyle = "rgba(22,34,43,.8)";
-    roundRect(ctx, 10, 96, 138, 23, 7); ctx.fill();
+    roundRect(ctx, 10, sy - 66, 138, 23, 7); ctx.fill();
     ctx.fillStyle = "#ffe393"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
     const combo = g.time - g.tricks.lastAt <= 4.5 && g.tricks.combo > 1 ? `  ×${g.tricks.combo}` : "";
-    ctx.fillText(tr(`STYLE ${g.tricks.score}${combo}`), 19, 112);
+    ctx.fillText(tr(`STYLE ${g.tricks.score}${combo}`), 19, sy - 50);
   }
   ctx.font = "bold 22px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, 10, 10, 120, !g.chill && g.phase === "running" ? 48 : 34, 10);
+  const tall = !g.chill && g.phase === "running";
+  roundRect(ctx, 10, sy + (tall ? 0 : 14), 120, tall ? 48 : 34, 10);
   ctx.fill();
   ctx.fillStyle = "#fff";
-  ctx.fillText(tr(`${g.heightCm} cm`), 20, 35);
+  ctx.fillText(tr(`${g.heightCm} cm`), 20, sy + (tall ? 25 : 39));
 
-  if (!g.chill && g.phase === "running") {
+  if (tall) {
     const m = g.wallMult();
     ctx.font = "bold 11px system-ui, sans-serif";
     ctx.fillStyle = m >= 2.5 ? "#ff6b6b" : m >= 1.6 ? "#ffd23f" : "rgba(255,255,255,0.85)";
-    ctx.fillText(tr(`▲ wall ${m.toFixed(1)}x`), 20, 50);
+    ctx.fillText(tr(`▲ wall ${m.toFixed(1)}x`), 20, sy + 40);
   }
 
   ctx.font = "bold 15px system-ui, sans-serif";
   ctx.textAlign = "right";
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, W - 130, 10, 120, (!g.chill && (g.coins > 0 || g.gems > 0)) ? 46 : 34, 10);
+  const runRow = !g.chill && (g.coins > 0 || g.gems > 0);
+  roundRect(ctx, W - 130, sy + (runRow ? 2 : 14), 120, runRow ? 46 : 34, 10);
   ctx.fill();
   // wallet + this run's pickups (chill runs bank nothing, so show only the wallet there)
   const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
+  const wy0 = sy + (runRow ? 24 : 36);
   ctx.fillStyle = "#ffd23f";
-  ctx.fillText(`$${g.walletCoins + runCoins}`, W - 72, 32);
+  ctx.fillText(`$${g.walletCoins + runCoins}`, W - 72, wy0);
   ctx.fillStyle = "#7ef0ff";
-  ctx.fillText(`◆${g.walletGems + runGems}`, W - 20, 32);
-  if (runCoins > 0 || runGems > 0) {
+  ctx.fillText(`◆${g.walletGems + runGems}`, W - 20, wy0);
+  if (runRow) {
     ctx.font = "bold 10px system-ui, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText(tr(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`), W - 20, 46);
+    ctx.fillText(tr(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`), W - 20, sy + 40);
     ctx.font = "bold 15px system-ui, sans-serif";
   }
 
   // team dots double as the active-climber selector
-  for (const d of teamDots(g)) {
+  for (const d of teamDots(g, viewH)) {
     const c = g.byId(d.id)!;
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath(); ctx.arc(d.x, d.y, 15, 0, Math.PI * 2); ctx.fill();
@@ -359,7 +366,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (!g.chill && wallScreen > viewH) {
     const dist = Math.round((g.floorY - Math.max(...g.alive.map((c) => c.y), g.camY)) / CFG.pxPerCm);
     ctx.fillStyle = "rgba(255,80,110,0.9)";
-    const wy = g.phase === "idle" ? viewH - 150 - safeBottom : viewH - 72 - safeBottom;
+    const wy = sy + 12; // between the two stat boxes
     roundRect(ctx, W / 2 - 70, wy, 140, 26, 8);
     ctx.fill();
     ctx.fillStyle = "#fff";
@@ -368,9 +375,8 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillText(tr(`▼ wall ${dist} cm below`), W / 2, wy + 18);
   }
 
-  // active effects
-  // below the height box, team dots and the STYLE readout
-  let ey = 126;
+  // active effects, stacked upward above the STYLE readout
+  let ey = (g.tricks.score > 0 ? sy - 66 : sy - 40) - 26;
   const eff: [string, number, string][] = [
     ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
     ["SLOW-MO", g.effects.slowmo, "#c77dff"],
@@ -388,7 +394,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillRect(12, ey + 16, 126 * Math.min(1, left / 8), 2);
     ctx.fillStyle = "#fff";
     ctx.fillText(tr(`${name} ${left.toFixed(0)}s`), 16, ey + 13);
-    ey += 26;
+    ey -= 26;
   }
 
   // bottom buttons
@@ -427,7 +433,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (g.phase === "idle") {
     ctx.font = "bold 12px system-ui, sans-serif";
     ctx.fillStyle = "rgba(0,0,0,0.55)";
-    const hb = viewH - 122 - safeBottom; // hint box top
+    const hb = sy - 130; // hint box top, clear of the stat row and the team dots
     roundRect(ctx, 20, hb, W - 40, 82, 12);
     ctx.fill();
     ctx.fillStyle = "#fff";
@@ -477,12 +483,13 @@ export function offscreenMarkers(g: Game, viewH: number): { id: number; x: numbe
 }
 
 /** Screen-space positions of the HUD team dots (tap to select). */
-export function teamDots(g: Game): { id: number; x: number; y: number }[] {
+export function teamDots(g: Game, viewH: number): { id: number; x: number; y: number }[] {
   const out: { id: number; x: number; y: number }[] = [];
   let x = 26;
+  const y = statRowY(g, viewH) - 24; // just above the height box
   for (const c of g.climbers) {
     if (c.state === "lost") continue;
-    out.push({ id: c.id, x, y: 66 });
+    out.push({ id: c.id, x, y });
     x += 32;
   }
   return out;

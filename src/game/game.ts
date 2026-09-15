@@ -836,6 +836,7 @@ export class Game {
       d.x += d.vx * dt; d.y += d.vy * dt; d.vy = Math.min(900, d.vy + 900 * dt); d.spin += (d.vx > 0 ? 6 : -6) * dt;
       if (d.x < 16 || d.x > W - 16) { d.vx = -d.vx * 0.7; d.x = Math.max(16, Math.min(W - 16, d.x)); }
     }
+    for (const d of this.drops) if (d.y >= this.floorY + 20) sfx.munch(); // the kid gets the sweet
     this.drops = this.drops.filter((d) => d.y < this.floorY + 20 && d.y < this.camY + this.viewH + 200);
     this.particles = this.particles.filter((p) => p.life > 0);
     for (const f of this.floats) { f.y -= 40 * dt; f.life -= dt; }
