@@ -379,6 +379,7 @@ function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
   rulesNow = r.snap.rules;
+  uiRoot.style.setProperty("--hud-lift", rulesNow === "crew" ? "52" : "6");
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
@@ -427,6 +428,7 @@ let runCoinsTotal = 0;
 function startLevel(level: LevelDef) {
   const go = () => {
     rulesNow = "crew";
+    uiRoot.style.setProperty("--hud-lift", "52");
     ui.clear(); clearSnapshot();
     adUsedThisRun = false; bankedCm = 0; runCounted = false; runCoinsTotal = 0; paused = false;
     game = new Game({ ...EXPEDITION_LEVELS } as Record<UpgradeKey, number>, runEvents(), { rules: "crew", seed: level.seed, level, lineup: lineupFor("crew") });
@@ -465,6 +467,7 @@ function finishLevel(level: LevelDef) {
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
+  uiRoot.style.setProperty("--hud-lift", rules === "crew" ? "52" : "6");
   ui.clear();
   clearSnapshot();
   adUsedThisRun = false;

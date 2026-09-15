@@ -87,7 +87,7 @@ export class Ui {
     this.root = root;
     this.pauseBtn = document.createElement("button");
     this.pauseBtn.className = "pause-btn";
-    this.pauseBtn.textContent = t("☰ MENU");
+    this.pauseBtn.textContent = "☰"; this.pauseBtn.setAttribute("aria-label", t("Menu"));
     this.pauseBtn.hidden = true;
     this.pauseBtn.addEventListener("click", () => { this.h.onPause(); this.showPause(); });
     root.appendChild(this.pauseBtn);
@@ -102,7 +102,7 @@ export class Ui {
 
   /** Re-render the fixed buttons after a language change. */
   refreshLang() {
-    this.pauseBtn.textContent = t("☰ MENU");
+    this.pauseBtn.textContent = "☰"; this.pauseBtn.setAttribute("aria-label", t("Menu"));
     this.refreshMute();
   }
 
