@@ -2,7 +2,7 @@ import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom } from "./game/render";
+import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
@@ -397,6 +397,20 @@ function resumeRun() {
 
 /** Guided first run: a solo run on a fixed seed with coaching tips driven by game state. */
 const TUTORIAL_SEED = 20260913;
+/** Idle hint: 10 s on screen, fading over the last 3, and gone for good after the first fling. */
+const HINT_SECONDS = 10;
+let hintLeft: number | null = null;
+function tickHint(dt: number) {
+  if (hintLeft === null) return;
+  hintLeft -= dt;
+  if (hintLeft <= 0) { hintLeft = null; setHintLeft(null); return; }
+  setHintLeft(hintLeft);
+}
+/** Called when a run starts; never re-shown mid-run. */
+function armHint() { hintLeft = HINT_SECONDS; setHintLeft(hintLeft); }
+/** First fling kills it immediately. */
+function cancelHint() { if (hintLeft !== null) { hintLeft = null; setHintLeft(null); } }
+
 let tutorial: { step: number; t: number } | null = null;
 const keyboardDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches && !("ontouchstart" in window);
 setKeyboardHints(keyboardDevice);
@@ -475,6 +489,8 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   const lineup = lineupFor(rules);
   game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  // the coached tutorial has its own bubbles; the idle hint would sit on top of them
+  if (withTutorial) cancelHint(); else armHint();
   if (!withTutorial && !save.chill) {
     const best = rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: false };
@@ -638,6 +654,7 @@ function frame(now: number) {
       tickKeys(dt);
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
       tickTutorial(dt);
+      if (game.phase === "idle") tickHint(dt); else cancelHint();
     }
     render(ctx, game, viewH, dpr);
     const bw = window.innerWidth, bh = window.innerHeight;
