@@ -361,7 +361,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, style: game.tricks.score, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -721,5 +721,7 @@ else if (!save.introSeen) {
 else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
-declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown } } }
-window.__mc = { game: () => game, save: () => save };
+// Scripted-playtest hook (see CLAUDE.md). `ui` is here so screenshot QA can open a
+// panel directly instead of driving the sim into the state that produces it.
+declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown; ui: Ui } } }
+window.__mc = { game: () => game, save: () => save, ui };

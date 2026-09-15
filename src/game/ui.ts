@@ -9,7 +9,7 @@ import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, t
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
-import { setChatStrip } from "./hud";
+import { setChatStrip, groupNum } from "./hud";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -848,27 +848,50 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[] }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; style?: number; walletCoins?: number; walletGems?: number }) {
     this.lastGameOver = o;
-    const p = el("div", "panel small");
+    // The dock grows upward into this card rather than a centred dialog (handoff 1h).
+    const p = el("div", "panel lost-card");
+    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED" : "ALL CLIMBERS LOST";
+    const revives = [
+      o.tokens > 0 ? { a: "token", top: "TOKEN", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
+      !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "FREE", cls: "accent" } : null,
+      { a: "gems", top: "◆ 5", sub: "GEMS", cls: o.gems >= 5 ? "gem" : "gem disabled" },
+    ].filter(Boolean) as { a: string; top: string; sub: string; cls: string }[];
     p.innerHTML = `
-      <h2>${o.isRecord ? "New record!" : o.chill ? "Chill run done" : o.ended ? "Run banked" : "All climbers lost"}</h2>
-      <div class="big">${o.cm} cm</div>
-      <p class="tag">${o.chill ? "Chill mode: no coins or records. Metres added to the world total." : `Best ${o.best} cm · earned <span class="coin">$${o.coins}</span>`}</p>
-      <p class="tag rank" hidden></p>
-      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
-      <div class="revive" ${o.ended ? "hidden" : ""}>
-        ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
-        ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
-        <button class="${o.gems >= 5 ? "" : "disabled"}" data-a="gems" ${o.gems >= 5 ? "" : "disabled"}>REVIVE · ◆5</button>
+      <div class="lost-head">
+        <div>
+          <span class="lost-label">${title}</span>
+          <div class="lost-cm"><b>${groupNum(o.cm)}</b><i>cm</i></div>
+        </div>
+        <div class="lost-meta">
+          <span>BEST <b>${groupNum(o.best)}</b></span>
+          <span class="rank" hidden></span>
+          ${o.style ? `<span>STYLE <b class="coin">${groupNum(o.style)}</b></span>` : ""}
+        </div>
       </div>
-      ${o.chill ? "" : `<button data-a="share">📣 CHALLENGE A FRIEND</button>`}
-      <button class="ghost" data-a="quit">BACK TO MENU</button>
+      ${o.chill ? `<p class="lost-banked"><i>Chill mode: no coins or records. Metres added to the world total.</i></p>` : `
+      <div class="lost-banked">
+        <span class="earned"><b class="coin">+${groupNum(o.coins)}</b> <i>BANKED</i></span>
+        <span class="totals"><b class="coin">${groupNum(o.walletCoins ?? 0)}</b> <b class="gem">◆ ${groupNum(o.walletGems ?? 0)}</b></span>
+      </div>`}
+      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
+      ${o.ended ? "" : `
+      <span class="lost-label dim">REVIVE THE CREW</span>
+      <div class="revive-row">
+        ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
+      </div>`}
+      <button class="go" data-a="again">CLIMB AGAIN</button>
+      <div class="lost-ghosts">
+        ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
+        <button class="ghost" data-a="quit">BACK TO MENU</button>
+      </div>
     `;
     p.addEventListener("click", (e) => {
-      const a = (e.target as HTMLElement).dataset.a;
+      const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
+      if (a === "again") { this.clear(); this.h.onPlay(o.mode); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }
