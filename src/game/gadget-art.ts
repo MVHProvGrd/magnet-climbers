@@ -96,9 +96,12 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     const { w, h } = imageSize(assembly), s = 95 / ((1 - KEYCHAIN_PIVOT.y) * h);
     // aim the chain through the steel bar (the real hold), not the raw pendulum angle
     const lean = Math.atan2(p.hold.x - g.x, p.hold.y - (g.y - 62));
-    ctx.save(); ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
-    ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
-    ctx.drawImage(assembly, -KEYCHAIN_PIVOT.x * w * s, -KEYCHAIN_PIVOT.y * h * s, w * s, h * s); ctx.restore();
+    const px = KEYCHAIN_PIVOT.x * w, py = KEYCHAIN_PIVOT.y * h;
+    ctx.save(); ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
+    // the round hook magnet stays put on the door; only the chain and lemon swing about its ring
+    ctx.drawImage(assembly, 0, 0, w, py, g.x - px * s, g.y - 62 - py * s, w * s, py * s);
+    ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
+    ctx.drawImage(assembly, 0, py, w, h - py, -px * s, 0, w * s, (h - py) * s); ctx.restore();
   } else if ((g.kind === "swing" && !(hardware && charmImg)) || g.kind === "clip") {
     ctx.strokeStyle = "#46565c"; ctx.lineWidth = 4;
     if (assembly) { ctx.lineWidth = 3; }
