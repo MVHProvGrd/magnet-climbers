@@ -2,8 +2,25 @@ import type { Vec } from "./types";
 import { objectArtById } from "./gadget-art";
 
 /** The cat's paw: comes down from the top of the screen at a random x, taps three times, retreats. */
-export interface CatPaw { x: number; t: number; hit: Set<number> }
+export interface CatPaw { x: number; t: number; hit: Set<number>; marked?: number }
 export const PAW_DURATION = 1.65;
+/** when each tap first touches the door */
+export const PAW_TAPS = [0.48, 0.87, 1.25];
+/** the four claw tips relative to the pose centre (Codex's study, same 0.24 scale as the game) */
+export const CLAW_TIPS: readonly [number, number][] = [[-36, 35], [-8, 55], [21, 54], [48, 31]];
+/** A claw mark on the door: world coordinates, fades over SCRATCH_LIFE seconds. */
+export interface Scratch { x: number; y: number; born: number }
+export const SCRATCH_LIFE = 1.6;
+export function drawScratches(ctx: CanvasRenderingContext2D, marks: readonly Scratch[], now: number) {
+  for (const m of marks) {
+    const age = now - m.born; if (age < 0 || age > SCRATCH_LIFE) continue;
+    const grow = Math.min(1, age / 0.1), fade = Math.pow(1 - age / SCRATCH_LIFE, 1.5);
+    ctx.save(); ctx.globalAlpha = fade; ctx.lineCap = "round";
+    ctx.strokeStyle = "#49565d"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.quadraticCurveTo(m.x - 1, m.y + 9 * grow, m.x - 3, m.y + 20 * grow); ctx.stroke();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(m.x + 0.8, m.y); ctx.quadraticCurveTo(m.x - 0.2, m.y + 9 * grow, m.x - 2.2, m.y + 20 * grow); ctx.stroke();
+    ctx.restore();
+  }
+}
 /** Codex's motion study timings; depths are fractions of the deepest tap, which reaches the climber band (about 60% of the view). */
 const KEYS: [number, number][] = [[0, -70], [0.3, -25], [0.48, 205 / 242], [0.57, 205 / 242], [0.72, 125 / 242], [0.87, 1], [0.95, 1], [1.10, 145 / 242], [1.25, 219 / 242], [1.31, 219 / 242], [1.65, -70]];
 const smooth = (t: number) => t * t * (3 - 2 * t);

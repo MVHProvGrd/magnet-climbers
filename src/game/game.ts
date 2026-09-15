@@ -1,11 +1,11 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
-import { World, inRect, makeRng } from "./world";
+import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
-import { pawPose, PAW_DURATION, type CatPaw } from "./cat-paw";
+import { pawPose, PAW_DURATION, PAW_TAPS, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
@@ -87,6 +87,8 @@ export class Game {
   sync = true;
   /** the cat's paw tapping down from the top of the screen (v13); null when idle */
   paw: CatPaw | null = null;
+  /** claw marks left on the door by the paw; cosmetic, short-lived, bounded */
+  scratches: Scratch[] = [];
   /** the kid's hand sweeping across the door; null when idle */
   hand: KidHand | null = null;
   nextHandAt = CFG.handFirstAfter;
@@ -1099,6 +1101,17 @@ export class Game {
     const paw = this.paw; if (!paw) return;
     paw.t += dt;
     const pose = pawPose(paw, this.camY, this.viewH);
+    // each tap leaves four claw marks where it landed (fixed to the door, off the seam), fading on their own
+    const marked = paw.marked ?? 0;
+    if (marked < PAW_TAPS.length && paw.t >= PAW_TAPS[marked]) {
+      paw.marked = marked + 1;
+      for (const [dx, dy] of CLAW_TIPS) {
+        const x = pose.x + dx; if (x > DOOR_SEAM.x - 4 && x < DOOR_SEAM.x + DOOR_SEAM.w + 4) continue;
+        this.scratches.push({ x, y: pose.y + dy, born: this.time });
+      }
+      while (this.scratches.length > 24) this.scratches.shift();
+    }
+    this.scratches = this.scratches.filter((m) => this.time - m.born <= SCRATCH_LIFE);
     if (pose.contact) for (const c of this.climbers) {
       if (c.state === "lost" || paw.hit.has(c.id) || c.iframes > 0) continue;
       const dx = (c.x - pose.x) / 46, dy = (c.y - pose.y) / 36;
