@@ -117,8 +117,8 @@ export function drawCreatureBody(ctx: CanvasRenderingContext2D, s: CreatureStyle
       oval(ctx, side * gap, eyeY, 2.5, 3);
       ctx.fillStyle = "#253748"; oval(ctx, side * gap + .5, eyeY, 1.2, 1.8); ctx.fillStyle = "#f7fff3";
     }
-    ctx.strokeStyle = "#34464e"; ctx.lineWidth = .8;
-    ctx.beginPath(); ctx.moveTo(-3, -10); ctx.quadraticCurveTo(0, -8, 3, -10); ctx.stroke();
+    // the dino's snout tooth is its mouth; every other creature gets the little smile
+    if (s.id !== "dino") { ctx.strokeStyle = "#34464e"; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(-3, -10); ctx.quadraticCurveTo(0, -8, 3, -10); ctx.stroke(); }
     if (s.id === "dino") {
       ctx.fillStyle = "#34464e"; oval(ctx, 15, -19, 1, 1);
       ctx.fillStyle = "#fff5d9"; ctx.beginPath(); ctx.moveTo(7, -13); ctx.lineTo(9, -10); ctx.lineTo(11, -13); ctx.fill();
