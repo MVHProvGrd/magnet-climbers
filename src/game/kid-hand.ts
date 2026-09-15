@@ -84,28 +84,25 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
   return false;
 }
 
-/** Codex's photographed arm (pack 12): fingers up, wrist at 39% of the height, sleeve running off the bottom.
- * The hand is rigid about the same wrist point and angle the hit-test uses; the forearm piece is stretched along
- * the drawn arm's line so the cuff always ends offscreen. Fractions of the image, so any export size works. */
-const ARM = { tipRow: 0.04, wristRow: 0.395, centreCol: 0.50 };
+/** Codex's photographed arm (pack 12), rigid like its motion study: fingers up, wrist at 39% of the height, cuff from 79%.
+ * Hand, forearm and cuff are one piece at natural proportions along the swipe angle; only the plain sweater fabric
+ * past the cuff is extended so the sleeve always runs offscreen. Fractions of the image, so any export size works. */
+const ARM = { tipRow: 0.04, wristRow: 0.395, cuffRow: 0.79, centreCol: 0.50 };
 function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource) {
   const iw = (arm as HTMLImageElement).naturalWidth || (arm as HTMLCanvasElement).width || 1;
   const ih = (arm as HTMLImageElement).naturalHeight || (arm as HTMLCanvasElement).height || 1;
-  const tip = ARM.tipRow * ih, wristRow = ARM.wristRow * ih, c0 = ARM.centreCol * iw;
-  // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62
+  const tip = ARM.tipRow * ih, wristRow = ARM.wristRow * ih, cuffRow = ARM.cuffRow * ih, c0 = ARM.centreCol * iw;
+  // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62 (the hit-test's geometry)
   const s = 96 / (wristRow - tip);
-  const wrist = { x: pose.point.x - Math.cos(pose.angle) * 34, y: pose.point.y - Math.sin(pose.angle) * 34 };
-  const reach = Math.hypot(pose.anchor.x - wrist.x, pose.anchor.y - wrist.y) + 80;
-  const lean = Math.atan2(pose.anchor.y - wrist.y, pose.anchor.x - wrist.x);
-  ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
-  // forearm: rows below the wrist, run from the wrist to past the anchor (mirrored so the thumb lands on the drawn side)
-  ctx.save(); ctx.translate(wrist.x, wrist.y); ctx.rotate(lean);
-  ctx.transform(0, s, reach / (ih - wristRow), 0, 0, -c0 * s); // +x toward the anchor, thumb side kept consistent with the hand
-  ctx.drawImage(arm, 0, wristRow - 6, iw, ih - wristRow + 6, 0, 0, iw, ih - wristRow + 6 - 0); ctx.restore();
-  // hand: rigid about the wrist, fingers along the pose angle
+  const reach = Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 120;
   ctx.save(); ctx.translate(pose.point.x, pose.point.y); ctx.rotate(pose.angle);
+  ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
+  // image (col,row) -> local (62 + (tip - row) * s, (c0 - col) * s): thumb lands on the drawn hand's side
   ctx.transform(0, -s, -s, 0, 62 + tip * s, c0 * s);
-  ctx.drawImage(arm, 0, 0, iw, wristRow + 12, 0, 0, iw, wristRow + 12); ctx.restore();
+  ctx.drawImage(arm, 0, 0, iw, cuffRow, 0, 0, iw, cuffRow);
+  // sweater past the cuff: the last rows stretched to the anchor and beyond
+  const fabric = ih - cuffRow, want = Math.max(fabric, (reach - (cuffRow - tip) * s) / s);
+  ctx.drawImage(arm, 0, cuffRow - 2, iw, fabric + 2, 0, cuffRow - 2, iw, want + 2);
   ctx.restore();
 }
 export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {

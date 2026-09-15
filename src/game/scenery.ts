@@ -300,7 +300,8 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper) {
 }
 
 export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
-  ctx.save(); ctx.translate(p.x, p.y + Math.sin(time * 3 + p.bob) * 4);
+  // quiet idle bob, same as Codex's enamel badge study (3 px at 2 rad/s), for every pickup
+  ctx.save(); ctx.translate(p.x, p.y + Math.sin(time * 2 + p.bob) * 3);
   ctx.shadowColor = "#21374855"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
   // generated image art first; the canvas drawing stays as the fallback while images load
   if (!drawPickupImage(ctx, p.kind)) drawPickupObject(ctx, p.kind);
