@@ -78,7 +78,7 @@ export const exact: Record<string, string> = {
   "Plastic Trim": "Acabamento plástico", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "Plástico não imanta. Atravesse voando ou use uma ilha de metal.",
   "Door Gap": "Vão da porta", "Nothing to stick to here. Fling across or land on a metal handle.": "Nada para grudar aqui. Pule por cima ou pouse numa alça de metal.",
   "Cold Air Vent": "Grade de ar frio", "Non-magnetic plastic grille. Jump across or use the steel sides.": "Grade de plástico sem ímã. Pule ou use o aço dos lados.",
-  "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.": "Um brinquedo num chaveiro. Não é aço: encostar nele dá um empurrãozinho e o faz balançar.",
+  "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.": "Um brinquedo. No chaveiro é resina e só balança ao ser tocado; preso direto na porta é um ímã com um leve empurrão. Nunca um apoio.",
   "Rolling Donut": "Rosquinha rolante", "Duck Dash": "Pato veloz", "Robot Patrol": "Patrulha robô", "Dino Slide": "Dino deslizante", "Pop Magnet": "Ímã pop", "Cool Cruiser": "Cruzador legal",
   "Swinging silver grip carries you. Fling from it to cross the panel.": "Um agarre prateado que balança te leva. Arremesse dele para atravessar.",
   "A rotating letter carries a silver grip around its face. Time your launch.": "Uma letra giratória leva um agarre prateado. Acerte a hora.",

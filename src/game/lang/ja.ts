@@ -78,7 +78,7 @@ export const exact: Record<string, string> = {
   "Plastic Trim": "プラスチックの縁", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "プラスチックは磁力ゼロ。飛び越えるか金属の島を使おう。",
   "Door Gap": "ドアの隙間", "Nothing to stick to here. Fling across or land on a metal handle.": "くっつくものがない。飛び越えるか金属の取っ手に着地。",
   "Cold Air Vent": "冷気の吹き出し口", "Non-magnetic plastic grille. Jump across or use the steel sides.": "磁力のないプラスチックの格子。飛び越えるか両脇の鉄へ。",
-  "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.": "キーホルダーのおもちゃ。鉄じゃない：触れると少し押し返され、ゆらゆら揺れる。",
+  "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.": "おもちゃ。キーホルダーのものは樹脂で、触れると揺れるだけ。ドアに直接ついたものは磁石で、少し押し返す。どちらもつかめない。",
   "Rolling Donut": "転がるドーナツ", "Duck Dash": "ダッシュあひる", "Robot Patrol": "ロボ巡回", "Dino Slide": "スライドディノ", "Pop Magnet": "ポップマグネット", "Cool Cruiser": "クールクルーザー",
   "Swinging silver grip carries you. Fling from it to cross the panel.": "揺れる銀のグリップが運んでくれる。そこから飛んでパネルを越えよう。",
   "A rotating letter carries a silver grip around its face. Time your launch.": "回る文字が銀のグリップを運ぶ。タイミングを計って発射。",

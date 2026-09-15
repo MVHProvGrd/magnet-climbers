@@ -65,7 +65,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL"].map((label, i): FridgeItem => ({
     id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser"][i],
     family: "bumper", label, hue: [332, 45, 200, 125, 280, 175][i], art: [12, 16, 19, 14, 17, 7][i],
-    description: "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.",
+    description: "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.",
   })),
   { id: "kid-hand", name: "The Kid's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },
 ];

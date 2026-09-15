@@ -211,8 +211,16 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     }
     return;
   }
+  if (!z.swing && z.itemId?.startsWith("bumper-")) {
+    // toy stuck straight on the door by its magnet backing: a weak N field, so it gets small arcs
+    const toy = objectArtById(z.itemId);
+    ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+    if (toy) drawDestination(ctx, toy, z.x, z.y, z.w, z.h);
+    else { const item = fridgeItem(z.itemId); drawBumper(ctx, { x: z.x, y: z.y, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 }); }
+    ctx.restore(); ctx.save(); drawFieldArcs(ctx, z, time, true); ctx.restore(); return;
+  }
   if (z.swing && z.itemId) {
-    // toy keychain: a hanging magnet with a small push, no arcs (it is a nudge, not a field)
+    // toy keychain: plain resin on a chain, no field; it just swings when brushed
     const toy = objectArtById(z.itemId), hardware = objectArtById("swing-snack");
     if (toy && hardware) { drawKeychain(ctx, z, toy, hardware, z.swing.angle); return; }
     if (hardware) {

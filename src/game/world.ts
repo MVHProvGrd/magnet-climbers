@@ -278,7 +278,12 @@ export class World {
       let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
       // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
       for (let k = 0; k < 3 && blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
-      if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push({ ...toy, kind: "repel", power: 0.35, itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } });
+      // half hang on a keychain (plain resin: no field, they just swing when brushed); half are stuck straight on the
+      // door by their magnet backing (a weak N push, no grip)
+      const hanging = r() < 0.5;
+      if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push(hanging
+        ? { ...toy, kind: "trim", itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
+        : { ...toy, kind: "repel", power: 0.35, itemId: `toy:${Math.floor(r() * 6)}` });
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
