@@ -16,6 +16,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 ## Going back to a set
 
+| `08-tactile-refresh-v1/` | Realistic pizza and dentist advertising magnets, handwritten grocery paper; immutable magenta sources and transparent WebP cutouts | Codex built-in generation; existing chroma-cut script | REVIEW ONLY; see ART_REFRESH_HANDOFF.md |
+
 - Pickups load from `public/art/pickups/<kind>.png` (`src/game/pickup-art.ts`). Drop a set there; missing files fall back to the canvas drawing.
 - Obstacles load from `public/art/real-v1/obstacles/<id>.png` (`src/game/obstacle-art.ts`). Remove a file, or add its id to `NO_PHOTO` there, to fall back to the canvas drawing.
 - To restore the canvas look everywhere, empty both folders. Nothing else changes.
