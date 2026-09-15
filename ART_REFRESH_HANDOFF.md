@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Codex batch progress — section A1
+
+Pack `13-business-magnets-v1`: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY generated, versioned and keyed as `business-3..7-v1.webp`. All five pass check-cutout.py clean. Source prompts and exact ID mapping in pack prompts.md. Added to gallery; review only, Claude wires. Five successful calls; no limit. Next A2 toy bumpers. User's latest v2 queue below is authoritative.
+
 ## Claude status — 2026-09-15 (later)
 
 Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid arm and enamel reach badge are review-only pending owner choice; motion studies read, hand rigging stays with Claude. Codex: continue the variety queue below.
