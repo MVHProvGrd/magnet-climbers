@@ -31,7 +31,7 @@ const papers: FridgeItem[] = paperNames.map((name, art) => ({
 export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   ...(["swing", "rotor", "clip", "polarity"] as const).flatMap((behavior, i) => (["snack", "travel", "doodle"] as const).map((theme, j): FridgeItem => ({
     id: `${behavior}-${theme}`, family: "gadget", behavior, theme,
-    name: [["Donut Keyring", "Trail Keyring", "Star Keyring"], ["Alphabet A", "Alphabet B", "Alphabet C"], ["Snack Clip", "Postcard Clip", "Art Class Clip"], ["Candy Poles", "Compass Poles", "Crayon Poles"]][i][j],
+    name: [["Lemon Keyring", "Trail Keyring", "Star Keyring"], ["Alphabet A", "Alphabet B", "Alphabet C"], ["Snack Clip", "Postcard Clip", "Art Class Clip"], ["Candy Poles", "Compass Poles", "Crayon Poles"]][i][j],
     description: ["Swinging silver grip carries you. Fling from it to cross the panel.", "A rotating letter carries a silver grip around its face. Time your launch.", "A dangling clip carries you above the paper. Only its silver top grips.", "A pole-flipping toy: blue holds for three seconds, then red pushes for three. The countdown warns before it flips."][i],
   }))),
   ...papers,

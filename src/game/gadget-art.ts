@@ -24,7 +24,16 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
   ...["business-0", "business-1", "business-2"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/paper/paper-8.webp", (image) => setObjectArt("paper-8", image)),
+  loadImage("art/paper/paper-1.webp", (image) => setObjectArt("paper-1", image)),
+  // pack 10 hanging keepsakes: whole photographed assemblies (hook, chain, clip baked in) for the swing and clip gadgets
+  ...["swing-snack", "clip-snack", "clip-travel", "clip-doodle"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
 ]);
+/** Hook pivot of the lemon keychain assembly, as fractions of its frame (source point 510,285 of 1024x1536). */
+const KEYCHAIN_PIVOT = { x: 510 / 1024, y: 285 / 1536 };
+const imageSize = (img: CanvasImageSource) => ({
+  w: (img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width || 1,
+  h: (img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height || 1,
+});
 /** Photographic object art by item id (bumpers, paper). */
 export const objectArtById = (id: string) => objectArt.get(id);
 function plate(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, radius = 5) {
@@ -65,7 +74,16 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const p = gadgetPose(g, time), z = gadgetZone(g, time), theme = g.itemId.split("-")[1];
   const index = THEMES.indexOf(theme as typeof THEMES[number]);
   ctx.save(); ctx.lineCap = "round";
-  if (g.kind === "swing" || g.kind === "clip") {
+  const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(`${g.kind}-${theme}`) : undefined;
+  if (assembly && g.kind === "swing") {
+    // the keychain photo carries its own hook and chain: swing the whole thing about the hook
+    const { w, h } = imageSize(assembly), s = 95 / ((1 - KEYCHAIN_PIVOT.y) * h);
+    // aim the chain through the steel bar (the real hold), not the raw pendulum angle
+    const lean = Math.atan2(p.hold.x - g.x, p.hold.y - (g.y - 62));
+    ctx.save(); ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
+    ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
+    ctx.drawImage(assembly, -KEYCHAIN_PIVOT.x * w * s, -KEYCHAIN_PIVOT.y * h * s, w * s, h * s); ctx.restore();
+  } else if (g.kind === "swing" || g.kind === "clip") {
     ctx.strokeStyle = "#46565c"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(g.x, g.y - 62); ctx.lineTo(p.hold.x, p.hold.y); ctx.stroke();
     ctx.strokeStyle = "#e9f5f5"; ctx.lineWidth = 1.3; ctx.stroke();
@@ -79,7 +97,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
     ctx.font = "900 42px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#754e4944"; ctx.fillText("ABC"[index] ?? "A", 2, 17);
     ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
-  } else if (g.kind !== "polarity") {
+  } else if (assembly && g.kind === "clip") {
+    // clipped paper photo hangs from the grip: its clip ring sits on the steel bar
+    const { w, h } = imageSize(assembly), s = Math.min(78 / h, 70 / w);
+    ctx.drawImage(assembly, -w * s / 2, -27 - 9, w * s, h * s);
+  } else if (g.kind !== "polarity" && !assembly) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
     charm(ctx, theme, g.kind === "clip" ? 58 : 62);
   }

@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Claude status — 2026-09-15 (later)
+
+Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid arm and enamel reach badge are review-only pending owner choice; motion studies read, hand rigging stays with Claude. Codex: continue the variety queue below.
+
 ## Latest owner steering — 2026-09-15
 
 Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-studies-v1`: realistic kid hand/forearm, enamel reach-badge alternative, interactive lemon bump-and-settle, side-swipe and bottom-entry left/right sweep previews. Review page `public/art-archive/motion-v1/index.html`; full instructions in pack HANDOFF.md. Single-pose hand and approximate source-rectangle lemon split are animation studies, not production articulated rigs. This supersedes older exclusions below for hand/reach art exploration only. No src/game changes. Hanging assets in `10-hanging-keepsakes-v1` remain available too.

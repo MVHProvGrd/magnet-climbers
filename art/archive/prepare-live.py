@@ -15,15 +15,28 @@ JOBS = [
     ("08-tactile-refresh-v1/ready/business-pizza-v1.webp", "business/business-1.webp", (480, 288)),
     ("08-tactile-refresh-v1/ready/business-vet-v1.webp", "business/business-2.webp", (480, 288)),
     ("08-tactile-refresh-v1/ready/paper-grocery-v1.webp", "paper/paper-8.webp", (256, 384)),
+    # pack 10 hanging keepsakes: clipped papers become the clip gadgets' charms, the cat photo a paper card
+    ("10-hanging-keepsakes-v1/ready/pancake-recipe-v1.webp", "gadgets/clip-snack.webp", (384, 384)),
+    ("10-hanging-keepsakes-v1/ready/seaside-postcard-v1.webp", "gadgets/clip-travel.webp", (384, 384)),
+    ("10-hanging-keepsakes-v1/ready/dinosaur-drawing-v1.webp", "gadgets/clip-doodle.webp", (384, 384)),
+    ("10-hanging-keepsakes-v1/ready/cat-snapshot-v1.webp", "paper/paper-1.webp", (320, 384)),
+    # lemon keychain keeps its full source frame so the hook pivot (510,285 of 1024x1536) stays a fixed fraction
+    ("10-hanging-keepsakes-v1/ready/lemon-keychain-v1.webp", "gadgets/swing-snack.webp", None),
 ]
 for src, dst, size in JOBS:
     im = Image.open(ROOT / src).convert("RGBA")
-    box = im.getchannel("A").point(lambda v: 255 if v > 32 else 0).getbbox()
-    im = im.crop(box)
-    f = min((size[0] - 8) / im.width, (size[1] - 8) / im.height)
-    dims = (round(im.width * f), round(im.height * f))
-    im = im.resize(dims, Image.Resampling.LANCZOS)
-    out = Image.new("RGBA", size); out.alpha_composite(im, ((size[0] - dims[0]) // 2, (size[1] - dims[1]) // 2))
+    if size is None:
+        # no crop, quarter scale: pivots given as fractions of the source stay valid
+        out = im.resize((im.width // 4, im.height // 4), Image.Resampling.LANCZOS); size = out.size
+    else:
+        box = im.getchannel("A").point(lambda v: 255 if v > 32 else 0).getbbox()
+        im = im.crop(box)
+        f = min((size[0] - 8) / im.width, (size[1] - 8) / im.height)
+        dims = (round(im.width * f), round(im.height * f))
+        im = im.resize(dims, Image.Resampling.LANCZOS)
+        # tight canvas at the object's own proportions so contain-fit placement is exact
+        size = (dims[0] + 8, dims[1] + 8)
+        out = Image.new("RGBA", size); out.alpha_composite(im, (4, 4))
     path = PUB / dst; path.parent.mkdir(parents=True, exist_ok=True)
     out.save(path, format="WEBP", quality=92, method=6)
     a = np.asarray(Image.open(path).getchannel("A")); assert a.min() == 0 and a.max() == 255, dst
