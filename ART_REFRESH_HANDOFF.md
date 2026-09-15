@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Codex batch progress — section A2 / bumper keychains
+
+User decision: all toy bumpers remain magnets with a small repulsive near-contact nudge. Donut, duck, robot, dino and POP! also become keychain-style hanging objects with a lemon-like swing pivot. Pack `14-toy-bumper-keychains-v1` contains five generated studies; COOL penguin is queued after the image limit. Robot has a chroma QC warning and must be regenerated before wiring. Full contract is in that pack's HANDOFF.md. No game files changed.
+
 ## Codex batch progress — section A1
 
 Pack `13-business-magnets-v1`: PLUMBER, NOODLES, LIBRARY, SCHOOL BUS, BAKERY generated, versioned and keyed as `business-3..7-v1.webp`. All five pass check-cutout.py clean. Source prompts and exact ID mapping in pack prompts.md. Added to gallery; review only, Claude wires. Five successful calls; no limit. Next A2 toy bumpers. User's latest v2 queue below is authoritative.

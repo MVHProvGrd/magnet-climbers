@@ -1,0 +1,67 @@
+[
+  {
+    "file": "ready/bumper-0-v1.webp",
+    "size": [
+      1681,
+      936
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/bumper-1-v1.webp",
+    "size": [
+      1681,
+      936
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/bumper-2-v1.webp",
+    "size": [
+      1681,
+      936
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/bumper-3-v1.webp",
+    "size": [
+      1681,
+      936
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  },
+  {
+    "file": "ready/bumper-4-v1.webp",
+    "size": [
+      1681,
+      936
+    ],
+    "clearBorder": true,
+    "alphaRange": [
+      0,
+      255
+    ],
+    "status": "review-only-assembly"
+  }
+]
