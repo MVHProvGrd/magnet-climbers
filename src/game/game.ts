@@ -302,20 +302,20 @@ export class Game {
     this.drag = null;
     if (!v) return;
     if (this.level && this.flings >= this.level.flings) { this.floats.push({ x: c.x, y: c.y - 34, text: "out of flings", life: 1, color: "#ff6b6b" }); return; }
-    this.flings++;
     if (this.sync && this.rules === "crew") {
       const targets = this.syncTargets();
       if (targets.length === 0) return;
       // the dragged one goes first; the rest follow, staggered
       targets.sort((a, b) => (a.id === c.id ? -1 : b.id === c.id ? 1 : a.y - b.y));
-      targets.forEach((t, i) => {
-        if (i === 0) this.launch(t, v);
-        else this.pendingLaunches.push({ id: t.id, v, at: this.time + i * 0.08 });
-      });
+      // a gesture only counts once somebody actually leaves the door
+      if (!this.launch(targets[0], v)) return;
+      this.flings++;
+      targets.slice(1).forEach((t, i) => this.pendingLaunches.push({ id: t.id, v, at: this.time + (i + 1) * 0.08 }));
       this.selectedId = c.id;
       return;
     }
-    this.launch(c, v);
+    // a ladder rung or an unlocked hanger refuses the launch; that costs no fling
+    if (this.launch(c, v)) this.flings++;
   }
 
   /** Launch velocity implied by the current drag, or null if too short. */
@@ -334,9 +334,10 @@ export class Game {
     return { x: dx * s, y: dy * s };
   }
 
-  launch(c: Climber, v: Vec) {
-    if (this.isLadder(c)) return;
-    if (c.state === "linked" && !c.locked) { this.floats.push({ x: c.x, y: c.y - 34, text: "CLIMB up first", life: 1, color: "#ff6b6b" }); return; }
+  /** Sends a climber flying. Returns false (and spends nothing) when it cannot go: a ladder rung or an unlocked hanger. */
+  launch(c: Climber, v: Vec): boolean {
+    if (this.isLadder(c)) { this.floats.push({ x: c.x, y: c.y - 34, text: "someone's hanging on you: CLIMB them up", life: 1, color: "#ff6b6b" }); return false; }
+    if (c.state === "linked" && !c.locked) { this.floats.push({ x: c.x, y: c.y - 34, text: "CLIMB up first", life: 1, color: "#ff6b6b" }); return false; }
     if (this.phase === "idle") this.phase = "running";
     // anything hanging on this climber loses its grip
     for (const o of this.climbers) {
@@ -364,6 +365,7 @@ export class Game {
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
     this.freeCam = false;
+    return true;
   }
 
   private detach(o: Climber) {

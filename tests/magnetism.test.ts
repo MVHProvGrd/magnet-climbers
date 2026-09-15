@@ -540,3 +540,17 @@ test("how to play covers every surface and family, with counts derived from the 
   const ids = FRIDGE_ITEMS.map((i) => i.id);
   assert.equal(new Set(ids).size, ids.length, "duplicate item id");
 });
+
+test("a refused launch (ladder rung, unlocked hanger) never spends a fling", () => {
+  const g = game("crew"); g.phase = "running";
+  const [a, b, c] = g.climbers;
+  // a three-high stack: a and b are ladder rungs, c on top is linked but not locked
+  a.state = "stuck"; b.state = "linked"; b.parent = a.id; b.locked = true; c.state = "linked"; c.parent = b.id; c.locked = false;
+  const before = g.flings;
+  assert.equal(g.launch(a, { x: 0, y: -400 }), false);
+  assert.equal(g.launch(b, { x: 0, y: -400 }), false);
+  g.selectedId = a.id; g.drag = { start: { x: a.x, y: a.y }, cur: { x: a.x, y: a.y + 120 } }; g.pointerUp();
+  assert.equal(g.flings, before, "a fling that never happened must not count");
+  c.parent = null; c.state = "flying"; b.parent = null; b.state = "flying";
+  assert.equal(g.launch(a, { x: 0, y: -400 }), true);
+});
