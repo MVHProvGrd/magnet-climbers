@@ -77,7 +77,7 @@ export const exact: Record<string, string> = {
   "Plastic Trim": "플라스틱 테두리", "Plastic offers no magnetic hold. Cross in flight or use a metal island.": "플라스틱엔 자력이 없어요. 날아서 넘거나 금속 섬을 쓰세요.",
   "Door Gap": "문 틈", "Nothing to stick to here. Fling across or land on a metal handle.": "붙을 게 없어요. 날아 넘거나 금속 손잡이에 착지하세요.",
   "Cold Air Vent": "냉기 통풍구", "Non-magnetic plastic grille. Jump across or use the steel sides.": "자력 없는 플라스틱 격자. 뛰어넘거나 양옆 철을 쓰세요.",
-  "Moving magnet: knocks you loose, even from a planted grip. Time your fling.": "움직이는 자석: 단단히 잡고 있어도 떨어뜨려요. 타이밍을 맞추세요.",
+  "A toy on a keychain. Not steel: brushing it gives you a small push and sets it swinging.": "열쇠고리에 달린 장난감. 강철이 아니에요: 스치면 살짝 밀려나고 장난감이 흔들려요.",
   "Rolling Donut": "구르는 도넛", "Duck Dash": "돌진 오리", "Robot Patrol": "로봇 순찰", "Dino Slide": "미끄럼 디노", "Pop Magnet": "팝 자석", "Cool Cruiser": "쿨 크루저",
   "Swinging silver grip carries you. Fling from it to cross the panel.": "흔들리는 은색 손잡이가 태워 줘요. 거기서 던져 판을 건너세요.",
   "A rotating letter carries a silver grip around its face. Time your launch.": "회전하는 글자가 은색 손잡이를 돌려요. 타이밍을 맞춰 출발.",

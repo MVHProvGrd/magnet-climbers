@@ -13,7 +13,7 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
 }
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
-  const angle = g.kind === "rotor" ? t * 0.95 : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
+  const angle = g.kind === "rotor" ? t * 0.95 : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
   const x = g.x + (g.kind === "swing" || g.kind === "clip" ? Math.sin(angle) * 45 : 0);
   const y = g.y + (g.kind === "swing" || g.kind === "clip" ? (1 - Math.cos(angle)) * 45 : 0);
   const active = g.kind === "polarity" && t % 6 >= 3;
@@ -23,7 +23,8 @@ export function gadgetPose(g: Gadget, time: number) {
   return { x, y, angle, active, remaining, hold };
 }
 export function gadgetZone(g: Gadget, time: number): NoStickZone {
-  const p = gadgetPose(g, time), w = g.kind === "polarity" ? 64 : 54, h = g.kind === "polarity" ? 64 : 14;
+  // clip hold matches the visible photographed clip (36 wide); swings hold on the chain below the hook
+  const p = gadgetPose(g, time), w = g.kind === "polarity" ? 64 : g.kind === "clip" ? 36 : 54, h = g.kind === "polarity" ? 64 : 14;
   return { x: p.hold.x - w / 2, y: p.hold.y - h / 2, w, h, kind: p.active ? "repel" : "void", hue: p.active ? 0 : -1 };
 }
 export function gadgetContains(g: Gadget, time: number, p: Vec): boolean {

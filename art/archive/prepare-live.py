@@ -20,6 +20,10 @@ JOBS = [
     ("10-hanging-keepsakes-v1/ready/seaside-postcard-v1.webp", "gadgets/clip-travel.webp", (384, 384)),
     ("10-hanging-keepsakes-v1/ready/dinosaur-drawing-v1.webp", "gadgets/clip-doodle.webp", (384, 384)),
     ("10-hanging-keepsakes-v1/ready/cat-snapshot-v1.webp", "paper/paper-1.webp", (320, 384)),
+    # pack 13: the other five business magnets
+    *[(f"13-business-magnets-v1/ready/business-{n}-v1.webp", f"business/business-{n}.webp", (480, 288)) for n in range(3, 8)],
+    # pack 14: toy bumpers as keychain payloads (hardware layer comes from the lemon at runtime)
+    *[(f"14-toy-bumper-keychains-v1/ready/bumper-{n}-v1.webp", f"bumpers/bumper-{n}.webp", (320, 240)) for n in range(0, 5)],
     # lemon keychain keeps its full source frame so the hook pivot (510,285 of 1024x1536) stays a fixed fraction
     ("10-hanging-keepsakes-v1/ready/lemon-keychain-v1.webp", "gadgets/swing-snack.webp", None),
 ]

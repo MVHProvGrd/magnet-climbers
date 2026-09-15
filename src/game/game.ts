@@ -333,6 +333,8 @@ export class Game {
     for (const o of this.climbers) {
       if (o.parent === c.id && o.state === "linked") this.detach(o);
     }
+    // kicking off a hanging gadget swings it the other way
+    for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -729,7 +731,7 @@ export class Game {
     this.time += dt;
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
-    if (this.phase === "running") this.world.gadgetTime += sdt;
+    if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }
@@ -768,7 +770,7 @@ export class Game {
     for (const c of this.climbers) c.handsAt = undefined;
     for (const c of this.climbers) {
       if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
-      if (c.state === "flying") this.stepFlying(c, sdt);
+      if (c.state === "flying") { this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx); }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
     }
@@ -915,6 +917,14 @@ export class Game {
         c.vx += closest.dx / distance * force;
         c.vy += closest.dy / distance * force;
       }
+      // v13: no steel under the toy, so it slides down whatever it is on. Each material drags differently:
+      // ice lets it shoot, glass squeaks, plastic scrubs, paper nearly stops it.
+      const k = this.world.version >= 13 ? this.world.slideFriction(c.x, c.y) : undefined;
+      if (k != null) {
+        const f = Math.min(1, k * dt);
+        c.vx -= c.vx * f; if (c.vy > 0) c.vy -= c.vy * f * 0.75; c.spin -= c.spin * f;
+        if (k >= 1.8 && c.vy > 0) c.vy = Math.min(c.vy, k >= 3 ? 110 : 260); // paper and plastic cap the slide speed
+      }
     }
     // teammate grab: after apex, within reach of an anchored teammate with chain room.
     // Off by default: it made flings unpredictable. CLIMB is the deliberate way to chain.
@@ -1011,6 +1021,8 @@ export class Game {
     if (!contacts.length) return false;
     if ((flat || !braceLanding(c, this.world)) && !attachGrip(c, contacts, flat)) return false;
     settleGrip(c, this.world);
+    // grabbing a hanging gadget swings it in the direction you arrived
+    for (const k of c.grip!.contacts) if (k.carrierId) this.world.bumpGadget(k.carrierId, Math.sign(c.vx), Math.min(1, Math.abs(c.vx) / 300));
     c.state = "stuck";
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;
@@ -1077,6 +1089,8 @@ export class Game {
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
+      // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
+      if (this.world.version >= 12 && random() < 0.4) this.hand.entry = "bottom";
       sfx.warning();
       return;
     }

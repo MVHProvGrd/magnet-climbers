@@ -35,7 +35,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     drawPanelJoint(ctx, s.y + s.h);
     for (const z of s.zones) drawZone(ctx, z, g.time, g.world.seed);
     for (const gadget of s.gadgets ?? []) drawGadget(ctx, gadget, g.world.gadgetTime);
-    for (const b of s.bumpers) drawBumper(ctx, b);
+    for (const b of s.bumpers) drawBumper(ctx, b, g.time);
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
 

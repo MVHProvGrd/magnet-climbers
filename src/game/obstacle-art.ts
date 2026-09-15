@@ -22,7 +22,7 @@ const NO_PHOTO = new Set(['gap']);
 
 function artId(z: NoStickZone): string | undefined {
   // N/S plates are souvenir magnets now (scenery.ts); the flat photos stay as the guide's fallback
-  if (z.kind === 'attract' || z.kind === 'repel') return undefined;
+  if (z.kind === 'attract' || z.kind === 'repel' || z.swing) return undefined;
   if (z.hue === -1) return 'handle';
   const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: 'plastic', void: 'gap', sticker: undefined }[z.kind];
   return id && NO_PHOTO.has(id) ? undefined : id;

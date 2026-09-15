@@ -11,6 +11,8 @@ export interface KidHand {
   t: number;
   hit: Set<number>;
   near?: number[];
+  /** "bottom": rises from below the door, sweeps across, drops out (Codex motion study). Default: side entry. */
+  entry?: "bottom";
 }
 export const SWIPE_DURATION = 0.82;
 export const RECOIL_DURATION = 0.46;
@@ -24,13 +26,25 @@ function bezier(a: Vec, b: Vec, c: Vec, d: Vec, t: number): Vec {
 export function swipePoint(y: number, t: number): Vec {
   return bezier({ x: -115, y: y + 160 }, { x: 55, y: y - 165 }, { x: 320, y: y - 105 }, { x: 325, y: y + 105 }, clamp(t));
 }
+/** Bottom entry: up the near edge, across just above the focus height, out the far edge. Mirrored by side like the rest. */
+export function riseSweepPoint(y: number, t: number): Vec {
+  return bezier({ x: 70, y: y + 380 }, { x: 40, y: y - 70 }, { x: 360, y: y - 60 }, { x: 345, y: y + 40 }, clamp(t));
+}
+/** The sweep path for a hand, whichever way it comes in. */
+export const pathPoint = (h: KidHand, t: number): Vec => h.entry === "bottom" ? riseSweepPoint(h.y, t) : swipePoint(h.y, t);
 export function handPose(h: KidHand) {
   const sweep = clamp(h.t / SWIPE_DURATION);
   let point: Vec;
-  if (h.phase === "warn") point = { x: -77 + Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 8, y: h.y + 105 };
-  else if (h.phase === "sweep") point = swipePoint(h.y, ease(sweep));
-  else point = bezier({ x: 325, y: h.y + 105 }, { x: 220, y: h.y + 230 }, { x: -35, y: h.y + 230 }, { x: -155, y: h.y + 160 }, ease(clamp(h.t / RECOIL_DURATION)));
-  const anchor = { x: -110, y: h.y + 245 };
+  const bottom = h.entry === "bottom";
+  if (h.phase === "warn") point = bottom
+    ? { x: 70, y: h.y + 330 - Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 10 }
+    : { x: -77 + Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 8, y: h.y + 105 };
+  else if (h.phase === "sweep") point = pathPoint(h, ease(sweep));
+  else point = bottom
+    ? bezier({ x: 345, y: h.y + 40 }, { x: 360, y: h.y + 200 }, { x: 370, y: h.y + 330 }, { x: 380, y: h.y + 560 }, ease(clamp(h.t / RECOIL_DURATION)))
+    : bezier({ x: 325, y: h.y + 105 }, { x: 220, y: h.y + 230 }, { x: -35, y: h.y + 230 }, { x: -155, y: h.y + 160 }, ease(clamp(h.t / RECOIL_DURATION)));
+  // the arm pivots about an offscreen shoulder: left of the door for side entry, below it for bottom entry
+  const anchor = bottom ? { x: 150, y: h.y + 520 } : { x: -110, y: h.y + 245 };
   const angle = Math.atan2(point.y - anchor.y, point.x - anchor.x) + (h.phase === "sweep" ? Math.sin(sweep * Math.PI) * 0.25 : 0);
   const curl = h.phase === "warn" ? 1.1 * (1 - ease(clamp(h.t / CFG.handWarn)))
     : h.phase === "retract" ? 1.35 - ease(clamp(h.t / RECOIL_DURATION)) * 0.45
@@ -119,12 +133,13 @@ export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
     // Show the real curved danger route, not a misleading horizontal stripe.
     const pulse = 0.6 + Math.sin(h.t * 14) * 0.15;
     ctx.strokeStyle = `rgba(255,189,90,${pulse * 0.32})`; ctx.lineWidth = 56; ctx.lineCap = "round";
-    ctx.beginPath(); const start = swipePoint(h.y, 0); ctx.moveTo(start.x, start.y);
-    for (let i = 1; i <= 30; i++) { const p = swipePoint(h.y, i / 30); ctx.lineTo(p.x, p.y); } ctx.stroke();
+    ctx.beginPath(); const start = pathPoint(h, 0); ctx.moveTo(start.x, start.y);
+    for (let i = 1; i <= 30; i++) { const p = pathPoint(h, i / 30); ctx.lineTo(p.x, p.y); } ctx.stroke();
     ctx.strokeStyle = `rgba(255,236,167,${pulse})`; ctx.lineWidth = 2; ctx.setLineDash([6, 9]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#302b30"; ctx.beginPath(); ctx.roundRect(8, h.y - 70, 121, 26, 9); ctx.fill();
+    const ly = h.entry === "bottom" ? h.y + 250 : h.y - 70;
+    ctx.fillStyle = "#302b30"; ctx.beginPath(); ctx.roundRect(8, ly, 121, 26, 9); ctx.fill();
     ctx.save(); if (h.side > 0) { ctx.translate(137, 0); ctx.scale(-1, 1); }
-    ctx.fillStyle = "#ffe0a1"; ctx.font = "800 11px system-ui"; ctx.textAlign = "center"; ctx.fillText("LOOK OUT!  SWIPE", 68, h.y - 53); ctx.restore();
+    ctx.fillStyle = "#ffe0a1"; ctx.font = "800 11px system-ui"; ctx.textAlign = "center"; ctx.fillText("LOOK OUT!  SWIPE", 68, ly + 17); ctx.restore();
   }
   if (h.phase === "sweep") {
     ctx.lineCap = "round";
@@ -133,7 +148,7 @@ export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
       ctx.beginPath();
       for (let i = 0; i <= 12; i++) {
         const t = ease(clamp(h.t / SWIPE_DURATION - 0.20 + i / 12 * 0.13));
-        const p = swipePoint(h.y, t); if (i === 0) ctx.moveTo(p.x, p.y - 36 - trail * 9); else ctx.lineTo(p.x, p.y - 36 - trail * 9);
+        const p = pathPoint(h, t); if (i === 0) ctx.moveTo(p.x, p.y - 36 - trail * 9); else ctx.lineTo(p.x, p.y - 36 - trail * 9);
       } ctx.stroke();
     }
   }

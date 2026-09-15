@@ -1,5 +1,5 @@
 import { CFG, W } from "./config";
-import type { Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment } from "./types";
+import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
@@ -26,6 +26,11 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 /** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
 export const SEAM_MARGIN = 36;
 
+/** v13: true when a rect overlaps any zone a magnet cannot sit on (glass, plastic, paper, open gaps). */
+function blocked(zones: NoStickZone[], rect: Rect, pad = 16, anyZone = false): boolean {
+  return zones.some((o) => (anyZone || o.kind === "glass" || o.kind === "trim" || o.kind === "void" || o.kind === "sticker")
+    && rect.x < o.x + o.w + pad && rect.x + rect.w > o.x - pad && rect.y < o.y + o.h + pad && rect.y + rect.h > o.y - pad);
+}
 /** v8+: an x for a box of width w that keeps it on one door, clear of the centre seam. */
 function onOneDoor(r: Rng, w: number, min = 0): number {
   const left = DOOR_SEAM.x - 8 - w, right = DOOR_SEAM.x + DOOR_SEAM.w + 8;
@@ -40,6 +45,45 @@ export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 export class World {
   gadgetTime = 0;
   segments: Segment[] = [];
+  /** cosmetic memory (v12): the last few paper cards and bumpers, so neighbouring doors do not repeat */
+  private recentPapers: string[] = [];
+  private lastKind = "";
+  private recentBumpers: string[] = [];
+  private recentToys: string[] = [];
+  private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
+  /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
+  /** everything that hangs: gadgets and toy keychain zones */
+  private get hanging(): { swing?: { angle: number; vel: number; cool: number } }[] {
+    return [...this.gadgets, ...this.segments.flatMap((s) => s.zones.filter((z) => z.swing))];
+  }
+  stepGadgets(dt: number) {
+    for (const g of this.hanging) {
+      const s = g.swing; if (!s) continue;
+      s.cool = Math.max(0, s.cool - dt);
+      s.vel += (-9.8 * Math.sin(s.angle) - 1.4 * s.vel) * dt;
+      s.angle += s.vel * dt;
+    }
+  }
+  /** Knock a swing: dir is the travel direction (sign of x velocity), strength 0..1. Capped at ±3 rad/s like the study. */
+  bumpGadget(id: string, dir: number, strength = 1) {
+    const g = this.gadgets.find((g) => g.id === id); const s = g?.swing; if (!s) return;
+    s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (dir || 1) * Math.max(0.25, strength)));
+    s.cool = 0.3;
+  }
+  /** A flying climber passing through the hanging charm knocks it (once per pass). */
+  knockSwings(p: Vec, vx: number) {
+    for (const g of this.gadgets) {
+      const s = g.swing; if (!s || s.cool > 0) continue;
+      const pose = gadgetPose(g, this.gadgetTime);
+      if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+    }
+    for (const seg of this.segments) for (const z of seg.zones) {
+      const s = z.swing; if (!s || s.cool > 0) continue;
+      if (p.x > z.x - 12 && p.x < z.x + z.w + 12 && p.y > z.y - 12 && p.y < z.y + z.h + 12) {
+        s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (Math.sign(vx) || 1) * Math.max(0.25, Math.min(1, Math.abs(vx) / 300)))); s.cool = 0.3;
+      }
+    }
+  }
   rng: Rng;
   /** y of the top-most generated segment */
   private topY: number;
@@ -53,7 +97,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 11, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 13, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -129,7 +173,10 @@ export class World {
     const powerUps: PowerUp[] = [];
 
     const kinds = ["solid", "band", "window", "pillar", "stickers", "band", "window"] as const;
-    const kind = i < 2 ? "solid" : pick(r, kinds as unknown as (typeof kinds)[number][]);
+    let kind = i < 2 ? "solid" : pick(r, kinds as unknown as (typeof kinds)[number][]);
+    // v12: never the same layout two doors in a row (a window over a window, a band under a band)
+    if (this.version >= 12) for (let k = 0; k < 4 && kind !== "solid" && kind === this.lastKind; k++) kind = pick(r, kinds as unknown as (typeof kinds)[number][]);
+    this.lastKind = kind;
 
     switch (kind) {
       case "solid": {
@@ -140,11 +187,14 @@ export class World {
         // horizontal non-stick band across the full width. Tall bands need a chain ladder.
         // a solo jump clears ~250px of height; bands stay under that, and the tall ones
         // always carry a metal handle as a stepping stone
-        const bandH = rangeOf(r, 110, 150 + difficulty * 60);
-        const by = y + rangeOf(r, 40, h - bandH - 40);
+        let bandH = rangeOf(r, 110, 150 + difficulty * 60);
         const bandKind = pick(r, ["trim", "glass", "void"] as const);
+        // v12: a glass band is the wide bottle door at its own 2:1 proportions, so it is never shorter than 190
+        if (bandKind === "glass" && this.version >= 12) bandH = Math.max(bandH, 190);
+        const by = y + rangeOf(r, 40, h - bandH - 40);
         zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
-        if (bandH > 165 || r() < 0.45) {
+        // v12: a band a solo jump clears (~250 px) needs no handle island; older worlds keep their stepping stones
+        if (this.version >= 12 ? bandH > 230 : bandH > 165 || r() < 0.45) {
           const hw = rangeOf(r, 40, 70);
           const hx = rangeOf(r, 20, W - hw - 20);
           zones.push({ x: hx, y: by + bandH * 0.35, w: hw, h: 24, kind: "trim" });
@@ -157,8 +207,9 @@ export class World {
       case "window": {
         // big glass panel, metal only on the sides (or one side)
         // glass panel with a usable steel strip (≥ 56px) on at least one side
-        const gw = this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
-        const gx = this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
+        // v12: the window fills its door like the set pieces do (176 wide, 12 px in from the edge and the seam)
+        const gw = this.version >= 12 ? 176 : this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
+        const gx = this.version >= 12 ? (r() < 0.5 ? 12 : 212) : this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
         // a handle across the glass now and then, as a mid-way hold
         if (r() < 0.5) {
@@ -201,7 +252,10 @@ export class World {
       const big = this.version >= 9 && r() < 0.2;
       const power = this.version >= 9 ? (big ? rangeOf(r, 2, 2.6) : rangeOf(r, 0.6, 1.5)) : 1;
       const rw2 = big ? rw * 1.25 : rw, rh2 = big ? rh * 1.25 : rh;
-      zones.push({ x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2, kind: "repel", power });
+      // v13: magnets only sit on bare steel; try a few heights before giving the door up
+      let plate = { x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2 };
+      for (let k = 0; k < 3 && this.version >= 13 && blocked(zones, plate); k++) plate = { ...plate, y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)) };
+      if (!(this.version >= 13 && blocked(zones, plate))) zones.push({ ...plate, kind: "repel", power });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
@@ -214,6 +268,15 @@ export class World {
       if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract", power: this.version >= 9 ? rangeOf(r, 0.7, 1.6) : 1 });
     }
 
+    // v13: toy keychains hang on the steel: no grip (a weak N push nudges you off), swing only when brushed
+    if (this.version >= 13 && i > 3 && r() < 0.3) {
+      const tw = rangeOf(r, 60, 76), th = rangeOf(r, 40, 52);
+      const m = SEAM_MARGIN + 60; // room for the hook and chain above
+      let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
+      // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
+      for (let k = 0; k < 3 && blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
+      if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push({ ...toy, kind: "repel", power: 0.35, itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } });
+    }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
       const bw = rangeOf(r, 44, 64);
@@ -224,10 +287,20 @@ export class World {
       const roll = this.version > 0 ? r() : 0;
       const motion = roll < 0.55 - difficulty * 0.25 ? "slide" : roll < 0.8 ? "lift" : "zigzag";
       const span = this.version > 0 ? rangeOf(r, 90, 160) : 0;
-      const minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
+      let minY = Math.max(y + 10, by - span / 2), maxY = Math.min(y + h - bh - 10, by + span / 2);
       const vy = motion === "slide" ? 0 : rangeOf(r, 50, 70 + difficulty * 80) * (r() < 0.5 ? 1 : -1);
-      bumpers.push({
-        x: rangeOf(r, 0, W - bw), y: by, w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
+      // v13: the whole travel box must be steel (a slider crosses the full width; lifts and zigzags climb too)
+      let travel = { x: 0, y: motion === "slide" ? by : minY, w: W, h: motion === "slide" ? bh : maxY - minY + bh };
+      let ok = !(this.version >= 13 && blocked(zones, travel, 8));
+      for (let k = 0; k < 4 && !ok; k++) {
+        const ny = y + rangeOf(r, 30, h - 60);
+        const nMin = Math.max(y + 10, ny - span / 2), nMax = Math.min(y + h - bh - 10, ny + span / 2);
+        travel = { x: 0, y: motion === "slide" ? ny : nMin, w: W, h: motion === "slide" ? bh : nMax - nMin + bh };
+        if (!blocked(zones, travel, 8)) { ok = true; minY = nMin; maxY = nMax; travel.y = motion === "slide" ? ny : nMin; }
+      }
+      if (this.version >= 13 && motion === "slide") { minY = travel.y; maxY = travel.y; }
+      if (ok) bumpers.push({
+        x: rangeOf(r, 0, W - bw), y: motion === "slide" ? travel.y : Math.min(Math.max(by, minY), maxY), w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
         minX: 0, maxX: W - bw, motion, vy, minY, maxY,
         label: pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
         hue: Math.floor(r() * 360),
@@ -249,22 +322,35 @@ export class World {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));
       const paperPool = this.version >= 6 ? PAPER_ITEMS : PAPER_ITEMS.slice(0, 20);
-      const bumperPool = this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      // v13: toys hang as keychains (zones below); only the advertising magnets slide
+      const bumperPool = this.version >= 13 ? BUMPER_ITEMS.filter(item => !item.id.startsWith("bumper-")) : this.version >= 6 ? BUMPER_ITEMS : BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
       if (this.version >= 3) {
         const used = new Set<string>([this.lastCardId]);
+        // v12: also avoid anything shown in the last few doors, so a big library actually reads as variety
+        for (const id of this.version >= 12 ? this.recentPapers : []) used.add(id);
         for (const zone of zones) {
           if (zone.kind !== "sticker") continue;
           let choice = pick(art, paperPool);
-          for (let k = 0; k < 6 && used.has(choice.id); k++) choice = pick(art, paperPool);
+          for (let k = 0; k < 10 && used.has(choice.id); k++) choice = pick(art, paperPool);
           used.add(choice.id);
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
+          this.remember(this.recentPapers, choice.id, 10);
         }
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
+      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      for (const zone of zones) if (zone.itemId?.startsWith("toy:")) {
+        let item = pick(art, toys);
+        for (let k = 0; k < 6 && this.recentToys.includes(item.id); k++) item = pick(art, toys);
+        this.remember(this.recentToys, item.id, 4); zone.itemId = item.id;
+      }
+      const usedBumpers = new Set<string>(this.version >= 12 ? this.recentBumpers : []);
       for (const bumper of bumpers) {
-        const item = pick(art, bumperPool);
+        let item = pick(art, bumperPool);
+        for (let k = 0; k < 10 && this.version >= 12 && usedBumpers.has(item.id); k++) item = pick(art, bumperPool);
+        usedBumpers.add(item.id); this.remember(this.recentBumpers, item.id, 8);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
       // set pieces: every third door before v7, every fifth since (they filled the doors and sat on the seams)
@@ -273,9 +359,16 @@ export class World {
         const kind = GADGET_KINDS[(i / 4 - 1) % 4];
         segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
         segment.bumpers = [];
+        const themes = [...THEMES]; let first = "";
         segment.gadgets = [0, 1].map((n) => {
-          const theme = pick(art, [...THEMES]);
-          return { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+          let theme = pick(art, themes);
+          // v12: the two gadgets on a door are never the same theme (no two pancake clips side by side)
+          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * 2)) % themes.length];
+          first = theme;
+          const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+          // hanging things start still and only move when touched: keyrings since v12, clips since v13
+          if ((kind === "swing" && this.version >= 12) || (kind === "clip" && this.version >= 13)) g.swing = { angle: 0, vel: 0, cool: 0 };
+          return g;
         });
         if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }
       }
@@ -283,6 +376,23 @@ export class World {
     return segment;
   }
 
+  /** v13: how much a non-steel surface drags a toy sliding down it (per second). Undefined = nothing to slide on (open gap, bare steel).
+   * Ice barely slows anything, glass a little, plastic more, paper grips hardest. */
+  slideFriction(x: number, y: number): number | undefined {
+    for (const s of this.segments) {
+      if (y < s.y - 60 || y > s.y + s.h + 60) continue;
+      for (const z of s.zones) {
+        if (x < z.x || x > z.x + z.w || y < z.y || y > z.y + z.h) continue;
+        if (z.hue === -1 && z.kind === "void") return undefined; // metal island
+        if (z.itemId === "ice-tray") return 0.08;
+        if (z.kind === "glass" || z.kind === "repel") return 0.7;
+        if (z.kind === "trim") return 1.8;
+        if (z.kind === "sticker") return 3.6;
+        if (z.kind === "void") return undefined;
+      }
+    }
+    return undefined;
+  }
   /** Whether a point is on stickable stainless steel. */
   isMetal(x: number, y: number, pad = 0): boolean {
     if (x < -pad || x > W + pad) return false;

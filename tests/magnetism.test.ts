@@ -206,7 +206,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 11);
+  assert.equal(modern.snapshot()!.worldVersion, 13);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -494,4 +494,17 @@ test("the field guide lists every item exactly once, in named groups", () => {
   }
   for (const item of FRIDGE_ITEMS) assert.equal(seen.get(item.id), 1, `${item.id} listed ${seen.get(item.id) ?? 0} times`);
   assert.ok(!BUMPER_ITEMS.some((i) => i.hazard), "hazard cards never spawn");
+});
+
+test("v13 keeps magnets on bare steel: no plate or bumper path over glass, plastic, paper or gaps", () => {
+  const soft = new Set(["glass", "trim", "void", "sticker"]);
+  const hits = (a: { x: number; y: number; w: number; h: number }, zones: { x: number; y: number; w: number; h: number; kind: string }[]) =>
+    zones.some((o) => soft.has(o.kind) && a.x < o.x + o.w && a.x + a.w > o.x && a.y < o.y + o.h && a.y + a.h > o.y);
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const world = new World(seed, 0, 13); world.generateTo(80);
+    for (const s of world.segments) {
+      for (const z of s.zones) if (z.kind === "repel" || z.kind === "attract") assert.ok(!hits(z, s.zones), `${z.kind} plate over non-steel, seed ${seed} y ${s.y}`);
+      for (const b of s.bumpers) assert.ok(!hits({ x: b.minX, y: b.minY, w: b.maxX - b.minX + b.w, h: b.maxY - b.minY + b.h }, s.zones), `bumper path over non-steel, seed ${seed} y ${s.y}`);
+    }
+  }
 });
