@@ -115,7 +115,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected:
   const material = ctx.createLinearGradient(c.x - 40, c.y - 40, c.x + 40, c.y + 40);
   material.addColorStop(0, mix(style.color, "#ffffff", 0.75)); material.addColorStop(0.3, style.color);
   material.addColorStop(0.78, style.color); material.addColorStop(1, mix(style.color, "#2a3038", 0.55));
-  ctx.lineCap = "round";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   const origin = project({ x: c.x, y: c.y, z: shape.lift }, false);
   if (style.id !== "human") {
     ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
