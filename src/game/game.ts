@@ -732,6 +732,7 @@ export class Game {
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
     if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
+    this.world.superGrip = this.effects.superMagnet > 0;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
     }

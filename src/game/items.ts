@@ -40,7 +40,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },
   { id: "coin", name: "Pocket Change", family: "pickup", power: "coin", description: "Coins feed the prize machine for new patterns. Chill mode doesn't award currency." },
   { id: "gem", name: "Ice Gem", family: "pickup", power: "gem", description: "Rare gem currency. Not awarded in Chill mode." },
-  { id: "magnet", name: "Super Magnet", family: "pickup", power: "magnet", description: "Temporarily catch earlier and reach farther for real steel." },
+  { id: "magnet", name: "Super Magnet", family: "pickup", power: "magnet", description: "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel." },
   { id: "extra", name: "Pocket Pal", family: "pickup", power: "extra", description: "Adds another climber to your run." },
   { id: "slowmo", name: "Kitchen Timer", family: "pickup", power: "slowmo", description: "Temporarily slows the action." },
   { id: "reach", name: "Reach Badge", family: "pickup", power: "reach", description: "Temporarily stretches the distance you can climb to a teammate." },

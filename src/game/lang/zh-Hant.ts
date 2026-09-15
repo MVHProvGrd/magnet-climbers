@@ -60,7 +60,7 @@ export const exact: Record<string, string> = {
   "Little Lifeline": "小心心", "Restores one heart to the climber who collects it, up to three.": "給拾取者恢復一顆心，最多三顆。",
   "Pocket Change": "零錢", "Coins feed the prize machine for new patterns. Chill mode doesn't award currency.": "金幣用來在抽獎機抽新圖案。休閒模式不給貨幣。",
   "Ice Gem": "冰寶石", "Rare gem currency. Not awarded in Chill mode.": "稀有寶石貨幣。休閒模式不給。",
-  "Super Magnet": "超級磁鐵", "Temporarily catch earlier and reach farther for real steel.": "暫時更早吸住、更遠夠到鋼板。",
+  "Super Magnet": "超級磁鐵", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "暫時更早抓住、搆得更遠，並能像鋼一樣吸住玻璃、塑膠和紙。",
   "Pocket Pal": "口袋夥伴", "Adds another climber to your run.": "給本局加一名攀登者。",
   "Kitchen Timer": "廚房計時器", "Temporarily slows the action.": "暫時放慢節奏。",
   "Reach Badge": "延伸徽章", "Temporarily stretches the distance you can climb to a teammate.": "暫時增加能爬到隊友身邊的距離。",

@@ -508,3 +508,16 @@ test("v13 keeps magnets on bare steel: no plate or bumper path over glass, plast
     }
   }
 });
+
+test("super magnet grips glass, plastic and paper but never an open gap or a hanging toy", () => {
+  const world = new World(9, 0, 13); world.generateTo(30);
+  const seg = world.segments[3]; seg.zones = [
+    { x: 0, y: seg.y + 20, w: 100, h: 80, kind: "glass" }, { x: 120, y: seg.y + 20, w: 60, h: 80, kind: "void" },
+    { x: 220, y: seg.y + 20, w: 60, h: 40, kind: "repel", power: 0.35, itemId: "bumper-1", swing: { angle: 0, vel: 0, cool: 0 } },
+  ];
+  assert.equal(world.isMetal(50, seg.y + 60), false);
+  world.superGrip = true;
+  assert.equal(world.isMetal(50, seg.y + 60), true, "glass grips under super magnet");
+  assert.equal(world.isMetal(150, seg.y + 60), false, "gaps never grip");
+  assert.equal(world.isMetal(250, seg.y + 40), false, "toys never grip");
+});

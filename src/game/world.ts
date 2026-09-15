@@ -45,6 +45,8 @@ export const DOOR_SEAM: Rect = { x: W / 2 - 5, y: -1e9, w: 10, h: 2e9 };
 export class World {
   gadgetTime = 0;
   segments: Segment[] = [];
+  /** Super Magnet: while true, glass, plastic, paper and plates all take a grip (open gaps and toys still do not). */
+  superGrip = false;
   /** cosmetic memory (v12): the last few paper cards and bumpers, so neighbouring doors do not repeat */
   private recentPapers: string[] = [];
   private lastKind = "";
@@ -407,6 +409,7 @@ export class World {
       }
       for (const z of s.zones) {
         if (z.hue === -1 || z.kind === "attract") continue;
+        if (this.superGrip && z.kind !== "void" && !z.swing) continue;
         if (inRect(x, y, z, -pad)) return false;
       }
     }

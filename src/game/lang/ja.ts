@@ -60,7 +60,7 @@ export const exact: Record<string, string> = {
   "Little Lifeline": "小さなハート", "Restores one heart to the climber who collects it, up to three.": "拾った人のハートを1つ回復。最大3つ。",
   "Pocket Change": "小銭", "Coins feed the prize machine for new patterns. Chill mode doesn't award currency.": "コインはガチャで新しい柄に変わる。のんびりモードでは手に入らない。",
   "Ice Gem": "氷のジェム", "Rare gem currency. Not awarded in Chill mode.": "レアな通貨。のんびりモードでは出ない。",
-  "Super Magnet": "スーパーマグネット", "Temporarily catch earlier and reach farther for real steel.": "しばらくの間、早く・遠くの鉄にくっつける。",
+  "Super Magnet": "スーパーマグネット", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "しばらくの間、早くつかめて遠くまで届き、ガラス・プラスチック・紙にも鉄のようにくっつく。",
   "Pocket Pal": "ポケットの相棒", "Adds another climber to your run.": "仲間がひとり増える。",
   "Kitchen Timer": "キッチンタイマー", "Temporarily slows the action.": "しばらくスローモーション。",
   "Reach Badge": "リーチバッジ", "Temporarily stretches the distance you can climb to a teammate.": "仲間まで登れる距離がしばらく伸びる。",

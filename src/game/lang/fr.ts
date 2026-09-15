@@ -60,7 +60,7 @@ export const exact: Record<string, string> = {
   "Little Lifeline": "Petit cœur", "Restores one heart to the climber who collects it, up to three.": "Rend un cœur à celui qui le ramasse, jusqu'à trois.",
   "Pocket Change": "Petite monnaie", "Coins feed the prize machine for new patterns. Chill mode doesn't award currency.": "Les pièces alimentent la machine à prix pour de nouveaux motifs. Le mode zen n'en donne pas.",
   "Ice Gem": "Gemme de glace", "Rare gem currency. Not awarded in Chill mode.": "Monnaie rare. Pas en mode zen.",
-  "Super Magnet": "Super aimant", "Temporarily catch earlier and reach farther for real steel.": "Accroche plus tôt et plus loin sur l'acier, un moment.",
+  "Super Magnet": "Super aimant", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "Un moment : accroche plus tôt, porte plus loin et tient sur le verre, le plastique et le papier comme sur l'acier.",
   "Pocket Pal": "Copain de poche", "Adds another climber to your run.": "Ajoute un grimpeur à votre partie.",
   "Kitchen Timer": "Minuteur de cuisine", "Temporarily slows the action.": "Ralentit l'action un moment.",
   "Reach Badge": "Badge de portée", "Temporarily stretches the distance you can climb to a teammate.": "Allonge un moment la distance pour grimper jusqu'à un coéquipier.",

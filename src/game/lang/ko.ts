@@ -60,7 +60,7 @@ export const exact: Record<string, string> = {
   "Little Lifeline": "작은 하트", "Restores one heart to the climber who collects it, up to three.": "주운 인형의 하트를 하나 회복, 최대 셋.",
   "Pocket Change": "잔돈", "Coins feed the prize machine for new patterns. Chill mode doesn't award currency.": "코인은 뽑기 기계에서 새 무늬가 돼요. 느긋한 모드에선 안 나와요.",
   "Ice Gem": "얼음 보석", "Rare gem currency. Not awarded in Chill mode.": "희귀 화폐. 느긋한 모드에선 안 나와요.",
-  "Super Magnet": "슈퍼 자석", "Temporarily catch earlier and reach farther for real steel.": "잠시 동안 더 빨리, 더 멀리 철에 붙어요.",
+  "Super Magnet": "슈퍼 자석", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "잠시 동안 더 빨리 붙고 더 멀리 닿으며, 유리·플라스틱·종이에도 강철처럼 붙어요.",
   "Pocket Pal": "주머니 친구", "Adds another climber to your run.": "인형이 하나 늘어나요.",
   "Kitchen Timer": "주방 타이머", "Temporarily slows the action.": "잠시 느려져요.",
   "Reach Badge": "팔 늘리기 배지", "Temporarily stretches the distance you can climb to a teammate.": "동료에게 기어갈 수 있는 거리가 잠시 늘어나요.",
