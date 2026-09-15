@@ -1,6 +1,6 @@
 import { CFG, W } from "./config";
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
-import { PAPER_ITEMS, BUMPER_ITEMS } from "./items";
+import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT } from "./items";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
 import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
@@ -344,6 +344,16 @@ export class World {
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
           this.remember(this.recentPapers, choice.id, 10);
+          // v13: a photographed paper keeps its own proportions (shrink to fit rather than crop)
+          const aspect = this.version >= 13 ? PAPER_ASPECT[choice.id] : undefined;
+          if (aspect) {
+            const others = zones.filter((o) => o !== zone);
+            let cw = zone.w, ch = Math.round(cw / aspect);
+            while (ch > 120 || zone.y + ch > y + h - SEAM_MARGIN || blocked(others, { x: zone.x, y: zone.y, w: cw, h: ch }, 8, true)) {
+              cw -= 6; ch = Math.round(cw / aspect); if (cw < 40) break;
+            }
+            if (cw >= 40) { zone.w = cw; zone.h = ch; }
+          }
         }
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;

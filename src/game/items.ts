@@ -111,6 +111,8 @@ export function guideGroups(family: ItemFamily): { title: string; items: FridgeI
   return groups.filter((g) => g.items.length);
 }
 export const PAPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "paper");
+/** Width/height of the photographed papers, so a v13 card takes the photo's shape instead of cropping it. */
+export const PAPER_ASPECT: Record<string, number> = { "paper-8": 231 / 384, "paper-1": 253 / 384 };
 export const BUMPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "bumper" && !item.hazard);
 const byId = new Map(FRIDGE_ITEMS.map((item) => [item.id, item]));
 export const fridgeItem = (id?: string) => id ? byId.get(id) : undefined;
