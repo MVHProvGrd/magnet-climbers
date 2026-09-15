@@ -91,6 +91,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     const object = theme === "travel" ? compass : objectArt.get(theme === "snack" ? "candy-pole" : "crayon");
     if (object) {
       polarityField(ctx, z, p.active, time);
+      // every switching toy turns a half turn when the pole flips: eased over .45 s from the moment of the switch
+      const since = 3 - p.remaining, k = Math.min(1, since / .45), ease = k * k * (3 - 2 * k);
+      const facing = (p.active ? Math.PI : 0) - Math.PI * (1 - ease);
       ctx.save(); ctx.translate(cx, cy);
       ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
       if (theme === "travel") {
@@ -99,11 +102,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
           // the needle swings to the live pole and spins as the switch nears
           ctx.shadowColor = "transparent";
           const spin = p.remaining < .65 ? time * 18 : 0;
-          ctx.save(); ctx.translate(0, 2.6); ctx.rotate((p.active ? Math.PI : 0) + spin);
+          ctx.save(); ctx.translate(0, 2.6); ctx.rotate(facing + spin);
           ctx.drawImage(needle, -3.85, -20.4, 7.75, 46.45); ctx.restore();
         }
-      } else if (theme === "snack") { ctx.rotate(-Math.PI / 2); ctx.drawImage(object, -30, -12, 60, 24); }
-      else ctx.drawImage(object, -31, -16, 62, 32);
+      } else if (theme === "snack") { ctx.rotate(-Math.PI / 2 + facing); ctx.drawImage(object, -30, -12, 60, 24); }
+      else { ctx.rotate(facing); ctx.drawImage(object, -31, -16, 62, 32); }
       ctx.restore();
       // pole tint: a red or blue wash over the toy says which way it is pushing
       ctx.save(); ctx.globalAlpha = .28; ctx.fillStyle = p.active ? "#e53f43" : "#1596df";
