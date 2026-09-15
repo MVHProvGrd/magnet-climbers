@@ -28,9 +28,8 @@ function artId(z: NoStickZone): string | undefined {
   return id && NO_PHOTO.has(id) ? undefined : id;
 }
 
-/** Whole-door bottle art for a glass zone: the tall door for portrait windows (under 0.7:1), the squat one otherwise; none for full-width bands. */
+/** Whole-door bottle art for a glass zone: the tall door or the wide one, whichever is nearer the zone's shape; the wide one also stretches across full-width bands. */
 function doorArt(z: NoStickZone): HTMLImageElement | undefined {
-  if (z.w > 260) return undefined;
   const tall = images.get('glass-door'), wide = images.get('glass-wide');
   if (!tall || !wide) return tall ?? wide;
   // whichever door is nearer the window's proportions (log ratio), so a stretch stays mild
@@ -50,7 +49,7 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     const door = doorArt(z)!;
     const sx = z.w / door.width, sy = z.h / door.height, stretch = Math.max(sx, sy) / Math.min(sx, sy);
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 6); c.clip();
-    if (stretch <= 1.7) c.drawImage(door, z.x, z.y, z.w, z.h); // whole door stretched across the one panel, frame intact
+    if (stretch <= 2) c.drawImage(door, z.x, z.y, z.w, z.h); // whole door stretched across the panel or band, frame intact
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
@@ -76,6 +75,8 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
   c.restore(); return true;
 }
 
+/** The loaded obstacle photo for a guide item (glass shows the bottle door). */
+export const obstacleImage = (id: string) => images.get(id === 'glass' && images.has('glass-door') ? 'glass-door' : id);
 /** Guide previews retain natural proportions, including the long handle. */
 export function drawObstaclePreview(c: CanvasRenderingContext2D, id: string): boolean {
   const img = images.get(id === 'glass' && images.has('glass-door') ? 'glass-door' : id);

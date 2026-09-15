@@ -105,6 +105,8 @@ select.buy option { background: #1e2229; color: #fff; }
 .guide-legend { margin: 0; padding: 12px; border-radius: 12px; background: #253343; font-size: 12px; line-height: 1.6; text-align: left; }
 .guide-tabs button { flex: 1 1 40%; }
 .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.guide-section { grid-column: 1 / -1; margin: 8px 0 -2px; font-size: 13px; letter-spacing: .4px; text-transform: uppercase; color: #ffd166; text-align: left; }
+.guide-section em { font-style: normal; font-weight: 500; color: #8b97a3; margin-left: 6px; }
 .guide-card { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 10px 14px; background: linear-gradient(155deg, #303b4b 0%, #252e3b 62%, #202734 100%); border: 1px solid #4b5a69; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(0,0,0,.14); }
 .guide-card::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, #ff8a3d, #ffd166, #72d6c9); opacity: .75; }
 .guide-card canvas { width: 100%; max-width: 132px; height: auto; border-radius: 20px; background: radial-gradient(circle at 50% 43%, rgba(109, 190, 211, .17), rgba(20, 27, 37, 0) 67%); }
@@ -159,7 +161,7 @@ select.buy option { background: #1e2229; color: #fff; }
 .guide-zoom.show { opacity: 1; }
 .zoom-card { width: min(92vw, 360px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 16px 16px; border-radius: 22px; background: linear-gradient(155deg, #303b4b 0%, #252e3b 62%, #202734 100%); border: 1px solid #4b5a69; box-shadow: 0 20px 60px rgba(0,0,0,.6); text-align: center; transform: scale(.9); transition: transform .15s; }
 .guide-zoom.show .zoom-card { transform: scale(1); }
-.zoom-card canvas { width: 100%; max-width: 300px; height: auto; border-radius: 28px; background: radial-gradient(circle at 50% 43%, rgba(109, 190, 211, .17), rgba(20, 27, 37, 0) 67%); }
+.zoom-card canvas { width: auto; height: auto; max-width: 100%; max-height: min(60vh, 460px); border-radius: 28px; background: radial-gradient(circle at 50% 43%, rgba(109, 190, 211, .17), rgba(20, 27, 37, 0) 67%); }
 .zoom-card b { font-size: 20px; }
 .zoom-card span { font-size: 14px; line-height: 1.5; color: #ccd6df; }
 .zoom-card i { font-size: 11px; color: #8b97a3; font-style: normal; margin-top: 4px; }

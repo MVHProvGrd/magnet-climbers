@@ -143,11 +143,7 @@ export class World {
         const bandH = rangeOf(r, 110, 150 + difficulty * 60);
         const by = y + rangeOf(r, 40, h - bandH - 40);
         const bandKind = pick(r, ["trim", "glass", "void"] as const);
-        // v11: a glass band is two door windows (left door, right door), so the bottle art is never stretched across the seam
-        if (bandKind === "glass" && this.version >= 11) {
-          zones.push({ x: 0, y: by, w: DOOR_SEAM.x, h: bandH, kind: "glass" });
-          zones.push({ x: DOOR_SEAM.x + DOOR_SEAM.w, y: by, w: W - DOOR_SEAM.x - DOOR_SEAM.w, h: bandH, kind: "glass" });
-        } else zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
+        zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
         if (bandH > 165 || r() < 0.45) {
           const hw = rangeOf(r, 40, 70);
           const hx = rangeOf(r, 20, W - hw - 20);

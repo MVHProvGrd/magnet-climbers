@@ -7,7 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
-import { FRIDGE_ITEMS, itemZone } from "../src/game/items";
+import { FRIDGE_ITEMS, BUMPER_ITEMS, guideGroups, itemZone } from "../src/game/items";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
 import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
@@ -178,7 +178,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 87);
+  assert.equal(FRIDGE_ITEMS.length, 89);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -484,4 +484,14 @@ test("v10 keeps field plates off pillar and window segments", () => {
     const plates = s.zones.filter((z) => z.kind === "repel" || z.kind === "attract");
     assert.ok(!(lane && plates.length), `plate on a lane segment at y ${s.y}`);
   }
+});
+
+test("the field guide lists every item exactly once, in named groups", () => {
+  const seen = new Map<string, number>();
+  for (const family of ["surface", "gadget", "bumper", "pickup", "paper"] as const) for (const g of guideGroups(family)) {
+    assert.notEqual(g.title, "More", `${family} has ungrouped items: ${g.items.map((i) => i.id).join(", ")}`);
+    for (const item of g.items) { assert.equal(item.family, family); seen.set(item.id, (seen.get(item.id) ?? 0) + 1); }
+  }
+  for (const item of FRIDGE_ITEMS) assert.equal(seen.get(item.id), 1, `${item.id} listed ${seen.get(item.id) ?? 0} times`);
+  assert.ok(!BUMPER_ITEMS.some((i) => i.hazard), "hazard cards never spawn");
 });

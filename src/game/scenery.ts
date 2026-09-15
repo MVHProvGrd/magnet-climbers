@@ -1,11 +1,13 @@
 import type { Bumper, NoStickZone, PowerUp } from "./types";
 import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
-import { drawObstacleImage, drawObstaclePreview } from "./obstacle-art";
+import { drawObstacleImage, drawObstaclePreview, obstacleImage } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
 import { destinationArtFor, destinationArtById, drawDestination, objectArtById } from "./gadget-art";
-import { drawPickupImage } from "./pickup-art";
+import { drawPickupImage, pickupImage } from "./pickup-art";
+import { drawKidHand, handPose } from "./kid-hand";
+import { DOOR_SEAM } from "./world";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
 
@@ -349,8 +351,25 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
   ctx.restore();
 }
 
+/** The photographic source behind a guide item, so the zoom can show it whole at its own proportions. */
+export function itemPhoto(item: FridgeItem): CanvasImageSource | undefined {
+  if (item.kind === "attract" || item.kind === "repel") return destinationArtById(item.id);
+  if (item.power) return pickupImage(item.power);
+  if (item.family === "surface" && item.id !== "gap" && item.id !== "seam") return obstacleImage(item.id);
+  return objectArtById(item.id);
+}
 /** Actual game artwork, also used for field-guide thumbnails and QA. */
 export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem) {
+  if (item.id === "seam") {
+    ctx.save(); ctx.beginPath(); ctx.roundRect(6, 6, 88, 88, 10); ctx.clip();
+    ctx.translate(50 - DOOR_SEAM.x - DOOR_SEAM.w / 2, 0); drawSteel(ctx, 0, 100); drawSeam(ctx, 0, 100); ctx.restore(); return;
+  }
+  if (item.id === "kid-hand") {
+    const h = { side: -1 as const, y: 0, x: 0, phase: "sweep" as const, t: 0.36, hit: new Set<number>() };
+    const p = handPose(h).point;
+    ctx.save(); ctx.beginPath(); ctx.roundRect(0, 0, 100, 100, 10); ctx.clip();
+    ctx.translate(58, 56); ctx.scale(0.42, 0.42); ctx.translate(-p.x, -p.y); drawKidHand(ctx, h); ctx.restore(); return;
+  }
   if (item.kind === "attract" || item.kind === "repel") {
     const souvenir = destinationArtById(item.id);
     const z = { x: 8, y: 8, w: 84, h: 84, kind: item.kind } as NoStickZone;

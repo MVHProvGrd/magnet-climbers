@@ -7,8 +7,8 @@ import type { Climber } from "./types";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { nameReason } from "./profanity";
-import { FRIDGE_ITEMS, type FridgeItem, type ItemFamily } from "./items";
-import { drawItemPreview } from "./scenery";
+import { FRIDGE_ITEMS, guideGroups, type FridgeItem, type ItemFamily } from "./items";
+import { drawItemPreview, itemPhoto } from "./scenery";
 import { gadgetArtReady } from "./gadget-art";
 import { pickupArtReady } from "./pickup-art";
 import { obstacleArtReady } from "./obstacle-art";
@@ -456,12 +456,15 @@ export class Ui {
   showFieldGuide(family: ItemFamily = "surface") {
     const p = el("div", "panel field-guide");
     const categories: [ItemFamily, string][] = [["surface", "Obstacles"], ["gadget", "Gadgets"], ["bumper", "Movers"], ["pickup", "Pickups"], ["paper", "Paper art"]];
-    const items = FRIDGE_ITEMS.filter((item) => item.family === family);
+    const groups = guideGroups(family);
+    const items = groups.flatMap((g) => g.items);
+    let index = 0;
+    const card = (item: FridgeItem) => `<article class="guide-card" data-i="${index++}" role="button" tabindex="0"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`;
     p.innerHTML = `<h2>Fridge Field Guide</h2>
       <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
       <p class="guide-legend"><b>Blue S pulls you in.</b> Its steel face catches you.<br/><b>Red N pushes you away.</b> Moving magnets knock you loose.<br/>The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.</p>
       <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
-      <div class="guide-grid">${items.map((item, i) => `<article class="guide-card" data-i="${i}" role="button" tabindex="0"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`).join("")}</div>
+      <div class="guide-grid">${groups.map((g) => `<h3 class="guide-section">${esc(g.title)} <em>${g.items.length}</em></h3>${g.items.map(card).join("")}`).join("")}</div>
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
       const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -527,8 +530,16 @@ export class Ui {
   private showItemZoom(item: FridgeItem) {
     const zoom = el("div", "guide-zoom", `<div class="zoom-card"><canvas width="600" height="600" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span><i>${t("Tap to close")}</i></div>`);
     const canvas = zoom.querySelector("canvas")!;
-    const ctx = canvas.getContext("2d")!; ctx.setTransform(6, 0, 0, 6, 0, 0); ctx.clearRect(0, 0, 100, 100);
-    drawItemPreview(ctx, item);
+    const ctx = canvas.getContext("2d")!;
+    const photo = itemPhoto(item);
+    if (photo) {
+      // the whole photo at its own proportions, never cropped to the square card
+      const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
+      const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
+      const s = Math.min(600 / iw, 600 / ih);
+      canvas.width = Math.round(iw * s); canvas.height = Math.round(ih * s);
+      ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
+    } else { ctx.setTransform(6, 0, 0, 6, 0, 0); ctx.clearRect(0, 0, 100, 100); drawItemPreview(ctx, item); }
     zoom.addEventListener("click", () => zoom.remove());
     translateTree(zoom);
     this.root.appendChild(zoom);

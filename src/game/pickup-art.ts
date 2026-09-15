@@ -15,6 +15,8 @@ export const pickupArtReady: Promise<void> = typeof Image === "undefined" ? Prom
   img.src = `${base}art/real-v1/pickups/${kind}.png`;
 }))).then(() => undefined);
 
+/** The loaded pickup photo, if any (guide zoom). */
+export const pickupImage = (kind: PowerKind) => images.get(kind);
 export function setPickupArt(kind: PowerKind, image: HTMLImageElement) { images.set(kind, image); }
 
 /** Drawn centred on the origin at the game's pickup size (about 32 px). Returns false when no image is ready. */
