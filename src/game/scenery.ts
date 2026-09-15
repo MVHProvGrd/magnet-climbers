@@ -323,8 +323,11 @@ export function drawBumper(ctx: CanvasRenderingContext2D, b: Bumper, time = 0) {
   if (photo) {
     // the collider is the magnet (v13 sliders are 72-100 px wide); older worlds' small sliders draw a little larger
     const k = b.w >= 72 ? 1 : 1.5, w = b.w * k, h = b.h * k, x = b.x + (b.w - w) / 2, y = b.y + (b.h - h) / 2;
+    // exact contain fit, no oversize and no clip: the ends of a bone or a bus must not get trimmed
+    const iw = (photo as HTMLImageElement).naturalWidth || 1, ih = (photo as HTMLImageElement).naturalHeight || 1;
+    const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
     ctx.save(); ctx.shadowColor = "#24374755"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
-    drawDestination(ctx, photo, x, y, w, h); ctx.restore(); return;
+    ctx.drawImage(photo, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); ctx.restore(); return;
   }
   if (item?.art != null && item.art >= 100) {
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.w / 100, b.h / 60);
