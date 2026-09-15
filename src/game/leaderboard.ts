@@ -2,6 +2,8 @@
 export interface ScoreRow {
   name: string;
   cm: number;
+  /** run duration of that best, when the client sent it */
+  seconds?: number | null;
   player_id: string;
   created_at: number;
 }
@@ -60,8 +62,8 @@ export const leaderboard = {
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
-  submit: (playerId: string, name: string, mode: Mode, cm: number) =>
-    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
+  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number) =>
+    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}) }) }),
 };
 
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number }

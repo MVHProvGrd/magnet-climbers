@@ -499,9 +499,10 @@ function resubmitBests() {
 /** Push the run to the global board (best per player is kept server-side). */
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
+  const seconds = game ? Math.round(game.runTime) : 0;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, rulesNow, cm).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
       ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");

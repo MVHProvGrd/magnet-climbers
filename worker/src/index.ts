@@ -2,7 +2,7 @@
  * Magnet Climbers leaderboard API.
  *   GET  /top?mode=crew|solo|lifetime&limit=25 → [{ name, cm, player_id, created_at }]
  *   GET  /rank?mode=crew&player=<id>        → { rank, cm } or { rank: null }
- *   POST /score  { playerId, name, mode, cm } → { ok, best }
+ *   POST /score  { playerId, name, mode, cm, seconds? } → { ok, best }   seconds = run duration of that climb
  *   POST /run    { playerId, name?, mode, cm } → { ok }   adds to the global and the player's lifetime totals
  *   POST /rename { playerId, name }           → { ok, name }  renames every board row for that player
  *   POST /save   { playerId, token, blob, rev } → { ok, rev } | 409 { rev, blob }   cloud save (token = per-player secret)
@@ -109,7 +109,7 @@ export default {
       }
       if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       const rows = await env.DB.prepare(
-        "SELECT name, cm, player_id, created_at FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
+        "SELECT name, cm, player_id, created_at, seconds FROM scores WHERE mode = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
       ).bind(mode, limit).all();
       return json(rows.results, h);
     }
@@ -137,24 +137,26 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/score") {
-      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown };
+      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
       if (nameIsProfane(name)) name = "climber";
       const cm = Math.floor(Number(body.cm));
+      const secs = Number.isFinite(Number(body.seconds)) && Number(body.seconds) > 0 ? Math.min(86400, Math.round(Number(body.seconds))) : null;
       if (!playerId || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
         return json({ error: "bad score" }, h, 400);
       }
       const now = Date.now();
       // keep only the player's best per mode; the name updates every submit
       await env.DB.prepare(
-        `INSERT INTO scores (player_id, name, mode, cm, created_at) VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(player_id, mode) DO UPDATE SET
            name = excluded.name,
            cm = MAX(scores.cm, excluded.cm),
+           seconds = CASE WHEN excluded.cm > scores.cm THEN excluded.seconds ELSE scores.seconds END,
            created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`,
-      ).bind(playerId, name, body.mode, cm, now).run();
+      ).bind(playerId, name, body.mode, cm, now, secs).run();
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
     }

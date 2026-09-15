@@ -123,6 +123,7 @@ select.buy option { background: #1e2229; color: #fff; }
 .srows { display: flex; flex-direction: column; gap: 4px; text-align: left; max-height: 48vh; overflow: auto; }
 .srow { display: flex; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 14px; }
 .srow.me { background: rgba(255,138,61,0.25); outline: 1px solid var(--accent); }
+.srow .t { color: #8b97a3; font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
 .srow .n { width: 26px; opacity: 0.6; font-weight: 800; }
 .srow .who { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .srow .cm { color: var(--coin); font-weight: 800; }

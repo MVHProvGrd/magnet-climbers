@@ -52,6 +52,8 @@ export interface UiHandlers {
 }
 
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
+/** m:ss for a run duration */
+const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -768,7 +770,7 @@ export class Ui {
     const p = el("div", "panel board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
-        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span></div>`).join("")
+        ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span>${r.seconds ? `<span class="t" title="run time">${fmtTime(r.seconds)}</span>` : ""}</div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
       const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : mode === "crew" ? s.bestCm : s.bestSolo;
       const fmt = (n: number) => mode === "coins" ? `$${n.toLocaleString()}` : fmtDistance(n);
