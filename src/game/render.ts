@@ -294,10 +294,12 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   // wallet + this run's pickups (chill runs bank nothing, so show only the wallet there)
   const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
   const wy0 = sy + (runRow ? 24 : 36);
-  ctx.fillStyle = "#ffd23f";
-  ctx.fillText(`$${g.walletCoins + runCoins}`, W - 72, wy0);
-  ctx.fillStyle = "#7ef0ff";
-  ctx.fillText(`◆${g.walletGems + runGems}`, W - 20, wy0);
+  // the real coin and gem art as icons, numbers to their right
+  const icon = (kind: "coin" | "gem", x: number) => { ctx.save(); ctx.translate(x, wy0 - 6); if (!drawPickupImage(ctx, kind, 20)) { ctx.fillStyle = kind === "coin" ? "#ffd23f" : "#7ef0ff"; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); };
+  ctx.textAlign = "left";
+  icon("coin", W - 118); ctx.fillStyle = "#ffd23f"; ctx.fillText(`${g.walletCoins + runCoins}`, W - 105, wy0);
+  icon("gem", W - 52); ctx.fillStyle = "#7ef0ff"; ctx.fillText(`${g.walletGems + runGems}`, W - 39, wy0);
+  ctx.textAlign = "right";
   if (runRow) {
     ctx.font = "bold 10px system-ui, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
