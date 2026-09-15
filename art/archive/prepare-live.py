@@ -24,6 +24,12 @@ JOBS = [
     *[(f"13-business-magnets-v1/ready/business-{n}-v1.webp", f"business/business-{n}.webp", (480, 288)) for n in range(3, 8)],
     # pack 14: toy bumpers as keychain payloads (hardware layer comes from the lemon at runtime)
     *[(f"14-toy-bumper-keychains-v1/ready/bumper-{n}-v1.webp", f"bumpers/bumper-{n}.webp", (320, 240)) for n in range(0, 5)],
+    # pack 19: clean robot (replaces pack 14's), COOL penguin, six photographed papers; papers keep their own shape
+    ("19-bumpers-paper-v1/ready/bumper-2-v2.webp", "bumpers/bumper-2.webp", (320, 240)),
+    ("19-bumpers-paper-v1/ready/bumper-5-v1.webp", "bumpers/bumper-5.webp", (320, 240)),
+    *[(f"19-bumpers-paper-v1/ready/paper-{n}.webp", f"paper/paper-{n.split('-')[0]}.webp", (384, 384)) for n in ("0-v1", "2-v2", "3-v2", "4-v1", "5-v1", "6-v1")],
+    # pack 20: four more photographed notes
+    *[(f"20-paper-notes-v1/ready/paper-{n}-v1.webp", f"paper/paper-{n}.webp", (384, 384)) for n in (7, 9, 10, 11)],
     # lemon keychain keeps its full source frame so the hook pivot (510,285 of 1024x1536) stays a fixed fraction
     ("10-hanging-keepsakes-v1/ready/lemon-keychain-v1.webp", "gadgets/swing-snack.webp", None),
 ]

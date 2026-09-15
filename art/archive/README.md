@@ -5,8 +5,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
-| `20-paper-notes-v1/` | Four realistic papers: Stay Cool, You Got This, Don't Let Go, More Magnets (7,9,10,11). Sources, alpha manifest and light/dark sheet. | Codex built-in imagegen + hard chroma key | Ready for Claude review/wiring, not deployed by this batch |
-| `19-bumpers-paper-v1/` | Clean robot replacement, COOL penguin and six realistic paper objects (0,2,3,4,5,6). Sources, corrections, alpha manifest and review sheet. | Codex built-in imagegen + hard chroma key | Ready for Claude review/wiring, not deployed by this batch |
+| `20-paper-notes-v1/` | Four realistic papers: Stay Cool, You Got This, Don't Let Go, More Magnets (7,9,10,11). Sources, alpha manifest and light/dark sheet. | Codex built-in imagegen + hard chroma key | LIVE: `public/art/paper/paper-7/9/10/11.webp` via `prepare-live.py`, photo-shaped cards (world v13) |
+| `19-bumpers-paper-v1/` | Clean robot replacement, COOL penguin and six realistic paper objects (0,2,3,4,5,6). Sources, corrections, alpha manifest and review sheet. | Codex built-in imagegen + hard chroma key | LIVE: robot replaces `bumper-2.webp`, penguin is `bumper-5.webp` (no canvas fallback left), papers 0/2/3/4/5/6 as `public/art/paper/paper-N.webp` |
 | `18-extended-limbs-v1/` | Longer cat foreleg and boy teal sleeve, sources, cutouts and light/dark review. Camera-safe root/retraction handoff. | Codex built-in imagegen edits | Review only; Claude wires new source coordinates and withdrawal |
 | `15-cat-paw-attack-v1/` | Realistic tabby paw, source, hard/soft cleanup history, light/dark QC and three-tap GIF. Prefer hard cutout; soft rejected. | Codex built-in imagegen and isolated animation review | LIVE: cat paw attack (a third of attacks in v13 worlds), `real-v1/cat-paw.webp` |
 | `16-pop-it-motion-v1/` | Ten independently toggled photographic bubbles and synthesized pop audio; reuses pack 14 | Codex isolated interaction review, no new generation | LIVE: POP! bubbles flip on contact with pop sounds |
@@ -23,7 +23,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | `15-ui-icons-v1/` | Menu icons as enamel fridge magnets: gear, guide book, story scroll, help, trophy, chat bubble | Claude, Gemini 2.5 Flash Image + chroma-cutout | LIVE in `public/art/ui/` |
 
-| `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | LIVE: donut, duck, robot, dino, POP! as `public/art/bumpers/bumper-0..4.webp`, hung on the lemon's hook and chain at draw time (visual pendulum); COOL penguin still canvas |
+| `14-toy-bumper-keychains-v1/` | Section A2: donut, duck, robot, dino and POP! bumper studies; user specified small repulsive nudge plus keychain swinging for five; penguin queued | Codex built-in generation and magenta keying | LIVE: donut, duck, robot, dino, POP! as `public/art/bumpers/bumper-0..4.webp`, hung on the lemon's hook and chain at draw time (visual pendulum); COOL penguin replaced by pack 19 |
 
 | `13-business-magnets-v1/` | Section A1: plumber, noodles, library, school bus and bakery, business-3..7; all five cutouts pass cleanup checks | Codex built-in generation and repo chroma key | LIVE: `public/art/business/business-3..7.webp` via `prepare-live.py` |
 

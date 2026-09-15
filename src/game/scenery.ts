@@ -481,5 +481,13 @@ export function drawItemPreview(ctx: CanvasRenderingContext2D, item: FridgeItem)
     const r = keychain ? { x: 12, y: 46, w: 76, h: 44 } : { x: 5, y: 25, w: 90, h: 50 };
     drawBumper(ctx, { ...r, vx: 0, minX: 0, maxX: 100, label: item.label!, hue: item.hue!, itemId: item.id, motion: "slide", vy: 0, minY: r.y, maxY: r.y });
   }
+  else if (item.kind === "sticker" && objectArtById(item.id)) {
+    // photographed paper: the thumbnail keeps the photo's own shape instead of cropping it square
+    const photo = objectArtById(item.id)!;
+    const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
+    const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
+    const s = Math.min(88 / iw, 88 / ih), w = Math.round(iw * s), h = Math.round(ih * s);
+    drawZone(ctx, { x: 50 - w / 2, y: 50 - h / 2, w, h, kind: item.kind, hue: 0, itemId: item.id }, 0, 42);
+  }
   else if (item.kind) drawZone(ctx, { x: 6, y: 6, w: 88, h: 88, kind: item.kind, hue: item.metal ? -1 : 0, itemId: item.id }, 0, 42);
 }

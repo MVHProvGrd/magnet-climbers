@@ -113,7 +113,10 @@ export function guideGroups(family: ItemFamily): { title: string; items: FridgeI
 }
 export const PAPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "paper");
 /** Width/height of the photographed papers, so a v13 card takes the photo's shape instead of cropping it. */
-export const PAPER_ASPECT: Record<string, number> = { "paper-8": 231 / 384, "paper-1": 253 / 384 };
+export const PAPER_ASPECT: Record<string, number> = {
+  "paper-0": 384 / 253, "paper-1": 253 / 384, "paper-2": 291 / 384, "paper-3": 384 / 282, "paper-4": 251 / 384, "paper-5": 365 / 384,
+  "paper-6": 234 / 384, "paper-7": 383 / 384, "paper-8": 231 / 384, "paper-9": 1, "paper-10": 384 / 279, "paper-11": 316 / 384,
+};
 export const BUMPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "bumper" && !item.hazard);
 const byId = new Map(FRIDGE_ITEMS.map((item) => [item.id, item]));
 export const fridgeItem = (id?: string) => id ? byId.get(id) : undefined;
