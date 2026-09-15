@@ -44,6 +44,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "extra", name: "Pocket Pal", family: "pickup", power: "extra", description: "Adds another climber to your run." },
   { id: "slowmo", name: "Kitchen Timer", family: "pickup", power: "slowmo", description: "Temporarily slows the action." },
   { id: "reach", name: "Reach Badge", family: "pickup", power: "reach", description: "Temporarily stretches the distance you can climb to a teammate." },
+  { id: "candy", name: "Candy Drop", family: "pickup", power: "candy", description: "The kid stops for a sweet: the red line crawls for a while." },
   { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Climb the steel beside it or its silver handle." },
   { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", description: "A big paper calendar. Follow the open steel side lane." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
@@ -94,7 +95,7 @@ export const GUIDE_GROUPS: Record<ItemFamily, [string, string[]][]> = {
   pickup: [
     ["Currency", ["coin", "gem"]],
     ["Hearts", ["heart"]],
-    ["Boosts", ["magnet", "reach", "slowmo", "extra"]],
+    ["Boosts", ["magnet", "reach", "slowmo", "candy", "extra"]],
   ],
   paper: [
     ["Drawings and notes", ["paper-0", "paper-1", "paper-2", "paper-3", "paper-4", "paper-5", "paper-6", "paper-7", "paper-8", "paper-9", "paper-10", "paper-11"]],

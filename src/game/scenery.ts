@@ -376,7 +376,7 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
 /** Previous badge illustrations retained for a retro look. */
 export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   const bob = Math.sin(time * 3 + p.bob), y = p.y + bob * 4;
-  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0" };
+  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0", candy: "#ff8fb0" };
   ctx.save(); ctx.translate(p.x, y); ctx.lineCap = "round";
   if (p.kind !== "coin") {
     ctx.strokeStyle = `${colors[p.kind]}66`; ctx.lineWidth = 1.4;

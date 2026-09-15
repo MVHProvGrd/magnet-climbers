@@ -24,7 +24,7 @@ export interface NoStickZone extends Rect {
   swing?: { angle: number; vel: number; cool: number };
 }
 
-export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart";
+export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart" | "candy";
 
 export interface PowerUp extends Vec {
   kind: PowerKind;
@@ -138,4 +138,6 @@ export interface ActiveEffects {
   superMagnet: number;
   slowmo: number;
   reach: number;
+  /** candy drop: the kid stops for a sweet, the red line crawls */
+  candy: number;
 }

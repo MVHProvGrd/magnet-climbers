@@ -44,7 +44,9 @@ export const CFG = {
   handIntervalMin: 9,
   handWarn: 1.1,
   handShove: 560,
-  effectDurations: { superMagnet: 8, slowmo: 6, reach: 14 },
+  effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
+  /** red line speed while a candy drop is active */
+  candySlow: 0.3,
   coinValue: 5,
   /** 10px of fridge = 1cm of score */
   pxPerCm: 10,

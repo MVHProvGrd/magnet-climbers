@@ -367,6 +367,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
     ["SLOW-MO", g.effects.slowmo, "#c77dff"],
     ["LONG ARMS", g.effects.reach, "#9be15d"],
+    ["CANDY", g.effects.candy, "#ff8fb0"],
   ];
   ctx.font = "bold 12px system-ui, sans-serif";
   ctx.textAlign = "left";

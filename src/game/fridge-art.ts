@@ -164,6 +164,12 @@ export function drawPickupObject(c: CanvasRenderingContext2D, kind: PowerKind) {
     c.fillStyle = "#bff5f4"; c.beginPath(); c.moveTo(-4, -12); c.lineTo(0, -3); c.lineTo(7, -11); c.lineTo(11, -3); c.lineTo(0, 1); c.closePath(); c.fill();
     c.fillStyle = "rgba(255,255,255,.7)"; c.beginPath(); c.moveTo(-4, -12); c.lineTo(-9, -6); c.lineTo(-2, -7); c.closePath(); c.fill();
   }
+  if (kind === "candy") {
+    // wrapped sweet: twisted cellophane ends, red-and-white swirl body
+    shadow(1, 15, 16, 3); oval(c, 0, 0, 11, 9, "#f4f4f4"); oval(c, 0, 0, 9, 7, "#e5484d");
+    for (let i = 0; i < 4; i++) { const a = i * TAU / 4; line(c, [0, 0, Math.cos(a) * 8, Math.sin(a) * 6], "#fff", 2.2); }
+    for (const s of [-1, 1]) { c.fillStyle = "rgba(220,235,245,.85)"; c.beginPath(); c.moveTo(s * 11, 0); c.lineTo(s * 19, -7); c.lineTo(s * 17, 0); c.lineTo(s * 19, 7); c.closePath(); c.fill(); }
+  }
   if (kind === "heart") {
     shadow(1, 15, 19, 3); const tin = c.createLinearGradient(-18, -14, 18, 14); tin.addColorStop(0, "#fff6dc"); tin.addColorStop(.45, "#e8d5ae"); tin.addColorStop(1, "#a98c68"); box(c, -18, -12, 36, 26, "#836a52", 6); box(c, -16, -14, 32, 24, tin, 5);
     box(c, -5, -9, 10, 18, "#d45257", 1); box(c, -12, -3, 24, 7, "#d45257", 1); line(c, [-11, -14, -11, -17, 11, -17, 11, -14], "#99775b", 2);

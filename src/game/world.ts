@@ -320,6 +320,7 @@ export class World {
     const pn = 1 + (r() < 0.45 ? 1 : 0);
     const table: PowerKind[] = ["coin", "coin", "coin", "coin", "magnet", "extra", "slowmo", "reach", "coin", "gem"];
     if (this.version > 0) table.push("heart");
+    if (this.version >= 13) table.push("candy");
     for (let k = 0; k < pn; k++) {
       let kindP = pick(r, table);
       if (kindP === "gem" && r() < 0.6) kindP = "coin";

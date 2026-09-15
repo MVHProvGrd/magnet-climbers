@@ -61,7 +61,7 @@ export class Game {
   world: World;
   climbers: Climber[] = [];
   stats: ReturnType<typeof statsFor>;
-  effects: ActiveEffects = { superMagnet: 0, slowmo: 0, reach: 0 };
+  effects: ActiveEffects = { superMagnet: 0, slowmo: 0, reach: 0, candy: 0 };
   phase: Phase = "idle";
   camY = 0;
   floorY: number;
@@ -662,6 +662,7 @@ export class Game {
     const steps = Math.floor(this.heightCm / CFG.floorStepCm);
     let mult = Math.min(CFG.floorCapMult, 1 + steps * CFG.floorStepMult);
     mult *= Math.min(CFG.floorCreepCap, 1 + CFG.floorCreepPer10s * (this.runTime / 10));
+    if (this.effects.candy > 0) mult *= CFG.candySlow;
     const alive = this.alive;
     if (alive.length) {
       const lowest = Math.max(...alive.map((c) => c.y));
@@ -719,7 +720,7 @@ export class Game {
     g.nextHandAt = snap.nextHandAt ?? snap.time + CFG.handFirstAfter;
     g.floorY = snap.floorY; g.highestY = snap.highestY; g.camY = snap.camY;
     g.coins = snap.coins; g.gems = snap.gems; g.reserves = snap.reserves; g.revivesLeft = snap.revivesLeft;
-    g.effects = { ...snap.effects }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
+    g.effects = { ...snap.effects, candy: snap.effects.candy ?? 0 }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
     g.phase = "running";
     g.world.ensure(g.camY - g.viewH);
     return g;
@@ -1173,6 +1174,7 @@ export class Game {
       case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
       case "magnet": this.effects.superMagnet = d.superMagnet; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
       case "slowmo": this.effects.slowmo = d.slowmo; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
+      case "candy": this.effects.candy = d.candy; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" }); break;
       case "heart": {
         const healed = c.hp < CFG.maxHp;
         c.hp = Math.min(CFG.maxHp, c.hp + 1);
