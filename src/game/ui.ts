@@ -7,11 +7,7 @@ import type { Climber } from "./types";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { nameReason } from "./profanity";
-import { FRIDGE_ITEMS, guideGroups, type FridgeItem, type ItemFamily } from "./items";
-import { drawItemPreview, itemPhoto } from "./scenery";
-import { gadgetArtReady } from "./gadget-art";
-import { pickupArtReady } from "./pickup-art";
-import { obstacleArtReady } from "./obstacle-art";
+import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
 
 export interface UiHandlers {
@@ -76,8 +72,6 @@ export class Ui {
   root: HTMLElement;
   private panel: HTMLElement | null = null;
   private panelCleanup: (() => void) | null = null;
-  /** The guide is a reading surface; keep its background still while scrolling. */
-  get readingGuide() { return this.panel?.classList.contains("field-guide") ?? false; }
   /** Only the title menu gets the animated kitchen; every other panel sits on a still frame so it stays smooth. */
   get staticBackground() { return !!this.panel && !this.panel.classList.contains("menu"); }
   private pauseBtn: HTMLButtonElement;
@@ -130,7 +124,7 @@ export class Ui {
       panel.prepend(arrow);
       panel.classList.add("has-arrow");
       // scrolling panels lose their bottom button; the arrow replaces it
-      if (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("field-guide") || panel.classList.contains("expeditions")) exit.hidden = true;
+      if (panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("expeditions") || panel.classList.contains("how-to")) exit.hidden = true;
     }
     translateTree(panel);
     this.root.appendChild(panel);
@@ -143,7 +137,7 @@ export class Ui {
   /** Scale a panel so its whole content fits the screen (phone text/page zoom shrinks the viewport).
    * Reading panels that are meant to scroll only shrink a little; menus and dialogs shrink until they fit. */
   private fit(panel: HTMLElement) {
-    const scroller = panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("field-guide") || panel.classList.contains("board") || panel.classList.contains("chat");
+    const scroller = panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("how-to") || panel.classList.contains("board") || panel.classList.contains("chat");
     panel.style.zoom = "1"; panel.style.width = "";
     const vw = window.innerWidth, vh = window.innerHeight;
     const need = panel.scrollHeight + 24;
@@ -179,7 +173,6 @@ export class Ui {
     p.innerHTML = `
       <div class="rail">
         <button class="icon" data-a="settings" title="Settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
-        <button class="icon" data-a="guide" title="Fridge field guide" aria-label="Fridge field guide"><img src="${import.meta.env.BASE_URL}art/ui/guide.webp" alt="" /></button>
         <span class="grow"></span>
         <button class="icon" data-a="story" title="Story" aria-label="Story"><img src="${import.meta.env.BASE_URL}art/ui/story.webp" alt="" /></button>
         <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play"><img src="${import.meta.env.BASE_URL}art/ui/help.webp" alt="" /></button>
@@ -227,9 +220,8 @@ export class Ui {
       if (a === "chat") this.showChat();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
-      if (a === "guide") this.showFieldGuide();
       if (a === "update") this.h.onUpdate();
-      if (a === "tutorial") this.h.onTutorial();
+      if (a === "tutorial") this.showHowToPlay();
       if (a === "story") this.showStory(() => this.showMenu());
       if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
@@ -473,99 +465,6 @@ export class Ui {
     this.show(p);
   }
 
-  showFieldGuide(family: ItemFamily = "surface") {
-    const p = el("div", "panel field-guide");
-    const categories: [ItemFamily, string][] = [["surface", "Obstacles"], ["gadget", "Gadgets"], ["bumper", "Movers"], ["pickup", "Pickups"], ["paper", "Paper art"]];
-    const groups = guideGroups(family);
-    const items = groups.flatMap((g) => g.items);
-    let index = 0;
-    const card = (item: FridgeItem) => `<article class="guide-card" data-i="${index++}" role="button" tabindex="0"><canvas width="200" height="200" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span></article>`;
-    p.innerHTML = `<h2>Fridge Field Guide</h2>
-      <p class="tag">${FRIDGE_ITEMS.length} little things. One very big fridge.<br/>Silver holds stick. Paper, glass and plastic don't.</p>
-      <p class="guide-legend"><b>Blue S pulls you in.</b> Its steel face catches you.<br/><b>Red N pushes you away.</b> Moving magnets knock you loose.<br/>The compass, crayon and candy pole flip between a blue hold and a red push; their countdown warns you. Aim dots turn red or blue where a field bends your flight.</p>
-      <div class="guide-tabs" role="group" aria-label="Item category">${categories.map(([key, name]) => `<button class="chip ${key === family ? "on" : ""}" data-category="${key}" aria-pressed="${key === family}">${name}</button>`).join("")}</div>
-      <div class="guide-grid">${groups.map((g) => `<h3 class="guide-section">${esc(g.title)} <em>${g.items.length}</em></h3>${g.items.map(card).join("")}`).join("")}</div>
-      <button class="ghost" data-a="back">BACK</button>`;
-    p.addEventListener("click", (e) => {
-      const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
-      const category = target?.dataset.category;
-      if (category && categories.some(([key]) => key === category)) this.showFieldGuide(category as ItemFamily);
-      if (target?.dataset.a === "back") this.showMenu();
-      // tap a card to see it big
-      const card = (e.target as HTMLElement).closest<HTMLElement>("article.guide-card");
-      if (card && !target) this.showItemZoom(items[Number(card.dataset.i)]);
-    });
-    this.show(p);
-    const canvases = Array.from(p.querySelectorAll("canvas"));
-    const pending = new Set<HTMLCanvasElement>();
-    const drawn = new Set<HTMLCanvasElement>();
-    let frame: number | null = null;
-    let disposed = false;
-    let artReady = false;
-    const paint = () => {
-      frame = null;
-      if (disposed) return;
-      // Limit each batch so category changes do not monopolize a frame.
-      const start = performance.now();
-      for (const canvas of pending) {
-        pending.delete(canvas);
-        const ctx = canvas.getContext("2d")!;
-        ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
-        drawItemPreview(ctx, items[canvases.indexOf(canvas)]);
-        drawn.add(canvas);
-        if (performance.now() - start >= 4) break;
-      }
-      if (pending.size) frame = requestAnimationFrame(paint);
-    };
-    const queue = (canvas: HTMLCanvasElement) => {
-      pending.add(canvas);
-      if (frame === null) frame = requestAnimationFrame(paint);
-    };
-    const observer = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        const canvas = entry.target as HTMLCanvasElement;
-        if (entry.isIntersecting) {
-          if (!drawn.has(canvas)) queue(canvas);
-          if (artReady || family !== "gadget") observer?.unobserve(canvas);
-        } else pending.delete(canvas);
-      }
-    }, { root: p, rootMargin: "200px 0px" });
-    canvases.forEach(canvas => observer ? observer.observe(canvas) : queue(canvas));
-    // Only gadget thumbnails depend on these images. Refresh already painted
-    // fallbacks once; unseen cards use loaded art when they approach the viewport.
-    if (family === "pickup" || family === "surface") void (family === 'pickup' ? pickupArtReady : Promise.all([obstacleArtReady, gadgetArtReady])).then(() => { if (!disposed) for (const canvas of drawn) queue(canvas); });
-    if (family === "gadget") void gadgetArtReady.then(() => {
-      if (disposed) return;
-      artReady = true;
-      for (const canvas of drawn) queue(canvas);
-    });
-    this.panelCleanup = () => {
-      disposed = true; observer?.disconnect();
-      if (frame !== null) cancelAnimationFrame(frame);
-      pending.clear(); drawn.clear();
-    };
-  }
-
-  /** One guide item, big: the art at three times the card size with the full text. Tap anywhere to close. */
-  private showItemZoom(item: FridgeItem) {
-    const zoom = el("div", "guide-zoom", `<div class="zoom-card"><canvas width="600" height="600" aria-label="${esc(item.name)} illustration" role="img"></canvas><b>${esc(item.name)}</b><span>${esc(item.description)}</span><i>${t("Tap to close")}</i></div>`);
-    const canvas = zoom.querySelector("canvas")!;
-    const ctx = canvas.getContext("2d")!;
-    const photo = itemPhoto(item);
-    if (photo) {
-      // the whole photo at its own proportions, never cropped to the square card
-      const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
-      const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
-      const s = Math.min(600 / iw, 600 / ih);
-      canvas.width = Math.round(iw * s); canvas.height = Math.round(ih * s);
-      ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
-    } else { ctx.setTransform(6, 0, 0, 6, 0, 0); ctx.clearRect(0, 0, 100, 100); drawItemPreview(ctx, item); }
-    zoom.addEventListener("click", () => zoom.remove());
-    translateTree(zoom);
-    this.root.appendChild(zoom);
-    requestAnimationFrame(() => zoom.classList.add("show"));
-  }
-
   /** Profile, preferences and appearance in one place. */
   showSettings() {
     const s = this.save();
@@ -731,6 +630,35 @@ export class Ui {
   }
 
   /** Back story, three slides. */
+  /** The rules, grouped by what each thing does to you. The Field Guide stays the per-item catalogue. */
+  showHowToPlay() {
+    const p = el("div", "panel how-to");
+    p.innerHTML = `
+      <h2>How to play</h2>
+      <p class="tag">Fling the toys up the fridge. Magnets only stick to bare steel — the whole game is getting across everything that isn't.</p>
+      ${howToSections().map((section) => `
+        <div class="how-sec">
+          <h3>${section.title}</h3>
+          ${section.blurb ? `<p class="fine">${section.blurb}</p>` : ""}
+          ${section.rows.map((row) => `
+            <div class="how-row">
+              <span class="how-icon" aria-hidden="true">${row.icon}</span>
+              <div>
+                <b>${row.name}${row.count ? ` <i class="how-count">${row.count} kinds</i>` : ""}</b>
+                <small>${row.text}</small>
+              </div>
+            </div>`).join("")}
+        </div>`).join("")}
+      <button class="primary" data-a="try"><b>TRY IT</b></button>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
+      if (a === "try") { this.clear(); this.h.onTutorial(); }
+      if (a === "back") this.showMenu();
+    });
+    this.show(p);
+  }
+
   showStory(done: () => void) {
     const slides = [
       { icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of the kid. Good job. Steady work." },

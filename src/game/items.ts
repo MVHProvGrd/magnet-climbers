@@ -70,47 +70,6 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   })),
   { id: "kid-hand", name: "The Kid's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },
 ];
-/** Field guide layout: every family split into labelled groups of related items, in reading order. */
-export const GUIDE_GROUPS: Record<ItemFamily, [string, string[]][]> = {
-  surface: [
-    ["Steel holds", ["handle"]],
-    ["S souvenirs pull you in", ["attract-fiji", "attract-hawaii", "attract-bali", "attract-tahiti", "attract-seychelles", "attract-cape-town", "attract-rio"]],
-    ["N souvenirs push you away", ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala", "repel-kyiv", "repel-edinburgh", "repel-lapland"]],
-    ["Glass", ["glass", "dispenser"]],
-    ["Plastic", ["plastic", "vent", "ice-tray"]],
-    ["Paper", ["calendar"]],
-    ["Open gaps", ["gap", "seam"]],
-  ],
-  gadget: [
-    ["Keyrings swing", ["swing-snack", "swing-travel", "swing-doodle"]],
-    ["Letters rotate", ["rotor-snack", "rotor-travel", "rotor-doodle"]],
-    ["Clips dangle", ["clip-snack", "clip-travel", "clip-doodle"]],
-    ["Pole flippers", ["polarity-snack", "polarity-travel", "polarity-doodle"]],
-  ],
-  bumper: [
-    ["Advertising magnets", ["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"]],
-    ["Toy magnets", ["bumper-0", "bumper-1", "bumper-2", "bumper-3", "bumper-4", "bumper-5"]],
-    ["The kid", ["kid-hand"]],
-  ],
-  pickup: [
-    ["Currency", ["coin", "gem"]],
-    ["Hearts", ["heart"]],
-    ["Boosts", ["magnet", "reach", "slowmo", "candy", "extra"]],
-  ],
-  paper: [
-    ["Drawings and notes", ["paper-0", "paper-1", "paper-2", "paper-3", "paper-4", "paper-5", "paper-6", "paper-7", "paper-8", "paper-9", "paper-10", "paper-11"]],
-    ["Cut-outs", ["paper-12", "paper-13", "paper-14", "paper-15", "paper-16", "paper-17", "paper-18", "paper-19"]],
-    ["Prints", ["paper-new-0", "paper-new-1", "paper-new-2", "paper-new-3", "paper-new-4", "paper-new-5", "paper-new-6", "paper-new-7", "paper-new-8", "paper-new-9", "paper-new-10", "paper-new-11"]],
-  ],
-};
-/** Groups for one family, with any item the layout forgot appended under "More" so nothing is ever hidden. */
-export function guideGroups(family: ItemFamily): { title: string; items: FridgeItem[] }[] {
-  const seen = new Set<string>();
-  const groups = GUIDE_GROUPS[family].map(([title, ids]) => ({ title, items: ids.map((id) => { seen.add(id); return byId.get(id)!; }).filter(Boolean) }));
-  const rest = FRIDGE_ITEMS.filter((item) => item.family === family && !seen.has(item.id));
-  if (rest.length) groups.push({ title: "More", items: rest });
-  return groups.filter((g) => g.items.length);
-}
 export const PAPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "paper");
 /** Width/height of the photographed papers, so a v13 card takes the photo's shape instead of cropping it. */
 export const PAPER_ASPECT: Record<string, number> = { "paper-8": 231 / 384, "paper-1": 253 / 384 };

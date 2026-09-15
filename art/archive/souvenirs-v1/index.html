@@ -4,7 +4,7 @@
 <label><button id="motion">Pause animation</button></label><label><button id="backdrop">Toggle card background</button></label><label><button id="glass">Show wide glass bands</button></label><div id="status">Loading prepared art…</div>
 <div class="layout"><section><canvas id="fridge" width="800" height="1600" aria-label="Art preview on actual game fridge background"></canvas><p>Actual game steel and seam, at the game's 400px logical width. Blue fields flow inward; red fields flow outward. This preview demonstrates art placement and animation, not collision changes.</p></section><section><div class="grid" id="assets"></div><p><a id="manifest">Asset dimensions and pivots</a> · <a id="handoff">Claude wiring handoff</a></p><small>All original generations, failed cutout attempts, magenta sources and previous art remain in the full archive. Card images open full size.</small></section></div></main>
 <script>
-const root=location.protocol==='file:'?'../../../art/archive/07-souvenir-ready-v1/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/07-souvenir-ready-v1/';
+const root=location.protocol==='file:'?'../07-souvenir-ready-v1/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/07-souvenir-ready-v1/';
 const destinations=['attract-fiji','attract-hawaii','attract-bali','repel-norway','repel-alaska','repel-iceland','repel-jurmala','repel-kyiv'];
 const names=[...destinations,'compass-base','compass-needle','crayon','candy-pole','glass-door','glass-wide','door-gap'];
 const labels={'repel-jurmala':'Jūrmala, Latvija · N','repel-kyiv':'Kyiv, Ukraine · N'};
