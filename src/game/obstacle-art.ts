@@ -9,13 +9,13 @@ export const obstacleArtReady = typeof Image === 'undefined' ? Promise.resolve()
   img.onload = () => { setObstacleArt(id, img); resolve(); };
   img.onerror = () => resolve();
   img.src = `${base}art/real-v1/obstacles/${id}.png`;
-})).concat(new Promise<void>(resolve => {
-  // Codex's bottle door (pack 07): a whole single-door panel; never nine-sliced
+})).concat(['glass-door', 'glass-wide'].map(id => new Promise<void>(resolve => {
+  // Codex's bottle doors (pack 07): whole single-door panels, tall and squat; never nine-sliced
   const img = new Image();
-  img.onload = () => { setObstacleArt('glass-door', img); resolve(); };
+  img.onload = () => { setObstacleArt(id, img); resolve(); };
   img.onerror = () => resolve();
-  img.src = `${base}art/real-v1/obstacles/glass-door.webp`;
-}))).then(() => undefined);
+  img.src = `${base}art/real-v1/obstacles/${id}.webp`;
+})))).then(() => undefined);
 
 /** The door-gap photo reads as a huge dark gasket when stretched across a band, so open gaps stay hand-drawn. */
 const NO_PHOTO = new Set(['gap']);
@@ -28,6 +28,12 @@ function artId(z: NoStickZone): string | undefined {
   return id && NO_PHOTO.has(id) ? undefined : id;
 }
 
+/** Whole-door bottle art for a glass zone: the tall door for portrait windows (under 0.7:1), the squat one otherwise; none for full-width bands. */
+function doorArt(z: NoStickZone): HTMLImageElement | undefined {
+  if (z.w > 260) return undefined;
+  const id = z.w / z.h < 0.7 ? 'glass-door' : 'glass-wide';
+  return images.get(id) ?? images.get('glass-door');
+}
 /** Fill the real collision rectangle; nine-slice preserves the molded frame thickness. */
 export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): boolean {
   const id = artId(z), img = id ? images.get(id) : undefined;
@@ -36,9 +42,9 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
   if (id === 'ice-tray' && z.h > z.w) {
     c.translate(z.x + z.w, z.y); c.rotate(Math.PI / 2);
     c.drawImage(img, 0, 0, z.h, z.w);
-  } else if (id === 'glass' && images.has('glass-door') && z.h >= z.w * 1.1) {
-    // tall window: the bottle door itself, cover-fit and clipped so the frame stays proportional
-    const door = images.get('glass-door')!;
+  } else if (id === 'glass' && doorArt(z)) {
+    // one-door window: the bottle door itself (tall or squat by aspect), cover-fit and clipped so the frame stays proportional
+    const door = doorArt(z)!;
     const s = Math.max(z.w / door.width, z.h / door.height), dw = door.width * s, dh = door.height * s;
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 6); c.clip();
     c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
