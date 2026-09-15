@@ -88,17 +88,19 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
  * Hand, forearm and cuff are one piece at natural proportions along the swipe angle; only the plain sweater fabric
  * past the cuff is extended so the sleeve always runs offscreen. Fractions of the image, so any export size works. */
 const ARM = { tipRow: 0.04, wristRow: 0.395, cuffRow: 0.79, centreCol: 0.50 };
+const ARM_SCALE = 1.6;
 function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource) {
   const iw = (arm as HTMLImageElement).naturalWidth || (arm as HTMLCanvasElement).width || 1;
   const ih = (arm as HTMLImageElement).naturalHeight || (arm as HTMLCanvasElement).height || 1;
   const tip = ARM.tipRow * ih, wristRow = ARM.wristRow * ih, cuffRow = ARM.cuffRow * ih, c0 = ARM.centreCol * iw;
-  // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62 (the hit-test's geometry)
-  const s = 96 / (wristRow - tip);
+  // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62 (the hit-test's geometry).
+  // The photo is drawn ARM_SCALE bigger than that, about the palm centre (x = 14): the hitbox stays inside the palm.
+  const s = ARM_SCALE * 96 / (wristRow - tip), tipX = 14 + 48 * ARM_SCALE;
   const reach = Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 120;
   ctx.save(); ctx.translate(pose.point.x, pose.point.y); ctx.rotate(pose.angle);
   ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
   // image (col,row) -> local (62 + (tip - row) * s, (c0 - col) * s): thumb lands on the drawn hand's side
-  ctx.transform(0, -s, -s, 0, 62 + tip * s, c0 * s);
+  ctx.transform(0, -s, -s, 0, tipX + tip * s, c0 * s);
   ctx.drawImage(arm, 0, 0, iw, cuffRow, 0, 0, iw, cuffRow);
   // sweater past the cuff: the last rows stretched to the anchor and beyond
   const fabric = ih - cuffRow, want = Math.max(fabric, (reach - (cuffRow - tip) * s) / s);
