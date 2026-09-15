@@ -578,6 +578,7 @@ window.addEventListener("keyup", (e) => {
 });
 window.addEventListener("blur", () => { keys.clear(); if (game && keyDrag) { game.drag = null; keyDrag = false; } });
 let keyDrag = false;
+let aimAngle = 0; // radians from straight up, positive = right
 /** Per frame: build the drag vector from the held keys so the usual aim dots and launch code apply. */
 function tickKeys(dt: number) {
   if (!game || paused) return;
@@ -585,13 +586,15 @@ function tickKeys(dt: number) {
   const c = game.byId(game.selectedId);
   if (!c || (c.state !== "stuck" && c.state !== "linked")) return;
   charge = Math.min(CFG.maxDrag, charge + CFG.maxDrag * dt / 0.9); // full pull after about a second
-  let ax = 0, ay = -1; // default: straight up
-  if (keys.has("a") || keys.has("arrowleft")) ax -= 1;
-  if (keys.has("d") || keys.has("arrowright")) ax += 1;
-  if (keys.has("s") || keys.has("arrowdown")) ay += 1.6;
-  if (keys.has("w") || keys.has("arrowup")) ay -= 1;
-  if (ax === 0 && ay === 0) ay = -1;
-  const len = Math.hypot(ax, ay); ax /= len; ay /= len;
+  // aim is an angle from straight up that the keys steer smoothly: A/D swing it sideways, W brings it back up,
+  // S tips it on down past the horizontal. It is kept between flings so a second shot starts where the last one aimed.
+  const rate = 1.7 * dt; // radians per second
+  if (keys.has("a") || keys.has("arrowleft")) aimAngle -= rate;
+  if (keys.has("d") || keys.has("arrowright")) aimAngle += rate;
+  if (keys.has("w") || keys.has("arrowup")) aimAngle -= Math.sign(aimAngle) * Math.min(Math.abs(aimAngle), rate);
+  if (keys.has("s") || keys.has("arrowdown")) aimAngle += (aimAngle < 0 ? -1 : 1) * rate;
+  aimAngle = Math.max(-Math.PI * 0.95, Math.min(Math.PI * 0.95, aimAngle));
+  const ax = Math.sin(aimAngle), ay = -Math.cos(aimAngle);
   const start = { x: c.x, y: c.y };
   // launch = start - cur, so the pull-back point sits opposite the aim
   game.drag = { start, cur: { x: start.x - ax * charge, y: start.y - ay * charge } };
