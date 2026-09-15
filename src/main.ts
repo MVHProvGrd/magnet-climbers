@@ -172,6 +172,7 @@ const ui = new Ui(uiRoot, () => save, {
   onNextLevel: (id) => { const n = nextLevel(id); if (n) startLevel(n); else ui.showExpeditions(); },
   onIntroSeen: (key) => { if (!save.intros.includes(key)) { save.intros.push(key); persist(); } },
   onResume: () => { paused = false; },
+  onPause: () => { paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
     void cloudSync("quit");

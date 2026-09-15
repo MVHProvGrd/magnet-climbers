@@ -20,6 +20,8 @@ export interface UiHandlers {
   onNextLevel(id: string): void;
   onIntroSeen(key: string): void;
   onResume(): void;
+  /** the MENU button: freeze the sim before the pause panel shows */
+  onPause(): void;
   onQuitRun(): void;
   onEndRun(): void;
   onBuy(key: UpgradeKey): void;
@@ -87,7 +89,7 @@ export class Ui {
     this.pauseBtn.className = "pause-btn";
     this.pauseBtn.textContent = t("☰ MENU");
     this.pauseBtn.hidden = true;
-    this.pauseBtn.addEventListener("click", () => this.showPause());
+    this.pauseBtn.addEventListener("click", () => { this.h.onPause(); this.showPause(); });
     root.appendChild(this.pauseBtn);
     this.muteBtn = document.createElement("button");
     this.muteBtn.className = "pause-btn mute-btn";
