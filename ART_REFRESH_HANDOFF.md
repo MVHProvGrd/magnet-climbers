@@ -37,6 +37,7 @@ Hanging assemblies (lemon style): whole object on its hook, hook at top centre, 
 ### B. New variety (pools grow; Claude adds items, cards, translations)
 
 - **Hanging assemblies (swing pool)**: keys on a ring with car fob, bottle opener on a chain, mini disco ball, rubber duck keychain, bead lanyard with ID badge, carabiner with whistle, three-tube wind chime, baby shoe on a ribbon, scissors by one loop, measuring spoons on a ring, souvenir spoon, fishing lure. Naming `swing-<name>-v1`.
+- **Swing-pool gameplay rule from user**: keep every item as a physical fridge magnet with a small repulsive near-contact nudge. Decorations and payloads do not become grip points. The donut, duck, robot, dino and POP! bumper magnets also use keychain hardware and a top pivot so they swing like lemon; COOL penguin should follow the same rule when generated.
 - **Rotors**: wall clock magnet, pinwheel, dial thermometer, fidget spinner. `rotor-<name>-v1`.
 - **Clip papers**: concert ticket, report card, takeout receipt, birthday invite, lost cat poster, coupon sheet, polaroid of grandma. `clip-<name>-v1`.
 - **Bumpers**: rubber ducky, toy taxi, race car, banana, space shuttle, letter block, plastic brick, gummy bear. `bumper-<name>-v1`.
