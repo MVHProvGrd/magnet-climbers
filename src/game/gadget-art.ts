@@ -77,7 +77,8 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   ctx.save(); ctx.lineCap = "round";
   const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(`${g.kind}-${theme}`) : undefined;
   if (assembly && g.kind === "swing") {
-    // the keychain photo carries its own hook and chain: swing the whole thing about the hook
+    // the keychain photo carries its own hook and chain: swing the whole thing about the hook.
+    // The steel hold goes BEHIND it, as the mount the chain hangs in front of (it is still the only grip).
     const { w, h } = imageSize(assembly), s = 95 / ((1 - KEYCHAIN_PIVOT.y) * h);
     // aim the chain through the steel bar (the real hold), not the raw pendulum angle
     const lean = Math.atan2(p.hold.x - g.x, p.hold.y - (g.y - 62));
@@ -86,10 +87,12 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.drawImage(assembly, -KEYCHAIN_PIVOT.x * w * s, -KEYCHAIN_PIVOT.y * h * s, w * s, h * s); ctx.restore();
   } else if (g.kind === "swing" || g.kind === "clip") {
     ctx.strokeStyle = "#46565c"; ctx.lineWidth = 4;
+    if (assembly) { ctx.lineWidth = 3; }
     ctx.beginPath(); ctx.moveTo(g.x, g.y - 62); ctx.lineTo(p.hold.x, p.hold.y); ctx.stroke();
     ctx.strokeStyle = "#e9f5f5"; ctx.lineWidth = 1.3; ctx.stroke();
     ctx.fillStyle = "#86989e"; ctx.beginPath(); ctx.arc(g.x, g.y - 62, 5, 0, Math.PI * 2); ctx.fill();
   }
+  // photo assemblies carry their own hook, chain or clip: that IS the hold, so no plate or drawn hardware over it
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
   if (g.kind === "rotor") {
@@ -141,7 +144,7 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
     ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
-  } else {
+  } else if (!assembly) {
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
     drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }
