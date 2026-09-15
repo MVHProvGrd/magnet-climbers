@@ -1,8 +1,10 @@
 # Art refresh handoff — 2026-09-14
 
-## New queued request — cat paw attack
+## Cat paw and POP! motion reviews — 2026-09-15
 
-User requested a realistic orange-tabby paw that attacks randomly from the top with three distinct tap-tap-tap contacts. Image generation hit the usage limit before an output was produced. The complete brief and motion timing are queued in `art/archive/15-cat-paw-attack-v1/HANDOFF.md`; no placeholder was made. Claude owns the game wiring after the paw cutout exists.
+Cat paw generation retry succeeded: one realistic tabby cutout, transparent hard-key version preferred, three-tap GIF and standalone review in `public/art-archive/cat-paw-v1/index.html`. Pack `15-cat-paw-attack-v1/HANDOFF.md` gives timing, source coordinates and QC exceptions. Single rigid cutout, NOT an articulated rig. Original source and rejected soft cleanup preserved.
+
+New owner request: POP! bubbles react individually to climber impacts with in/out states and varied sounds. Interactive photographic bubble-swap study in `public/art-archive/pop-it-v1/index.html`, ten toggles and synthesized review audio. Pack `16-pop-it-motion-v1/HANDOFF.md` gives bubble coordinates and proposed contact debounce. No new POP! generation; reuses pack 14. Both added to the existing admin-linked archive. No game or live art replacements; Claude handles implementation. Branch push does not mean deployed.
 
 ## Codex batch progress — section A2 / bumper keychains
 

@@ -1,6 +1,16 @@
-# Cat paw attack — queued 2026-09-15
+# Cat paw attack — prepared for review 2026-09-15
 
-Image generation is queued because the image tool returned `usage_limit_reached` before producing an output. No placeholder art was created and no existing art was overwritten.
+Generation retry succeeded with one new built-in imagegen output. Preferred cutout: `ready/cat-paw-top-v1-hard.webp`. `ready/cat-paw-top-v1.webp` is the rejected soft cleanup (background haze); retained only for history. No existing art was overwritten.
+
+Review: `C:\Users\micha\magnet-art-ready\public\art-archive\cat-paw-v1\index.html`. GIF: `C:\Users\micha\magnet-art-ready\art\archive\15-cat-paw-attack-v1\motion-review-v1.gif`.
+
+## Preparation and limitations
+
+- Source/cutout 1024x1536; hard-key alpha bbox [258,0,759,1278]. Four toes and central pad intact, side/bottom margins clear. check-cutout.py flags ONLY frame contact: deliberate top-edge foreleg crop for offscreen entry, not an accidentally cropped paw. Hard key has 4449 semitransparent pixels and 241 magenta-tinted opaque pixels by the checker; visually inspected on light/dark composites. No erosion used.
+- Preview positions the approximate pad center (510,1080); scale .24 produces a roughly 120px-wide paw. Top foreleg crop remains offscreen at maximum reach. Paw/toe region approximately x258..759, y900..1278; these are art landmarks, NOT a validated collision shape.
+- Actual review contact holds .48–.57s, .87–.95s and 1.25–1.31s; retreat complete at1.65s, cooldown through3.2s. Second contact is deepest. Earlier brief's .16–.24s between contacts is superseded by these more legible review timings. Deterministic x sequence in preview demonstrates variety, not a game RNG implementation.
+- This is ONE rigid photographic cutout translated for three taps, not articulated toe flex or a multi-pose rig. Contact sheet and 128-frame /20fps GIF generated from the same isolated review code. Reduced-motion preference starts the browser preview paused.
+- Warning ring is only a timing placeholder. Damage, release behavior, warning design, attack scheduling and collision remain Claude's decisions for implementation; none changed here.
 
 Full pack path: `C:\Users\micha\magnet-art-ready\art\archive\15-cat-paw-attack-v1`
 

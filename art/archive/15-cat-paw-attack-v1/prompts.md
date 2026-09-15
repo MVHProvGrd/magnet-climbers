@@ -1,4 +1,10 @@
-# Cat paw prompt — queued
+# Cat paw prompt — generated using built-in imagegen, 2026-09-15
+
+Successful source: `sources/cat-paw-top-v1-magenta.png` (1024x1536). One successful generation this continuation. Final submitted prompt:
+
+Single photorealistic orange-tabby cat front paw and foreleg game sprite. Vertical composition: striped foreleg extends from upper center downward into one softly rounded paw in lower half, underside faces camera, four toe beans and one large central paw pad, claws fully retracted. Real soft orange and cream fur, natural fine flyaway strands, toe pads warm salmon-peach with no violet or magenta tint. Relaxed slightly splayed toes ready to tap a refrigerator surface. Only one paw and foreleg, no cat face or body. Long foreleg ends in a clean horizontal crop at the TOP EDGE for offscreen attachment; all paw edges and toes fully visible with ample side and bottom margin. Product photography, soft upper-left light, highly realistic anatomy and tactile fur, clean silhouette readable at 70px, no shadow outside subject, no motion blur, no text. IMPORTANT: place the object against a completely FLAT SOLID PURE MAGENTA background, hex #FF00FF, filling every pixel that is not the object — do NOT draw a checkerboard, gradient or scenery, only flat solid magenta everywhere behind and around it.
+
+## Original queued brief
 
 Use case: game sprite / realistic fridge hazard.
 

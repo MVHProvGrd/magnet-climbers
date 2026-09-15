@@ -33,6 +33,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 .t img{width:100%;aspect-ratio:1;object-fit:contain;background:repeating-conic-gradient(#2a2f37 0 25%,#232830 0 50%) 0 0/16px 16px;border-radius:4px}.t span{display:block;font-size:11px;margin-top:4px;word-break:break-all}
 .sheet{max-width:100%;border-radius:8px;margin-top:8px;background:#c9d1d8}nav{color:#9aa;margin-bottom:8px}nav a,.t:hover{color:#7cc}</style></head><body>
 <h1>Art archive</h1><p>Every art style so far. Images load from the GitHub repo (<code>art/archive</code>); click any to open full size. <a href="https://github.com/MVHProvGrd/magnet-climbers/tree/main/art/archive" style="color:#7cc">README with restore steps</a>.</p>
+<p><a href="cat-paw-v1/" style="color:#7cc">Cat paw: realistic top-entry tap-tap-tap review</a> · <a href="pop-it-v1/" style="color:#7cc">POP! magnet: click individual bubbles with sound</a></p>
 <p><a href="motion-v1/" style="color:#7cc">Animation review: bump the lemon, compare arm swipes and reach badges</a></p>
 <p><a href="souvenirs-v1/" style="color:#7cc">New souvenir pack: animated field, compass and split-door review</a></p>
 <nav>${toc}</nav>${sections}<script>
