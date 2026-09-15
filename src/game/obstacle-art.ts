@@ -1,7 +1,6 @@
 import type { NoStickZone } from './types';
 
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
-type ObstacleId = typeof OBSTACLE_IDS[number];
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
 export function setObstacleArt(id: string, image: HTMLImageElement) { images.set(id, image); }
@@ -10,6 +9,12 @@ export const obstacleArtReady = typeof Image === 'undefined' ? Promise.resolve()
   img.onload = () => { setObstacleArt(id, img); resolve(); };
   img.onerror = () => resolve();
   img.src = `${base}art/real-v1/obstacles/${id}.png`;
+})).concat(new Promise<void>(resolve => {
+  // Codex's bottle door (pack 07): a whole single-door panel; never nine-sliced
+  const img = new Image();
+  img.onload = () => { setObstacleArt('glass-door', img); resolve(); };
+  img.onerror = () => resolve();
+  img.src = `${base}art/real-v1/obstacles/glass-door.webp`;
 }))).then(() => undefined);
 
 /** The door-gap photo reads as a huge dark gasket when stretched across a band, so open gaps stay hand-drawn. */
@@ -31,6 +36,12 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
   if (id === 'ice-tray' && z.h > z.w) {
     c.translate(z.x + z.w, z.y); c.rotate(Math.PI / 2);
     c.drawImage(img, 0, 0, z.h, z.w);
+  } else if (id === 'glass' && images.has('glass-door') && z.h >= z.w * 1.1) {
+    // tall window: the bottle door itself, cover-fit and clipped so the frame stays proportional
+    const door = images.get('glass-door')!;
+    const s = Math.max(z.w / door.width, z.h / door.height), dw = door.width * s, dh = door.height * s;
+    c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 6); c.clip();
+    c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
   } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
@@ -38,13 +49,26 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     const dx = [z.x, z.x + edge, z.x + z.w - edge, z.x + z.w];
     const dy = [z.y, z.y + edge, z.y + z.h - edge, z.y + z.h];
     for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) c.drawImage(img, sx[x], sy[y], sx[x+1]-sx[x], sy[y+1]-sy[y], dx[x], dy[y], dx[x+1]-dx[x], dy[y+1]-dy[y]);
+    const door = id === 'glass' ? images.get('glass-door') : undefined;
+    if (door) {
+      // wide band: the frosted frame is the collider; the shelf interior shows through it, cropped not stretched
+      const ix = door.width * .15, iy = door.height * .08, iw = door.width * .70, ih = door.height * .84;
+      const px = dx[1], py = dy[1], pw = dx[2] - dx[1], ph = dy[2] - dy[1];
+      // scale the shelf to the band height and repeat it sideways: a row of small bottles, never a giant one
+      const s = ph / ih, dw = iw * s, tiles = Math.ceil(pw / dw);
+      c.save(); c.beginPath(); c.rect(px, py, pw, ph); c.clip();
+      const x0 = px + (pw - tiles * dw) / 2;
+      for (let i = 0; i < tiles; i++) c.drawImage(door, ix, iy, iw, ih, x0 + i * dw, py, dw, ph);
+      c.globalAlpha = .35; c.drawImage(img, sx[1], sy[1], sx[2] - sx[1], sy[2] - sy[1], px, py, pw, ph);
+      c.restore();
+    }
   } else c.drawImage(img, z.x, z.y, z.w, z.h);
   c.restore(); return true;
 }
 
 /** Guide previews retain natural proportions, including the long handle. */
 export function drawObstaclePreview(c: CanvasRenderingContext2D, id: string): boolean {
-  const img = images.get(id as ObstacleId);
+  const img = images.get(id === 'glass' && images.has('glass-door') ? 'glass-door' : id);
   if (!img) return false;
   const scale = Math.min(88 / img.width, 82 / img.height);
   c.drawImage(img, 50 - img.width * scale / 2, 48 - img.height * scale / 2, img.width * scale, img.height * scale);

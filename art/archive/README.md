@@ -12,7 +12,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 | `05-gadgets-and-title/` | Gadget theme sheets (snack, travel, doodle), title fridge photo and logo | Claude | 371a9d0, fe0297a |
 | `06-review-alternatives/` | Side-by-side review sheets (Claude vs Gemini, pocket-pal option) | mixed | never shipped |
 
-| `07-souvenir-ready-v1/` | Textured Fiji S and Norway N magnets, layered brass compass, crayon, candy pole, bottle windows and gasket detail. Includes immutable source/history images, prepared WebP files, alpha checks and integration notes. | Codex built-in generation; magenta extraction using Flotillas chroma-cut (no erosion) | LIVE: souvenirs are the N/S plates, compass/crayon/candy pole are the polarity gadgets (7a1a6ac) |
+| `07-souvenir-ready-v1/` | Textured Fiji S and Norway N magnets, layered brass compass, crayon, candy pole, bottle windows and gasket detail. Includes immutable source/history images, prepared WebP files, alpha checks and integration notes. | Codex built-in generation; magenta extraction using Flotillas chroma-cut (no erosion) | LIVE: souvenirs are the N/S plates, compass/crayon/candy pole are the polarity gadgets (7a1a6ac) LIVE incl. glass-door.webp (tall windows whole, wide bands tiled shelf behind the frosted frame) |
 
 ## Going back to a set
 
