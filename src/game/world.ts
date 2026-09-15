@@ -177,7 +177,8 @@ export class World {
         if (bandKind === "glass" && this.version >= 12) bandH = Math.max(bandH, 190);
         const by = y + rangeOf(r, 40, h - bandH - 40);
         zones.push({ x: 0, y: by, w: W, h: bandH, kind: bandKind });
-        if (bandH > 165 || r() < 0.45) {
+        // v12: a band a solo jump clears (~250 px) needs no handle island; older worlds keep their stepping stones
+        if (this.version >= 12 ? bandH > 230 : bandH > 165 || r() < 0.45) {
           const hw = rangeOf(r, 40, 70);
           const hx = rangeOf(r, 20, W - hw - 20);
           zones.push({ x: hx, y: by + bandH * 0.35, w: hw, h: 24, kind: "trim" });

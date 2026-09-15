@@ -22,7 +22,9 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   loadImage("art/gadgets/crayon.webp", (image) => setObjectArt("crayon", image)),
   loadImage("art/gadgets/candy-pole.webp", (image) => setObjectArt("candy-pole", image)),
   // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
-  ...["business-0", "business-1", "business-2"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
+  ...["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
+  // toy bumpers are keychain payloads; the hook and chain are composited from the lemon keychain at draw time
+  ...["bumper-0", "bumper-1", "bumper-2", "bumper-3", "bumper-4"].map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/paper/paper-8.webp", (image) => setObjectArt("paper-8", image)),
   loadImage("art/paper/paper-1.webp", (image) => setObjectArt("paper-1", image)),
   // pack 10 hanging keepsakes: whole photographed assemblies (hook, chain, clip baked in) for the swing and clip gadgets
