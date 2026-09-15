@@ -565,7 +565,6 @@ canvas.addEventListener("pointerdown", (e) => {
   for (const m of offscreenMarkers(game, viewH)) {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }
   }
-  if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
   if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
   if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
   if (SHOP_ENABLED && game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
@@ -574,7 +573,7 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
 // Keyboard (PC): hold Space to charge the pull-back, WASD or arrows to aim (W up, S down, A/D sideways),
-// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recenters.
+// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync.
 const keys = new Set<string>();
 let charge = 0;
 const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.("input, textarea, select") != null;
@@ -590,7 +589,6 @@ window.addEventListener("keydown", (e) => {
   }
   if (k === "c" && game.rules === "crew") game.mode = game.mode === "fling" ? "move" : "fling";
   if (k === "x" && game.rules === "crew") game.sync = !game.sync;
-  if (k === "r") game.recenter();
 });
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase(); keys.delete(k);

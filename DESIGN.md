@@ -36,7 +36,7 @@ Upgrades: team size, magnet strength, arm reach, chain length, slingshot power, 
 ### Crew rules (built)
 
 - Every climber is its own body and flings itself. The colour dots in the HUD are the active-climber selector; inactive climbers stay magnetised where they stuck.
-- Camera follows the active climber. Drag empty steel to pan; RECENTER returns to the active one. A wall indicator shows how far below the danger line is when off screen.
+- Camera always follows the active climber; there is no hand-panning. Off-screen teammates show edge markers you can tap to select, and the red-line distance is always on the dock.
 - Fling is nerfed (max vertical jump ≈ 25 cm). Gap bands grow from 12 cm to 38 cm, so wide gaps need a ladder: land within arm reach of an anchored teammate after the apex to hang on. Chains hold only through a climber stuck to steel.
 - A climber with someone hanging on it is a LADDER rung and cannot fling. You choose who is ladder and who is runner. Knock the anchor off (bumper) and the chain drops.
 - CLIMB mode: crawl hand-over-hand up to 2.6x reach, onto steel or onto a teammate, for deliberate ladder building.

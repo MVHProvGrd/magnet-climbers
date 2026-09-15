@@ -199,7 +199,6 @@ export function hudButtons(viewH: number, g: Game) {
   const sync = { x: x + 78, y, w: 72, h };
   return {
     mode, sync,
-    recenter: { x: W - 132, y: 100, w: 120, h: 42 },
     reserve: { x: d.x + d.w - 96, y, w: 96, h },
   };
 }
@@ -391,5 +390,4 @@ export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, 
     button(ctx, b.mode, climbing ? "CLIMB" : "FLING", climbing ? SLAB : ACCENT, climbing ? CLIMB : INK);
     button(ctx, b.sync, "SYNC", g.sync ? SYNC : SLAB, g.sync ? INK : "#fff");
   }
-  if (g.freeCam) button(ctx, b.recenter, "◎ RECENTER", "#f4f4f4", INK);
 }

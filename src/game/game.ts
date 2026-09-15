@@ -80,9 +80,7 @@ export class Game {
   drag: { start: Vec; cur: Vec } | null = null;
   /** fling = slingshot off a teammate; move = crawl hand-over-hand to a new spot */
   mode: "fling" | "move" = "fling";
-  /** true after the player pans by hand; the camera stops following until recentered */
-  freeCam = false;
-  panning: { lastY: number } | null = null;
+
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
   /** the cat's paw tapping down from the top of the screen (v13); null when idle */
@@ -226,7 +224,7 @@ export class Game {
 
   pointerDown(p: Vec) {
     if (this.phase === "dead") return;
-    // finger on an anchored climber → select it and start aiming; elsewhere → pan the camera
+    // finger on an anchored climber → select it and start aiming; elsewhere → nothing
     let best: Climber | null = null;
     let bd = 48;
     for (const c of this.anchored) {
@@ -236,7 +234,7 @@ export class Game {
     // solo: one climber, so a drag anywhere aims it
     if (!best && this.rules === "solo") {
       const only = this.anchored[0];
-      if (only) { this.selectedId = only.id; this.freeCam = false; this.drag = { start: p, cur: p }; }
+      if (only) { this.selectedId = only.id; this.drag = { start: p, cur: p }; }
       return;
     }
     if (best) {
@@ -255,7 +253,6 @@ export class Game {
       this.drag = { start: p, cur: p };
       return;
     }
-    this.panning = { lastY: p.y };
   }
 
   pointerMove(p: Vec) {
@@ -264,13 +261,6 @@ export class Game {
       if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) sfx.stretch();
       this.drag.cur = p; return;
     }
-    if (this.panning) {
-      const dy = p.y - this.panning.lastY;
-      this.camY -= dy;
-      this.freeCam = true;
-      // p is in world space and moves with the camera, so re-anchor after the shift
-      this.panning.lastY = p.y - dy;
-    }
   }
 
   /** Select a climber by id (from the HUD dots) and bring the camera to it. */
@@ -278,15 +268,9 @@ export class Game {
     const c = this.byId(id);
     if (!c || c.state === "lost") return;
     this.selectedId = id;
-    this.freeCam = false;
-  }
-
-  recenter() {
-    this.freeCam = false;
   }
 
   pointerUp() {
-    this.panning = null;
     if (!this.drag) return;
     const drag = this.drag;
     const c = this.byId(this.selectedId);
@@ -364,7 +348,6 @@ export class Game {
     sfx.launch();
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
-    this.freeCam = false;
     return true;
   }
 
@@ -823,9 +806,9 @@ export class Game {
       this.pickDefaultSelection();
     }
 
-    // camera follows the active climber unless the player has panned away
+    // the camera always follows the active climber; there is no hand-panning to escape it
     const sel = this.byId(this.selectedId);
-    if (sel && !this.freeCam) {
+    if (sel) {
       const target = sel.y - this.viewH * 0.55;
       this.camY += (target - this.camY) * Math.min(1, dt * 5);
     }

@@ -320,7 +320,7 @@ function drawHint(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   ctx.restore();
 }
 
-/** Edge markers for living climbers that are off screen; tap to select and recenter. */
+/** Edge markers for living climbers that are off screen; tap to select, and the camera follows. */
 export function offscreenMarkers(g: Game, viewH: number): { id: number; x: number; y: number; dir: "up" | "down" }[] {
   const out: { id: number; x: number; y: number; dir: "up" | "down" }[] = [];
   for (const c of g.climbers) {
