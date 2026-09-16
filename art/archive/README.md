@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `29-clip-variety-v1/` | Seven clipped papers: concert, school, receipt, birthday, lost cat, coupons, grandma photo | Codex built-in imagegen | Ready for Claude; coupon red-print QC false positive documented |
 | `28-rotor-variety-v1/` | Clock, pinwheel, thermometer, fidget spinner; normalized spindle exports, native originals | Codex built-in imagegen | Ready for Claude rotor wiring |
 | `27-hanging-variety-v1/` | Twelve realistic whole hanging assemblies; keys through fishing lure; pivot notes, source and cutout QC | Codex built-in imagegen | Ready for Claude swing wiring |
 | `26-glass-obstacles-v1/` | Four stocked glass variants and six realistic obstacle refreshes; exact-size exports and native sources | Codex built-in imagegen | Ready for Claude wiring; ten alpha checks pass |

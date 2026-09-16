@@ -1,0 +1,165 @@
+[
+  {
+    "file": "ready/clip-birthday-invite-v1.webp",
+    "size": [
+      1086,
+      1448
+    ],
+    "bbox": [
+      179,
+      99,
+      905,
+      1313
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 797794,
+      "semi": 1074,
+      "opaque": 773660
+    },
+    "edge_pixels": 3800,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clip-concert-ticket-v1.webp",
+    "size": [
+      1536,
+      1024
+    ],
+    "bbox": [
+      149,
+      56,
+      1391,
+      872
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 821076,
+      "semi": 1804,
+      "opaque": 749984
+    },
+    "edge_pixels": 4713,
+    "magenta_tinted_opaque": 55,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clip-coupon-sheet-v1.webp",
+    "size": [
+      1086,
+      1448
+    ],
+    "bbox": [
+      180,
+      91,
+      904,
+      1360
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 763451,
+      "semi": 1117,
+      "opaque": 807960
+    },
+    "edge_pixels": 3956,
+    "magenta_tinted_opaque": 5573,
+    "clean": false,
+    "reasons": [
+      "5573 opaque pixels still read magenta \u2014 pink rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ]
+  },
+  {
+    "file": "ready/clip-grandma-polaroid-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      235,
+      44,
+      1018,
+      1184
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 812069,
+      "semi": 872,
+      "opaque": 759575
+    },
+    "edge_pixels": 3846,
+    "magenta_tinted_opaque": 110,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clip-lost-cat-v1.webp",
+    "size": [
+      1086,
+      1448
+    ],
+    "bbox": [
+      164,
+      25,
+      925,
+      1340
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 688772,
+      "semi": 2510,
+      "opaque": 881246
+    },
+    "edge_pixels": 5404,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clip-report-card-v1.webp",
+    "size": [
+      1086,
+      1448
+    ],
+    "bbox": [
+      158,
+      63,
+      930,
+      1304
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 749013,
+      "semi": 1209,
+      "opaque": 822306
+    },
+    "edge_pixels": 3981,
+    "magenta_tinted_opaque": 22,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clip-takeout-receipt-v1.webp",
+    "size": [
+      887,
+      1774
+    ],
+    "bbox": [
+      208,
+      168,
+      689,
+      1553
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1006710,
+      "semi": 1214,
+      "opaque": 565614
+    },
+    "edge_pixels": 3792,
+    "magenta_tinted_opaque": 16,
+    "clean": true,
+    "reasons": []
+  }
+]
