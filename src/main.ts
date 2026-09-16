@@ -244,7 +244,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.sound = on; save.music = on; setSound(on); setMusic(on); persist();
   },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
-  onOpenBoard: () => resubmitBests(),
+  onOpenBoard: () => { void resubmitBests(); },
   onLinkDevice: () => {
     void (async () => {
       await cloudSync("link");
@@ -357,7 +357,11 @@ function runEvents() {
       if (!chill) {
         save.coins += earned;
         save.gems += game.gems;
-        save[bestKey] = Math.max(save[bestKey], cm);
+        if (cm > save[bestKey]) {
+          save[bestKey] = cm;
+          save[rulesNow === "solo" ? "bestSoloAt" : "bestCmAt"] = Date.now();
+          save[rulesNow === "solo" ? "bestSoloSeconds" : "bestCmSeconds"] = Math.round(game.runTime);
+        }
         if (!runCounted) { save.runs += 1; runCounted = true; }
       }
       bankedCm = cm;
@@ -369,7 +373,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -516,11 +520,26 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   backdropDrawn = false; appEl.classList.add("in-run");
 }
 
-/** Re-post local bests; the server keeps the max, so a lost post heals itself. */
-function resubmitBests() {
+/**
+ * Re-post local bests; the server keeps the max, so a post lost to a dead connection heals
+ * itself. It asks first: when the owner clears a score from the admin panel the Worker
+ * remembers that, and a device whose best predates the clear drops it instead of putting
+ * it straight back. Without that a deleted row simply reappeared, timeless, on the next boot.
+ */
+async function resubmitBests() {
   if (!leaderboardEnabled) return;
-  if (save.bestCm > 0) void leaderboard.submit(save.playerId, save.name, "crew", save.bestCm);
-  if (save.bestSolo > 0) void leaderboard.submit(save.playerId, save.name, "solo", save.bestSolo);
+  for (const mode of ["crew", "solo"] as const) {
+    const bestKey = mode === "solo" ? "bestSolo" : "bestCm";
+    const atKey = mode === "solo" ? "bestSoloAt" : "bestCmAt";
+    const secKey = mode === "solo" ? "bestSoloSeconds" : "bestCmSeconds";
+    if (save[bestKey] <= 0) continue;
+    const r = await leaderboard.rank(mode, save.playerId);
+    if (r?.resetAt && r.resetAt >= (save[atKey] ?? 0)) {
+      save[bestKey] = 0; save[atKey] = 0; save[secKey] = 0; persist();
+      continue;
+    }
+    void leaderboard.submit(save.playerId, save.name, mode, save[bestKey], save[secKey] || undefined);
+  }
 }
 
 /** Push the run to the global board (best per player is kept server-side). */
@@ -752,7 +771,7 @@ async function cloudPull(quiet = false) {
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
-resubmitBests();
+void resubmitBests();
 pendingChallenge = parseChallenge();
 clearChallengeParam();
 if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

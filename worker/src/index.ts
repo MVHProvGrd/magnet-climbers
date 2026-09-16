@@ -75,6 +75,20 @@ function cors(req: Request, env: Env): Record<string, string> {
   };
 }
 
+/** Board rows the owner has cleared, so a device does not put its old best straight back.
+ *  Created on demand, like the reports table, so nothing has to be migrated by hand. */
+let resetsReady = false;
+export async function ensureScoreResets(env: Env): Promise<void> {
+  if (resetsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS score_resets (
+    player_id TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, mode)
+  )`).run().catch(() => {});
+  resetsReady = true;
+}
+
 /** Blocks and reports from players. Created on demand so no migration has to be run by hand. */
 let reportsReady = false;
 async function ensureReports(env: Env): Promise<void> {
@@ -148,6 +162,15 @@ export default {
         if (!me) return json({ rank: null }, h);
         const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM lifetime WHERE cm > ? AND player_id NOT LIKE 'smoke-%'").bind(me.cm).first<{ n: number }>();
         return json({ rank: (above?.n ?? 0) + 1, cm: me.cm }, h);
+      }
+      if (validMode(mode) && player) {
+        await ensureScoreResets(env);
+        const cleared = await env.DB.prepare("SELECT at FROM score_resets WHERE player_id = ? AND mode = ?")
+          .bind(player, mode).first<{ at: number }>().catch(() => null);
+        if (cleared?.at) {
+          const mine = await env.DB.prepare("SELECT cm FROM scores WHERE player_id = ? AND mode = ?").bind(player, mode).first<{ cm: number }>();
+          if (!mine) return json({ rank: null, resetAt: cleared.at }, h);
+        }
       }
       if (mode === "coins" && player) {
         const me = await env.DB.prepare("SELECT coins FROM wallet WHERE player_id = ?").bind(player).first<{ coins: number }>();

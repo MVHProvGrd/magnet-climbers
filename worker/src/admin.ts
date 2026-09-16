@@ -3,7 +3,7 @@
  * Locked with the ADMIN_KEY secret:  npx wrangler secret put ADMIN_KEY
  * The page keeps the key in localStorage and sends it as a Bearer token.
  */
-import type { Env } from "./index";
+import { ensureScoreResets, type Env } from "./index";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
@@ -67,7 +67,15 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   if (path === "/unmute") { await env.DB.prepare("DELETE FROM chat_mutes WHERE player_id = ?").bind(str("playerId")).run(); return json({ ok: true }); }
   if (path === "/score/delete") {
     const mode = str("mode", 8);
-    await env.DB.prepare(mode ? "DELETE FROM scores WHERE player_id = ? AND mode = ?" : "DELETE FROM scores WHERE player_id = ?").bind(...(mode ? [str("playerId"), mode] : [str("playerId")])).run();
+    const player = str("playerId");
+    await env.DB.prepare(mode ? "DELETE FROM scores WHERE player_id = ? AND mode = ?" : "DELETE FROM scores WHERE player_id = ?").bind(...(mode ? [player, mode] : [player])).run();
+    // remember the clear, or the device that set the score posts it straight back on its
+    // next boot: the board heals itself from each player's local best
+    await ensureScoreResets(env);
+    const now = Date.now();
+    for (const m of mode ? [mode] : ["crew", "solo"]) {
+      await env.DB.prepare("INSERT OR REPLACE INTO score_resets (player_id, mode, at) VALUES (?, ?, ?)").bind(player, m, now).run().catch(() => {});
+    }
     return json({ ok: true });
   }
   if (path === "/rename") {

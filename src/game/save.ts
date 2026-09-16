@@ -8,6 +8,12 @@ export interface SaveData {
   gems: number;
   bestCm: number;
   bestSolo: number;
+  /** When each best was set and how long that run took. The board heals itself from these,
+   *  so it needs to know the run's duration, and whether the owner cleared the board since. */
+  bestCmAt?: number;
+  bestSoloAt?: number;
+  bestCmSeconds?: number;
+  bestSoloSeconds?: number;
   runs: number;
   totalCm: number;
   upgrades: Record<UpgradeKey, number>;

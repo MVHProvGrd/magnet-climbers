@@ -11,6 +11,8 @@ import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
 
 export type Phase = "idle" | "running" | "dead";
+/** How a climber was lost. The lost card turns this into a line of prose. */
+export type DeathCause = "redline" | "fell" | "paw" | "hand" | "bumper" | "flings";
 
 /** Everything needed to resume a run after the page is closed or reloaded. */
 export interface RunSnapshot {
@@ -83,6 +85,12 @@ export class Game {
 
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /**
+   * What took the last climber, so the lost card can say it. Set wherever a climber is
+   * lost; the final one to go is the one the card reports, which is the one the player
+   * just watched. "flings" is the expedition case: the budget ran out, nothing killed you.
+   */
+  lastCause: DeathCause | null = null;
   /** the cat's paw tapping down from the top of the screen (v13); null when idle */
   paw: CatPaw | null = null;
   /** claw marks left on the door by the paw; cosmetic, short-lived, bounded */
@@ -797,8 +805,8 @@ export class Game {
 
     // floor claims
     for (const c of this.climbers) {
-      if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c);
-      if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c);
+      if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c, "redline");
+      if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c, "fell");
       // chill has no wall, so a long fall below the high point is the only way to lose one
       if (this.chill && c.state === "flying" && c.y > this.highestY + this.viewH * 1.6 + 300) this.lose(c);
     }
@@ -850,7 +858,7 @@ export class Game {
       } else if (this.flings >= this.level.flings && !this.climbers.some((c) => c.state === "flying") && this.pendingLaunches.length === 0) {
         // budget spent and everyone has settled short of the goal
         this.outOfFlings += 1 / 120;
-        if (this.outOfFlings > 1.2) { this.phase = "dead"; sfx.over(); this.events.onGameOver(); }
+        if (this.outOfFlings > 1.2) { this.phase = "dead"; this.lastCause = "flings"; sfx.over(); this.events.onGameOver(); }
       }
     }
   }
@@ -892,7 +900,7 @@ export class Game {
           c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
           c.x += c.vx * 0.03;
           c.noStick = 0.25;
-          this.damage(c);
+          this.damage(c, false, "bumper");
           if (c.state === "lost") return;
         }
       }
@@ -1024,7 +1032,7 @@ export class Game {
             c.leftLauncher = true; c.fell = true;
             c.airTime = 0;
             c.noStick = 0.35;
-            this.damage(c);
+            this.damage(c, false, "bumper");
           }
         }
       }
@@ -1099,8 +1107,9 @@ export class Game {
     this.awardTrick(c, name, points);
   }
 
-  private lose(c: Climber) {
+  private lose(c: Climber, cause: DeathCause = "fell") {
     if (c.state === "lost") return;
+    this.lastCause = cause;
     c.state = "lost";
     c.grip = undefined;
     c.parent = null;
@@ -1141,7 +1150,7 @@ export class Game {
       // and holds you off the steel long enough to actually lose ground: at 0.3s a climber
       // could catch the very next panel and the swat cost nothing but a heart.
       c.vx = (c.x < pose.x ? -1 : 1) * 90; c.vy = CFG.handShove * 1.15; c.spin = 6; c.noStick = 0.6; resetRagdoll(c);
-      this.damage(c, true);
+      this.damage(c, true, "paw");
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
     if (paw.t >= PAW_DURATION + PAW_WARN) {
@@ -1234,7 +1243,7 @@ export class Game {
         c.vx = -h.side * 260; c.vy = CFG.handShove; c.spin = -h.side * 7;
         c.noStick = 0.3;
         resetRagdoll(c);
-        this.damage(c, true);
+        this.damage(c, true, "hand");
         if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED  -1 ♥", life: 1, color: "#ffd23f" });
       }
       if (h.t >= SWIPE_DURATION) {
@@ -1256,7 +1265,7 @@ export class Game {
   }
 
   /** One hit point off, a grace window, and a loss at zero. */
-  private damage(c: Climber, quiet = false) {
+  private damage(c: Climber, quiet = false, cause: DeathCause = "fell") {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
     this.feats.hits++;
@@ -1264,7 +1273,7 @@ export class Game {
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);
     if (!quiet || c.hp <= 0) this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
-    if (c.hp <= 0) this.lose(c);
+    if (c.hp <= 0) this.lose(c, cause);
   }
 
   private collect(p: PowerUp, c: Climber) {
