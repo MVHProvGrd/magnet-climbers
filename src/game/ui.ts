@@ -209,7 +209,8 @@ export class Ui {
     this.pauseBtn.hidden = !inRun;
     this.muteBtn.hidden = !inRun;
     this.refreshMute();
-    this.setChatStripVisible(inRun && leaderboardEnabled);
+    // Chat is hidden for now: no strip in a run and none on the menu (owner call).
+    this.setChatStripVisible(false);
   }
 
   /* ---------------------------------------------------------- in-run chat strip */
@@ -311,8 +312,7 @@ export class Ui {
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
-    // the chat strip lives on the home screen too, with the same unread badge
-    this.setChatStripVisible(leaderboardEnabled);
+    this.setChatStripVisible(false);
     this.startPreviews(p);
   }
 
