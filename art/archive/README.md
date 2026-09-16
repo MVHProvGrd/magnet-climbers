@@ -5,6 +5,11 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `30-bumper-variety-v1/` | Seven photo toy bumpers without hardware,1024square; native/source/QC preserved | Codex built-in imagegen | Ready for Claude; red car QC exception inspected |
+| `29-clip-variety-v1/` | Seven clipped papers: concert, school, receipt, birthday, lost cat, coupons, grandma photo | Codex built-in imagegen | Ready for Claude; coupon red-print QC false positive documented |
+| `28-rotor-variety-v1/` | Clock, pinwheel, thermometer, fidget spinner; normalized spindle exports, native originals | Codex built-in imagegen | Ready for Claude rotor wiring |
+| `27-hanging-variety-v1/` | Twelve realistic whole hanging assemblies; keys through fishing lure; pivot notes, source and cutout QC | Codex built-in imagegen | Ready for Claude swing wiring |
+| `26-glass-obstacles-v1/` | Four stocked glass variants and six realistic obstacle refreshes; exact-size exports and native sources | Codex built-in imagegen | Ready for Claude wiring; ten alpha checks pass |
 | `25-hardware-pickup-v1/` | Travel/star swings, plasticABC rotors, tileable gasket/gripbar, enamel candy; eight complete | Codex built-in imagegen | Ready for Claude wiring; source/native/fit exports retained |
 | `22-cat-claws-v1/` | Extended-claw contact candidate and three64x256 scratch decals; full source, native key, fit exports | Codex built-in imagegen | Scratches ready; paw needs renderer alignment review |
 | `24-new-papers-v1/` | All12 new paper objects, paper-new-0..11; sources, prompts, alpha QC and review | Codex built-in imagegen | Ready for Claude wiring |

@@ -1,5 +1,25 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack30 READY — seven bumper toys
+
+Seven1024square toys in30-bumper-variety-v1/ready, without hardware per v3. Reviewed light/dark; red car tint checker false-positive documented.45 new generations this continuation. Remaining8 business magnets,4S+4N destinations.
+
+## Pack29 READY — seven clipped papers
+
+Seven in29-clip-variety-v1/ready. All visually reviewed; coupon checker false-positive is red printed text, diagnostics retained.38 successful new generations this continuation. Remaining7 bumpers,8 business cards,4S+4N souvenirs.
+
+## Pack28 READY — four new rotors
+
+Clock/pinwheel/thermometer/spinner in28-rotor-variety-v1/ready.1024square exports centered on actual estimated spindle(512,512); native positions in pivots.json.31 successful generations this continuation so far. Remaining:7 clips,7 bumpers,8 businesses,4S+4N destinations.
+
+## Pack27 READY — twelve new swings
+
+All12 requested hanging assemblies in27-hanging-variety-v1/ready, source1024x1536, pivot estimates and renderer caveats in prompts/HANDOFF. Alpha and visual review pass.27 successful generations this continuation so far. Next4 rotors,7 clips,7 bumpers,8 businesses,4 pairedS/N sets.
+
+## Pack26 READY — section A generation complete
+
+Ten assets in26-glass-obstacles-v1:4 stocked glass variants + dispenser/calendar/ice-tray/handle/plastic/vent refreshes. All keyed, exact delivery sizes, alpha checks pass and visual review done. Pack25 also complete.15 successful new generations this continuation so far. Next: user v3 section B variety. Claude wires; no public/art writes.
+
 ## Pack25 COMPLETE — latest continuation
 
 Image generation resumed. Five added: blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. All eight pack25 assets now ready, gallery updated. See25-hardware-pickup-v1/HANDOFF.md for exact sizes and strip edge exceptions. Next: four glass variants and six obstacle refreshes, then variety. No public/art writes.

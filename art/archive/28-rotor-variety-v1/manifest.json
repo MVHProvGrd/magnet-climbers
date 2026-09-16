@@ -1,0 +1,94 @@
+[
+  {
+    "file": "ready/rotor-clock-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      46,
+      46,
+      976,
+      985
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 354440,
+      "semi": 6324,
+      "opaque": 687812
+    },
+    "edge_pixels": 3576,
+    "magenta_tinted_opaque": 1,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-fidget-spinner-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      77,
+      38,
+      946,
+      824
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 695574,
+      "semi": 8443,
+      "opaque": 344559
+    },
+    "edge_pixels": 4299,
+    "magenta_tinted_opaque": 6,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-pinwheel-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      179,
+      147,
+      859,
+      852
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 743963,
+      "semi": 6970,
+      "opaque": 297643
+    },
+    "edge_pixels": 3426,
+    "magenta_tinted_opaque": 80,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-thermometer-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      52,
+      38,
+      964,
+      945
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 394056,
+      "semi": 6038,
+      "opaque": 648482
+    },
+    "edge_pixels": 3344,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  }
+]

@@ -1,0 +1,232 @@
+[
+  {
+    "file": "ready/glass-door-v3.webp",
+    "size": [
+      384,
+      640
+    ],
+    "bbox": [
+      4,
+      4,
+      379,
+      635
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 8755,
+      "semi": 1805,
+      "opaque": 235200
+    },
+    "edge_pixels": 1956,
+    "magenta_tinted_opaque": 263,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/glass-door-v4.webp",
+    "size": [
+      384,
+      640
+    ],
+    "bbox": [
+      11,
+      4,
+      371,
+      635
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 18291,
+      "semi": 427,
+      "opaque": 227042
+    },
+    "edge_pixels": 1905,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/glass-wide-v3.webp",
+    "size": [
+      768,
+      384
+    ],
+    "bbox": [
+      4,
+      27,
+      763,
+      356
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 44630,
+      "semi": 2375,
+      "opaque": 247907
+    },
+    "edge_pixels": 2296,
+    "magenta_tinted_opaque": 50,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/glass-wide-v4.webp",
+    "size": [
+      768,
+      384
+    ],
+    "bbox": [
+      4,
+      37,
+      763,
+      345
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 60538,
+      "semi": 862,
+      "opaque": 233512
+    },
+    "edge_pixels": 2073,
+    "magenta_tinted_opaque": 12,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-calendar-v2.webp",
+    "size": [
+      512,
+      640
+    ],
+    "bbox": [
+      43,
+      4,
+      468,
+      635
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 66598,
+      "semi": 3780,
+      "opaque": 257302
+    },
+    "edge_pixels": 2257,
+    "magenta_tinted_opaque": 11,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-dispenser-v2.webp",
+    "size": [
+      384,
+      640
+    ],
+    "bbox": [
+      15,
+      4,
+      367,
+      635
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 23453,
+      "semi": 1695,
+      "opaque": 220612
+    },
+    "edge_pixels": 1886,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-handle-v2.webp",
+    "size": [
+      768,
+      160
+    ],
+    "bbox": [
+      4,
+      48,
+      763,
+      111
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 92832,
+      "semi": 3429,
+      "opaque": 26619
+    },
+    "edge_pixels": 1673,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-ice-tray-v2.webp",
+    "size": [
+      768,
+      384
+    ],
+    "bbox": [
+      4,
+      49,
+      763,
+      334
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 79348,
+      "semi": 2230,
+      "opaque": 213334
+    },
+    "edge_pixels": 1992,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-plastic-v2.webp",
+    "size": [
+      768,
+      384
+    ],
+    "bbox": [
+      4,
+      40,
+      763,
+      343
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 80432,
+      "semi": 3447,
+      "opaque": 211033
+    },
+    "edge_pixels": 2051,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/obstacle-vent-v2.webp",
+    "size": [
+      768,
+      256
+    ],
+    "bbox": [
+      4,
+      31,
+      763,
+      224
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 49185,
+      "semi": 1229,
+      "opaque": 146194
+    },
+    "edge_pixels": 1889,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  }
+]

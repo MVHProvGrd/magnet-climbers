@@ -64,9 +64,11 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "gap", name: "Door Gap", family: "surface", kind: "void", description: "Nothing to stick to here. Fling across or land on a metal handle." },
   { id: "seam", name: "Centre Seam", family: "surface", kind: "void", description: "The groove between the two doors runs the whole way up. No grip in it; cross it in flight." },
   { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Jump across or use the steel sides." },
-  ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL"].map((label, i): FridgeItem => ({
-    id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser"][i],
-    family: "bumper", label, hue: [332, 45, 200, 125, 280, 175][i], art: [12, 16, 19, 14, 17, 7][i],
+  ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL", "TAXI", "RACE", "BANANA", "SHUTTLE", "BLOCK", "BRICK", "GUMMY"].map((label, i): FridgeItem => ({
+    id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser",
+      "Yellow Taxi", "Race Car", "Banana", "Space Shuttle", "Letter Block", "Plastic Brick", "Gummy Bear"][i],
+    family: "bumper", label, hue: [332, 45, 200, 125, 280, 175, 48, 4, 52, 205, 28, 350, 320][i],
+    art: [12, 16, 19, 14, 17, 7, 16, 12, 16, 19, 14, 17, 7][i],
     description: "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.",
   })),
   { id: "kid-hand", name: "Cooper's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },

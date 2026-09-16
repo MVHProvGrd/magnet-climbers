@@ -1,0 +1,28 @@
+{
+  "native_measured_estimates": {
+    "rotor-clock-v1": [
+      625,
+      604
+    ],
+    "rotor-pinwheel-v1": [
+      627,
+      629
+    ],
+    "rotor-thermometer-v1": [
+      627,
+      644
+    ],
+    "rotor-fidget-spinner-v1": [
+      627,
+      694
+    ]
+  },
+  "export_pivot": [
+    512,
+    512
+  ],
+  "export_size": [
+    1024,
+    1024
+  ]
+}

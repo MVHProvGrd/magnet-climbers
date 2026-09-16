@@ -9,7 +9,7 @@ export const obstacleArtReady = typeof Image === 'undefined' ? Promise.resolve()
   img.onload = () => { setObstacleArt(id, img); resolve(); };
   img.onerror = () => resolve();
   img.src = `${base}art/real-v1/obstacles/${id}.png`;
-})).concat(['glass-door', 'glass-wide'].map(id => new Promise<void>(resolve => {
+})).concat(['glass-door', 'glass-door-2', 'glass-door-3', 'glass-wide', 'glass-wide-2', 'glass-wide-3'].map(id => new Promise<void>(resolve => {
   // Codex's bottle doors (pack 07): whole single-door panels, tall and squat; never nine-sliced
   const img = new Image();
   img.onload = () => { setObstacleArt(id, img); resolve(); };
@@ -30,7 +30,12 @@ function artId(z: NoStickZone): string | undefined {
 
 /** Whole-door bottle art for a glass zone: the tall door or the wide one, whichever is nearer the zone's shape; the wide one also stretches across full-width bands. */
 function doorArt(z: NoStickZone): HTMLImageElement | undefined {
-  const tall = images.get('glass-door'), wide = images.get('glass-wide');
+  // Three stocked windows of each shape now (pack 26). Pick by the zone's own position so a
+  // door keeps the same contents every frame instead of flickering between variants.
+  const variant = Math.abs(Math.round(z.x) * 73 + Math.round(z.y) * 31) % 3;
+  const suffix = variant === 0 ? '' : `-${variant + 1}`;
+  const tall = images.get(`glass-door${suffix}`) ?? images.get('glass-door');
+  const wide = images.get(`glass-wide${suffix}`) ?? images.get('glass-wide');
   if (!tall || !wide) return tall ?? wide;
   // whichever door is nearer the window's proportions (log ratio), so a stretch stays mild
   const a = z.w / z.h;
