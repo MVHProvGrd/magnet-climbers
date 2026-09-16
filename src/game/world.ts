@@ -115,7 +115,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 14, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 15, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -479,7 +479,7 @@ export class World {
         if (z.itemId === "ice-tray") return 0.08;
         if (z.kind === "glass" || z.kind === "repel") return 0.7;
         if (z.kind === "trim") return 1.8;
-        if (z.kind === "sticker") return 3.6;
+        if (z.kind === "sticker") return this.version >= 15 ? undefined : 3.6;
         if (z.kind === "void") return undefined;
       }
     }
@@ -498,6 +498,9 @@ export class World {
       }
       for (const z of s.zones) {
         if (z.hue === -1 || z.kind === "attract") continue;
+        // v15: a photo on a fridge is held there by a magnet, so a magnet holds on it.
+        // Paper is scenery you can climb now, not a hole in the door.
+        if (this.version >= 15 && z.kind === "sticker" && !z.swing) continue;
         if (this.superGrip && z.kind !== "void" && !z.swing) continue;
         if (inRect(x, y, z, -pad)) return false;
       }

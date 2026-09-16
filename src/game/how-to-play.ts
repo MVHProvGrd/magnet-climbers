@@ -88,6 +88,7 @@ export function howToSections(): HowToSection[] {
       rows: [
         { icon: "🔩", name: "Bare steel", swatch: "steel", note: "the only hold", text: "The shiny door itself. Hands and feet catch here, and nowhere else." },
         { icon: "🪝", name: "Handles", art: "art/real-v1/obstacles/handle.png", note: "metal island", text: "Real metal islands laid across slippery panels. A legal hold in the middle of glass." },
+        { icon: "📄", name: "Paper", fit: "cover", art: "art/real-v1/obstacles/calendar.png", note: "holds you", text: "Drawings, notes, prints and the calendar are pinned up by their own magnets, so yours catches on them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
         { icon: "🧲", name: "S souvenirs", art: "art/destinations/attract-bali.webp", note: "pull you in", text: "Pull you in from a distance and catch you. The aim dots turn blue where one bends your flight.", count: tally((i) => i.kind === "attract") },
         { icon: "⛓️", name: "Gadget grips", art: "art/gadgets/swing-snack.webp", note: "ride, then fling", text: "Keyrings swing, letters rotate, clips dangle. Only the silver part grips — ride it, then fling.", count: tally((i) => i.family === "gadget") },
       ],
@@ -98,7 +99,6 @@ export function howToSections(): HowToSection[] {
       rows: [
         { icon: "🫙", name: "Glass", fit: "cover", art: "art/real-v1/obstacles/glass.png", note: "no catch", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
         { icon: "🧊", name: "Plastic", fit: "cover", art: "art/real-v1/obstacles/plastic.png", note: "no hold", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
-        { icon: "📄", name: "Paper", fit: "cover", art: "art/real-v1/obstacles/calendar.png", note: "blocks a catch", text: "Drawings, notes, prints and the calendar. Catch the bare door around them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
         { icon: "🕳️", name: "Open gaps", fit: "cover", art: "art/real-v1/obstacles/gap.png", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
       ],
     },

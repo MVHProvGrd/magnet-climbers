@@ -11,6 +11,8 @@ export interface FridgeItem {
   kind?: NoStickKind;
   power?: PowerKind;
   metal?: boolean;
+  /** Holds a magnet without being a metal island: paper, pinned up by its own magnet. */
+  grips?: boolean;
   label?: string;
   hue?: number;
   behavior?: "swing" | "rotor" | "clip" | "polarity";
@@ -21,8 +23,8 @@ export interface FridgeItem {
 
 const paperNames = ["Slice of Life", "Cat Nap Club", "Higher Together", "Scenic Route", "Space Cadet", "Home Sweet Fridge", "Grow Your Own Way", "Stay Cool", "Snack List", "You Got This", "Don't Let Go", "More Magnets", "Donut Worry", "Avo Good Climb", "Tiny Dinosaur", "Rain Check", "Lucky Duck", "Sundae Summit", "Gone Fishing", "Beep Boop"];
 const papers: FridgeItem[] = paperNames.map((name, art) => ({
-  id: `paper-${art}`, name, family: "paper", art, kind: "sticker",
-  description: "Paper isn't steel. Catch the bare door around this card.",
+  id: `paper-${art}`, name, family: "paper", art, kind: "sticker", grips: true,
+  description: "Pinned up by its own magnet, so yours holds on it too. Climb straight over it.",
 }));
 
 /** Stable IDs are shared by world generation, artwork, and the player's field guide.
@@ -35,7 +37,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
     description: ["Swinging silver grip carries you. Fling from it to cross the panel.", "A rotating letter carries a silver grip around its face. Time your launch.", "A dangling clip carries you above the paper. Only its silver top grips.", "A pole-flipping toy: blue holds for three seconds, then red pushes for three. The countdown warns before it flips."][i],
   }))),
   ...papers,
-  ...PAPER_ADDITIONS.map((name, i): FridgeItem => ({ id: `paper-new-${i}`, name, family: "paper", art: 100 + i, kind: "sticker", description: "Printed paper blocks magnetic catches. Aim for the exposed steel around its edges." })),
+  ...PAPER_ADDITIONS.map((name, i): FridgeItem => ({ id: `paper-new-${i}`, name, family: "paper", art: 100 + i, kind: "sticker", grips: true, description: "A print under its own magnet. It holds you like the door does." })),
   ...BUSINESS_MAGNETS.map(([name, label], i): FridgeItem => ({ id: `business-${i}`, name, label, family: "bumper", art: 100 + i, hue: [195, 5, 110, 205, 15, 255, 40, 25][i], description: "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart." })),
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },
   { id: "coin", name: "Pocket Change", family: "pickup", power: "coin", description: "Coins feed the prize machine for new patterns. Chill mode doesn't award currency." },
@@ -47,7 +49,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "reach", name: "Reach Badge", family: "pickup", power: "reach", description: "Temporarily stretches the distance you can climb to a teammate." },
   { id: "candy", name: "Candy Drop", family: "pickup", power: "candy", description: "Cooper stops for a sweet: the red line crawls for a while." },
   { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Climb the steel beside it or its silver handle." },
-  { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", description: "A big paper calendar. Follow the open steel side lane." },
+  { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", grips: true, description: "A big paper calendar on its own magnet. Climb it like the door." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
   // every destination souvenir gets its own card; the plates in the game pick from these pools by position
