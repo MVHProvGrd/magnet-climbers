@@ -55,11 +55,12 @@ export const destinationArtById = (id: string) => destinationArt.get(id);
 export function destinationArtFor(x: number, y: number, repel: boolean): CanvasImageSource | undefined {
   return destinationArt.get(polarityDestination(`${Math.round(x)}:${Math.round(y)}`, repel));
 }
-/** Draw a souvenir magnet fitted inside a rectangle (whole cutout visible, slightly oversize). False while the art is still loading. */
+/** Draw a souvenir magnet fitted inside a rectangle, whole cutout visible. The fit
+ *  used to run 8% oversize, which quietly shaved the edge off every wide souvenir. */
 export function drawDestination(ctx: CanvasRenderingContext2D, image: CanvasImageSource, x: number, y: number, w: number, h: number): boolean {
   const iw = (image as HTMLImageElement).naturalWidth || (image as HTMLCanvasElement).width || 1;
   const ih = (image as HTMLImageElement).naturalHeight || (image as HTMLCanvasElement).height || 1;
-  const s = Math.min(w / iw, h / ih) * 1.08, dw = iw * s, dh = ih * s;
+  const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
   ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.clip();
   ctx.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); ctx.restore();
   return true;

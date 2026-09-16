@@ -137,9 +137,14 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   if (photo) {
     const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
     const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
-    const s = Math.max(w / iw, h / ih) * 1.04, dw = iw * s, dh = ih * s;
+    // Contain, not cover: the card's rect is already cut to the photo's own shape,
+    // so this fills it exactly, and where it cannot be (an older world, or a rect
+    // that had no room to shrink) the photo keeps its proportions and shows a
+    // little paper instead of losing a corner. Cover with a 4% overscan clipped
+    // every card, which is how Space Cadet lost its edge.
+    const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
     box(ctx, 0, 0, w, h, "#f6efdd");
-    ctx.drawImage(photo, (w - dw) / 2, Math.min(0, -(dh - h) * 0.15), dw, dh);
+    ctx.drawImage(photo, (w - dw) / 2, (h - dh) / 2, dw, dh);
     ctx.restore(); return;
   }
   if (z.kind === "sticker") {
