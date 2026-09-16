@@ -146,21 +146,27 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   }
   if (z.kind === "sticker") {
     const note = variant >= 8 && variant < 12;
-    box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
+    // The drawing is authored square, so the PAPER is square too. Painting the card
+    // across the whole zone and fitting the drawing inside it left the paper showing
+    // as a white border down both sides of anything that was not square.
+    const cs = Math.min(w, h), cx = (w - cs) / 2, cy = (h - cs) / 2;
+    box(ctx, cx, cy, cs, cs, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
+    ctx.save(); ctx.translate(cx, cy);
     if (note) {
       const lines = [["TO DO", "climb fridge", "find snacks", "repeat"], ["YOU GOT", "THIS!", "", "keep climbing"], ["DON'T", "LET", "GO!", ""], ["MILK", "EGGS", "MORE", "MAGNETS"]][variant - 8];
-      ctx.save(); fitSquare(ctx, w * 0.1, h * 0.17, w * 0.8, h * 0.75);
+      ctx.save(); fitSquare(ctx, cs * 0.1, cs * 0.17, cs * 0.8, cs * 0.75);
       for (let i = 0; i < 4; i++) text(ctx, lines[i], 50, 17 + i * 23, i === 0 ? 17 : 13, "#4b5355");
       ctx.restore();
     } else {
-      ctx.save(); fitSquare(ctx, w * 0.07, h * 0.1, w * 0.86, h * 0.82); doodle(ctx, variant); ctx.restore();
+      ctx.save(); fitSquare(ctx, cs * 0.07, cs * 0.1, cs * 0.86, cs * 0.82); doodle(ctx, variant); ctx.restore();
     }
     // A small pin lives inside the nonstick card, never outside its collider.
-    circle(ctx, w * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
-    circle(ctx, w * 0.52, 5, 3.6, ["#ec7284", "#69b5d1", "#e8b54c"][variant % 3]);
-    circle(ctx, w * 0.52 - 1, 4, 1, "rgba(255,255,255,0.7)");
-    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(91,81,64,0.16)");
-    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(255,255,255,0.45)");
+    circle(ctx, cs * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
+    circle(ctx, cs * 0.52, 5, 3.6, ["#ec7284", "#69b5d1", "#e8b54c"][variant % 3]);
+    circle(ctx, cs * 0.52 - 1, 4, 1, "rgba(255,255,255,0.7)");
+    polygon(ctx, [cs - 9, cs, cs - 9, cs - 9, cs, cs - 9], "rgba(91,81,64,0.16)");
+    polygon(ctx, [cs - 9, cs, cs - 9, cs - 9, cs, cs - 9], "rgba(255,255,255,0.45)");
+    ctx.restore();
   } else if (z.kind === "glass") {
     const glass = ctx.createLinearGradient(0, 0, w, h);
     glass.addColorStop(0, "#497788"); glass.addColorStop(0.5, ["#284759", "#345b62", "#364e6b"][variant % 3]); glass.addColorStop(1, "#172c41");

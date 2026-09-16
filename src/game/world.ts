@@ -367,16 +367,31 @@ export class World {
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
           this.remember(this.recentPapers, choice.id, 10);
-          // v13: a photographed paper keeps its own proportions (shrink to fit rather than crop)
+          // v13: a card takes its art's own proportions. Fitting it inside the slot
+          // was wrong -- a portrait card in a short wide slot collapsed to a stamp,
+          // next to a square one filling its slot. Keep the slot's AREA instead, so
+          // every card carries the same visual weight whatever its shape, then back
+          // off only if that runs into the segment edge or something already placed.
           const aspect = this.version >= 13 ? PAPER_ASPECT[choice.id] : undefined;
           if (aspect) {
             const others = zones.filter((o) => o !== zone);
-            let cw = zone.w, ch = Math.round(cw / aspect);
-            // only ever shrink inside the card's own rectangle, so nothing placed earlier can be overlapped
-            while (ch > zone.h || blocked(others, { x: zone.x, y: zone.y, w: cw, h: ch }, 8, true)) {
-              cw -= 6; ch = Math.round(cw / aspect); if (cw < 40) break;
-            }
-            if (cw >= 40) { zone.w = cw; zone.h = ch; }
+            const area = zone.w * zone.h;
+            const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
+            let cw = Math.round(Math.sqrt(area * aspect)), ch = Math.round(cw / aspect);
+            // a resized card may move, so it must clear the bumper paths too --
+            // those were laid down before this pass and expect bare steel
+            const paths = bumpers.map((b) => b.motion === "lift"
+              ? { x: b.x, y: b.minY, w: b.w, h: b.maxY - b.minY + b.h }
+              : b.motion === "slide" ? { x: 0, y: b.y, w: W, h: b.h }
+              : { x: 0, y: b.minY, w: W, h: b.maxY - b.minY + b.h });
+            const fits = (w: number, h: number) => {
+              const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+              if (x < 6 || x + w > W - 6 || y < segment.y + 6 || y + h > segment.y + segment.h - 6) return false;
+              if (blocked(others, { x, y, w, h }, 8, true)) return false;
+              return !paths.some((t) => x < t.x + t.w + 8 && x + w + 8 > t.x && y < t.y + t.h + 8 && y + h + 8 > t.y);
+            };
+            while (!fits(cw, ch) && cw > 40) { cw -= 6; ch = Math.round(cw / aspect); }
+            if (cw >= 40) { zone.w = cw; zone.h = ch; zone.x = Math.round(cx - cw / 2); zone.y = Math.round(cy - ch / 2); }
           }
         }
       } else {
