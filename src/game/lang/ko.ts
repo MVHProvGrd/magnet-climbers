@@ -71,6 +71,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N극 기념 자석", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "N이 표시된 냉장고 기념품. 빨간 자기장이 공중의 인형을 밀어내요. 호가 넓을수록 세게 밀어요. 큰 것은 새총이에요.",
   "S Souvenir Magnet": "S극 기념 자석", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "S가 표시된 냉장고 기념품. 파란 자기장이 멀리서 공중의 인형을 당기고 표면이 받아 줘요. 비행을 휘게 하는 곳에서 조준점이 파랗게 변해요.",
   "Fiji (S)": "피지 (S)", "Hawaii (S)": "하와이 (S)", "Bali (S)": "발리 (S)", "Norway (N)": "노르웨이 (N)", "Alaska (N)": "알래스카 (N)", "Iceland (N)": "아이슬란드 (N)", "Jūrmala (N)": "유르말라 (N)", "Kyiv (N)": "키이우 (N)",
+  "Avatar": "아바타", "Choose an avatar": "아바타 선택", "PICK": "선택", "Just your initial": "이니셜만", "Back to your initial": "이니셜로 돌아갔어요",
   "Hold SPACE to charge, WASD to aim, release to fling.": "스페이스를 누르고 있으면 충전, WASD로 조준, 놓으면 발사.", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB 선택 · C 이동/발사 · X 동기화 · R 가운데로", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ 스페이스를 눌러 충전하고 WASD로 조준한 뒤 놓으면 발사돼요.",
   "Candy Drop": "사탕", "Cooper stops for a sweet: the red line crawls for a while.": "아이가 사탕에 정신이 팔려요: 빨간 선이 한동안 기어가요.", "CANDY": "사탕", "CANDY DROP": "사탕",
   "Earn 9 expedition stars": "탐험 별 9개를 모으세요",
@@ -154,6 +155,8 @@ export const exact: Record<string, string> = {
 };
 
 export const rules: Rule[] = [
+  [/^(.+) · shown in chat$/, (m) => `${t(m[1])} · 채팅에 표시`],
+  [/^You are (.+)$/, (m) => `당신은 ${m[1]}`],
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]}판 · 누적 ${m[2]} m`],
   [/^Build (.+?) · $/, (m) => `빌드 ${m[1]} · `],
   [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · 순위표에 표시`],

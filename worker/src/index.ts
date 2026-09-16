@@ -12,8 +12,8 @@
  *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
  *   GET  /stats                                → { total_cm, runs, players }
  *   GET  /admin                                → owner panel (ADMIN_KEY secret); JSON API under /admin/api/*
- *   GET  /chat?after=<id>                      → { messages: [{ id, name, text, player_id, created_at }], online }
- *   POST /chat   { playerId, token, name, text } → { ok, message } | 429 (3 s per player) | 403 (muted)
+ *   GET  /chat?after=<id>                      → { messages: [{ id, name, text, player_id, created_at, avatar }], online }
+ *   POST /chat   { playerId, token, name, text, avatar? } → { ok, message } | 429 (3 s per player) | 403 (muted)
  *   GET  /c/<mode>.<cm>.<name>[/<playerId>][.png] → challenge share page (Open Graph) / score card PNG; the
  *        height is checked against that player's scoreboard best, else the card says "unverified"
  *
@@ -320,16 +320,20 @@ export default {
     if (req.method === "GET" && url.pathname === "/chat") {
       const after = Math.max(0, Math.floor(Number(url.searchParams.get("after") ?? 0)));
       const rows = await env.DB.prepare(
-        "SELECT id, name, text, player_id, created_at FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40",
-      ).bind(after).all<{ id: number; name: string; text: string; player_id: string; created_at: number }>();
+        "SELECT id, name, text, player_id, created_at, avatar FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40",
+      ).bind(after).all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>().catch(() =>
+        // `avatar` arrived after launch; until the column exists the room still answers
+        env.DB.prepare("SELECT id, name, text, player_id, created_at, NULL AS avatar FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40").bind(after)
+          .all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>());
       const online = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM chat WHERE created_at > ?").bind(Date.now() - 10 * 60_000).first<{ n: number }>();
       return json({ messages: (rows.results ?? []).reverse(), online: online?.n ?? 0 }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/chat") {
-      let body: { playerId?: unknown; token?: unknown; name?: unknown; text?: unknown };
+      let body: { playerId?: unknown; token?: unknown; name?: unknown; text?: unknown; avatar?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
+      const avatar = /^[a-z0-9-]{1,24}$/.test(String(body.avatar ?? "")) ? String(body.avatar) : null;
       const token = String(body.token ?? "").slice(0, 64);
       const text = String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
       if (!playerId || token.length < 16 || text.length < 1) return json({ error: "bad message" }, h, 400);
@@ -346,10 +350,15 @@ export default {
       if (name.length < 3 || nameIsProfane(name)) name = "climber";
       const clean = cleanChat(text);
       const now = Date.now();
-      const ins = await env.DB.prepare("INSERT INTO chat (player_id, name, text, created_at) VALUES (?, ?, ?, ?)").bind(playerId, name, clean, now).run();
+      const insert = () => env.DB.prepare("INSERT INTO chat (player_id, name, text, created_at, avatar) VALUES (?, ?, ?, ?, ?)").bind(playerId, name, clean, now, avatar).run();
+      const ins = await insert().catch(async () => {
+        // self-heal: add the column the schema gained after launch, then retry once
+        await env.DB.prepare("ALTER TABLE chat ADD COLUMN avatar TEXT").run().catch(() => {});
+        return insert();
+      });
       const id = Number(ins.meta.last_row_id ?? 0);
       if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - 500).run();
-      return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now } }, h);
+      return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now, avatar } }, h);
     }
 
     if (req.method === "GET" && url.pathname === "/stats") {

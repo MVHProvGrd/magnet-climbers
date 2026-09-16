@@ -224,3 +224,16 @@ select.buy option { background: #1e2229; color: #fff; }
 .how-row b { display: block; font-size: 14px; margin-bottom: 1px; }
 .how-row small { display: block; font-size: 12px; line-height: 1.45; opacity: 0.7; font-weight: 600; }
 .how-count { font-style: normal; font-size: 11px; font-weight: 700; opacity: 0.5; margin-left: 5px; letter-spacing: 0.3px; }
+
+/* avatars: one sprite sheet, cells picked by background-position (see avatars.ts) */
+.avi { display: inline-block; vertical-align: middle; border-radius: 8px; background-repeat: no-repeat; background-color: #fff; flex: 0 0 auto; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.avi.blank { color: #fff; font-weight: 800; text-align: center; font-family: system-ui, sans-serif; }
+.chat-log .msg { display: flex; align-items: flex-start; gap: 6px; }
+.chat-log .msg .avi { margin-top: 1px; }
+.chat-ticker .lines span { display: flex; align-items: center; gap: 5px; }
+.chat-ticker .lines .avi { border-radius: 5px; }
+.panel.avatars { width: min(94vw, 440px); }
+.avatar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; padding: 4px; }
+.avatar-grid .pick { padding: 4px; border-radius: 12px; background: rgba(255,255,255,.06); border: 2px solid transparent; line-height: 0; }
+.avatar-grid .pick.on { border-color: var(--accent); background: rgba(255,255,255,.14); }
+.avatar-grid .pick .avi { border-radius: 10px; }

@@ -78,6 +78,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "Сувенирный магнит N", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Сувенир с холодильника с меткой N. Его красное поле отталкивает летящих; чем шире дуги, тем сильнее толчок. Большие — настоящие рогатки.",
   "S Souvenir Magnet": "Сувенирный магнит S", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Сувенир с холодильника с меткой S. Его синее поле притягивает летящих издалека, а поверхность ловит. Точки прицела синеют там, где он гнёт полёт.",
   "Fiji (S)": "Фиджи (S)", "Hawaii (S)": "Гавайи (S)", "Bali (S)": "Бали (S)", "Norway (N)": "Норвегия (N)", "Alaska (N)": "Аляска (N)", "Iceland (N)": "Исландия (N)", "Jūrmala (N)": "Юрмала (N)", "Kyiv (N)": "Киев (N)",
+  "Avatar": "Аватар", "Choose an avatar": "Выберите аватар", "PICK": "ВЫБРАТЬ", "Just your initial": "Только ваша буква", "Back to your initial": "Снова ваша буква",
   "Hold SPACE to charge, WASD to aim, release to fling.": "Держите ПРОБЕЛ для замаха, WASD — прицел, отпустите — бросок.", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB выбирает альпиниста · C ход/бросок · X синхрон · R центр", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ Держите ПРОБЕЛ для замаха, целься WASD, отпустите — бросок.",
   "Candy Drop": "Конфета", "Cooper stops for a sweet: the red line crawls for a while.": "Ребёнок отвлёкся на конфету: красная линия ползёт еле-еле.", "CANDY": "КОНФЕТА", "CANDY DROP": "КОНФЕТА",
   "Earn 9 expedition stars": "Наберите 9 звёзд экспедиций",
@@ -170,6 +171,8 @@ export const exact: Record<string, string> = {
 };
 
 export const rules: Rule[] = [
+  [/^(.+) · shown in chat$/, (m) => `${t(m[1])} · виден в чате`],
+  [/^You are (.+)$/, (m) => `Вы — ${m[1]}`],
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} забегов · ${m[2]} м пройдено за всё время`],
   [/^Build (.+?) · $/, (m) => `Сборка ${m[1]} · `],
   [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · видно в таблице рекордов`],

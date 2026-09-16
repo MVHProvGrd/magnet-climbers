@@ -71,6 +71,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N極のお土産マグネット", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Nと書かれた冷蔵庫のお土産。赤い磁場が空中の仲間を押し返す。弧が広いほど強い。大きいものはパチンコ。",
   "S Souvenir Magnet": "S極のお土産マグネット", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Sと書かれた冷蔵庫のお土産。青い磁場が遠くから空中の仲間を引き寄せ、表面がキャッチしてくれる。飛行を曲げる場所で狙いの点が青くなる。",
   "Fiji (S)": "フィジー (S)", "Hawaii (S)": "ハワイ (S)", "Bali (S)": "バリ (S)", "Norway (N)": "ノルウェー (N)", "Alaska (N)": "アラスカ (N)", "Iceland (N)": "アイスランド (N)", "Jūrmala (N)": "ユールマラ (N)", "Kyiv (N)": "キーウ (N)",
+  "Avatar": "アバター", "Choose an avatar": "アバターを選ぶ", "PICK": "選ぶ", "Just your initial": "イニシャルのみ", "Back to your initial": "イニシャルに戻しました",
   "Hold SPACE to charge, WASD to aim, release to fling.": "スペース長押しでチャージ、WASDで狙い、離して発射。", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TABで選択 · Cで移動/発射 · Xで同期 · Rで中央へ", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ スペース長押しでチャージ、WASDで狙って、離して発射。",
   "Candy Drop": "キャンディ", "Cooper stops for a sweet: the red line crawls for a while.": "子どもがお菓子に夢中：赤い線がしばらくのろのろ進む。", "CANDY": "キャンディ", "CANDY DROP": "キャンディ",
   "Earn 9 expedition stars": "探検の星を9個集める",
@@ -154,6 +155,8 @@ export const exact: Record<string, string> = {
 };
 
 export const rules: Rule[] = [
+  [/^(.+) · shown in chat$/, (m) => `${t(m[1])} · チャットに表示`],
+  [/^You are (.+)$/, (m) => `あなたは${m[1]}`],
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} 回 · 累計 ${m[2]} m`],
   [/^Build (.+?) · $/, (m) => `ビルド ${m[1]} · `],
   [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · ランキングに表示`],

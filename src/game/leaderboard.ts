@@ -66,14 +66,14 @@ export const leaderboard = {
     call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}) }) }),
 };
 
-export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number }
+export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }
 /** Global chat: polled while the panel is open. */
 export const chat = {
   list: (after = 0) => call<{ messages: ChatMessage[]; online: number }>(`/chat?after=${after}`),
-  send: async (playerId: string, token: string, name: string, text: string): Promise<{ ok: true; message: ChatMessage } | { error: string } | null> => {
+  send: async (playerId: string, token: string, name: string, text: string, avatar = ""): Promise<{ ok: true; message: ChatMessage } | { error: string } | null> => {
     if (!leaderboardEnabled) return null;
     try {
-      const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId, token, name, text }) });
+      const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId, token, name, text, avatar }) });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; message?: ChatMessage; error?: string };
       if (r.ok && j.message) return { ok: true, message: j.message };
       return { error: r.status === 429 ? "Slow down a little" : r.status === 403 ? (j.error === "muted" ? "You are muted" : "Finish a run first, then chat") : "Could not send" };

@@ -38,7 +38,7 @@ Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-st
 
 ## Codex queue v3 — 2026-09-15 (replaces v2; packs 19 and 20 are LIVE)
 
-**Delivery, unchanged:** generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md + HANDOFF.md), add a README row, `node scripts/art-archive-page.mjs`, `git push origin codex/art-ready-pack`. Next free pack number is **21**. Never write to `public/art/`; Claude fits and wires every batch as it lands. Full source margins are fine, Claude crops to alpha bounds. 8 to 12 images per session.
+**Delivery, unchanged:** generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md + HANDOFF.md), add a README row, `node scripts/art-archive-page.mjs`, `git push origin codex/art-ready-pack`. Next free pack number is **21** (Claude took **22** for chat avatars; use 23 after 21). Never write to `public/art/`; Claude fits and wires every batch as it lands. Full source margins are fine, Claude crops to alpha bounds. 8 to 12 images per session.
 
 ### DONE (live in game, do not redo)
 business-0..7, bumper-0..5 (robot v2 and COOL penguin from pack 19), paper-1, paper-8, paper-0/2/3/4/5/6 (pack 19), paper-7/9/10/11 (pack 20), lemon keychain (swing-snack), clip papers snack/travel/doodle, 7 S + 7 N destinations, kid arm long, cat paw long with claws, reach badge, six menu icons, glass-door + glass-wide (one design each).

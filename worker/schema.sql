@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS chat (
   player_id TEXT NOT NULL,
   name TEXT NOT NULL,
   text TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  avatar TEXT -- portrait id from src/game/avatars.ts; the Worker adds this column itself on older databases
 );
 CREATE INDEX IF NOT EXISTS chat_created ON chat(created_at DESC);
 -- muted players: until = 0 means forever. Mute from the CLI:

@@ -71,6 +71,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "Aimant souvenir N", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Un souvenir de frigo marqué N. Son champ rouge repousse les grimpeurs en l'air ; plus les arcs sont larges, plus il pousse fort. Les gros sont des frondes.",
   "S Souvenir Magnet": "Aimant souvenir S", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Un souvenir de frigo marqué S. Son champ bleu attire les grimpeurs de loin et sa face vous rattrape. Les points de visée deviennent bleus là où il courbe votre vol.",
   "Norway (N)": "Norvège (N)", "Iceland (N)": "Islande (N)", "Hawaii (S)": "Hawaï (S)", "Fiji (S)": "Fidji (S)", "Kyiv (N)": "Kyiv (N)",
+  "Avatar": "Avatar", "Choose an avatar": "Choisis un avatar", "PICK": "CHOISIR", "Just your initial": "Juste ton initiale", "Back to your initial": "Retour à ton initiale",
   "Hold SPACE to charge, WASD to aim, release to fling.": "Maintenez ESPACE pour charger, WASD pour viser, relâchez pour lancer.", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB choisit un grimpeur · C déplacer/lancer · X synchro · R recentrer", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ Maintenez ESPACE pour charger, visez avec WASD, relâchez pour lancer.",
   "Candy Drop": "Bonbon", "Cooper stops for a sweet: the red line crawls for a while.": "L'enfant s'arrête pour un bonbon : la ligne rouge rampe un moment.", "CANDY": "BONBON", "CANDY DROP": "BONBON",
   "Earn 9 expedition stars": "Gagnez 9 étoiles d'expédition",
@@ -154,6 +155,8 @@ export const exact: Record<string, string> = {
 };
 
 export const rules: Rule[] = [
+  [/^(.+) · shown in chat$/, (m) => `${t(m[1])} · visible dans le chat`],
+  [/^You are (.+)$/, (m) => `Tu es ${m[1]}`],
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} parties · ${m[2]} m grimpés au total`],
   [/^Build (.+?) · $/, (m) => `Version ${m[1]} · `],
   [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · visible au classement`],

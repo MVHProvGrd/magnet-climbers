@@ -65,7 +65,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "expeditions", "intros", "name", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "expeditions", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -275,6 +275,7 @@ const ui = new Ui(uiRoot, () => save, {
       ui.showMenu();
     })();
   },
+  onSetAvatar: (id) => { save.avatar = id; persist(); void cloudSync("avatar"); },
   onSetName: (name) => {
     const changed = name !== save.name;
     save.name = name; persist();
@@ -297,7 +298,7 @@ const ui = new Ui(uiRoot, () => save, {
   onChat: async (text) => {
     if (!leaderboardEnabled) return "Chat is offline";
     if (save.cloudRev === 0) await cloudSync("chat");
-    const r = await chat.send(save.playerId, save.token, save.name, text);
+    const r = await chat.send(save.playerId, save.token, save.name, text, save.avatar);
     if (!r) return "Could not reach the chat";
     return "error" in r ? r.error : null;
   },

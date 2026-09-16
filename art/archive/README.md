@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `22-avatars-v1/` | 83 cartoon sticker avatars for chat and the profile (fridge crew, snacks, creatures, whimsical people). `gen.py` (Gemini, magenta), `key.py` (rim-only despill so reds survive), `sheet.py` packs the sprite sheet. | Claude via Gemini 2.5 Flash Image | LIVE: `public/art/avatars/sheet.webp`, picker in Settings, shown in chat and the menu ticker |
 | `20-paper-notes-v1/` | Four realistic papers: Stay Cool, You Got This, Don't Let Go, More Magnets (7,9,10,11). Sources, alpha manifest and light/dark sheet. | Codex built-in imagegen + hard chroma key | LIVE: `public/art/paper/paper-7/9/10/11.webp` via `prepare-live.py`, photo-shaped cards (world v13) |
 | `19-bumpers-paper-v1/` | Clean robot replacement, COOL penguin and six realistic paper objects (0,2,3,4,5,6). Sources, corrections, alpha manifest and review sheet. | Codex built-in imagegen + hard chroma key | LIVE: robot replaces `bumper-2.webp`, penguin is `bumper-5.webp` (no canvas fallback left), papers 0/2/3/4/5/6 as `public/art/paper/paper-N.webp` |
 | `18-extended-limbs-v1/` | Longer cat foreleg and boy teal sleeve, sources, cutouts and light/dark review. Camera-safe root/retraction handoff. | Codex built-in imagegen edits | Review only; Claude wires new source coordinates and withdrawal |

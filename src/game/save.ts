@@ -43,6 +43,8 @@ export interface SaveData {
   cloudRev: number;
   /** display name for the leaderboard; empty until the player picks one */
   name: string;
+  /** chat and profile portrait id from `avatars.ts`; empty = coloured initial */
+  avatar: string;
   introSeen: boolean;
   /** the one-time name offer has been shown */
   namePrompted: boolean;
@@ -84,6 +86,7 @@ function defaults(): SaveData {
     token: newToken(),
     cloudRev: 0,
     name: "",
+    avatar: "",
     introSeen: false,
     namePrompted: false,
     tutorialDone: false,

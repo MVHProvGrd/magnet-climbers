@@ -6,6 +6,7 @@ import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
+import { AVATARS, avatarHtml, avatarById } from "./avatars";
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
@@ -38,6 +39,7 @@ export interface UiHandlers {
   onToggleChill(): void;
   onSetLang(lang: Lang): void;
   onSetName(name: string): void;
+  onSetAvatar(id: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
   onOpenBoard(): void;
@@ -206,7 +208,7 @@ export class Ui {
     if (ticker) void chat.list(0).then((r) => {
       if (!r || !p.isConnected) return;
       const last = r.messages.slice(-2);
-      ticker.innerHTML = last.length ? last.map((m) => `<span><b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
+      ticker.innerHTML = last.length ? last.map((m) => `<span>${avatarHtml(m.avatar ?? undefined, m.name, 18)}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
       const seen = chatSeen(); const unread = r.messages.filter((m) => m.id > seen).length;
       if (badge && unread) { badge.textContent = unread > 99 ? "99+" : String(unread); badge.hidden = false; }
     });
@@ -379,7 +381,7 @@ export class Ui {
     let lastId = 0; const seen = new Map<number, ChatMessage>();
     const render = () => {
       const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-60);
-      log.innerHTML = rows.length ? rows.map((m) => `<div class="msg ${m.player_id === s.playerId ? "me" : ""}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join("") : `<p class="fine">Nobody has said anything yet. You could be first.</p>`;
+      log.innerHTML = rows.length ? rows.map((m) => `<div class="msg ${m.player_id === s.playerId ? "me" : ""}">${avatarHtml(m.avatar ?? undefined, m.name, 26)}<b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join("") : `<p class="fine">Nobody has said anything yet. You could be first.</p>`;
       log.scrollTop = log.scrollHeight;
     };
     const poll = async () => {
@@ -465,6 +467,28 @@ export class Ui {
     this.show(p);
   }
 
+  /** Grid of every portrait; tap one to wear it in chat. */
+  showAvatarPicker() {
+    const s = this.save();
+    const p = el("div", "panel avatars");
+    p.innerHTML = `<h2>Choose an avatar</h2>
+      <div class="avatar-grid">
+        <button class="pick ${s.avatar ? "" : "on"}" data-id="" aria-label="Just your initial">${avatarHtml(undefined, s.name, 56)}</button>
+        ${AVATARS.map((a) => `<button class="pick ${a.id === s.avatar ? "on" : ""}" data-id="${a.id}" title="${esc(a.name)}" aria-label="${esc(a.name)}">${avatarHtml(a.id, a.name, 56)}</button>`).join("")}
+      </div>
+      <button class="ghost" data-a="back">BACK</button>`;
+    p.addEventListener("click", (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-id],[data-a]");
+      if (!t) return;
+      if (t.dataset.a === "back") { this.showSettings(); return; }
+      const id = t.dataset.id ?? "";
+      this.h.onSetAvatar(id);
+      this.toast(id ? `You are ${avatarById(id)?.name ?? id}` : "Back to your initial");
+      this.showSettings();
+    });
+    this.show(p);
+  }
+
   /** Profile, preferences and appearance in one place. */
   showSettings() {
     const s = this.save();
@@ -476,6 +500,11 @@ export class Ui {
         <div class="row">
           <div class="info"><b>Climber name</b><span>${esc(s.name || "not set")} · shown on the scoreboard</span></div>
           <button class="buy" data-a="name">CHANGE</button>
+        </div>
+        <div class="row">
+          ${avatarHtml(s.avatar, s.name, 44)}
+          <div class="info"><b>Avatar</b><span>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</span></div>
+          <button class="buy" data-a="avatar">PICK</button>
         </div>
       </div>
       <h3>Play on another device</h3>
@@ -514,6 +543,7 @@ export class Ui {
       const a = t.dataset.a;
       if (a === "collection") { this.showCollection(); return; }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
+      if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
       if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }

@@ -71,6 +71,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N 極紀念磁鐵", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "標著 N 的冰箱紀念磁鐵。紅色磁場推開空中的攀登者；弧線越寬推力越大。大的就是彈弓。",
   "S Souvenir Magnet": "S 極紀念磁鐵", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "標著 S 的冰箱紀念磁鐵。藍色磁場遠距離把空中的攀登者拉過來，表面能接住你。瞄準點在它彎曲你飛行的地方會變藍。",
   "Fiji (S)": "斐濟 (S)", "Hawaii (S)": "夏威夷 (S)", "Bali (S)": "峇里島 (S)", "Norway (N)": "挪威 (N)", "Alaska (N)": "阿拉斯加 (N)", "Iceland (N)": "冰島 (N)", "Jūrmala (N)": "尤爾馬拉 (N)", "Kyiv (N)": "基輔 (N)",
+  "Avatar": "頭像", "Choose an avatar": "選擇頭像", "PICK": "選擇", "Just your initial": "只顯示首字母", "Back to your initial": "已恢復首字母",
   "Hold SPACE to charge, WASD to aim, release to fling.": "按住空白鍵蓄力，WASD 瞄準，放開投擲。", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB 選擇攀爬者 · C 移動/投擲 · X 同步 · R 置中", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ 按住空白鍵蓄力，用 WASD 瞄準，放開投擲。",
   "Candy Drop": "糖果", "Cooper stops for a sweet: the red line crawls for a while.": "小孩停下來吃糖：紅線會慢慢爬一會兒。", "CANDY": "糖果", "CANDY DROP": "糖果",
   "Earn 9 expedition stars": "獲得 9 顆探險星星",
@@ -154,6 +155,8 @@ export const exact: Record<string, string> = {
 };
 
 export const rules: Rule[] = [
+  [/^(.+) · shown in chat$/, (m) => `${t(m[1])} · 顯示在聊天中`],
+  [/^You are (.+)$/, (m) => `你現在是${m[1]}`],
   [/^(\d+) runs · (.+) m climbed lifetime$/, (m) => `${m[1]} 局 · 累計攀登 ${m[2]} 公尺`],
   [/^Build (.+?) · $/, (m) => `版本 ${m[1]} · `],
   [/^(.+) · shown on the scoreboard$/, (m) => `${t(m[1])} · 顯示在排行榜上`],
