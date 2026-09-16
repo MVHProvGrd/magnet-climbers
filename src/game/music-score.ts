@@ -19,8 +19,29 @@ export function musicStep(step: number, danger: number, chill = false): Voice[] 
 }
 export const EFFECTS: Record<string, readonly Voice[]> = {
   launch: [{ frequency: 145, endFrequency: 510, duration: 0.22, gain: 0.12, type: "triangle" }, { frequency: 900, endFrequency: 2400, duration: 0.12, gain: 0.035, type: "noise" }],
-  stretch: [{ frequency: 180, endFrequency: 320, duration: 0.1, gain: 0.035, type: "triangle" }],
+  // Drawing the sling: rubber creaking under tension. The whole effect is pitched
+  // up as the draw grows (see sfx.stretch(rate)), so a full pull sings.
+  stretch: [
+    { frequency: 150, endFrequency: 215, duration: 0.13, gain: 0.045, type: "triangle" },
+    { frequency: 460, endFrequency: 700, duration: 0.1, gain: 0.02, type: "noise" },
+  ],
+  // Letting go: the band snaps back past its rest length and wobbles.
+  twang: [
+    { frequency: 420, endFrequency: 90, duration: 0.17, gain: 0.11, type: "triangle" },
+    { frequency: 260, endFrequency: 150, duration: 0.12, delay: 0.04, gain: 0.05, type: "sine" },
+    { frequency: 1500, endFrequency: 500, duration: 0.05, gain: 0.035, type: "noise" },
+  ],
+  // Landing on steel: the magnet's click plus the door's low boom. The other
+  // materials are the same gesture voiced for what you actually hit.
   stick: [{ frequency: 1850, duration: 0.045, gain: 0.07, type: "sine" }, { frequency: 2700, duration: 0.065, gain: 0.025, type: "sine" }, { frequency: 130, endFrequency: 65, duration: 0.065, gain: 0.11, type: "triangle" }],
+  /** glass: a bright ring with no magnet click under it */
+  hitGlass: [{ frequency: 2950, duration: 0.19, gain: 0.05, type: "sine" }, { frequency: 4400, duration: 0.11, gain: 0.02, type: "sine" }, { frequency: 1200, endFrequency: 700, duration: 0.04, gain: 0.03, type: "noise" }],
+  /** plastic trim and bins: a dull hollow tock */
+  hitPlastic: [{ frequency: 360, endFrequency: 210, duration: 0.07, gain: 0.09, type: "triangle" }, { frequency: 900, endFrequency: 500, duration: 0.035, gain: 0.03, type: "noise" }],
+  /** paper: a soft rustle, barely pitched */
+  hitPaper: [{ frequency: 2600, endFrequency: 1500, duration: 0.07, gain: 0.05, type: "noise" }, { frequency: 1500, endFrequency: 900, duration: 0.05, delay: 0.04, gain: 0.035, type: "noise" }],
+  /** ice tray: a cold tick and a little skid, since ice is what you slide on */
+  hitIce: [{ frequency: 3300, duration: 0.05, gain: 0.05, type: "sine" }, { frequency: 2200, endFrequency: 3600, duration: 0.16, delay: 0.02, gain: 0.03, type: "noise" }],
   link: [{ frequency: 660, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 990, duration: 0.13, delay: 0.07, gain: 0.06, type: "sine" }],
   coin: [{ frequency: 1050, duration: 0.07, gain: 0.07, type: "sine" }, { frequency: 1575, duration: 0.16, delay: 0.055, gain: 0.055, type: "sine" }],
   power: [{ frequency: 523, duration: 0.15, gain: 0.08, type: "triangle" }, { frequency: 659, duration: 0.17, delay: 0.07, gain: 0.07, type: "sine" }, { frequency: 784, duration: 0.25, delay: 0.14, gain: 0.06, type: "sine" }],

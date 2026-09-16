@@ -106,6 +106,8 @@ export class Game {
   level: LevelDef | null = null;
   /** flings used this run (one per gesture; a SYNC fling counts once) */
   flings = 0;
+  /** what each climber is currently sliding on, so a material only sounds on contact */
+  private slideMaterial = new Map<number, string>();
   won = false;
   private outOfFlings = 0;
   /** ladder crossing: once a stack's top grabs steel, the ones below crawl up over it one by one */
@@ -259,7 +261,10 @@ export class Game {
   pointerMove(p: Vec) {
     if (this.drag) {
       const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
-      if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) sfx.stretch();
+      // rubber under tension: each notch of draw creaks a little higher than the last
+      if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) {
+        sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * 0.8);
+      }
       this.drag.cur = p; return;
     }
   }
@@ -347,6 +352,8 @@ export class Game {
     c.airTime = 0;
     c.squash = 1;
     sfx.launch();
+    // the band snapping back past its rest length, pitched by how hard it was pulled
+    sfx.twang(0.85 + pull * 0.5);
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
     return true;
@@ -933,6 +940,16 @@ export class Game {
       // v13: no steel under the toy, so it slides down whatever it is on. Each material drags differently:
       // ice lets it shoot, glass squeaks, plastic scrubs, paper nearly stops it.
       const k = this.world.version >= 13 ? this.world.slideFriction(c.x, c.y) : undefined;
+      // first frame against a material, and only if it arrived with some pace:
+      // glass rings, plastic tocks, paper rustles, ice ticks and skids
+      const material = k == null ? undefined : this.world.materialAt(c.x, c.y);
+      if (material !== this.slideMaterial.get(c.id)) {
+        if (material && Math.hypot(c.vx, c.vy) > 120) {
+          const hit = { glass: sfx.hitGlass, plastic: sfx.hitPlastic, paper: sfx.hitPaper, ice: sfx.hitIce }[material];
+          hit(0.94 + this.simNoise(c.id + Math.round(c.y)) * 0.12);
+        }
+        if (material) this.slideMaterial.set(c.id, material); else this.slideMaterial.delete(c.id);
+      }
       if (k != null) {
         const f = Math.min(1, k * dt);
         c.vx -= c.vx * f; if (c.vy > 0) c.vy -= c.vy * f * 0.75; c.spin -= c.spin * f;

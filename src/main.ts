@@ -10,7 +10,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
-import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio } from "./game/audio";
+import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
@@ -611,7 +611,10 @@ function tickKeys(dt: number) {
   if (!keys.has(" ")) { if (keyDrag) { game.drag = null; keyDrag = false; } return; }
   const c = game.byId(game.selectedId);
   if (!c || (c.state !== "stuck" && c.state !== "linked")) return;
+  const wasCharge = charge;
   charge = Math.min(CFG.maxDrag, charge + CFG.maxDrag * dt / 0.9); // full pull after about a second
+  // the sling creaks as it is drawn, same as dragging with a finger
+  if (Math.floor(charge / 22) > Math.floor(wasCharge / 22)) sfx.stretch(1 + (charge / CFG.maxDrag) * 0.8);
   // aim is an angle from straight up that the keys steer smoothly: A/D swing it sideways, W brings it back up,
   // S tips it on down past the horizontal. It is kept between flings so a second shot starts where the last one aimed.
   const rate = 1.7 * dt; // radians per second

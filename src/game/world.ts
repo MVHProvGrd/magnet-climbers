@@ -451,6 +451,23 @@ export class World {
     return segment;
   }
 
+  /** What a toy is touching at this point, for the sound it makes hitting it. */
+  materialAt(x: number, y: number): "glass" | "plastic" | "paper" | "ice" | undefined {
+    for (const s of this.segments) {
+      if (y < s.y - 60 || y > s.y + s.h + 60) continue;
+      for (const z of s.zones) {
+        if (x < z.x || x > z.x + z.w || y < z.y || y > z.y + z.h) continue;
+        if (z.hue === -1 && z.kind === "void") return undefined; // metal island
+        if (z.itemId === "ice-tray") return "ice";
+        if (z.kind === "glass") return "glass";
+        if (z.kind === "trim") return "plastic";
+        if (z.kind === "sticker") return "paper";
+        if (z.kind === "void") return undefined;
+      }
+    }
+    return undefined;
+  }
+
   /** v13: how much a non-steel surface drags a toy sliding down it (per second). Undefined = nothing to slide on (open gap, bare steel).
    * Ice barely slows anything, glass a little, plastic more, paper grips hardest. */
   slideFriction(x: number, y: number): number | undefined {
