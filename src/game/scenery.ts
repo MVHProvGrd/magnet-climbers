@@ -1,7 +1,7 @@
 import type { Bumper, NoStickZone, PowerUp, PowerKind } from "./types";
 import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
-import { drawObstacleImage, drawObstaclePreview, drawPlasticBins, obstacleImage } from "./obstacle-art";
+import { drawObstacleImage, drawObstaclePreview, obstacleImage } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
 import { destinationArtFor, destinationArtById, drawDestination, objectArtById } from "./gadget-art";
@@ -288,8 +288,6 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     || (z.kind === "glass" && variant % 2 === 0) || (z.kind === "sticker" && !z.itemId && variant >= 12);
   if (material) {
     ctx.save(); drawMaterialZone(ctx, z, time);
-    // a plastic panel wears one real bin per door, over the moulded surface
-    if (z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing) drawPlasticBins(ctx, z);
     ctx.restore();
     return;
   }

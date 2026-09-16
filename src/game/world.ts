@@ -381,6 +381,17 @@ export class World {
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
+      // A real door bin, on the steel, at most one per door in the whole segment. There
+      // is only one bin photo, so a second one anywhere near it reads as wallpaper; the
+      // rest of the plastic stays plain. It may hang over the seams between panels --
+      // those are drawn, not physical -- but never over the seam between the doors.
+      if (this.version >= 13) {
+        for (const side of [0, 1]) {
+          const half = zones.filter((z) => z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing
+            && z.h >= 58 && z.w >= 80 && (side === 0 ? z.x + z.w <= DOOR_SEAM.x + 2 : z.x >= DOOR_SEAM.x + DOOR_SEAM.w - 2));
+          if (half.length && art() < 0.6) half[Math.floor(art() * half.length)].itemId = "plastic";
+        }
+      }
       // v14 added seven more toys; older worlds keep the original six so their terrain is unchanged
       const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-") && (this.version >= 14 || Number(item.id.slice(7)) <= 5));
       for (const zone of zones) if (zone.itemId?.startsWith("toy:")) {

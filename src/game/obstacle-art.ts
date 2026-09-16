@@ -1,32 +1,5 @@
 import type { NoStickZone } from './types';
-import { DOOR_SEAM } from './world';
 
-/** Below this a plastic zone is trim, not a bin, and only the moulded surface draws. */
-const BIN_MIN_H = 58;
-
-/** One door bin per door, drawn over the moulded panel. There is a single bin photo,
- *  so it is never repeated side by side or stacked: the same object back to back reads
- *  as wallpaper, and the copies at the far end always ended up sliced. It is sized to
- *  the door it sits on, shrunk if the panel is shallow, and centred, so it is whole. */
-export function drawPlasticBins(c: CanvasRenderingContext2D, z: NoStickZone): void {
-  const img = images.get('plastic');
-  if (!img || z.h < BIN_MIN_H) return;
-  const a = img.width / img.height;
-  for (const [px, pw] of doorSpans(z.x, z.w)) {
-    const bw = Math.min(pw, z.h * a), bh = bw / a;
-    c.drawImage(img, px + (pw - bw) / 2, z.y + (z.h - bh) / 2, bw, bh);
-  }
-}
-
-/** Split a horizontal span into the parts that fall on each door, dropping the seam
- *  itself. A zone on one door comes back as one part. */
-function doorSpans(x: number, w: number): [number, number][] {
-  const s0 = DOOR_SEAM.x, s1 = DOOR_SEAM.x + DOOR_SEAM.w;
-  const parts: [number, number][] = [];
-  if (x < s0) parts.push([x, Math.min(x + w, s0) - x]);
-  if (x + w > s1) { const px = Math.max(x, s1); parts.push([px, x + w - px]); }
-  return parts.length ? parts.filter(([, pw]) => pw > 1) : [[x, w]];
-}
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
@@ -51,7 +24,7 @@ function artId(z: NoStickZone): string | undefined {
   // N/S plates are souvenir magnets now (scenery.ts); the flat photos stay as the guide's fallback
   if (z.kind === 'attract' || z.kind === 'repel' || z.swing) return undefined;
   if (z.hue === -1) return 'handle';
-  const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: 'plastic', void: 'gap', sticker: undefined }[z.kind];
+  const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: undefined, void: 'gap', sticker: undefined }[z.kind];
   return id && NO_PHOTO.has(id) ? undefined : id;
 }
 
@@ -85,9 +58,9 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (id === 'plastic') {
-    // Bins are painted over the moulded panel by drawPlasticBins, not tiled into the
-    // rect: there is only one bin photo, and a grid of the same one read as wallpaper.
-    c.restore(); return false;
+    // One whole bin, as large as the zone allows, centred and never repeated.
+    const s = Math.min(z.w / img.width, z.h / img.height), dw = img.width * s, dh = img.height * s;
+    c.drawImage(img, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
