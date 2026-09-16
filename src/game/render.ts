@@ -60,21 +60,6 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     }
   }
 
-  // reach rings on anchored climbers when aiming
-  if (g.drag && g.mode !== "move") {
-    const reach = g.currentReach();
-    for (const c of g.anchored) {
-      if (g.chainDepthAbove(c) >= g.stats.maxLinks) continue;
-      ctx.strokeStyle = "rgba(255,255,255,0.35)";
-      ctx.setLineDash([4, 6]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, reach, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
   // links
   ctx.lineWidth = 3;
   for (const c of g.climbers) {
@@ -94,13 +79,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   const moving = sel && g.drag && g.rules === "crew" && (g.mode === "move" || g.isStranded(sel));
   if (sel && g.drag && moving) {
     const t = g.moveTarget(sel, { x: sel.x + (g.drag.cur.x - g.drag.start.x), y: sel.y + (g.drag.cur.y - g.drag.start.y) });
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(sel.x, sel.y, g.pullRange(), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // the line to the target and the ghost already say where you land; a range
+    // ring drawn on top of them said nothing extra
     if (t) {
       ctx.strokeStyle = t.parent == null ? "rgba(155,225,93,0.9)" : "rgba(79,195,247,0.9)";
       ctx.lineWidth = 3;

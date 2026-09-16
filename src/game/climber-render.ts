@@ -102,15 +102,12 @@ function drawBodyLocal(ctx: CanvasRenderingContext2D, origin: Vec, angle: number
 }
 
 /** Flexible toy geometry, metallic tips, and a common window light in world coordinates. */
-export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, selected: boolean, t: number, appearance: CreatureAppearance = {}) {
+/** `selected` is kept in the signature for callers; selection is shown by the HUD
+ *  team dots and the aim line, not by a ring drawn around the climber. */
+export function drawClimber(ctx: CanvasRenderingContext2D, c: Climber, _selected: boolean, t: number, appearance: CreatureAppearance = {}) {
   const shape = geometry(c, appearance);
   const style = creatureStyle(c, appearance);
   ctx.save();
-  if (selected) {
-    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5;
-    ctx.setLineDash([3, 4]); ctx.lineDashOffset = -t * 24;
-    ctx.beginPath(); ctx.arc(c.x, c.y, 33, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-  }
   // limbs can reach well past the body; the ends are tints of the toy's own colour so a far limb never clamps to white or grey
   const material = ctx.createLinearGradient(c.x - 40, c.y - 40, c.x + 40, c.y + 40);
   material.addColorStop(0, mix(style.color, "#ffffff", 0.75)); material.addColorStop(0.3, style.color);
