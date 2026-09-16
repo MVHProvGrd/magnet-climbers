@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `28-rotor-variety-v1/` | Clock, pinwheel, thermometer, fidget spinner; normalized spindle exports, native originals | Codex built-in imagegen | Ready for Claude rotor wiring |
 | `27-hanging-variety-v1/` | Twelve realistic whole hanging assemblies; keys through fishing lure; pivot notes, source and cutout QC | Codex built-in imagegen | Ready for Claude swing wiring |
 | `26-glass-obstacles-v1/` | Four stocked glass variants and six realistic obstacle refreshes; exact-size exports and native sources | Codex built-in imagegen | Ready for Claude wiring; ten alpha checks pass |
 | `25-hardware-pickup-v1/` | Travel/star swings, plasticABC rotors, tileable gasket/gripbar, enamel candy; eight complete | Codex built-in imagegen | Ready for Claude wiring; source/native/fit exports retained |
