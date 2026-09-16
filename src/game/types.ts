@@ -73,7 +73,9 @@ export type LimbId = 0 | 1 | 2 | 3; // left hand, right hand, left foot, right f
 export interface MagneticContact extends Vec { limb: LimbId; carrierId?: string; carrierOffset?: Vec }
 export interface Gadget extends Vec { id: string; itemId: string; kind: "swing" | "rotor" | "clip" | "polarity"; phase: number;
   /** v12 swings hang still and only move when a climber grabs, leaves or flies through them: a damped pendulum. */
-  swing?: { angle: number; vel: number; cool: number } }
+  swing?: { angle: number; vel: number; cool: number };
+  /** v16: a clipped photo is held by the metal clip in its own art, so it hangs dead still. */
+  fixed?: boolean }
 export interface MagneticGrip {
   contacts: MagneticContact[];
   pose: "flat" | "feet" | "hands" | "mixed" | "single";

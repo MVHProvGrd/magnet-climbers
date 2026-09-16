@@ -60,7 +60,7 @@ export class World {
   /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
   /** everything that hangs: gadgets and toy keychain zones */
   private get hanging(): { swing?: { angle: number; vel: number; cool: number } }[] {
-    return [...this.gadgets, ...this.segments.flatMap((s) => s.zones.filter((z) => z.swing))];
+    return [...this.gadgets.filter((g) => !g.fixed), ...this.segments.flatMap((s) => s.zones.filter((z) => z.swing))];
   }
   stepGadgets(dt: number) {
     for (const seg of this.segments) for (const z of seg.zones) if (z.popCool) z.popCool = Math.max(0, z.popCool - dt);
@@ -73,14 +73,14 @@ export class World {
   }
   /** Knock a swing: dir is the travel direction (sign of x velocity), strength 0..1. Capped at ±3 rad/s like the study. */
   bumpGadget(id: string, dir: number, strength = 1) {
-    const g = this.gadgets.find((g) => g.id === id); const s = g?.swing; if (!s) return;
+    const g = this.gadgets.find((g) => g.id === id); const s = g?.swing; if (!s || g?.fixed) return;
     s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (dir || 1) * Math.max(0.25, strength)));
     s.cool = 0.3;
   }
   /** A flying climber passing through the hanging charm knocks it (once per pass). */
   knockSwings(p: Vec, vx: number) {
     for (const g of this.gadgets) {
-      const s = g.swing; if (!s || s.cool > 0) continue;
+      const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);
       if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
     }
@@ -459,6 +459,9 @@ export class World {
           const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
           // hanging things start still and only move when touched: keyrings since v12, clips since v13
           if ((kind === "swing" && this.version >= 12) || (kind === "clip" && this.version >= 13)) g.swing = { angle: 0, vel: 0, cool: 0 };
+          // v16: the clip is part of the photo, a real steel clip biting the board.
+          // Paper held that way does not sway, so a clip is a fixed grip, not a pendulum.
+          if (kind === "clip" && this.version >= 16) g.fixed = true;
           return g;
         });
         if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }

@@ -105,9 +105,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.drawImage(assembly, 0, 0, w, py, g.x - px * s, g.y - 62 - py * s, w * s, py * s);
     ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
     ctx.drawImage(assembly, 0, py, w, h - py, -px * s, 0, w * s, (h - py) * s); ctx.restore();
-  } else if ((g.kind === "swing" && !(hardware && charmImg)) || g.kind === "clip") {
+  } else if ((g.kind === "swing" && !(hardware && charmImg)) || (g.kind === "clip" && !assembly)) {
+    // A photographed clip carries its own steel: no drawn rod and pin over it.
     ctx.strokeStyle = "#46565c"; ctx.lineWidth = 4;
-    if (assembly) { ctx.lineWidth = 3; }
     ctx.beginPath(); ctx.moveTo(g.x, g.y - 62); ctx.lineTo(p.hold.x, p.hold.y); ctx.stroke();
     ctx.strokeStyle = "#e9f5f5"; ctx.lineWidth = 1.3; ctx.stroke();
     ctx.fillStyle = "#86989e"; ctx.beginPath(); ctx.arc(g.x, g.y - 62, 5, 0, Math.PI * 2); ctx.fill();
