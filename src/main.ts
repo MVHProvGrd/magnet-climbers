@@ -151,7 +151,13 @@ function resize(force = false) {
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(viewH * dpr);
   const insetPx = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
-  setSafeBottom(insetPx / scale + 12);
+  // One source of truth for the bottom inset. The canvas works in logical px and adds a
+  // gesture-bar margin; the DOM used raw env(safe-area-inset-bottom), so the two disagreed
+  // by 12 logical px on a phone and 28 on desktop -- which is what put the sound and menu
+  // buttons on top of the dock.
+  const safeLogical = Math.max(28, insetPx / scale + 12);
+  setSafeBottom(safeLogical);
+  uiRoot.style.setProperty("--safe-b", safeLogical.toFixed(2));
   if (game) game.viewH = viewH;
 }
 window.addEventListener("resize", () => resize(true));
