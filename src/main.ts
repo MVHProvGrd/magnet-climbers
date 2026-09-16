@@ -361,7 +361,7 @@ function runEvents() {
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, stars: totalStars() });
+      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, stars: totalStars(), paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
@@ -472,7 +472,7 @@ function finishLevel(level: LevelDef) {
   if (won) save.expeditions[level.id] = Math.max(before, stars);
   save.hitsTotal += game.feats.hits; game.feats.hits = 0;
   // expeditions earn creatures too (stars, chains, gadget rides, hits)
-  const unlocked = creaturesEarned(save.creatures, { mode: "crew", cm: 0, chill: false, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: earned, hitsTotal: save.hitsTotal, stars: totalStars() });
+  const unlocked = creaturesEarned(save.creatures, { mode: "crew", cm: 0, chill: false, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: earned, hitsTotal: save.hitsTotal, stars: totalStars(), paints: game.feats.paints ?? 0 });
   for (const c of unlocked) save.creatures.push(c.id);
   game.coins = 0; game.gems = 0; game.walletCoins = save.coins;
   persist();

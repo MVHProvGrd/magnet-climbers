@@ -1,4 +1,4 @@
-import { RESERVE_COST, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { EXPEDITIONS_ENABLED, RESERVE_COST, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
@@ -293,7 +293,7 @@ export class Ui {
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
         <button class="wallet-chip" data-a="collection" aria-label="Creatures &amp; patterns">
-          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b><b class="star">★ ${groupNum(stars)}</b>
+          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b>${EXPEDITIONS_ENABLED ? `<b class="star">★ ${groupNum(stars)}</b>` : ""}
         </button>
       </div>
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
@@ -310,9 +310,9 @@ export class Ui {
             <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
             <i>BEST ${groupNum(s.bestSolo)} CM</i>
           </button>
-          <button class="mode-tile exp" data-a="expeditions">
+          <button class="mode-tile exp ${EXPEDITIONS_ENABLED ? "" : "soon"}" data-a="expeditions" ${EXPEDITIONS_ENABLED ? "" : "disabled aria-disabled=\"true\""}>
             <b>EXPEDITIONS</b><small>Crew puzzles, a fling budget, three stars.</small>
-            <i>★ ${groupNum(stars)}</i>
+            <i>${EXPEDITIONS_ENABLED ? `★ ${groupNum(stars)}` : "COMING SOON"}</i>
           </button>
         </div>
         <label class="home-row ${s.chill ? "on" : ""}">
@@ -328,10 +328,10 @@ export class Ui {
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
-      if (a === "expeditions") this.showExpeditions();
+      if (a === "expeditions" && EXPEDITIONS_ENABLED) this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
       if (a === "collection") this.showCollection();
-      if (a === "board") this.showBoard("crew");
+      if (a === "board") this.showBoard(EXPEDITIONS_ENABLED ? "crew" : "solo");
       if (a === "settings") this.showSettings();
       if (a === "tutorial") this.showHowToPlay();
       if (a === "story") this.showStory(() => this.showMenu());
@@ -863,8 +863,8 @@ export class Ui {
       p.innerHTML = `
         <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2><span class="shell-spacer"></span></div>
         <div class="shell-body">
-          <div class="seg">
-            <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
+          <div class="seg${EXPEDITIONS_ENABLED ? "" : " seg-3"}">
+            ${EXPEDITIONS_ENABLED ? `<button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>` : ""}
             <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
             <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
             <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>
