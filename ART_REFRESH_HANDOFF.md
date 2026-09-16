@@ -4,7 +4,9 @@
 
 `art/archive/21-paper-classics-v1/ready` contains all eight final old-set papers, alpha QC passed. All original paper indices now have realistic candidates. Original pack21-paper folder retained; story21 is a separate folder. Next: story scenes and v3 new papers, claws22, remaining v3 queue. Paint23 ready as recorded below.
 
-## QUEUED FOR CODEX — three story scenes (pack 21) — 2026-09-15
+## READY FOR CLAUDE — three story scenes (pack 21) — 2026-09-16
+
+Three opaque768x512 exports in21-story-scenes-v1/ready; phone-review.jpg shows340px previews. Climb-v2 selected, all sources retained. Four generation calls. Original brief follows.
 
 Owner request. The story is three slides and each one currently shows the player's own
 creature rendered on a canvas, which is generic: the same toy three times, telling none of
