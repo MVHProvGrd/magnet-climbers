@@ -1,4 +1,6 @@
 import type { NoStickZone } from './types';
+import { DOOR_SEAM } from './world';
+import { W } from './config';
 
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
@@ -58,9 +60,15 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (id === 'plastic') {
-    // One whole bin, as large as the zone allows, centred and never repeated.
-    const s = Math.min(z.w / img.width, z.h / img.height), dw = img.width * s, dh = img.height * s;
-    c.drawImage(img, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
+    // A door bin is a real object of one size: it spans the door it is clipped to,
+    // top to bottom of its own depth, exactly like the one above it would. It is not
+    // scaled to whatever zone happens to carry it, and it is free to hang over the
+    // drawn seams between panels, which is why nothing clips it vertically.
+    const left = z.x + z.w / 2 < DOOR_SEAM.x + DOOR_SEAM.w / 2;
+    const dx = left ? 0 : DOOR_SEAM.x + DOOR_SEAM.w;
+    const dw = left ? DOOR_SEAM.x : W - (DOOR_SEAM.x + DOOR_SEAM.w);
+    const dh = dw * (img.height / img.width);
+    c.drawImage(img, dx, z.y + (z.h - dh) / 2, dw, dh);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
