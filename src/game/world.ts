@@ -239,17 +239,22 @@ export class World {
         break;
       }
       case "pillar": {
-        // whole segment is plastic trim except one or two vertical metal strips
+        // One or two vertical steel strips to climb, with door trim either side.
+        // v15: the trim is a BAND, not the whole segment. Filling a segment with
+        // plastic was a black wall across the door, which no fridge has; a band
+        // leaves steel above and below it and still forces you onto the strips.
         const strips = r() < 0.5 + difficulty * 0.3 ? 1 : 2;
         const sw = rangeOf(r, 56, 80 - difficulty * 14);
         const xs = strips === 1 ? [rangeOf(r, 40, W - sw - 40)] : [rangeOf(r, 20, W / 2 - sw - 20), rangeOf(r, W / 2 + 20, W - sw - 20)];
+        const bandH = this.version >= 15 ? Math.round(h * rangeOf(r, 0.34, 0.46)) : h;
+        const bandY = this.version >= 15 ? y + Math.round(rangeOf(r, 0.1, 0.9) * (h - bandH)) : y;
         // trim on left of first strip, between, and right of last
         let cursor = 0;
         for (const sx of xs.sort((a, b) => a - b)) {
-          if (sx > cursor) zones.push({ x: cursor, y, w: sx - cursor, h, kind: "trim" });
+          if (sx > cursor) zones.push({ x: cursor, y: bandY, w: sx - cursor, h: bandH, kind: "trim" });
           cursor = sx + sw;
         }
-        if (cursor < W) zones.push({ x: cursor, y, w: W - cursor, h, kind: "trim" });
+        if (cursor < W) zones.push({ x: cursor, y: bandY, w: W - cursor, h: bandH, kind: "trim" });
         break;
       }
       case "stickers": {
@@ -375,7 +380,9 @@ export class World {
           const aspect = this.version >= 13 ? PAPER_ASPECT[choice.id] : undefined;
           if (aspect) {
             const others = zones.filter((o) => o !== zone);
-            const area = zone.w * zone.h;
+            // a floor on the area: the slot a card lands in varies a lot, and a small
+            // slot made a portrait card read as a stamp beside a landscape one
+            const area = Math.max(zone.w * zone.h, 11000);
             const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
             let cw = Math.round(Math.sqrt(area * aspect)), ch = Math.round(cw / aspect);
             // a resized card may move, so it must clear the bumper paths too --
@@ -432,7 +439,11 @@ export class World {
       if (this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5, this.version);
       if (this.version >= 4 && i >= 4 && i % 4 === 0) {
         const kind = GADGET_KINDS[(i / 4 - 1) % 4];
-        segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
+        // v15: a letter board on the door, not a plastic wall across it. The steel
+        // lanes either side are what you climb; the board is what the gadget hangs on.
+        segment.zones = this.version >= 15
+          ? [{ x: 104, y: y + 74, w: 192, h: 186, kind: "trim" as const }]
+          : [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" as const }];
         segment.bumpers = [];
         const themes = [...THEMES]; let first = "";
         segment.gadgets = [0, 1].map((n) => {
@@ -602,8 +613,11 @@ function pushSticker(r: Rng, y: number, h: number, zones: NoStickZone[], version
 }
 
 function sticker(r: Rng, y: number, h: number, version = 0): NoStickZone {
-  const w = rangeOf(r, 50, 110);
-  const sh = rangeOf(r, 50, 100);
+  // v15: a card is a thing you look at, so the slot it lands in starts bigger. The
+  // old 50..110 range bottomed out at a stamp, and a portrait card in the small end
+  // of it was unreadable next to a landscape one in the large end.
+  const w = version >= 15 ? rangeOf(r, 84, 132) : rangeOf(r, 50, 110);
+  const sh = version >= 15 ? rangeOf(r, 84, 124) : rangeOf(r, 50, 100);
   const m = version >= 7 ? SEAM_MARGIN : 0;
   return { x: version >= 8 ? onOneDoor(r, w) : rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
 }
