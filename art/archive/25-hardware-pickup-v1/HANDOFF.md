@@ -1,4 +1,10 @@
-# Pack25 hardware — partial, quota reached
+# Pack25 hardware — COMPLETE
+
+Latest continuation: five pending assets generated successfully. All eight now delivered. Historical quota notes below are superseded.
+
+Added ready/rotor-travel-v1.webp (blueB), rotor-doodle-v1.webp (greenC), pickup-candy-v1.webp, all1024x1024; door-gap-v4.webp768x160; grip-bar-v1.webp512x128.
+
+Strip edges intentionally touch left/right: these are horizontal tiles, not accidental crops. export.py mirrors the native texture into matching repeat edges; alpha margins above/below remain. Native keyed sources preserved. Six isolated objects pass automated alpha QC, two strips carry this explicit edge exception. Visually reviewed on dark/light.
 
 2026-09-16. Three generated, keyed, visually reviewed on dark/light, all alpha checks pass. Claude wires; no live files changed.
 

@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack25 COMPLETE — latest continuation
+
+Image generation resumed. Five added: blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. All eight pack25 assets now ready, gallery updated. See25-hardware-pickup-v1/HANDOFF.md for exact sizes and strip edge exceptions. Next: four glass variants and six obstacle refreshes, then variety. No public/art writes.
+
 ## Codex checkpoint — 2026-09-16, generation quota reached
 
 31 successful new image generations this continuation; then built-in429 usage_limit_reached while requesting blueB. Service reported reset1789551873 /14516sec after receipt. No promise of background auto-resume. All produced sources and cleaned exports archived and pushed to codex/art-ready-pack; no public/art writes.
