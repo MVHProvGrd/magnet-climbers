@@ -23,8 +23,11 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
   } else if (pattern === "busy-month") {
     const d = fit(34, 264); s.zones.push(itemZone("calendar", x, d.y, w, d.h));
   } else if (pattern === "ice-alley" && version >= 13) {
-    // one tray, standing on end at the photo's own proportions (338x189), centred on its door, no handle
-    const d = fit(36, 264), tw = Math.round(d.h * 189 / 338);
+    // one tray, standing on end at the photo's own proportions, centred on its door,
+    // no handle. The photo is 340x170 and the renderer turns it a quarter turn, so a
+    // tray that is not exactly half as wide as it is tall comes out stretched; the
+    // old 189/338 guess was 11% too wide.
+    const d = fit(36, 264), tw = Math.round(d.h * 170 / 340);
     s.zones.push(itemZone("ice-tray", x + Math.round((w - tw) / 2), d.y, tw, d.h));
   } else if (pattern === "ice-alley") {
     const d = fit(36, 264);

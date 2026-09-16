@@ -57,7 +57,20 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     // full-width bands always show the whole door (owner's call); one-door windows crop only past a 2x stretch
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
-  } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
+  } else if (id === 'plastic') {
+    // A drawer bin is a photographed object, not a frame: nine-slicing it into a
+    // tall rect squeezed the moulded handle sideways and smeared the middle. Repeat
+    // the whole bin at its own proportions instead, along whichever way the zone runs.
+    const a = img.width / img.height;
+    const tall = z.h >= z.w;
+    const tw = tall ? z.w : z.h * a, th = tall ? z.w / a : z.h;
+    const tiles = Math.max(1, Math.ceil((tall ? z.h / th : z.w / tw) - 0.001));
+    c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 4); c.clip();
+    for (let i = 0; i < tiles; i++) {
+      const dx = tall ? z.x : z.x + i * tw, dy = tall ? z.y + i * th : z.y;
+      c.drawImage(img, dx, dy, tw, th);
+    }
+  } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
     const edge = Math.min(10, z.w / 4, z.h / 4);
