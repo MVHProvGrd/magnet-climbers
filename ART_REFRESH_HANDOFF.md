@@ -1,5 +1,11 @@
 # Art refresh handoff — 2026-09-14
 
+## Latest checkpoint —45 new images pushed;16 remain
+
+Pushed through pack30, art commit2dbabaa. This continuation delivered:5 finishing25;10 glass/obstacles26;12 swings27;4 rotors28;7 clips29;7 bumpers30. Sources, clean exports, QC and gallery all pushed to codex/art-ready-pack. No live public/art writes.
+
+Imagegen then returned429 usage_limit_reached at first business taxi (no image). Service reset1789583886 /15467seconds at receipt. Resume31-business-variety-v1/prompts.md:8 businesses, then4S+4N destinations. Total16 remaining. No automatic resume is configured.
+
 ## Pack30 READY — seven bumper toys
 
 Seven1024square toys in30-bumper-variety-v1/ready, without hardware per v3. Reviewed light/dark; red car tint checker false-positive documented.45 new generations this continuation. Remaining8 business magnets,4S+4N destinations.
