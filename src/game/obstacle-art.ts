@@ -1,6 +1,7 @@
 import type { NoStickZone } from './types';
 import { DOOR_SEAM } from './world';
 import { W } from './config';
+import { rule } from './placement';
 
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
@@ -65,10 +66,12 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     // scaled to whatever zone happens to carry it, and it is free to hang over the
     // drawn seams between panels, which is why nothing clips it vertically.
     const left = z.x + z.w / 2 < DOOR_SEAM.x + DOOR_SEAM.w / 2;
-    const dx = left ? 0 : DOOR_SEAM.x + DOOR_SEAM.w;
-    const dw = left ? DOOR_SEAM.x : W - (DOOR_SEAM.x + DOOR_SEAM.w);
-    const dh = dw * (img.height / img.width);
-    c.drawImage(img, dx, z.y + (z.h - dh) / 2, dw, dh);
+    const doorX = left ? 0 : DOOR_SEAM.x + DOOR_SEAM.w;
+    const doorW = left ? DOOR_SEAM.x : W - (DOOR_SEAM.x + DOOR_SEAM.w);
+    const size = rule("bin").size;
+    const dw = typeof size === "object" ? size.w : doorW;
+    const dh = typeof size === "object" ? size.h : dw * (img.height / img.width);
+    c.drawImage(img, doorX + (doorW - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];

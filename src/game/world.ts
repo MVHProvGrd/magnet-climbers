@@ -1,6 +1,7 @@
 import { CFG, W } from "./config";
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT } from "./items";
+import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
 import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
@@ -387,10 +388,15 @@ export class World {
       // seams between panels -- those are drawn, not physical -- and it always spans the
       // door it sits on, at the one size a door bin has.
       if (this.version >= 13) {
-        const side = art() < 0.5 ? 0 : 1;
-        const half = zones.filter((z) => z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing
-          && z.h >= 58 && z.w >= 80 && (side === 0 ? z.x + z.w <= DOOR_SEAM.x + 2 : z.x >= DOOR_SEAM.x + DOOR_SEAM.w - 2));
-        if (half.length && art() < 0.6) half[Math.floor(art() * half.length)].itemId = "plastic";
+        const bin = rule("bin"), min = bin.minZone ?? { w: 80, h: 58 };
+        const sides = bin.door === "left" ? [0] : bin.door === "right" ? [1] : bin.door === "span" ? [0, 1] : [art() < 0.5 ? 0 : 1];
+        let placed = 0;
+        for (const side of sides) {
+          if (placed >= bin.max) break;
+          const half = zones.filter((z) => z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing
+            && z.h >= min.h && z.w >= min.w && (side === 0 ? z.x + z.w <= DOOR_SEAM.x + 2 : z.x >= DOOR_SEAM.x + DOOR_SEAM.w - 2));
+          if (half.length && art() < bin.rate) { half[Math.floor(art() * half.length)].itemId = "plastic"; placed++; }
+        }
       }
       // v14 added seven more toys; older worlds keep the original six so their terrain is unchanged
       const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-") && (this.version >= 14 || Number(item.id.slice(7)) <= 5));

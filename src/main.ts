@@ -5,6 +5,7 @@ import { Game, type RunSnapshot } from "./game/game";
 import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
+import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
@@ -57,6 +58,8 @@ const appEl = document.getElementById("app")!;
 const ctx = canvas.getContext("2d")!;
 const uiRoot = document.getElementById("ui")!;
 
+// owner workbench override, if this device has one saved (see src/placement.ts)
+loadPlacement();
 let save = loadSave();
 setSound(save.sound);
 setMusic(save.music);

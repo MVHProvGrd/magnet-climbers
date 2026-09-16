@@ -1,5 +1,6 @@
 import { itemZone } from "./items";
 import type { Segment } from "./types";
+import { rule } from "./placement";
 
 export const SET_PIECES = ["water-station", "busy-month", "ice-alley", "handle-hop"] as const;
 export type SetPiece = typeof SET_PIECES[number];
@@ -27,7 +28,8 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
     // no handle. The photo is 340x170 and the renderer turns it a quarter turn, so a
     // tray that is not exactly half as wide as it is tall comes out stretched; the
     // old 189/338 guess was 11% too wide.
-    const d = fit(36, 264), tw = Math.round(d.h * 170 / 340);
+    const tray = rule("tray"), ta = typeof tray.size === "object" ? tray.size.w / tray.size.h : 170 / 340;
+    const d = fit(36, 264), tw = Math.round(d.h * ta);
     s.zones.push(itemZone("ice-tray", x + Math.round((w - tw) / 2), d.y, tw, d.h));
   } else if (pattern === "ice-alley") {
     const d = fit(36, 264);
