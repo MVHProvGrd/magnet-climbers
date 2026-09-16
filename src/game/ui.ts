@@ -1155,14 +1155,18 @@ export class Ui {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
-    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED" : "ALL CLIMBERS LOST";
+    // Solo is one climber, so nothing on this card talks about a crew in solo.
+    const crew = o.mode === "crew";
+    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED"
+      : crew ? "ALL CLIMBERS LOST" : "RUN OVER";
     // what actually ended it, in the run's own words. A banked or won run has no cause.
+    const who = crew ? "the last climber" : "you";
     const causes: Record<DeathCause, string> = {
-      redline: "The red line caught the last climber.",
-      fell: "The last climber fell off the fridge.",
-      paw: "The cat got the last climber.",
-      hand: "Cooper swatted the last climber off.",
-      bumper: "A moving magnet knocked the last climber loose.",
+      redline: `The red line caught ${who}.`,
+      fell: crew ? "The last climber fell off the fridge." : "You fell off the fridge.",
+      paw: `The cat got ${who}.`,
+      hand: crew ? "Cooper swatted the last climber off." : "Cooper swatted you off.",
+      bumper: crew ? "A moving magnet knocked the last climber loose." : "A moving magnet knocked you loose.",
       flings: "Out of flings, short of the goal.",
     };
     const cause = !o.ended && o.cause ? causes[o.cause] : "";
@@ -1190,7 +1194,7 @@ export class Ui {
       </div>`}
       ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
       ${o.ended ? "" : `
-      <span class="lost-label dim">REVIVE THE CREW</span>
+      <span class="lost-label dim">${crew ? "REVIVE THE CREW" : "BACK ON THE DOOR"}</span>
       <div class="revive-row">
         ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
       </div>`}
