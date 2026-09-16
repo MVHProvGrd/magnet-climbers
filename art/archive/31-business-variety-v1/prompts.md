@@ -1,6 +1,6 @@
-# Pack31 business prompts — PENDING
+# Pack31 business prompts — COMPLETE
 
-Prepared with built-in imagegen. First taxi request returned quota error; NO images generated in this pack yet.
+Generated with built-in imagegen after the first taxi request had returned a quota error. Eight sources and keyed exports complete; see HANDOFF.md for QC.
 
 ## business-taxi-v1
 

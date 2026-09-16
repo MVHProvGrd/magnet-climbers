@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Latest: pack31 READY; eight destination souvenirs remain
+
+Generation resumed successfully on owner request. Eight business magnets delivered in art/archive/31-business-variety-v1/ready; source prompts, review and QC included. This supersedes the quota checkpoint below. Eight generations since resuming (53 across the two continuation chunks). Next/final v3 items: Maldives, Zanzibar, Phuket, Cancun (S), paired with Tromso, Banff, Hokkaido, Svalbard (N). Claude wires; archive-only changes.
+
 ## Latest checkpoint —45 new images pushed;16 remain
 
 Pushed through pack30, art commit2dbabaa. This continuation delivered:5 finishing25;10 glass/obstacles26;12 swings27;4 rotors28;7 clips29;7 bumpers30. Sources, clean exports, QC and gallery all pushed to codex/art-ready-pack. No live public/art writes.
