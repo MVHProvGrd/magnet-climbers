@@ -145,6 +145,7 @@ export class Game {
     this.spawnTeam(this.rules === "solo" ? 1 : this.level ? this.level.team : this.stats.teamSize, 0);
     if (this.level) this.target = { cm: this.level.goalCm, name: "GOAL", beaten: false };
     this.world.ensure(-this.viewH * 2);
+    this.relabelSolo();
   }
 
   private spawnTeam(n: number, y: number) {
@@ -813,6 +814,7 @@ export class Game {
       this.camY += (target - this.camY) * Math.min(1, dt * 5);
     }
     this.world.ensure(this.camY - this.viewH);
+    this.relabelSolo();
 
     // particles / floats
     for (const p of this.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; }
@@ -1126,6 +1128,23 @@ export class Game {
       this.nextHandAt = this.time + interval * (0.75 + random() * 0.5);
     }
   }
+  /**
+   * Solo has no crew, so "+1 friend" is meaningless there. Those pickups become paint
+   * buckets instead.
+   *
+   * Done after generation rather than in the spawn table on purpose: the world keeps the
+   * same seeded draws and the same positions, only the label changes, so terrain is
+   * untouched and no world version bump is needed.
+   */
+  private relabelSolo() {
+    if (this.rules !== "solo") return;
+    for (const seg of this.world.segments) {
+      if (seg.soloPainted) continue;
+      seg.soloPainted = true;
+      for (const p of seg.powerUps) if (p.kind === "extra") p.kind = "paint";
+    }
+  }
+
   private stepHand(dt: number) {
     if (this.phase !== "running" || this.chill) return;
     // no early return: during the rare double both are live at once
@@ -1242,6 +1261,16 @@ export class Game {
         break;
       }
       case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
+      case "paint": {
+        // cosmetic only, and off the sim RNG so a replay of the same seed repaints the same
+        const palette = this.palette.filter((col) => col !== c.color);
+        c.color = palette[Math.floor(this.simNoise(p.x + p.y) * palette.length) % palette.length] ?? c.color;
+        c.pattern = undefined;
+        sfx.power();
+        this.burst(p.x, p.y, c.color, 14);
+        this.floats.push({ x: p.x, y: p.y, text: "NEW COAT", life: 1.2, color: c.color });
+        break;
+      }
       case "extra": {
         const n = this.makeClimber(p.x, p.y, "flying");
         n.vx = (this.simNoise(n.id) - 0.5) * 100; n.vy = -80; n.airTime = 0; n.leftLauncher = true;

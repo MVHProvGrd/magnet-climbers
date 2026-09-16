@@ -55,6 +55,26 @@ read as one set. The toys are the translucent rubbery magnet people already in t
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
+## QUEUED FOR CODEX — paint bucket pickup (pack 23) — 2026-09-15
+
+Owner request. Solo runs no longer spawn "+1 friend" pickups (a crew of one cannot gain a
+teammate); those become paint buckets that repaint your climber mid-run, purely cosmetic.
+It is drawn on canvas for now and wants a real photographed tin like the other pickups.
+
+Cutout rules apply as usual: flat #FF00FF, keyed with chroma-cut.py. Pack
+`art/archive/23-paint-bucket-v1/` with `sources/`, `ready/`, `prompts.md`, a README row,
+then `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude wires it.
+
+- `paint.png`, **256x256**, transparent, to sit beside the existing pickups in
+  `public/art/real-v1/pickups/` (coin, gem, heart, magnet, extra, slowmo, reach, candy) and
+  match their scale, lighting and finish: it is drawn at about 46 px in game and 44 px in
+  the guide tile.
+- A small household paint tin, lid off, wire handle up, with a bright spill of colour over
+  the lip and down one side. The spill is the read at 46 px, so make it generous.
+- Keep the spill a single saturated colour that is not already a pickup: coin is yellow,
+  gem is cyan, heart is red, candy is pink. A strong green or violet would be clear.
+- No text or branding on the tin.
+
 ## QUEUED FOR CODEX — cat claws (pack 22) — 2026-09-15
 
 Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks

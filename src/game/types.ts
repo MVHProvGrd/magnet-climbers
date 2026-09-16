@@ -27,7 +27,7 @@ export interface NoStickZone extends Rect {
   popCool?: number;
 }
 
-export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart" | "candy";
+export type PowerKind = "coin" | "magnet" | "extra" | "slowmo" | "reach" | "gem" | "heart" | "candy" | "paint";
 
 export interface PowerUp extends Vec {
   kind: PowerKind;
@@ -56,6 +56,8 @@ export interface Bumper {
 }
 
 export interface Segment {
+  /** set once when a solo run has swapped its "+1 friend" pickups for paint buckets */
+  soloPainted?: boolean;
   gadgets?: Gadget[];
   /** top of segment (smaller y = higher up the fridge) */
   y: number;
