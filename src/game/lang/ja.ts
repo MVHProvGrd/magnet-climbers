@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "たかさ", "RED LINE": "レッドライン", "MODE": "モード", "CHILL": "のんびり", "HOW TO": "あそびかた", "STORY": "ストーリー", "BOARD": "ランキング", "BANKED": "かくとく", "CLIMB AGAIN": "もういちど", "REVIVE THE CREW": "なかまをふっかつ", "TRY IT": "ためす", "online": "オンライン",
+
   "Settings": "設定", "Fridge field guide": "冷蔵庫図鑑", "Global chat": "グローバルチャット", "Story": "ストーリー",
   "How to play": "遊び方", "Scoreboard": "ランキング",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "ゴムのマグネット人形を果てしない冷蔵庫へ飛ばそう。鉄にくっつき、子どもから逃げろ。",
@@ -71,7 +74,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N極のお土産マグネット", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Nと書かれた冷蔵庫のお土産。赤い磁場が空中の仲間を押し返す。弧が広いほど強い。大きいものはパチンコ。",
   "S Souvenir Magnet": "S極のお土産マグネット", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Sと書かれた冷蔵庫のお土産。青い磁場が遠くから空中の仲間を引き寄せ、表面がキャッチしてくれる。飛行を曲げる場所で狙いの点が青くなる。",
   "Fiji (S)": "フィジー (S)", "Hawaii (S)": "ハワイ (S)", "Bali (S)": "バリ (S)", "Norway (N)": "ノルウェー (N)", "Alaska (N)": "アラスカ (N)", "Iceland (N)": "アイスランド (N)", "Jūrmala (N)": "ユールマラ (N)", "Kyiv (N)": "キーウ (N)",
-  "Avatar": "アバター", "Choose an avatar": "アバターを選ぶ", "PICK": "選ぶ", "Just your initial": "イニシャルのみ", "Back to your initial": "イニシャルに戻しました",
+  "Avatar": "アバター", "PICK": "選ぶ", "Just your initial": "イニシャルのみ", "Back to your initial": "イニシャルに戻しました",
   "Hold SPACE to charge, WASD to aim, release to fling.": "スペース長押しでチャージ、WASDで狙い、離して発射。", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TABで選択 · Cで移動/発射 · Xで同期 · Rで中央へ", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ スペース長押しでチャージ、WASDで狙って、離して発射。",
   "Candy Drop": "キャンディ", "Cooper stops for a sweet: the red line crawls for a while.": "子どもがお菓子に夢中：赤い線がしばらくのろのろ進む。", "CANDY": "キャンディ", "CANDY DROP": "キャンディ",
   "Earn 9 expedition stars": "探検の星を9個集める",
@@ -140,7 +143,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 赤いラインは子どもの手が届く高さ。高くなるほど速く上がる。止まるな。",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 以上！チームモードは全員いっせいに飛ばす。さあ登ろう。",
   "nothing to hold there": "そこにはつかめるものがない", "LADDER": "はしご", "BEST BEATEN ✓": "記録更新 ✓", "😌 CHILL": "😌 のんびり",
-  "FLING": "飛ばす", "CLIMB": "よじ登る", "SYNC ON": "同時 オン", "SYNC": "同時", "◎ RECENTER": "◎ 中央へ",
+  "FLING": "飛ばす", "CLIMB": "よじ登る", "SYNC ON": "同時 オン", "SYNC": "同時",
   "Drag back anywhere, release to fling.": "どこでも引いて、離して飛ばす。", "Stick to steel. Outrun the red line.": "鉄にくっつけ。赤いラインから逃げろ。",
   "Drag back from a climber, release to fling.": "仲間から引いて、離して飛ばす。",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "同時で全員を飛ばす。よじ登るで仲間のところへ。",

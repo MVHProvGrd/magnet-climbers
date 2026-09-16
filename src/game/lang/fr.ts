@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "HAUTEUR", "RED LINE": "LIGNE ROUGE", "MODE": "MODE", "CHILL": "CALME", "HOW TO": "COMMENT", "STORY": "HISTOIRE", "BOARD": "CLASSEMENT", "BANKED": "ENCAISSÉ", "CLIMB AGAIN": "REGRIMPER", "REVIVE THE CREW": "RANIMER L'ÉQUIPE", "TRY IT": "ESSAYER", "online": "en ligne",
+
   "Settings": "Réglages", "Fridge field guide": "Guide du frigo", "Global chat": "Chat mondial", "Story": "Histoire",
   "How to play": "Comment jouer", "Scoreboard": "Classement",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "Catapultez des bonshommes aimantés sur un frigo sans fin. Collez à l'acier. Semez l'enfant.",
@@ -71,7 +74,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "Aimant souvenir N", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "Un souvenir de frigo marqué N. Son champ rouge repousse les grimpeurs en l'air ; plus les arcs sont larges, plus il pousse fort. Les gros sont des frondes.",
   "S Souvenir Magnet": "Aimant souvenir S", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "Un souvenir de frigo marqué S. Son champ bleu attire les grimpeurs de loin et sa face vous rattrape. Les points de visée deviennent bleus là où il courbe votre vol.",
   "Norway (N)": "Norvège (N)", "Iceland (N)": "Islande (N)", "Hawaii (S)": "Hawaï (S)", "Fiji (S)": "Fidji (S)", "Kyiv (N)": "Kyiv (N)",
-  "Avatar": "Avatar", "Choose an avatar": "Choisis un avatar", "PICK": "CHOISIR", "Just your initial": "Juste ton initiale", "Back to your initial": "Retour à ton initiale",
+  "Avatar": "Avatar", "PICK": "CHOISIR", "Just your initial": "Juste ton initiale", "Back to your initial": "Retour à ton initiale",
   "Hold SPACE to charge, WASD to aim, release to fling.": "Maintenez ESPACE pour charger, WASD pour viser, relâchez pour lancer.", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB choisit un grimpeur · C déplacer/lancer · X synchro · R recentrer", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ Maintenez ESPACE pour charger, visez avec WASD, relâchez pour lancer.",
   "Candy Drop": "Bonbon", "Cooper stops for a sweet: the red line crawls for a while.": "L'enfant s'arrête pour un bonbon : la ligne rouge rampe un moment.", "CANDY": "BONBON", "CANDY DROP": "BONBON",
   "Earn 9 expedition stars": "Gagnez 9 étoiles d'expédition",
@@ -140,7 +143,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 La ligne rouge, c'est la portée du petit. Elle monte plus vite quand vous êtes haut. Ne vous arrêtez pas.",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ C'est tout. Le mode équipe lance toute la bande d'un coup. À vous.",
   "nothing to hold there": "rien à quoi s'accrocher ici", "LADDER": "ÉCHELLE", "BEST BEATEN ✓": "RECORD BATTU ✓", "😌 CHILL": "😌 ZEN",
-  "FLING": "LANCER", "CLIMB": "GRIMPER", "SYNC ON": "SYNC OUI", "SYNC": "SYNC", "◎ RECENTER": "◎ CENTRER",
+  "FLING": "LANCER", "CLIMB": "GRIMPER", "SYNC ON": "SYNC OUI", "SYNC": "SYNC",
   "Drag back anywhere, release to fling.": "Tirez en arrière et relâchez pour lancer.", "Stick to steel. Outrun the red line.": "Collez à l'acier. Semez la ligne rouge.",
   "Drag back from a climber, release to fling.": "Tirez depuis un grimpeur et relâchez pour lancer.",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "SYNC lance toute l'équipe. GRIMPER rampe vers un coéquipier.",

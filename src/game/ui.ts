@@ -10,6 +10,7 @@ import { AVATARS, avatarHtml, avatarById } from "./avatars";
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
+import { setChatStrip, groupNum } from "./hud";
 
 export interface UiHandlers {
   onPlay(rules: "solo" | "crew"): void;
@@ -45,6 +46,8 @@ export interface UiHandlers {
   onOpenBoard(): void;
   onEnterCode(code: string): void;
   onTutorial(): void;
+  /** Frame-time report for on-device performance QA (see main.ts perfReport). */
+  onPerf(): unknown;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
   /** Global chat send; resolves to an error string or null on success. */
@@ -52,16 +55,75 @@ export interface UiHandlers {
 }
 
 /** newest chat id the player has looked at (per device) */
+/**
+ * Last messages we saw, kept in memory and mirrored to localStorage.
+ *
+ * The panel used to open on "Loading..." and sit blank for the round trip. Chat is a
+ * read-mostly list, so paint the last known messages immediately and let the poll correct
+ * them. A reopen is then instant, and a cold start still shows the previous session.
+ */
+const CHAT_CACHE_KEY = "mc-chat-cache", CHAT_CACHE_MAX = 60;
+let chatCache: ChatMessage[] = (() => {
+  try { const raw = localStorage.getItem(CHAT_CACHE_KEY); return raw ? (JSON.parse(raw) as ChatMessage[]) : []; } catch { return []; }
+})();
+function rememberChat(messages: ChatMessage[]) {
+  const byId = new Map(chatCache.map((m) => [m.id, m]));
+  for (const m of messages) byId.set(m.id, m);
+  chatCache = [...byId.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+  try { localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(chatCache)); } catch { /* private mode */ }
+}
+/** HH:MM in local time; the API sends seconds or milliseconds depending on age. */
+function chatTime(at: number) {
+  const ms = at > 1e12 ? at : at * 1000;
+  const d = new Date(ms);
+  return Number.isFinite(d.getTime()) ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+}
+
 const chatSeen = () => { try { return Number(localStorage.getItem("mc-chat-seen") ?? 0) || 0; } catch { return 0; } };
 /** a stable hue per name so the ticker reads like a chat */
 const nameColor = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return `hsl(${h % 360} 70% 68%)`; };
+/**
+ * What the bottom of the screen actually measures on this device.
+ *
+ * Desktop always reports env(safe-area-inset-bottom) as 0, so the inset branch of the
+ * layout can only ever be checked on a real phone. This prints the resolved numbers and
+ * where the chat strip's text really lands, so a screenshot answers it instead of a guess.
+ */
+function layoutReport() {
+  if (typeof document === "undefined") return null;
+  const ui = document.getElementById("ui");
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden";
+  document.body.appendChild(probe);
+  const envBottom = probe.getBoundingClientRect().height;
+  probe.remove();
+  const px = ui ? parseFloat(getComputedStyle(ui).paddingBottom) : 0;
+  const strip = document.querySelector<HTMLElement>(".chat-strip");
+  const lines = strip?.querySelector<HTMLElement>(".lines");
+  const r = (el: HTMLElement | null | undefined) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height) }; };
+  const measure = (expr: string) => {
+    const el = document.createElement("div");
+    el.style.cssText = `position:fixed;left:0;bottom:0;width:0;pointer-events:none;visibility:hidden;height:${expr}`;
+    (ui ?? document.body).appendChild(el);
+    const h = el.getBoundingClientRect().height; el.remove(); return Math.round(h * 100) / 100;
+  };
+  const stripRect = r(strip), linesRect = r(lines);
+  return {
+    innerH: innerHeight, visualH: Math.round(visualViewport?.height ?? 0), dpr: devicePixelRatio,
+    envBottom, pxUnit: measure("calc(1 * var(--px))"), safePx: measure("var(--safe-px)"),
+    strip: stripRect, lines: linesRect,
+    linesClipped: linesRect ? linesRect.bottom > innerHeight : null,
+    gapUnderLines: linesRect ? Math.round(innerHeight - linesRect.bottom) : null,
+    uiPad: px,
+  };
+}
+
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
 /** m:ss for a run duration */
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-const expeditionStars = (s: SaveData) => { const n = Object.values(s.expeditions).reduce((a, b) => a + b, 0); return n ? `★ ${n}` : ""; };
 const el = (tag: string, cls: string, html = "") => {
   const e = document.createElement(tag);
   e.className = cls;
@@ -75,7 +137,7 @@ export class Ui {
   private panel: HTMLElement | null = null;
   private panelCleanup: (() => void) | null = null;
   /** Only the title menu gets the animated kitchen; every other panel sits on a still frame so it stays smooth. */
-  get staticBackground() { return !!this.panel && !this.panel.classList.contains("menu"); }
+  get staticBackground() { return !!this.panel && !this.panel.classList.contains("home"); }
   private pauseBtn: HTMLButtonElement;
   private muteBtn: HTMLButtonElement;
 
@@ -115,19 +177,27 @@ export class Ui {
     this.panel = panel;
     // Any panel with a bottom "back"-style button also gets a top-left arrow and a tap-outside
     // backdrop that do the same thing, so nobody has to scroll to the bottom to leave.
-    const exit = panel.querySelector<HTMLButtonElement>('button.ghost[data-a="back"], button.ghost[data-a="menu"], button.ghost[data-a="map"]');
+    const exit = panel.querySelector<HTMLButtonElement>('button.shell-back, button.ghost[data-a="back"], button.ghost[data-a="menu"], button.ghost[data-a="map"]');
     if (exit && !panel.classList.contains("menu")) {
+      const ownsBack = panel.classList.contains("shell");
       const backdrop = el("div", "backdrop");
       backdrop.addEventListener("click", () => exit.click());
       this.root.appendChild(backdrop);
-      const arrow = el("button", "back-arrow", "‹");
-      arrow.setAttribute("aria-label", exit.textContent?.trim() || t("Back"));
-      arrow.addEventListener("click", () => exit.click());
-      panel.prepend(arrow);
-      panel.classList.add("has-arrow");
+      if (!ownsBack) {
+        const arrow = el("button", "back-arrow", "‹");
+        arrow.setAttribute("aria-label", exit.textContent?.trim() || t("Back"));
+        arrow.addEventListener("click", () => exit.click());
+        panel.prepend(arrow);
+        panel.classList.add("has-arrow");
+      }
       // scrolling panels lose their bottom button; the arrow replaces it
-      if (panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("expeditions") || panel.classList.contains("how-to")) exit.hidden = true;
+      // Scrolling panels used to lose their bottom BACK button because the floating arrow
+      // replaced it. A shell panel's exit IS its header back button, so hiding it leaves
+      // the panel with no way out but the backdrop.
+      if (!ownsBack && (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("expeditions"))) exit.hidden = true;
     }
+    // any panel that is not the home screen covers the strip; do not leave it peeking out
+    if (!panel.classList.contains("home")) this.setChatStripVisible(false);
     translateTree(panel);
     this.root.appendChild(panel);
     this.fit(panel);
@@ -139,6 +209,7 @@ export class Ui {
   /** Scale a panel so its whole content fits the screen (phone text/page zoom shrinks the viewport).
    * Reading panels that are meant to scroll only shrink a little; menus and dialogs shrink until they fit. */
   private fit(panel: HTMLElement) {
+    if (panel.classList.contains("home") || panel.classList.contains("shell")) return; // positions itself
     const scroller = panel.classList.contains("shop") || panel.classList.contains("collection") ||   panel.classList.contains("how-to") || panel.classList.contains("board") || panel.classList.contains("chat");
     panel.style.zoom = "1"; panel.style.width = "";
     const vw = window.innerWidth, vh = window.innerHeight;
@@ -166,77 +237,111 @@ export class Ui {
     this.pauseBtn.hidden = !inRun;
     this.muteBtn.hidden = !inRun;
     this.refreshMute();
+    // The strip is a home-screen thing: there is no time to read it mid-climb.
+    this.setChatStripVisible(false);
+  }
+
+  /* ---------------------------------------------------------- in-run chat strip */
+  /** Bottom 64 px: the two latest global lines, unread badge, tap to open (handoff 1a). */
+  private chatStrip: HTMLElement | null = null;
+  private chatStripTimer: number | null = null;
+  private setChatStripVisible(on: boolean) {
+    if (on === !!this.chatStrip) return;
+    if (!on) {
+      this.chatStrip?.remove(); this.chatStrip = null;
+      if (this.chatStripTimer !== null) { clearInterval(this.chatStripTimer); this.chatStripTimer = null; }
+      this.root.classList.remove("has-chat");
+      setChatStrip(false);
+      return;
+    }
+    const el = document.createElement("button");
+    el.className = "chat-strip";
+    el.setAttribute("aria-label", t("Global chat"));
+    el.innerHTML = `<span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>${t("Global chat")}</i></span>`;
+    el.addEventListener("click", () => this.showChat());
+    translateTree(el);
+    this.root.appendChild(el);
+    this.chatStrip = el;
+    // the dock rides 74 px up instead of 34 so it clears the strip
+    this.root.classList.add("has-chat");
+    setChatStrip(true);
+    this.refreshChatStrip();
+    // slow poll: this is ambient furniture during a run, not the chat panel
+    this.chatStripTimer = setInterval(() => this.refreshChatStrip(), 20000) as unknown as number;
+  }
+  private refreshChatStrip() {
+    const el = this.chatStrip; if (!el) return;
+    void chat.list(0).then((r) => {
+      if (!r || el !== this.chatStrip || !el.isConnected) return;
+      const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
+      const last = r.messages.slice(-2);
+      if (lines) lines.innerHTML = last.length
+        ? last.map((m) => `<span>${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 18) : ""}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("")
+        : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
+      const unread = r.messages.filter((m) => m.id > chatSeen()).length;
+      if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
+    });
   }
 
   showMenu() {
     const s = this.save();
     if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
-    const p = el("div", "panel menu");
+    // No full-height panel: the title fridge is the background, a scrim carries the text (handoff 2a).
+    const p = el("div", "home");
+    const stars = Object.values(s.expeditions).reduce((a, b) => a + b, 0);
+    const icon = (a: string, art: string, text: string) =>
+      `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
     p.innerHTML = `
-      <div class="rail">
-        <button class="icon" data-a="settings" title="Settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
-        <span class="grow"></span>
-        <button class="icon" data-a="story" title="Story" aria-label="Story"><img src="${import.meta.env.BASE_URL}art/ui/story.webp" alt="" /></button>
-        <button class="icon" data-a="tutorial" title="How to play" aria-label="How to play"><img src="${import.meta.env.BASE_URL}art/ui/help.webp" alt="" /></button>
-        <button class="icon" data-a="board" title="Scoreboard" aria-label="Scoreboard"><img src="${import.meta.env.BASE_URL}art/ui/board.webp" alt="" /></button>
+      <div class="home-top">
+        <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
+        <button class="wallet-chip" data-a="collection" aria-label="Creatures &amp; patterns">
+          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b><b class="star">★ ${groupNum(stars)}</b>
+        </button>
       </div>
-      <h1 class="brand-title"><img src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" /></h1>
-      <p class="tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
-      <div class="stats">
-        <div><span>Stars</span><b>★ ${Object.values(s.expeditions).reduce((a, b) => a + b, 0)}</b></div>
-        <div><span>Best solo</span><b>${s.bestSolo} cm</b></div>
-        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Coins</span><b class="coin">$${s.coins}</b></button>
-        <button class="wallet" data-a="${SHOP_ENABLED ? "shop" : "collection"}" title="${SHOP_ENABLED ? "Upgrades &amp; skins" : "Creatures &amp; patterns"}"><span>Gems</span><b class="gem">◆${s.gems}</b></button>
+      <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
+      <p class="home-tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
+      <div class="home-bottom">
+      <div class="home-icons">
+        ${icon("story", "story", "STORY")}
+        ${icon("board", "board", "BOARD")}
+        ${icon("tutorial", "help", "HOW TO")}
       </div>
-      <button class="primary alt mode" data-a="solo"><b>SOLO CLIMB</b><small>One climber, endless fridge, outrun the line.</small></button>
-      <button class="primary mode" data-a="expeditions"><b>EXPEDITIONS</b><small>Crew puzzles. No red line, a fling budget, three stars. ${expeditionStars(s)}</small></button>
-      <label class="switch-row ${s.chill ? "on" : ""}">
-        <span><b>😌 Chill mode</b><small>${s.chill ? "No red line, no rush. No coins or records; metres still count for the world." : "No red line. No coins or records; metres still count for the world."}</small></span>
-        <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i></i>
-      </label>
-      <div class="pair">
-        ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES</button>` : ""}
-        <button data-a="collection">🎨 CREATURES</button>
+      <div class="home-dock">
+        <div class="home-modes">
+          <button class="mode-tile solo" data-a="solo">
+            <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
+            <i>BEST ${groupNum(s.bestSolo)} CM</i>
+          </button>
+          <button class="mode-tile exp" data-a="expeditions">
+            <b>EXPEDITIONS</b><small>Crew puzzles, a fling budget, three stars.</small>
+            <i>★ ${groupNum(stars)}</i>
+          </button>
+        </div>
+        <label class="home-row ${s.chill ? "on" : ""}">
+          <b class="chill">CHILL</b><small>no red line</small>
+          <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
+        </label>
+        <button class="home-row" data-a="collection">
+          <b>CREATURES</b>
+          <canvas class="home-creature" width="34" height="34" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>
+        </button>
       </div>
-      ${leaderboardEnabled ? `<button class="chat-ticker" data-a="chat" aria-label="Global chat"><span class="bubble"><img src="${import.meta.env.BASE_URL}art/ui/chat.webp" alt="" /><em class="badge" hidden></em></span><span class="lines"><i>Global chat</i></span></button>` : ""}
-      <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
-      <p class="fine global" hidden></p>
-      <p class="fine">Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
-      <p class="fine legal"><a href="${import.meta.env.BASE_URL}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${import.meta.env.BASE_URL}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${import.meta.env.BASE_URL}contact/" target="_blank" rel="noopener">Contact</a></p>
+      </div>
     `;
-    const ticker = p.querySelector<HTMLElement>(".chat-ticker .lines"), badge = p.querySelector<HTMLElement>(".chat-ticker .badge");
-    if (ticker) void chat.list(0).then((r) => {
-      if (!r || !p.isConnected) return;
-      const last = r.messages.slice(-2);
-      ticker.innerHTML = last.length ? last.map((m) => `<span>${avatarHtml(m.avatar ?? undefined, m.name, 18)}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("") : `<i>Global chat · ${r.online} online</i>`;
-      const seen = chatSeen(); const unread = r.messages.filter((m) => m.id > seen).length;
-      if (badge && unread) { badge.textContent = unread > 99 ? "99+" : String(unread); badge.hidden = false; }
-    });
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
-      if (a === "crew") this.h.onPlay("crew");
       if (a === "expeditions") this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
-      if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
-      if (a === "chat") this.showChat();
       if (a === "board") this.showBoard("crew");
       if (a === "settings") this.showSettings();
-      if (a === "update") this.h.onUpdate();
       if (a === "tutorial") this.showHowToPlay();
       if (a === "story") this.showStory(() => this.showMenu());
-      if (a === "sound") { this.h.onToggleSound(); this.showMenu(); }
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
-    if (leaderboardEnabled) {
-      void leaderboard.stats().then((st) => {
-        if (!st || this.panel !== p) return;
-        const g = p.querySelector<HTMLElement>(".global");
-        if (g) { const pl = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
-        g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`; g.hidden = false; }
-      });
-    }
+    this.setChatStripVisible(leaderboardEnabled);
+    this.startPreviews(p);
   }
 
   /** Animated preview canvases: one fake climber per card, idling on the fridge. */
@@ -369,38 +474,65 @@ export class Ui {
   private chatTimer: number | null = null;
   showChat() {
     const s = this.save();
-    const p = el("div", "panel chat");
-    p.innerHTML = `<h2>Global chat</h2>
-      <p class="fine">Everyone playing right now. Be kind. No personal info, no links. <span class="online"></span></p>
-      <div class="chat-log" aria-live="polite"><p class="fine">Loading…</p></div>
-      <form class="chat-form"><input type="text" maxlength="160" placeholder="Say something as ${esc(s.name)}" autocomplete="off" enterkeyhint="send" /><button class="primary" type="submit">SEND</button></form>
-      <p class="fine err" hidden></p>
-      <button class="ghost" data-a="back">BACK</button>`;
+    const p = el("div", "panel shell chat");
+    p.innerHTML = `
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Global chat</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body chat-log" aria-live="polite"></div>
+      <span class="shell-fade"></span>
+      <div class="shell-foot">
+        <form class="chat-form"><input type="text" maxlength="160" placeholder="Message as ${esc(s.name)}" autocomplete="off" enterkeyhint="send" /><button class="send" type="submit" aria-label="Send">➤</button></form>
+        <p class="fine"><span class="online"></span></p>
+        <p class="fine err" hidden></p>
+      </div>`;
     const log = p.querySelector<HTMLElement>(".chat-log")!, online = p.querySelector<HTMLElement>(".online")!, err = p.querySelector<HTMLElement>(".err")!;
     const input = p.querySelector<HTMLInputElement>("input")!;
-    let lastId = 0; const seen = new Map<number, ChatMessage>();
+    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0;
+    const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
+
+    const row = (m: ChatMessage) => {
+      const mine = m.player_id === s.playerId;
+      const colour = nameColor(m.name);
+      const initial = esc((m.name || "?").trim().charAt(0).toUpperCase());
+      return `<div class="cmsg ${mine ? "me" : ""}">
+        ${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 32).replace('class="avi"', 'class="avi cav"') : `<span class="cav" style="background:${colour}22;color:${colour}">${initial}</span>`}
+        <span class="cbody">
+          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
+          <span class="cbubble">${esc(m.text)}</span>
+        </span>
+      </div>`;
+    };
+    // a few grey rows beat the word "Loading" on a first ever open
+    const skeleton = `<div class="cskel">${"<span></span>".repeat(5)}</div>`;
     const render = () => {
-      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-60);
-      log.innerHTML = rows.length ? rows.map((m) => `<div class="msg ${m.player_id === s.playerId ? "me" : ""}">${avatarHtml(m.avatar ?? undefined, m.name, 26)}<b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join("") : `<p class="fine">Nobody has said anything yet. You could be first.</p>`;
+      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+      log.innerHTML = rows.length ? rows.map(row).join("") : skeleton;
       log.scrollTop = log.scrollHeight;
     };
+    render();
+
     const poll = async () => {
       if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }
       const r = await chat.list(lastId);
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
+      rememberChat(r.messages);
       if (lastId > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(lastId)); } catch { /* private mode */ } }
-      online.textContent = r.online ? `· ${r.online} chatting lately` : "";
+      online.textContent = r.online ? `${r.online} chatting lately` : "";
       if (r.messages.length || !seen.size) render();
+      if (!seen.size) log.innerHTML = `<p class="how-blurb">Nobody has said anything yet. You could be first.</p>`;
     };
     if (this.chatTimer) clearInterval(this.chatTimer);
     void poll(); this.chatTimer = window.setInterval(poll, 4000);
+
     p.querySelector("form")!.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = input.value.trim(); if (!text) return;
       input.value = ""; err.hidden = true;
+      // show it straight away; the poll replaces it with the server's copy
+      const pending: ChatMessage = { id: lastId + 0.5, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
+      seen.set(pending.id, pending); render();
       const problem = await this.h.onChat(text);
-      if (problem) { err.textContent = problem; err.hidden = false; input.value = text; }
+      if (problem) { seen.delete(pending.id); render(); err.textContent = problem; err.hidden = false; input.value = text; }
       else void poll();
     });
     p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });
@@ -470,13 +602,13 @@ export class Ui {
   /** Grid of every portrait; tap one to wear it in chat. */
   showAvatarPicker() {
     const s = this.save();
-    const p = el("div", "panel avatars");
-    p.innerHTML = `<h2>Choose an avatar</h2>
-      <div class="avatar-grid">
+    const p = el("div", "panel shell avatars");
+    p.innerHTML = `
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Avatar</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body avatar-grid">
         <button class="pick ${s.avatar ? "" : "on"}" data-id="" aria-label="Just your initial">${avatarHtml(undefined, s.name, 56)}</button>
         ${AVATARS.map((a) => `<button class="pick ${a.id === s.avatar ? "on" : ""}" data-id="${a.id}" title="${esc(a.name)}" aria-label="${esc(a.name)}">${avatarHtml(a.id, a.name, 56)}</button>`).join("")}
-      </div>
-      <button class="ghost" data-a="back">BACK</button>`;
+      </div>`;
     p.addEventListener("click", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>("[data-id],[data-a]");
       if (!t) return;
@@ -492,56 +624,51 @@ export class Ui {
   /** Profile, preferences and appearance in one place. */
   showSettings() {
     const s = this.save();
-    const p = el("div", "panel shop");
+    const p = el("div", "panel shell settings");
+    const base = import.meta.env.BASE_URL;
+    const row = (title: string, sub: string, control: string) =>
+      `<div class="shell-row"><span class="txt"><b>${title}</b><small>${sub}</small></span>${control}</div>`;
+    const chip = (a: string, text: string) => `<button class="shell-chip" data-a="${a}">${text}</button>`;
+    const toggle = (a: string, on: boolean, aria: string) =>
+      `<label class="shell-toggle ${on ? "on" : ""}"><input type="checkbox" data-a="${a}" ${on ? "checked" : ""} aria-label="${aria}" /><i></i></label>`;
     p.innerHTML = `
-      <h2>Settings</h2>
-      <h3>Profile</h3>
-      <div class="rows">
-        <div class="row">
-          <div class="info"><b>Climber name</b><span>${esc(s.name || "not set")} · shown on the scoreboard</span></div>
-          <button class="buy" data-a="name">CHANGE</button>
-        </div>
-        <div class="row">
-          ${avatarHtml(s.avatar, s.name, 44)}
-          <div class="info"><b>Avatar</b><span>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</span></div>
-          <button class="buy" data-a="avatar">PICK</button>
-        </div>
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Settings</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body">
+        <p class="sec-label">Profile</p>
+        ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
+        <div class="shell-row">${avatarHtml(s.avatar, s.name, 40)}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
+        ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
+        ${SHOP_ENABLED ? row("Upgrades &amp; reserves", "Spend coins on the team", chip("shop", "OPEN")) : ""}
+        <p class="sec-label">Play on another device</p>
+        ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
+        ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
+        <p class="sec-label">Preferences</p>
+        ${row("Language", LANGS.map((l) => l.name).join(" · "),
+          `<select class="shell-chip" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>`)}
+        ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
+        ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
+        ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
+        <p class="sec-label">App</p>
+        ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
+        <p class="sec-label">Performance</p>
+        ${row("Frame times", "Last 600 frames of the most recent run, split into simulation and drawing.", chip("perf", "SHOW"))}
+        <pre class="perf-out" hidden></pre>
       </div>
-      <h3>Play on another device</h3>
-      <div class="rows">
-        <div class="row">
-          <div class="info"><b>Link a new device</b><span>Shows a 6-letter code. Enter it on the other device to carry this profile over.</span></div>
-          <button class="buy" data-a="link">CODE</button>
-        </div>
-        <div class="row">
-          <div class="info"><b>Enter a link code</b><span>Adopt a profile from another device. Replaces this one.</span></div>
-          <button class="buy" data-a="claim">ENTER</button>
-        </div>
-      </div>
-      <h3>Preferences</h3>
-      <div class="rows">
-        <div class="row">
-          <div class="info"><b>Language</b><span>${LANGS.map((l) => l.name).join(" · ")}</span></div>
-          <select class="buy" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>
-        </div>
-        <div class="row">
-          <div class="info"><b>Sound effects</b><span>Rubber twangs, steel clicks and hand swishes</span></div>
-          <button class="buy" data-a="sound">${s.sound ? "ON" : "OFF"}</button>
-        </div>
-        <div class="row"><div class="info"><b>Music</b><span>Original toy-box groove; builds as danger approaches</span></div><button class="buy" data-a="music">${s.music ? "ON" : "OFF"}</button></div>
-        <div class="row">
-          <div class="info"><b>Chill mode</b><span>No red line. No coins or records; metres still count for the world total</span></div>
-          <button class="buy ${s.chill ? "" : ""}" data-a="chill">${s.chill ? "ON" : "OFF"}</button>
-        </div>
-      </div>
-      <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
-      ${SHOP_ENABLED ? `<button data-a="shop">UPGRADES &amp; RESERVES</button>` : ""}
-      <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced to the cloud after every run</p>
-      <button class="ghost" data-a="back">BACK</button>`;
+      <span class="shell-fade"></span>
+      <div class="shell-foot">
+        <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced after every run</p>
+        <p class="fine"><a href="${base}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${base}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${base}contact/" target="_blank" rel="noopener">Contact</a></p>
+      </div>`;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const a = t.dataset.a;
       if (a === "collection") { this.showCollection(); return; }
+      if (a === "update") { this.h.onUpdate(); return; }
+      if (a === "perf") {
+        const out = p.querySelector<HTMLElement>(".perf-out");
+        if (out) { out.textContent = JSON.stringify({ build: __BUILD__, layout: layoutReport(), frames: this.h.onPerf() }, null, 1); out.hidden = false; }
+        return;
+      }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
@@ -660,27 +787,37 @@ export class Ui {
   }
 
   /** Back story, three slides. */
-  /** The rules, grouped by what each thing does to you. The Field Guide stays the per-item catalogue. */
+  /** The rules, grouped by what each thing does to you; art tiles, not a catalogue (handoff 3c). */
   showHowToPlay() {
-    const p = el("div", "panel how-to");
+    const p = el("div", "panel shell how-to");
+    const base = import.meta.env.BASE_URL;
+    const tile = (r: { name: string; art?: string; swatch?: string; note?: string; count?: number; icon: string; fit?: string; focus?: string }) => {
+      // objects are shown whole; only the flat surfaces fill their tile
+      const style = r.focus ? ` style="object-position:${r.focus}"` : "";
+      const art = r.art
+        ? `<img class="art ${r.fit ?? "contain"}" src="${base}${r.art}" alt="" loading="lazy"${style} />`
+        : `<span class="art ${r.swatch ?? ""}"></span>`;
+      const note = r.count ? `${r.note ?? ""} · ${r.count}`.replace(/^ · /, "") : (r.note ?? "");
+      return `<div class="art-tile">${art}<b>${r.name}</b>${note ? `<i>${note}</i>` : ""}</div>`;
+    };
+    const sections = howToSections().map((sec) => {
+      // "Climbing" is technique, not objects: it stays as text rows
+      const asText = sec.rows.every((r) => !r.art && !r.swatch);
+      return `<p class="sec-label">${sec.title}</p>
+        ${sec.blurb ? `<p class="how-blurb">${sec.blurb}</p>` : ""}
+        ${asText
+          ? sec.rows.map((r) => `<div class="shell-row"><span class="how-icon">${r.icon}</span><span class="txt"><b>${r.name}</b><small>${r.text}</small></span></div>`).join("")
+          : `<div class="tile-grid">${sec.rows.map(tile).join("")}</div>`}`;
+    }).join("");
     p.innerHTML = `
-      <h2>How to play</h2>
-      <p class="tag">Fling the toys up the fridge. Magnets only stick to bare steel — the whole game is getting across everything that isn't.</p>
-      ${howToSections().map((section) => `
-        <div class="how-sec">
-          <h3>${section.title}</h3>
-          ${section.blurb ? `<p class="fine">${section.blurb}</p>` : ""}
-          ${section.rows.map((row) => `
-            <div class="how-row">
-              <span class="how-icon" aria-hidden="true">${row.icon}</span>
-              <div>
-                <b>${row.name}${row.count ? ` <i class="how-count">${row.count} kinds</i>` : ""}</b>
-                <small>${row.text}</small>
-              </div>
-            </div>`).join("")}
-        </div>`).join("")}
-      <button class="primary" data-a="try"><b>TRY IT</b></button>
-      <button class="ghost" data-a="back">BACK</button>`;
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>How to play</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body">
+        <p class="how-intro">Fling the toys up the fridge. Magnets only stick to bare steel — the whole game is getting across everything that isn't.</p>
+        ${sections}
+      </div>
+      <span class="shell-fade"></span>
+      <div class="shell-foot"><button class="shell-primary" data-a="try">TRY IT</button></div>
+    `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "try") { this.clear(); this.h.onTutorial(); }
@@ -696,16 +833,18 @@ export class Ui {
       { icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is Cooper's reach. Stay above it." },
     ];
     let i = 0;
-    const p = el("div", "panel story");
+    const p = el("div", "panel story-card");
     const render = () => {
       const sl = slides[i];
       p.innerHTML = `
-        <div class="story-icon">${sl.icon}</div>
+        <canvas class="story-creature" width="150" height="150" data-look="${this.save().creature ?? "human"}|${this.save().pattern ?? ""}"></canvas>
+        <span class="story-label">THE STORY · ${i + 1} OF ${slides.length}</span>
         <h2>${sl.title}</h2>
-        <p class="tag big-tag">${sl.text}</p>
+        <p class="story-body">${sl.text}</p>
         <div class="dots">${slides.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>
-        <button class="primary" data-a="next">${i < slides.length - 1 ? "NEXT" : "LET'S CLIMB"}</button>
-        ${i < slides.length - 1 ? `<button class="ghost" data-a="skip">SKIP</button>` : ""}`;
+        <button class="shell-primary" data-a="next">${i < slides.length - 1 ? "NEXT" : "LET'S CLIMB"}</button>
+        ${i < slides.length - 1 ? `<button class="story-skip" data-a="skip">SKIP</button>` : ""}`;
+      this.startPreviews(p);
     };
     render();
     p.addEventListener("click", (e) => {
@@ -714,6 +853,9 @@ export class Ui {
       if (a === "skip") { this.clear(); done(); }
     });
     this.show(p);
+    // render() runs once before the panel is appended, and the preview loop stops on a
+    // disconnected node, so the first slide's creature never drew. Start it once it is in.
+    this.startPreviews(p);
   }
 
   /** Small non-blocking coaching bubble during the tutorial run. */
@@ -734,7 +876,7 @@ export class Ui {
   showBoard(mode: BoardMode) {
     const s = this.save();
     this.h.onOpenBoard();
-    const p = el("div", "panel board");
+    const p = el("div", "panel shell board");
     const render = (rows: ScoreRow[] | null, rank: { rank: number | null; cm?: number } | null) => {
       const list = rows && rows.length
         ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span>${r.seconds ? `<span class="t" title="run time">${fmtTime(r.seconds)}</span>` : ""}</div>`).join("")
@@ -745,22 +887,36 @@ export class Ui {
         ? rank?.rank ? `You: #${rank.rank} · ${fmt(rank.cm ?? 0)}` : "You: not on the board yet"
         : `You: ${fmt(localMine)}`;
       p.innerHTML = `
-        <h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2>
-        <div class="tabs">
-          <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
-          <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
-          <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
-          <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>
+        <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2><span class="shell-spacer"></span></div>
+        <div class="shell-body">
+          <div class="seg">
+            <button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>
+            <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
+            <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
+            <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>
+          </div>
+          ${mode === "lifetime" ? `<p class="how-blurb">Every centimetre ever climbed, all modes, chill included. Pure dedication.</p>` : ""}
+          ${mode === "coins" ? `<p class="how-blurb">Coins on hand right now. Spend them and you drop.</p>` : ""}
+          <div class="srows">${list}</div>
         </div>
-        ${mode === "lifetime" ? `<p class="fine">Every centimetre ever climbed, all modes, chill included. Pure dedication.</p>` : ""}
-        ${mode === "coins" ? `<p class="fine">Coins on hand right now. Spend them and you drop.</p>` : ""}
-        <div class="srows">${list}</div>
-        <p class="tag">${mine} · playing as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
-        ${(mode === "crew" || mode === "solo") && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button data-a="share">📣 CHALLENGE FRIENDS TO BEAT ${mode === "crew" ? s.bestCm : s.bestSolo} cm</button>` : ""}
-        <button class="ghost" data-a="back">BACK</button>`;
+        <span class="shell-fade"></span>
+        <div class="shell-foot">
+          <p class="fine">${mine} · as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
+          ${(mode === "crew" || mode === "solo") && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button class="shell-primary" data-a="share">CHALLENGE FRIENDS TO BEAT ${groupNum(mode === "crew" ? s.bestCm : s.bestSolo)} CM</button>` : ""}
+          <p class="fine world" hidden></p>
+          <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
+        </div>`;
     };
     render(null, null);
-    p.querySelector(".srows")!.innerHTML = `<p class="tag">Loading…</p>`;
+    p.querySelector(".srows")!.innerHTML = `<p class="how-blurb">Loading…</p>`;
+    if (leaderboardEnabled) void leaderboard.stats().then((st) => {
+      if (!st || this.panel !== p) return;
+      const w = p.querySelector<HTMLElement>(".world");
+      if (!w) return;
+      const pl = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+      w.textContent = `Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`;
+      w.hidden = false;
+    });
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const m = t.dataset.m as BoardMode | undefined;
@@ -835,27 +991,49 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[] }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number }) {
     this.lastGameOver = o;
-    const p = el("div", "panel small");
+    // The dock grows upward into this card rather than a centred dialog (handoff 1h).
+    const p = el("div", "panel lost-card");
+    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED" : "ALL CLIMBERS LOST";
+    const revives = [
+      o.tokens > 0 ? { a: "token", top: "TOKEN", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
+      !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "FREE", cls: "accent" } : null,
+      { a: "gems", top: "◆ 5", sub: "GEMS", cls: o.gems >= 5 ? "gem" : "gem disabled" },
+    ].filter(Boolean) as { a: string; top: string; sub: string; cls: string }[];
     p.innerHTML = `
-      <h2>${o.isRecord ? "New record!" : o.chill ? "Chill run done" : o.ended ? "Run banked" : "All climbers lost"}</h2>
-      <div class="big">${o.cm} cm</div>
-      <p class="tag">${o.chill ? "Chill mode: no coins or records. Metres added to the world total." : `Best ${o.best} cm · earned <span class="coin">$${o.coins}</span>`}</p>
-      <p class="tag rank" hidden></p>
-      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
-      <div class="revive" ${o.ended ? "hidden" : ""}>
-        ${o.tokens > 0 ? `<button class="primary" data-a="token">REVIVE · token (${o.tokens})</button>` : ""}
-        ${!o.adUsed ? `<button class="primary" data-a="ad">REVIVE · watch ad</button>` : ""}
-        <button class="${o.gems >= 5 ? "" : "disabled"}" data-a="gems" ${o.gems >= 5 ? "" : "disabled"}>REVIVE · ◆5</button>
+      <div class="lost-head">
+        <div>
+          <span class="lost-label">${title}</span>
+          <div class="lost-cm"><b>${groupNum(o.cm)}</b><i>cm</i></div>
+        </div>
+        <div class="lost-meta">
+          <span>BEST <b>${groupNum(o.best)}</b></span>
+          <span class="rank" hidden></span>
+        </div>
       </div>
-      ${o.chill ? "" : `<button data-a="share">📣 CHALLENGE A FRIEND</button>`}
-      <button class="ghost" data-a="quit">BACK TO MENU</button>
+      ${o.chill ? `<p class="lost-banked"><i>Chill mode: no coins or records. Metres added to the world total.</i></p>` : `
+      <div class="lost-banked">
+        <span class="earned"><b class="coin">+${groupNum(o.coins)}</b> <i>BANKED</i></span>
+        <span class="totals"><b class="coin">${groupNum(o.walletCoins ?? 0)}</b> <b class="gem">◆ ${groupNum(o.walletGems ?? 0)}</b></span>
+      </div>`}
+      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
+      ${o.ended ? "" : `
+      <span class="lost-label dim">REVIVE THE CREW</span>
+      <div class="revive-row">
+        ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
+      </div>`}
+      <button class="go" data-a="again">CLIMB AGAIN</button>
+      <div class="lost-ghosts">
+        ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
+        <button class="ghost" data-a="quit">BACK TO MENU</button>
+      </div>
     `;
     p.addEventListener("click", (e) => {
-      const a = (e.target as HTMLElement).dataset.a;
+      const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
+      if (a === "again") { this.clear(); this.h.onPlay(o.mode); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }

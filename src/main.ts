@@ -2,7 +2,7 @@ import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, setKeyboardHints, hudButtons, teamDots, offscreenMarkers, setSafeBottom } from "./game/render";
+import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
@@ -151,7 +151,10 @@ function resize(force = false) {
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(viewH * dpr);
   const insetPx = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
-  setSafeBottom(insetPx / scale + 12);
+  // The DOM mirrors this exactly in CSS as --safe-px (scale and --px are the same number),
+  // so the canvas dock and the DOM furniture agree without JS having to publish a variable
+  // the stylesheet might read before it is set.
+  setSafeBottom(Math.max(28, insetPx / scale + 12));
   if (game) game.viewH = viewH;
 }
 window.addEventListener("resize", () => resize(true));
@@ -287,6 +290,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onUpdate: () => { void checkForUpdate(); },
   onTutorial: () => startRun("solo", true),
+  onPerf: () => perfReport(),
   onShare: (c) => {
     const go = () => void shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId }).then((r) => {
       if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
@@ -362,7 +366,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -380,7 +384,6 @@ function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
   rulesNow = r.snap.rules;
-  uiRoot.style.setProperty("--hud-lift", rulesNow === "crew" ? "52" : "6");
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
@@ -399,6 +402,20 @@ function resumeRun() {
 
 /** Guided first run: a solo run on a fixed seed with coaching tips driven by game state. */
 const TUTORIAL_SEED = 20260913;
+/** Idle hint: 10 s on screen, fading over the last 3, and gone for good after the first fling. */
+const HINT_SECONDS = 10;
+let hintLeft: number | null = null;
+function tickHint(dt: number) {
+  if (hintLeft === null) return;
+  hintLeft -= dt;
+  if (hintLeft <= 0) { hintLeft = null; setHintLeft(null); return; }
+  setHintLeft(hintLeft);
+}
+/** Called when a run starts; never re-shown mid-run. */
+function armHint() { hintLeft = HINT_SECONDS; setHintLeft(hintLeft); }
+/** First fling kills it immediately. */
+function cancelHint() { if (hintLeft !== null) { hintLeft = null; setHintLeft(null); } }
+
 let tutorial: { step: number; t: number } | null = null;
 const keyboardDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches && !("ontouchstart" in window);
 setKeyboardHints(keyboardDevice);
@@ -429,7 +446,6 @@ let runCoinsTotal = 0;
 function startLevel(level: LevelDef) {
   const go = () => {
     rulesNow = "crew";
-    uiRoot.style.setProperty("--hud-lift", "52");
     ui.clear(); clearSnapshot();
     adUsedThisRun = false; bankedCm = 0; runCounted = false; runCoinsTotal = 0; paused = false;
     game = new Game({ ...EXPEDITION_LEVELS } as Record<UpgradeKey, number>, runEvents(), { rules: "crew", seed: level.seed, level, lineup: lineupFor("crew") });
@@ -468,7 +484,6 @@ function finishLevel(level: LevelDef) {
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
-  uiRoot.style.setProperty("--hud-lift", rules === "crew" ? "52" : "6");
   ui.clear();
   clearSnapshot();
   adUsedThisRun = false;
@@ -479,6 +494,8 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   const lineup = lineupFor(rules);
   game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  // the coached tutorial has its own bubbles; the idle hint would sit on top of them
+  if (withTutorial) cancelHint(); else armHint();
   if (!withTutorial && !save.chill) {
     const best = rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: false };
@@ -546,14 +563,13 @@ const hit = (p: { x: number; y: number }, r: { x: number; y: number; w: number; 
 canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
   const sp = toScreen(e);
-  const b = hudButtons(viewH);
-  for (const d of teamDots(game, viewH)) {
-    if (Math.hypot(d.x - sp.x, d.y - sp.y) < 17) { game.select(d.id); return; }
+  const b = hudButtons(viewH, game);
+  for (const r of teamTapRects(game, viewH)) {
+    if (hit(sp, r)) { game.select(r.id); return; }
   }
   for (const m of offscreenMarkers(game, viewH)) {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }
   }
-  if (game.freeCam && hit(sp, b.recenter)) { game.recenter(); return; }
   if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
   if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
   if (SHOP_ENABLED && game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
@@ -562,7 +578,7 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => { if (game && !paused) game.pointerMove(toWorld(e)); });
 // Keyboard (PC): hold Space to charge the pull-back, WASD or arrows to aim (W up, S down, A/D sideways),
-// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync; R recentres.
+// release Space to fling. Tab or Q/E cycles the selected climber; C toggles move/fling; X toggles sync.
 const keys = new Set<string>();
 let charge = 0;
 const typing = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.("input, textarea, select") != null;
@@ -578,7 +594,6 @@ window.addEventListener("keydown", (e) => {
   }
   if (k === "c" && game.rules === "crew") game.mode = game.mode === "fling" ? "move" : "fling";
   if (k === "x" && game.rules === "crew") game.sync = !game.sync;
-  if (k === "r") game.recenter();
 });
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase(); keys.delete(k);
@@ -627,7 +642,36 @@ let last = performance.now();
 let lastBgFrame = 0;
 let acc = 0;
 const STEP = 1 / 120;
+
+/**
+ * Frame sampler for real-phone QA: read it with `__mc.perf()` on the device.
+ * A ring of the last 600 frames with sim and render timed separately, so a slow
+ * frame can be attributed instead of guessed at. Costs three numbers per frame.
+ */
+const PERF_N = 600;
+const perfFrame = new Float32Array(PERF_N), perfSim = new Float32Array(PERF_N), perfDraw = new Float32Array(PERF_N);
+let perfAt = 0, perfSeen = 0;
+function perfPush(frameMs: number, simMs: number, drawMs: number) {
+  perfFrame[perfAt] = frameMs; perfSim[perfAt] = simMs; perfDraw[perfAt] = drawMs;
+  perfAt = (perfAt + 1) % PERF_N; perfSeen++;
+}
+function perfReport() {
+  const n = Math.min(perfSeen, PERF_N);
+  if (!n) return { frames: 0 };
+  const take = (a: Float32Array) => Array.from(a.subarray(0, n)).sort((x, y) => x - y);
+  const f = take(perfFrame), sim = take(perfSim), draw = take(perfDraw);
+  const q = (a: number[], p: number) => +a[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(2);
+  return {
+    frames: n,
+    fps: +(1000 / (f[Math.floor(n * 0.5)] || 16.7)).toFixed(1),
+    frameMs: { median: q(f, 0.5), p90: q(f, 0.9), p99: q(f, 0.99), worst: q(f, 1) },
+    simMs: { median: q(sim, 0.5), p99: q(sim, 0.99), worst: q(sim, 1) },
+    drawMs: { median: q(draw, 0.5), p99: q(draw, 0.99), worst: q(draw, 1) },
+    janky: { over20ms: f.filter((x) => x > 20).length, over33ms: f.filter((x) => x > 33).length },
+  };
+}
 let guideBackgroundDrawn = false;
+let simMs = 0;
 function frame(now: number) {
   updateAudio(!document.hidden && !paused, game && !game.chill ? Math.max(0, 1 - (game.floorY - Math.max(game.highestY, ...game.alive.map((c) => c.y))) / 400) : 0, game?.chill ?? true);
   // ResizeObserver and viewport events handle sizing without a layout read on
@@ -640,10 +684,19 @@ function frame(now: number) {
     if (!paused) {
       acc += dt;
       tickKeys(dt);
+      const simT0 = performance.now();
       while (acc >= STEP) { game.update(STEP); acc -= STEP; }
+      simMs = performance.now() - simT0;
       tickTutorial(dt);
+      if (game.phase === "idle") tickHint(dt); else cancelHint();
     }
+    const drawT0 = performance.now();
     render(ctx, game, viewH, dpr);
+    // Only sample while actually playing. The ring holds 600 frames, about 10 seconds, and
+    // pausing to walk to Settings takes longer than that -- sampling paused frames would
+    // quietly overwrite the laggy stretch with idle menu frames and report it as healthy.
+    if (!paused) perfPush(dt * 1000, simMs, performance.now() - drawT0);
+    simMs = 0;
     const bw = window.innerWidth, bh = window.innerHeight;
     if (!backdropDrawn || menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
       menubg.width = Math.round(bw * dpr); menubg.height = Math.round(bh * dpr);
@@ -667,7 +720,19 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+// The canvas HUD is set in Barlow Condensed; starting before the face is ready paints one
+// frame in the fallback and reflows every number. Never block the loop for long, though.
+const hudFontReady = typeof document !== "undefined" && document.fonts
+  ? Promise.race([
+      Promise.all([
+        document.fonts.load('900 46px "Barlow Condensed"'),
+        document.fonts.load('800 12px "Barlow Condensed"'),
+        document.fonts.load('700 16px "Barlow Condensed"'),
+      ]),
+      new Promise((done) => setTimeout(done, 1200)),
+    ])
+  : Promise.resolve();
+void hudFontReady.then(() => requestAnimationFrame(frame));
 
 /** Pull the cloud copy if another device moved it forward. Safe to call often. */
 async function cloudPull(quiet = false) {
@@ -696,5 +761,7 @@ else if (!save.introSeen) {
 else ui.showMenu();
 
 // Debug / QA hook (harmless in production; no secrets, no cheats persisted).
-declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown } } }
-window.__mc = { game: () => game, save: () => save };
+// Scripted-playtest hook (see CLAUDE.md). `ui` is here so screenshot QA can open a
+// panel directly instead of driving the sim into the state that produces it.
+declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown; ui: Ui; perf: () => unknown } } }
+window.__mc = { game: () => game, save: () => save, ui, perf: perfReport };

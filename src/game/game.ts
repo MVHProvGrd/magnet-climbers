@@ -5,8 +5,8 @@ import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
-import { pawPose, PAW_DURATION, PAW_TAPS, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
-import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
+import { pawPose, PAW_DURATION, PAW_TAPS, PAW_WARN, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
+import { cloneTricks, freshTricks, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
 
@@ -80,9 +80,7 @@ export class Game {
   drag: { start: Vec; cur: Vec } | null = null;
   /** fling = slingshot off a teammate; move = crawl hand-over-hand to a new spot */
   mode: "fling" | "move" = "fling";
-  /** true after the player pans by hand; the camera stops following until recentered */
-  freeCam = false;
-  panning: { lastY: number } | null = null;
+
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
   /** the cat's paw tapping down from the top of the screen (v13); null when idle */
@@ -147,6 +145,7 @@ export class Game {
     this.spawnTeam(this.rules === "solo" ? 1 : this.level ? this.level.team : this.stats.teamSize, 0);
     if (this.level) this.target = { cm: this.level.goalCm, name: "GOAL", beaten: false };
     this.world.ensure(-this.viewH * 2);
+    this.relabelSolo();
   }
 
   private spawnTeam(n: number, y: number) {
@@ -226,7 +225,7 @@ export class Game {
 
   pointerDown(p: Vec) {
     if (this.phase === "dead") return;
-    // finger on an anchored climber → select it and start aiming; elsewhere → pan the camera
+    // finger on an anchored climber → select it and start aiming; elsewhere → nothing
     let best: Climber | null = null;
     let bd = 48;
     for (const c of this.anchored) {
@@ -236,7 +235,7 @@ export class Game {
     // solo: one climber, so a drag anywhere aims it
     if (!best && this.rules === "solo") {
       const only = this.anchored[0];
-      if (only) { this.selectedId = only.id; this.freeCam = false; this.drag = { start: p, cur: p }; }
+      if (only) { this.selectedId = only.id; this.drag = { start: p, cur: p }; }
       return;
     }
     if (best) {
@@ -255,7 +254,6 @@ export class Game {
       this.drag = { start: p, cur: p };
       return;
     }
-    this.panning = { lastY: p.y };
   }
 
   pointerMove(p: Vec) {
@@ -264,13 +262,6 @@ export class Game {
       if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) sfx.stretch();
       this.drag.cur = p; return;
     }
-    if (this.panning) {
-      const dy = p.y - this.panning.lastY;
-      this.camY -= dy;
-      this.freeCam = true;
-      // p is in world space and moves with the camera, so re-anchor after the shift
-      this.panning.lastY = p.y - dy;
-    }
   }
 
   /** Select a climber by id (from the HUD dots) and bring the camera to it. */
@@ -278,15 +269,9 @@ export class Game {
     const c = this.byId(id);
     if (!c || c.state === "lost") return;
     this.selectedId = id;
-    this.freeCam = false;
-  }
-
-  recenter() {
-    this.freeCam = false;
   }
 
   pointerUp() {
-    this.panning = null;
     if (!this.drag) return;
     const drag = this.drag;
     const c = this.byId(this.selectedId);
@@ -364,7 +349,6 @@ export class Game {
     sfx.launch();
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
-    this.freeCam = false;
     return true;
   }
 
@@ -823,13 +807,14 @@ export class Game {
       this.pickDefaultSelection();
     }
 
-    // camera follows the active climber unless the player has panned away
+    // the camera always follows the active climber; there is no hand-panning to escape it
     const sel = this.byId(this.selectedId);
-    if (sel && !this.freeCam) {
+    if (sel) {
       const target = sel.y - this.viewH * 0.55;
       this.camY += (target - this.camY) * Math.min(1, dt * 5);
     }
     this.world.ensure(this.camY - this.viewH);
+    this.relabelSolo();
 
     // particles / floats
     for (const p of this.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; }
@@ -1083,13 +1068,13 @@ export class Game {
     }
   }
 
-  private awardTrick(c: Climber, name: string, points: number) {
-    const score = registerTrick(this.tricks, name, points, this.time);
-    const bonus = this.chill ? 0 : Math.min(3, this.tricks.combo);
-    this.coins += bonus; if (bonus) this.events.onCoins(bonus);
-    sfx.trick();
-    this.floats.push({ x: c.x, y: c.y - 43, text: `${name} +${score}${this.tricks.combo > 1 ? `  x${this.tricks.combo}` : ""}`, life: 1.3, color: "#ffe393" });
-  }
+  /**
+   * Style points are gone: the tester could not control how a climber lands, so scoring it
+   * was noise. No score, no coin bonus, no float. The trick state stays in the save so old
+   * snapshots still load, and the detection below still marks new height, which is what
+   * stops landing on the same ledge from paying out.
+   */
+  private awardTrick(_c: Climber, _name: string, _points: number) { /* scoring removed */ }
 
   private awardNewHeight(c: Climber, name: string, points: number) {
     if (c.y >= this.tricks.frontierY - 45) return;
@@ -1114,7 +1099,8 @@ export class Game {
     const pose = pawPose(paw, this.camY, this.viewH);
     // each tap leaves four claw marks where it landed (fixed to the door, off the seam), fading on their own
     const marked = paw.marked ?? 0;
-    if (marked < PAW_TAPS.length && paw.t >= PAW_TAPS[marked]) {
+    // paw.t includes the warning hold, so the tap times are offset by it
+    if (marked < PAW_TAPS.length && paw.t - PAW_WARN >= PAW_TAPS[marked]) {
       paw.marked = marked + 1;
       for (const [dx, dy] of CLAW_TIPS) {
         const x = pose.x + dx; if (x > DOOR_SEAM.x - 4 && x < DOOR_SEAM.x + DOOR_SEAM.w + 4) continue;
@@ -1134,7 +1120,7 @@ export class Game {
       this.damage(c, true);
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
-    if (paw.t >= PAW_DURATION) {
+    if (paw.t >= PAW_DURATION + PAW_WARN) {
       this.paw = null;
       const climbed = Math.max(0, this.startY - this.highestY) / 1000;
       const interval = Math.max(CFG.handIntervalMin, CFG.handIntervalBase - climbed * 3);
@@ -1142,10 +1128,30 @@ export class Game {
       this.nextHandAt = this.time + interval * (0.75 + random() * 0.5);
     }
   }
+  /**
+   * Solo has no crew, so "+1 friend" is meaningless there. Those pickups become paint
+   * buckets instead.
+   *
+   * Done after generation rather than in the spawn table on purpose: the world keeps the
+   * same seeded draws and the same positions, only the label changes, so terrain is
+   * untouched and no world version bump is needed.
+   */
+  private relabelSolo() {
+    if (this.rules !== "solo") return;
+    for (const seg of this.world.segments) {
+      if (seg.soloPainted) continue;
+      seg.soloPainted = true;
+      for (const p of seg.powerUps) if (p.kind === "extra") p.kind = "paint";
+    }
+  }
+
   private stepHand(dt: number) {
     if (this.phase !== "running" || this.chill) return;
-    if (this.paw) { this.stepPaw(dt); return; }
+    // no early return: during the rare double both are live at once
+    if (this.paw) this.stepPaw(dt);
     if (!this.hand) {
+      // a lone paw owns the attack slot; only the combo below ever spawns a hand beside one
+      if (this.paw) return;
       if (this.time < this.nextHandAt) return;
       const anchored = this.anchored;
       const focus = anchored.length ? anchored.reduce((m, c) => (c.y < m.y ? c : m)) : this.alive[0];
@@ -1153,6 +1159,17 @@ export class Game {
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       // v13: about a third of the attacks are the cat, tapping down from the top of the screen
       if (this.world.version >= 13 && random() < 0.35) { this.paw = { x: 60 + random() * (W - 120), t: 0, hit: new Set() }; sfx.warning(); return; }
+      // Rare: Cooper and the cat go for the same climber together. No timing work needed --
+      // the hand's 1.1 s warning and the paw's 0.75 s hold plus its 0.48 s first tap land
+      // 0.13 s apart, so they converge on their own. The paw drops on the focus climber and
+      // the hand sweeps across them, so the two threats cross where the player is standing.
+      if (this.world.version >= 13 && random() < CFG.comboChance) {
+        const comboSide: -1 | 1 = random() < 0.5 ? -1 : 1;
+        this.hand = { side: comboSide, y: focus.y + (random() - 0.5) * 40, x: comboSide < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
+        this.paw = { x: Math.max(60, Math.min(W - 60, focus.x)), t: 0, hit: new Set() };
+        sfx.warning();
+        return;
+      }
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
       // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
@@ -1244,6 +1261,16 @@ export class Game {
         break;
       }
       case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
+      case "paint": {
+        // cosmetic only, and off the sim RNG so a replay of the same seed repaints the same
+        const palette = this.palette.filter((col) => col !== c.color);
+        c.color = palette[Math.floor(this.simNoise(p.x + p.y) * palette.length) % palette.length] ?? c.color;
+        c.pattern = undefined;
+        sfx.power();
+        this.burst(p.x, p.y, c.color, 14);
+        this.floats.push({ x: p.x, y: p.y, text: "NEW COAT", life: 1.2, color: c.color });
+        break;
+      }
       case "extra": {
         const n = this.makeClimber(p.x, p.y, "flying");
         n.vx = (this.simNoise(n.id) - 0.5) * 100; n.vy = -80; n.airTime = 0; n.leftLauncher = true;

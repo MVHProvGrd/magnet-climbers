@@ -1,5 +1,5 @@
 import { appearanceFor } from "./creatures";
-import { CFG, SHOP_ENABLED, W } from "./config";
+import { CFG, W } from "./config";
 import type { Game } from "./game";
 import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
@@ -8,6 +8,7 @@ import { drawCatPaw, drawScratches } from "./cat-paw";
 import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
+import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
 
 
 let lastRenderTime = 0;
@@ -145,12 +146,14 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
   const visible = g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
-  for (const c of visible) drawClimberShadow(ctx, c, g.time, appearanceFor(c));
-  for (const c of visible) {
+  // one resolve per climber, shared by the shadow pass and the body pass
+  const looks = visible.map((c) => appearanceFor(c));
+  for (let i = 0; i < visible.length; i++) drawClimberShadow(ctx, visible[i], g.time, looks[i]);
+  for (const [i, c] of visible.entries()) {
     const flicker = c.iframes > 0 && Math.floor(g.time * 18) % 2 === 0;
     // Hit flash: a white halo without a blur pass.
     if (flicker) { ctx.shadowColor = "rgba(255,255,255,0.9)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 1.5; }
-    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, appearanceFor(c));
+    drawClimber(ctx, c, c.id === g.selectedId && g.phase !== "dead", g.time, looks[i]);
     ctx.shadowBlur = 0; ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
     // hp pips above the head, only once someone has taken a hit
@@ -171,7 +174,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
   ctx.globalAlpha = 1;
 
-  // floor / danger line: the kid's reach, rendered as a rising shadow (absent in chill)
+  // floor / danger line: Cooper's reach, rendered as a rising shadow (absent in chill)
   const fy = g.floorY;
   if (g.chill) { /* no wall */ } else {
   const grad = ctx.createLinearGradient(0, fy - 60, 0, fy + 40);
@@ -182,7 +185,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.strokeStyle = "rgba(255,80,110,0.9)";
   ctx.lineWidth = 3;
   ctx.setLineDash([10, 8]);
-  ctx.lineDashOffset = -g.time * 40;
+  // marching dashes are motion; reduced-motion keeps the red line, drops the march
+  ctx.lineDashOffset = prefersReducedMotion() ? 0 : -g.time * 40;
   ctx.beginPath();
   ctx.moveTo(0, fy);
   ctx.lineTo(W, fy);
@@ -257,93 +261,11 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 }
 
 
-/** Top of the bottom stat row (height box, wallet, wall pill): above the crew buttons when there are any. */
-export function statRowY(g: Game, viewH: number) { return viewH - safeBottom - 48 - (g.rules === "crew" ? 52 : 6); }
+export { statRowY, hudButtons, teamDots, teamTapRects, dockRect, redLineCm, inDanger, clearAvatars, setChatStrip } from "./hud";
+
+/** The whole in-run HUD is the dock (see hud.ts); this only adds the idle hint above it. */
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
-  // the HUD lives at the bottom: the kid's hand and the cat come in from the top and sides, so the top stays clear
-  const sy = statRowY(g, viewH);
-  if (g.tricks.score > 0) {
-    ctx.fillStyle = "rgba(22,34,43,.8)";
-    roundRect(ctx, 10, sy - 66, 138, 23, 7); ctx.fill();
-    ctx.fillStyle = "#ffe393"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
-    const combo = g.time - g.tricks.lastAt <= 4.5 && g.tricks.combo > 1 ? `  ×${g.tricks.combo}` : "";
-    ctx.fillText(tr(`STYLE ${g.tricks.score}${combo}`), 19, sy - 50);
-  }
-  ctx.font = "bold 22px system-ui, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  const tall = !g.chill && g.phase === "running";
-  roundRect(ctx, 10, sy + (tall ? 0 : 14), 120, tall ? 48 : 34, 10);
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.fillText(tr(`${g.heightCm} cm`), 20, sy + (tall ? 25 : 39));
-
-  if (tall) {
-    const m = g.wallMult();
-    ctx.font = "bold 11px system-ui, sans-serif";
-    ctx.fillStyle = m >= 2.5 ? "#ff6b6b" : m >= 1.6 ? "#ffd23f" : "rgba(255,255,255,0.85)";
-    ctx.fillText(tr(`▲ wall ${m.toFixed(1)}x`), 20, sy + 40);
-  }
-
-  ctx.font = "bold 15px system-ui, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  const runRow = !g.chill && (g.coins > 0 || g.gems > 0);
-  roundRect(ctx, W - 130, sy + (runRow ? 2 : 14), 120, runRow ? 46 : 34, 10);
-  ctx.fill();
-  // wallet + this run's pickups (chill runs bank nothing, so show only the wallet there)
-  const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
-  const wy0 = sy + (runRow ? 24 : 36);
-  // the real coin and gem art as icons, numbers to their right
-  const icon = (kind: "coin" | "gem", x: number) => { ctx.save(); ctx.translate(x, wy0 - 6); if (!drawPickupImage(ctx, kind, 20)) { ctx.fillStyle = kind === "coin" ? "#ffd23f" : "#7ef0ff"; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); };
-  ctx.textAlign = "left";
-  icon("coin", W - 118); ctx.fillStyle = "#ffd23f"; ctx.fillText(`${g.walletCoins + runCoins}`, W - 105, wy0);
-  icon("gem", W - 52); ctx.fillStyle = "#7ef0ff"; ctx.fillText(`${g.walletGems + runGems}`, W - 39, wy0);
-  ctx.textAlign = "right";
-  if (runRow) {
-    ctx.font = "bold 10px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText(tr(`+${runCoins}${runGems ? ` ◆+${runGems}` : ""} this run`), W - 20, sy + 40);
-    ctx.font = "bold 15px system-ui, sans-serif";
-  }
-
-  // team dots double as the active-climber selector
-  for (const d of teamDots(g, viewH)) {
-    const c = g.byId(d.id)!;
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.beginPath(); ctx.arc(d.x, d.y, 15, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = c.color;
-    ctx.beginPath(); ctx.arc(d.x, d.y, 10, 0, Math.PI * 2); ctx.fill();
-    if (c.id === g.selectedId) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke(); }
-    if (c.state === "flying") { ctx.fillStyle = "#fff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText("↑", d.x, d.y + 4); }
-    if (g.isLadder(c)) { ctx.fillStyle = "#1a1d24"; ctx.fillRect(d.x - 5, d.y - 1, 10, 2); ctx.fillRect(d.x - 5, d.y + 3, 10, 2); ctx.fillRect(d.x - 5, d.y - 5, 10, 2); }
-    // hp pips under the dot
-    for (let i = 0; i < CFG.maxHp; i++) {
-      ctx.fillStyle = i < c.hp ? "#ff5c8a" : "rgba(0,0,0,0.5)";
-      ctx.fillRect(d.x - 7 + i * 5, d.y + 18, 4, 3);
-    }
-  }
-
-  if (g.level) {
-    // expedition: level name in the middle, flings below it
-    const name = tr(g.level.name).toUpperCase();
-    ctx.font = "bold 11px system-ui, sans-serif"; ctx.textAlign = "center";
-    const w = Math.max(90, ctx.measureText(name).width + 24);
-    ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - w / 2, 10, w, 22, 8); ctx.fill();
-    ctx.fillStyle = "#ffd23f"; ctx.fillText(name, W / 2, 25);
-    const left = g.level.flings - g.flings;
-    ctx.fillStyle = "rgba(0,0,0,0.45)"; roundRect(ctx, W / 2 - 52, 36, 104, 22, 8); ctx.fill();
-    ctx.fillStyle = left <= 2 ? "#ff8a8a" : "#fff"; ctx.font = "bold 12px system-ui, sans-serif";
-    ctx.fillText(tr(`FLINGS ${left} / ${g.level.flings}`), W / 2, 51);
-  } else if (g.chill) {
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
-    roundRect(ctx, W / 2 - 34, 10, 68, 22, 8);
-    ctx.fill();
-    ctx.fillStyle = "#9be15d";
-    ctx.font = "bold 11px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(tr("😌 CHILL"), W / 2, 25);
-  }
+  drawDock(ctx, g, viewH, g.time);
 
   // off-screen climbers: coloured arrows at the edge, tappable
   for (const m of offscreenMarkers(g, viewH)) {
@@ -363,115 +285,44 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     ctx.fillText(tr(`${dist} cm`), m.x, m.y + 13);
   }
 
-  // wall indicator when the danger line is off the bottom of the screen
-  const wallScreen = g.floorY - g.camY;
-  if (!g.chill && wallScreen > viewH) {
-    const dist = Math.round((g.floorY - Math.max(...g.alive.map((c) => c.y), g.camY)) / CFG.pxPerCm);
-    ctx.fillStyle = "rgba(255,80,110,0.9)";
-    const wy = sy + 12; // between the two stat boxes
-    roundRect(ctx, W / 2 - 70, wy, 140, 26, 8);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 13px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(tr(`▼ wall ${dist} cm below`), W / 2, wy + 18);
-  }
-
-  // active effects, stacked upward above the STYLE readout
-  let ey = (g.tricks.score > 0 ? sy - 66 : sy - 40) - 26;
-  const eff: [string, number, string][] = [
-    ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
-    ["SLOW-MO", g.effects.slowmo, "#c77dff"],
-    ["LONG ARMS", g.effects.reach, "#9be15d"],
-    ["CANDY", g.effects.candy, "#ff8fb0"],
-  ];
-  ctx.font = "bold 12px system-ui, sans-serif";
-  ctx.textAlign = "left";
-  for (const [name, left, color] of eff) {
-    if (left <= 0) continue;
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
-    roundRect(ctx, 10, ey, 130, 20, 6);
-    ctx.fill();
-    ctx.fillStyle = color;
-    ctx.fillRect(12, ey + 16, 126 * Math.min(1, left / 8), 2);
-    ctx.fillStyle = "#fff";
-    ctx.fillText(tr(`${name} ${left.toFixed(0)}s`), 16, ey + 13);
-    ey -= 26;
-  }
-
-  // bottom buttons
-  const b = hudButtons(viewH);
-  ctx.textAlign = "center";
-  ctx.font = "bold 14px system-ui, sans-serif";
-  if (g.rules === "crew") {
-    ctx.fillStyle = g.mode === "fling" ? "#ff8a3d" : "#4fc3f7";
-    roundRect(ctx, b.mode.x, b.mode.y, b.mode.w, b.mode.h, 12);
-    ctx.fill();
-    ctx.fillStyle = "#1a1d24";
-    ctx.fillText(tr(g.mode === "fling" ? "FLING" : "CLIMB"), b.mode.x + b.mode.w / 2, b.mode.y + 27);
-  }
-  if (g.rules === "crew") {
-    ctx.fillStyle = g.sync ? "#c77dff" : "rgba(0,0,0,0.45)";
-    roundRect(ctx, b.sync.x, b.sync.y, b.sync.w, b.sync.h, 12);
-    ctx.fill();
-    ctx.fillStyle = g.sync ? "#1a1d24" : "#fff";
-    ctx.fillText(tr(g.sync ? "SYNC ON" : "SYNC"), b.sync.x + b.sync.w / 2, b.sync.y + 27);
-  }
-  if (g.freeCam) {
-    ctx.fillStyle = "#fff";
-    roundRect(ctx, b.recenter.x, b.recenter.y, b.recenter.w, b.recenter.h, 12);
-    ctx.fill();
-    ctx.fillStyle = "#1a1d24";
-    ctx.fillText(tr("◎ RECENTER"), b.recenter.x + b.recenter.w / 2, b.recenter.y + 27);
-  }
-  if (SHOP_ENABLED && g.rules === "crew" && g.reserves > 0) {
-    ctx.fillStyle = "#9be15d";
-    roundRect(ctx, b.reserve.x, b.reserve.y, b.reserve.w, b.reserve.h, 12);
-    ctx.fill();
-    ctx.fillStyle = "#1a1d24";
-    ctx.fillText(tr(`+1 RESERVE (${g.reserves})`), b.reserve.x + b.reserve.w / 2, b.reserve.y + 27);
-  }
-
-  if (g.phase === "idle") {
-    ctx.font = "bold 12px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    const hb = sy - 130; // hint box top, clear of the stat row and the team dots
-    roundRect(ctx, 20, hb, W - 40, 82, 12);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    if (keyboardHints) {
-      ctx.fillText(tr("Hold SPACE to charge, WASD to aim, release to fling."), W / 2, hb + 26);
-      ctx.fillText(tr("Stick to steel. Outrun the red line."), W / 2, hb + 48);
-      ctx.fillText(tr("TAB picks a climber · C move/fling · X sync · R recentre"), W / 2, hb + 70);
-    } else if (g.rules === "solo") {
-      ctx.fillText(tr("Drag back anywhere, release to fling."), W / 2, hb + 37);
-      ctx.fillText(tr("Stick to steel. Outrun the red line."), W / 2, hb + 59);
-    } else {
-      ctx.fillText(tr("Drag back from a climber, release to fling."), W / 2, hb + 26);
-      ctx.fillText(tr("SYNC flings the whole crew. CLIMB crawls to a teammate."), W / 2, hb + 48);
-      ctx.fillText(tr("Tap dots to switch. Drag empty steel to look around."), W / 2, hb + 70);
-    }
-  }
+  drawHint(ctx, g, viewH);
 }
 
 /** Logical-px clearance above the bottom edge (gesture bar / home indicator). Set from main. */
-let safeBottom = 28;
 export function setSafeBottom(px: number) {
-  safeBottom = Math.max(28, px);
+  setHudSafeBottom(px);
 }
 
-/** Screen-space rects for the canvas buttons; shared with the input code. */
-export function hudButtons(viewH: number) {
-  const by = viewH - 42 - safeBottom;
-  return {
-    mode: { x: 12, y: by, w: 84, h: 42 },
-    sync: { x: 104, y: by, w: 90, h: 42 },
-    recenter: { x: W - 132, y: 100, w: 120, h: 42 },
-    reserve: { x: W - 152, y: by, w: 140, h: 42 },
-  };
+/** Idle hint: seconds left on the 10 s timer, or null when it should not show (set by main.ts). */
+let hintLeft: number | null = null;
+export function setHintLeft(v: number | null) { hintLeft = v; }
+
+/** One slab above the dock's shoulder, two lines max, with a draining progress bar (handoff 1g). */
+function drawHint(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
+  if (hintLeft === null || g.phase !== "idle") return;
+  const lines = keyboardHints
+    ? [tr("Hold SPACE to charge, WASD to aim, release to fling.")]
+    : g.rules === "solo"
+      ? [tr("Drag back anywhere, release to fling."), tr("Stick to steel. Outrun the red line.")]
+      : [tr("Drag back from a climber, release to fling."), tr("SYNC flings the whole crew. CLIMB crawls to a teammate.")];
+  const d = dockRect(viewH);
+  const h = 10 + lines.length * 19 + 10;
+  // above the chip row, which itself sits 12 px over the dock
+  const y = d.y - 12 - 28 - 12 - h;
+  // the last 3 s fade out rather than vanishing
+  const alpha = Math.max(0, Math.min(1, hintLeft / 3));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(20,22,28,.88)";
+  slabRect(ctx, 12, y, W - 24, h, 12); ctx.fill();
+  ctx.font = font(700, 14); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  lines.forEach((line, i) => ctx.fillText(line, W / 2, y + 26 + i * 19));
+  ctx.fillStyle = "#9be15d";
+  ctx.fillRect(12, y + h - 2, (W - 24) * Math.max(0, Math.min(1, hintLeft / 10)), 2);
+  ctx.restore();
 }
 
-/** Edge markers for living climbers that are off screen; tap to select and recenter. */
+/** Edge markers for living climbers that are off screen; tap to select, and the camera follows. */
 export function offscreenMarkers(g: Game, viewH: number): { id: number; x: number; y: number; dir: "up" | "down" }[] {
   const out: { id: number; x: number; y: number; dir: "up" | "down" }[] = [];
   for (const c of g.climbers) {
@@ -480,19 +331,6 @@ export function offscreenMarkers(g: Game, viewH: number): { id: number; x: numbe
     if (sy > -40 && sy < viewH + 40) continue;
     const x = Math.max(28, Math.min(W - 28, c.x));
     out.push({ id: c.id, x, y: sy < 0 ? 118 : viewH - 128, dir: sy < 0 ? "up" : "down" });
-  }
-  return out;
-}
-
-/** Screen-space positions of the HUD team dots (tap to select). */
-export function teamDots(g: Game, viewH: number): { id: number; x: number; y: number }[] {
-  const out: { id: number; x: number; y: number }[] = [];
-  let x = 26;
-  const y = statRowY(g, viewH) - 24; // just above the height box
-  for (const c of g.climbers) {
-    if (c.state === "lost") continue;
-    out.push({ id: c.id, x, y });
-    x += 32;
   }
   return out;
 }

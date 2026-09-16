@@ -37,12 +37,16 @@ export const CFG = {
   bumperKnock: 420,
   /** hit points per climber and the grace period after a hit */
   maxHp: 3,
+  /** HUD danger state: red-line distance in cm at or below which the dock goes red (handoff 1e) */
+  dangerCm: 15,
   hitIframes: 0.9,
   /** kid hand swipes: first one after this many seconds of running, then every base..base/2 s as height grows */
   handFirstAfter: 18,
   handIntervalBase: 22,
   handIntervalMin: 9,
   handWarn: 1.1,
+  /** rare double attack: Cooper and the cat come at the same climber at once (world v13+) */
+  comboChance: 0.07,
   handShove: 560,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
   /** red line speed while a candy drop is active */

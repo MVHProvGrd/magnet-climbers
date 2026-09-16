@@ -8,3 +8,4 @@ artifacts/gadgets/*/sheet-transparent.png
 artifacts/gadgets/*/single-1.png
 artifacts/gadgets/*/animation.gif
 worker/.wrangler
+design_handoff_hud_menus/

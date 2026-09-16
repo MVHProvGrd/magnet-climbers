@@ -1,4 +1,4 @@
-import type { Bumper, NoStickZone, PowerUp } from "./types";
+import type { Bumper, NoStickZone, PowerUp, PowerKind } from "./types";
 import { fridgeItem, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview, obstacleImage } from "./obstacle-art";
@@ -400,7 +400,7 @@ export function drawPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: numbe
 /** Previous badge illustrations retained for a retro look. */
 export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time: number) {
   const bob = Math.sin(time * 3 + p.bob), y = p.y + bob * 4;
-  const colors = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0", candy: "#ff8fb0" };
+  const colors: Record<PowerKind, string> = { coin: "#ffcf58", gem: "#70d9ed", magnet: "#ee7a91", extra: "#a9d783", slowmo: "#b5a2ed", reach: "#81cce5", heart: "#ff8fb0", candy: "#ff8fb0", paint: "#7ad1ff" };
   ctx.save(); ctx.translate(p.x, y); ctx.lineCap = "round";
   if (p.kind !== "coin") {
     ctx.strokeStyle = `${colors[p.kind]}66`; ctx.lineWidth = 1.4;
@@ -430,6 +430,15 @@ export function drawLegacyPower(ctx: CanvasRenderingContext2D, p: PowerUp, time:
     ctx.arc(-4, -3, 4.5, 0, TAU); ctx.arc(4, -3, 4.5, 0, TAU); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-8.3, -1.5); ctx.lineTo(0, 9); ctx.lineTo(8.3, -1.5); ctx.closePath(); ctx.fill();
     circle(ctx, -4.5, -4.5, 1.4, "rgba(255,255,255,0.8)");
+  } else if (p.kind === "paint") {
+    // bucket: tapered body, handle, and a colour spill over the lip
+    ctx.fillStyle = "#3f4a55";
+    ctx.beginPath(); ctx.moveTo(-7.5, -4); ctx.lineTo(7.5, -4); ctx.lineTo(5.5, 8); ctx.lineTo(-5.5, 8); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#9fb3c4"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, -5, 6.5, Math.PI, TAU); ctx.stroke();
+    ctx.fillStyle = "#7ad1ff";
+    ctx.beginPath(); ctx.ellipse(0, -4, 7.5, 2.2, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(4, -3.4); ctx.quadraticCurveTo(9, 1, 6.5, 5); ctx.quadraticCurveTo(4.5, 1, 4, -3.4); ctx.fill();
   } else if (p.kind === "extra") {
     circle(ctx, -3, -6, 3, "#376652"); line(ctx, [-3, -1, -3, 7], "#376652", 3);
     line(ctx, [-8, 1, -3, 3, 2, 0], "#376652", 2.5); line(ctx, [-7, 10, -3, 5, 1, 10], "#376652", 2.5);

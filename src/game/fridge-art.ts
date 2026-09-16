@@ -191,6 +191,16 @@ export function drawPickupObject(c: CanvasRenderingContext2D, kind: PowerKind) {
     shadow(2, 14, 18, 3); const caseG = c.createLinearGradient(-16, -12, 4, 13); caseG.addColorStop(0, "#ffe28a"); caseG.addColorStop(.55, "#e9b64f"); caseG.addColorStop(1, "#a96d32"); box(c, -18, -13, 25, 27, "#8b6337", 6); box(c, -15, -11, 20, 22, caseG, 5); box(c, -10, -7, 10, 10, "#da8052", 3);
     box(c, 3, -5, 20, 9, "#aeb9b6", 2); box(c, 4, -3, 20, 5, "#fbf0c3", 1); for (let i = 0; i < 6; i++) line(c, [7 + i * 3, -3, 7 + i * 3, i % 2 ? 0 : 1], "#75644f", .8); line(c, [23, -6, 23, 6], "#e4eee8", 2);
   }
+  if (kind === "paint") {
+    // a real tin: tapered body, wire handle, and a spill of colour over the lip
+    shadow(0, 16, 14, 3);
+    const tin = c.createLinearGradient(-14, -10, 12, 14); tin.addColorStop(0, "#8fa3b4"); tin.addColorStop(.5, "#54626f"); tin.addColorStop(1, "#38434e");
+    c.fillStyle = tin; c.beginPath(); c.moveTo(-13, -8); c.lineTo(13, -8); c.lineTo(10, 16); c.lineTo(-10, 16); c.closePath(); c.fill();
+    c.strokeStyle = "#c3d2dd"; c.lineWidth = 2.2; c.beginPath(); c.arc(0, -10, 12, Math.PI, Math.PI * 2); c.stroke();
+    oval(c, 0, -8, 13, 4, "#7ad1ff");
+    c.fillStyle = "#7ad1ff"; c.beginPath(); c.moveTo(7, -6); c.quadraticCurveTo(16, 2, 11, 10); c.quadraticCurveTo(7, 2, 7, -6); c.fill();
+    line(c, [-9, 3, 9, 3], "rgba(255,255,255,.18)", 1.4);
+  }
   if (kind === "extra") {
     shadow(0, 17, 15, 3); box(c, -15, -18, 30, 36, "#aa8450", 7); box(c, -12, -16, 24, 31, "#d7b46b", 5); box(c, -8, -11, 16, 23, "#345769", 4);
     oval(c, 0, -3, 4, 4, "#d7e2c0"); line(c, [0, 2, 0, 9], "#d7e2c0", 2.5); line(c, [-5, 4, 0, 5, 5, 4], "#d7e2c0", 2); line(c, [-4, 13, 0, 8, 4, 13], "#d7e2c0", 2);

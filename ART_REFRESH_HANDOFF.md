@@ -1,6 +1,122 @@
 # Art refresh handoff — 2026-09-14
 
+## QUEUED FOR CODEX — three story scenes (pack 21) — 2026-09-15
+
+Owner request. The story is three slides and each one currently shows the player's own
+creature rendered on a canvas, which is generic: the same toy three times, telling none of
+the story. Replace it with three illustrated scenes, one per slide.
+
+**These are SCENES, not cutouts.** Do not generate on flat #FF00FF and do not run
+chroma-cut.py: these are opaque rectangular illustrations that sit inside a dark card. The
+usual cutout rules in the queue below do not apply to this pack.
+
+Pack `art/archive/21-story-scenes-v1/` with the usual `sources/`, `ready/`, `prompts.md`,
+a README row, then `node scripts/art-archive-page.mjs`. Never write to `public/art/`;
+Claude wires it.
+
+### Format
+- 768x512 (3:2), `.webp`, opaque, no alpha, no transparent margin.
+- Shown at about 340x227 logical px on a phone, inside a dark slab (`rgba(20,22,28,.9)`)
+  with white text directly beneath. Keep the important content in the middle; the bottom
+  ~15% may be dimmed by the card. Nothing critical in the corners.
+- Must read at that size on a phone: strong silhouettes, few subjects, no fine detail and
+  no text anywhere in the image.
+- Files: `story-1-life.webp`, `story-2-bedtime.webp`, `story-3-climb.webp`.
+
+### The three scenes, matching the slide copy exactly
+
+1. `story-1-life` — "Life on the fridge"
+   > We are the magnet people. We hold up the pizza menu, the dentist card, the photo of
+   > Cooper. Good job. Steady work.
+   Daytime kitchen, stainless fridge door filling the frame, warm and calm. Several rubbery
+   magnet toys posed proudly, each holding up a piece of paper: a pizza menu, a dentist
+   appointment card, a child's photo. Everything tidy and in its place. This is the "before".
+
+2. `story-2-bedtime` — "Then bedtime came"
+   > Cooper "tidied up". Now we are on the floor, and the sock drawer is next. Anyone still
+   > on the fridge by morning stays on the fridge.
+   Evening, lights low. Looking down at the kitchen floor: the same toys scattered in a heap
+   where they were swept off, papers fallen around them. The fridge looms above, bare and
+   out of reach. An open sock drawer waits in the background. Slightly ominous, still toy-like
+   and funny, not frightening. No child's face in frame.
+
+3. `story-3-climb` — "So we climb"
+   > Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is
+   > Cooper's reach. Stay above it.
+   Low hero angle looking up the fridge door. A chain of magnet toys mid-climb, one flung
+   through the air with its magnet hands reaching. Determined, upward, energetic. A red
+   danger line low in the frame, well below them.
+
+### Style
+Match the existing title art (`public/art/title-fridge.webp`) and the photographed realism
+of packs 19/20: real kitchen, real stainless steel, real lighting, with the toys as the one
+stylised element. Consistent lighting, palette and camera character across all three so they
+read as one set. The toys are the translucent rubbery magnet people already in the game.
+
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
+
+## QUEUED FOR CODEX — paint bucket pickup (pack 23) — 2026-09-15
+
+Owner request. Solo runs no longer spawn "+1 friend" pickups (a crew of one cannot gain a
+teammate); those become paint buckets that repaint your climber mid-run, purely cosmetic.
+It is drawn on canvas for now and wants a real photographed tin like the other pickups.
+
+Cutout rules apply as usual: flat #FF00FF, keyed with chroma-cut.py. Pack
+`art/archive/23-paint-bucket-v1/` with `sources/`, `ready/`, `prompts.md`, a README row,
+then `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude wires it.
+
+- `paint.png`, **256x256**, transparent, to sit beside the existing pickups in
+  `public/art/real-v1/pickups/` (coin, gem, heart, magnet, extra, slowmo, reach, candy) and
+  match their scale, lighting and finish: it is drawn at about 46 px in game and 44 px in
+  the guide tile.
+- A small household paint tin, lid off, wire handle up, with a bright spill of colour over
+  the lip and down one side. The spill is the read at 46 px, so make it generous.
+- Keep the spill a single saturated colour that is not already a pickup: coin is yellow,
+  gem is cyan, heart is red, candy is pink. A strong green or violet would be clear.
+- No text or branding on the tin.
+
+## QUEUED FOR CODEX — cat claws (pack 22) — 2026-09-15
+
+Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks
+that are hand-drawn strokes in `cat-paw.ts` (a 1.5 px grey curve with a 0.7 px white
+highlight, about 20 px long, four per tap, fading over 1.6 s). Both want real art.
+
+Unlike pack 21 these ARE cutouts: generate on flat #FF00FF and key with
+`.claude/skills/chroma-cutout/scripts/chroma-cut.py` as usual. Pack
+`art/archive/22-cat-claws-v1/` with `sources/`, `ready/`, `prompts.md`, a README row, then
+`node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude wires it.
+
+### 1. Claws-out paw — `cat-paw-claws-v1.webp`
+
+A second pose of the SAME paw with the claws extended, for the moment of contact. The
+existing paw stays as the approach and retreat pose.
+
+**Geometry is a contract, not a suggestion.** `cat-paw.ts` locates the pad and the four
+claw tips by fraction of the image, and the hitbox is pad-only, so the two poses must be
+interchangeable frame-for-frame:
+- identical canvas size to `public/art/real-v1/cat-paw.webp`: **362x1085**
+- pad centre at the same place: x 365/725, y 1840/2170 of the frame
+- paw width the same fraction: 454/725
+- the leg above the pad unchanged in position and thickness, so a swap mid-strike does not
+  make the limb jump
+- only the toes change: claws out and forward, past the toe pads
+- claws should read at the four existing tip offsets from the pad centre, which are
+  (-38, 50), (-13, 64), (12, 64), (37, 50) at game scale
+
+Same tabby, same lighting and same key as the existing paw: it is the same cat.
+
+### 2. Claw marks left on the door — `claw-mark-1..3-v1.webp`
+
+Three variations of a single fresh scratch on brushed stainless, to scatter so repeated
+taps do not look stamped.
+- about 64x256 each, transparent, the mark running top to bottom
+- a bright metal gouge with a darker shadow edge, as if the coating is scored: it must read
+  on both the light steel door and the darker panels
+- slightly curved, tapering to nothing at the bottom, like a claw dragging down
+- no cat, no paw, no background: the mark only
+- each of the three a different length and curvature
+
+Claude animates the growth and the fade; supply the finished mark at full extent.
 
 ## Plain-item realism batch 20 — 2026-09-15
 

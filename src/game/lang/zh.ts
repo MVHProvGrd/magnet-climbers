@@ -1,6 +1,9 @@
 import { t, type Rule } from "../i18n";
 
 export const exact: Record<string, string> = {
+  // HUD redesign labels
+  "HEIGHT": "高度", "RED LINE": "红线", "MODE": "模式", "CHILL": "悠闲", "HOW TO": "玩法", "STORY": "故事", "BOARD": "排行榜", "BANKED": "已入账", "CLIMB AGAIN": "再爬一次", "REVIVE THE CREW": "复活队伍", "TRY IT": "试试看", "online": "在线",
+
   "Settings": "设置", "Fridge field guide": "冰箱图鉴", "Global chat": "全球聊天", "Story": "故事",
   "How to play": "玩法", "Scoreboard": "排行榜",
   "Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.": "把橡胶磁铁小人甩上无尽的冰箱。吸住钢板，甩开小孩。",
@@ -71,7 +74,7 @@ export const exact: Record<string, string> = {
   "N Souvenir Magnet": "N 极纪念磁贴", "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.": "标着 N 的冰箱纪念磁贴。红色磁场推开空中的攀登者；弧线越宽推力越大。大的就是弹弓。",
   "S Souvenir Magnet": "S 极纪念磁贴", "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.": "标着 S 的冰箱纪念磁贴。蓝色磁场远距离把空中的攀登者拉过来，表面能接住你。瞄准点在它弯曲你飞行的地方会变蓝。",
   "Fiji (S)": "斐济 (S)", "Hawaii (S)": "夏威夷 (S)", "Bali (S)": "巴厘岛 (S)", "Norway (N)": "挪威 (N)", "Alaska (N)": "阿拉斯加 (N)", "Iceland (N)": "冰岛 (N)", "Jūrmala (N)": "尤尔马拉 (N)", "Kyiv (N)": "基辅 (N)",
-  "Avatar": "头像", "Choose an avatar": "选择头像", "PICK": "选择", "Just your initial": "只显示首字母", "Back to your initial": "已恢复首字母",
+  "Avatar": "头像", "PICK": "选择", "Just your initial": "只显示首字母", "Back to your initial": "已恢复首字母",
   "Hold SPACE to charge, WASD to aim, release to fling.": "按住空格蓄力，WASD 瞄准，松开投掷。", "TAB picks a climber \u00b7 C move/fling \u00b7 X sync \u00b7 R recentre": "TAB 选择攀爬者 · C 移动/投掷 · X 同步 · R 居中", "\u2328\ufe0f Hold SPACE to charge the pull-back, aim with WASD, let go to fling.": "⌨️ 按住空格蓄力，用 WASD 瞄准，松开投掷。",
   "Candy Drop": "糖果", "Cooper stops for a sweet: the red line crawls for a while.": "小孩停下来吃糖：红线会慢慢爬一会儿。", "CANDY": "糖果", "CANDY DROP": "糖果",
   "Earn 9 expedition stars": "获得 9 颗探险星星",
@@ -140,7 +143,7 @@ export const exact: Record<string, string> = {
   "🔴 The red line is Cooper's reach. It rises faster the higher you get. Keep moving.": "🔴 红线是小孩够得到的高度。你越高它涨得越快。别停。",
   "✅ That's it. Crew mode flings the whole gang at once. Go climb.": "✅ 就这些。队伍模式一次甩全队。去爬吧。",
   "nothing to hold there": "那里没东西可抓", "LADDER": "人梯", "BEST BEATEN ✓": "已破纪录 ✓", "😌 CHILL": "😌 休闲",
-  "FLING": "甩出", "CLIMB": "攀爬", "SYNC ON": "同步 开", "SYNC": "同步", "◎ RECENTER": "◎ 回中",
+  "FLING": "甩出", "CLIMB": "攀爬", "SYNC ON": "同步 开", "SYNC": "同步",
   "Drag back anywhere, release to fling.": "任意处向后拖拽，松开甩出。", "Stick to steel. Outrun the red line.": "吸住钢板。甩开红线。",
   "Drag back from a climber, release to fling.": "从攀登者处向后拖拽，松开甩出。",
   "SYNC flings the whole crew. CLIMB crawls to a teammate.": "同步一次甩全队。攀爬爬向队友。",
