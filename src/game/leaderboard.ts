@@ -70,6 +70,18 @@ export interface ChatMessage { id: number; name: string; text: string; player_id
 /** Global chat: polled while the panel is open. */
 export const chat = {
   list: (after = 0) => call<{ messages: ChatMessage[]; online: number }>(`/chat?after=${after}`),
+  /** One page of older messages, for a log scrolled back to its top. `more` is false at the start of history. */
+  older: (before: number, limit = 40) => call<{ messages: ChatMessage[]; more: boolean }>(`/chat?before=${before}&limit=${limit}`),
+  /** Block or report someone. Fire and forget: blocking already took effect on the device. */
+  report: async (playerId: string, token: string, kind: "block" | "report", targetId: string, messageId = 0): Promise<void> => {
+    if (!leaderboardEnabled || !token) return;
+    try {
+      await fetch(API + "/chat/report", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId, token, kind, targetId, ...(messageId ? { messageId } : {}) }),
+      });
+    } catch { /* a flag that does not reach the Worker still hides them here */ }
+  },
   send: async (playerId: string, token: string, name: string, text: string, avatar = ""): Promise<{ ok: true; message: ChatMessage } | { error: string } | null> => {
     if (!leaderboardEnabled) return null;
     try {

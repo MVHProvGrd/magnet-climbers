@@ -62,7 +62,25 @@ export interface UiHandlers {
  * read-mostly list, so paint the last known messages immediately and let the poll correct
  * them. A reopen is then instant, and a cold start still shows the previous session.
  */
+/** Kept on the device for an instant reopen. The open panel holds more than this:
+ *  scrolling to the top pulls older pages from the Worker, which are not cached. */
 const CHAT_CACHE_KEY = "mc-chat-cache", CHAT_CACHE_MAX = 60;
+/** Rows the open panel will render at once, live plus whatever has been scrolled back to. */
+const CHAT_VIEW_MAX = 400;
+/**
+ * Players this device has blocked. Blocking is local and immediate: their messages
+ * stop rendering here whatever the Worker sends. The flag is also posted so the
+ * owner can see who is being complained about, but nothing waits on that.
+ */
+const BLOCK_KEY = "mc-blocked";
+let blockedIds: Set<string> = (() => {
+  try { return new Set(JSON.parse(localStorage.getItem(BLOCK_KEY) ?? "[]") as string[]); } catch { return new Set(); }
+})();
+export const isBlocked = (playerId: string) => blockedIds.has(playerId);
+function setBlocked(playerId: string, on: boolean) {
+  if (on) blockedIds.add(playerId); else blockedIds.delete(playerId);
+  try { localStorage.setItem(BLOCK_KEY, JSON.stringify([...blockedIds])); } catch { /* private mode */ }
+}
 let chatCache: ChatMessage[] = (() => {
   try { const raw = localStorage.getItem(CHAT_CACHE_KEY); return raw ? (JSON.parse(raw) as ChatMessage[]) : []; } catch { return []; }
 })();
@@ -274,7 +292,7 @@ export class Ui {
     void chat.list(0).then((r) => {
       if (!r || el !== this.chatStrip || !el.isConnected) return;
       const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
-      const last = r.messages.slice(-2);
+      const last = r.messages.filter((m) => !isBlocked(m.player_id)).slice(-2);
       if (lines) lines.innerHTML = last.length
         ? last.map((m) => { const face = m.player_id === this.save().playerId ? this.save().avatar : m.avatar ?? undefined;
             // always a tile, portrait or initial, so the two lines start at the same x
@@ -502,19 +520,68 @@ export class Ui {
       return `<div class="cmsg ${mine ? "me" : ""}">
         ${avatarHtml(face, m.name, "calc(44 * var(--px))").replace('class="avi', 'class="cav avi')}
         <span class="cbody">
-          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
+          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i>${mine ? "" : `<button class="cflag" data-flag="${esc(m.player_id)}" data-msg="${m.id}" data-name="${esc(m.name)}" aria-label="Block or report ${esc(m.name)}">⋯</button>`}</span>
           <span class="cbubble">${esc(m.text)}</span>
         </span>
       </div>`;
     };
     // a few grey rows beat the word "Loading" on a first ever open
     const skeleton = `<div class="cskel">${"<span></span>".repeat(5)}</div>`;
-    const render = () => {
-      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+    const render = (keepScroll = false) => {
+      const rows = [...seen.values()].filter((m) => !isBlocked(m.player_id)).sort((a, b) => a.id - b.id).slice(-CHAT_VIEW_MAX);
+      // loading older messages grows the log upwards: hold the reading position by
+      // restoring the distance from the bottom, which is what does not move
+      const fromBottom = log.scrollHeight - log.scrollTop;
       log.innerHTML = rows.length ? rows.map(row).join("") : skeleton;
-      log.scrollTop = log.scrollHeight;
+      log.scrollTop = keepScroll ? log.scrollHeight - fromBottom : log.scrollHeight;
     };
     render();
+
+    // Older history, a page at a time, when the log is scrolled near its top.
+    let more = true, loading = false;
+    // read the oldest id at call time: the first poll is usually what fills the panel,
+    // so a value captured when it opened would be 0 and nothing would ever load
+    const oldestId = () => (seen.size ? Math.min(...seen.keys()) : 0);
+    const loadOlder = async () => {
+      if (loading || !more || !oldestId()) return;
+      loading = true;
+      const r = await chat.older(oldestId());
+      loading = false;
+      if (!r || !p.isConnected) return;
+      more = r.more;
+      if (!r.messages.length) return;
+      for (const m of r.messages) seen.set(m.id, m);
+      render(true);
+    };
+    log.addEventListener("scroll", () => { if (log.scrollTop < 120) void loadOlder(); }, { passive: true });
+
+    // Block or report whoever sent a message. Blocking hides them on this device at
+    // once; both tell the Worker, so the owner sees what players are flagging.
+    const flag = async (kind: "block" | "report", targetId: string, messageId: number, name: string) => {
+      if (kind === "block") { setBlocked(targetId, true); render(); this.toast(`Blocked ${name}`); }
+      else this.toast(`Reported ${name}`);
+      await chat.report(s.playerId, s.token ?? "", kind, targetId, messageId);
+    };
+    log.addEventListener("click", (e) => {
+      const button = (e.target as HTMLElement).closest<HTMLElement>(".cflag");
+      if (!button) return;
+      const targetId = button.dataset.flag!, messageId = Number(button.dataset.msg ?? 0), name = button.dataset.name ?? "them";
+      const menu = el("div", "cmenu");
+      menu.innerHTML = `<p class="fine">${esc(name)}</p>
+        <button data-k="block">Block ${esc(name)}</button>
+        <button data-k="report">Report this message</button>
+        <button data-k="cancel" class="ghost">Cancel</button>`;
+      const close = () => menu.remove();
+      menu.addEventListener("click", (ev) => {
+        const kind = (ev.target as HTMLElement).closest<HTMLElement>("button")?.dataset.k;
+        if (!kind) return;
+        close();
+        if (kind === "block" || kind === "report") void flag(kind, targetId, messageId, name);
+      });
+      // tapping anywhere else dismisses it, same as the rest of the sheets
+      menu.addEventListener("pointerdown", (ev) => { if (ev.target === menu) close(); });
+      p.appendChild(menu);
+    });
 
     const poll = async () => {
       if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }

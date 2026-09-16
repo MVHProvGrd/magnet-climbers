@@ -27,7 +27,7 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
     .catch(() => env.DB.prepare("SELECT player_id, name, cm, created_at FROM scores WHERE mode = ? ORDER BY cm DESC LIMIT 30").bind(mode).all());
 
   if (path === "/overview") {
-    const [chatRows, mutes, stats, players, crew, solo, coins] = await Promise.all([
+    const [chatRows, mutes, stats, players, crew, solo, coins, reports] = await Promise.all([
       env.DB.prepare("SELECT id, player_id, name, text, created_at FROM chat ORDER BY id DESC LIMIT 80").all(),
       env.DB.prepare("SELECT player_id, until FROM chat_mutes").all(),
       env.DB.prepare("SELECT total_cm, runs FROM stats WHERE id = 1").first(),
@@ -36,8 +36,12 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
       board("solo"),
       // coins on hand, refreshed from every cloud save — the same board the game shows
       env.DB.prepare("SELECT player_id, name, coins, updated_at FROM wallet WHERE player_id NOT LIKE 'smoke-%' AND coins > 0 ORDER BY coins DESC LIMIT 30").all().catch(() => ({ results: [] })),
+      // what players have flagged: newest first, with how many times each target has been flagged
+      env.DB.prepare(`SELECT r.id, r.kind, r.target_id, r.target_name, r.reporter_id, r.message_id, r.text, r.created_at,
+        (SELECT COUNT(*) FROM chat_reports o WHERE o.target_id = r.target_id) AS tally
+        FROM chat_reports r ORDER BY r.id DESC LIMIT 60`).all().catch(() => ({ results: [] })),
     ]);
-    return json({ chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results, coins: coins.results });
+    return json({ chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results, coins: coins.results, reports: reports.results });
   }
   if (path === "/player") {
     const id = url.searchParams.get("id") ?? "";
@@ -75,6 +79,13 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
     ]);
     return json({ ok: true, name });
   }
+  if (path === "/report/clear") {
+    // clearing a flag is housekeeping, not a verdict: muting is a separate button
+    const id = Number(body.id ?? 0), player = str("playerId");
+    await env.DB.prepare(id ? "DELETE FROM chat_reports WHERE id = ?" : "DELETE FROM chat_reports WHERE target_id = ?")
+      .bind(id ? id : player).run().catch(() => {});
+    return json({ ok: true });
+  }
   if (path === "/lifetime/set") {
     await env.DB.prepare("UPDATE lifetime SET cm = ? WHERE player_id = ?").bind(Math.max(0, Math.floor(Number(body.cm ?? 0))), str("playerId")).run();
     return json({ ok: true });
@@ -99,6 +110,7 @@ input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;backg
 <div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('crew')">Delete crew</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
 <div class="row"><input id="lifecm" placeholder="lifetime cm" type="number"><button onclick="setLife()">Set lifetime</button><button class="bad" onclick="mute(0,true)">Mute forever + wipe chat</button><button onclick="mute(24,false)">Mute 24h</button><button onclick="unmute()">Unmute</button></div>
 <div id="out"></div></section>
+<section style="grid-column:1/-1;max-width:1200px"><h2>Flagged by players</h2><table id="reports"></table></section>
 <section style="grid-column:1/-1;max-width:1200px"><h2 style="display:flex;gap:10px;align-items:center">Chat (newest first) <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><table id="chat"></table></section>
 <section><h2>Crew board</h2><table id="crew"></table></section>
 <section><h2>Solo board</h2><table id="solo"></table></section>
@@ -118,6 +130,7 @@ $("#stats").innerHTML=\`<b>\${(d.stats.total_cm/100).toFixed(1)} m</b> over <b>\
 $("#mutes").innerHTML=d.mutes.length?"Muted: "+d.mutes.map(m=>\`<span class="id">\${esc(m.player_id)}</span> (\${m.until?"until "+when(m.until):"forever"}) <button onclick="unmute('\${esc(m.player_id)}')">unmute</button>\`).join(" · "):"No mutes.";
 $("#chat").innerHTML=d.chat.map(m=>\`<tr><td class="id">\${when(m.created_at)}</td><td><b>\${esc(m.name)}</b> <span class="id" onclick="pick('\${esc(m.player_id)}')" style="cursor:pointer">\${esc(m.player_id)}</span></td><td>\${esc(m.text)}</td><td><button class="bad" onclick="delChat(\${m.id})">del</button> <button onclick="mute(24,false,'\${esc(m.player_id)}')">mute 24h</button></td></tr>\`).join("")||"<tr><td>Empty</td></tr>";
 for(const mode of ["crew","solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
+$("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br><span class="id" onclick="pick('\${esc(r.target_id)}')" style="cursor:pointer">\${esc(r.target_id)}</span></td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">by \${esc(r.reporter_id)}</td><td class="n"><button onclick="mute(24,false,'\${esc(r.target_id)}')">mute 24h</button> <button class="bad" onclick="mute(0,true,'\${esc(r.target_id)}')">mute + wipe</button> \${r.message_id?\`<button class="bad" onclick="delChat(\${r.message_id})">del msg</button> \`:""}<button onclick="clearReport(\${r.id})">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
 $("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";}
 async function lookup(){const id=$("#pid").value.trim();if(!id)return;$("#out").textContent=JSON.stringify(await api("/player?id="+encodeURIComponent(id)),null,1);}
 async function rename(){await api("/rename",{playerId:$("#pid").value.trim(),name:$("#newname").value});load();lookup();}
@@ -127,6 +140,7 @@ async function setLife(){await api("/lifetime/set",{playerId:$("#pid").value.tri
 async function mute(hours,wipe,id){await api("/mute",{playerId:id||$("#pid").value.trim(),hours,wipe});load();}
 async function unmute(id){await api("/unmute",{playerId:id||$("#pid").value.trim()});load();}
 async function delChat(id){await api("/chat/delete",{id});load();}
+async function clearReport(id){await api("/report/clear",{id});load();}
 async function clearChat(){if(!confirm("Delete every chat message?"))return;await api("/chat/clear",{});load();}
 $("#key").value=key();if(key())load();
 </script></body></html>`;

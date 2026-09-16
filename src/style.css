@@ -256,6 +256,19 @@ select.buy option { background: #1e2229; color: #fff; }
   background: rgba(255,255,255,.07); color: #eef3f7;
   font: 600 calc(14 * var(--px)) / 1.3 var(--display); word-break: break-word;
 }
+/* the quiet "..." that opens block / report on someone else's message */
+/* .panel button styles every button in the sheet, so this one names the panel too */
+.panel .cflag { margin-left: auto; width: auto; border: 0; border-radius: calc(6 * var(--px));
+  background: none; box-shadow: none; color: var(--text-3); cursor: pointer;
+  font: 800 calc(15 * var(--px)) / 1 var(--display); padding: calc(2 * var(--px)) calc(6 * var(--px)); }
+.panel .cflag:hover, .panel .cflag:focus-visible { color: #fff; background: rgba(255,255,255,.1); }
+.cmenu { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center;
+  gap: calc(8 * var(--px)); padding: calc(20 * var(--px)); background: rgba(12,14,18,.82); backdrop-filter: blur(2px);
+  border-radius: inherit; }
+.cmenu .fine { text-align: center; margin: 0 0 calc(2 * var(--px)); }
+.cmenu button { padding: calc(11 * var(--px)); border: 0; border-radius: calc(12 * var(--px));
+  background: var(--danger); color: #fff; font: 800 calc(14 * var(--px)) var(--display); cursor: pointer; }
+.cmenu button.ghost { background: rgba(255,255,255,.12); }
 .cmsg.me .cbubble { background: rgba(255,138,61,.18); box-shadow: inset 0 0 0 1px rgba(255,138,61,.35); }
 /* first ever open has nothing cached: grey rows read better than the word "Loading" */
 .cskel { display: flex; flex-direction: column; gap: calc(12 * var(--px)); padding: calc(4 * var(--px)) 0; }
