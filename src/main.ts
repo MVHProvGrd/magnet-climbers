@@ -694,7 +694,10 @@ function frame(now: number) {
     }
     const drawT0 = performance.now();
     render(ctx, game, viewH, dpr);
-    perfPush(dt * 1000, simMs, performance.now() - drawT0);
+    // Only sample while actually playing. The ring holds 600 frames, about 10 seconds, and
+    // pausing to walk to Settings takes longer than that -- sampling paused frames would
+    // quietly overwrite the laggy stretch with idle menu frames and report it as healthy.
+    if (!paused) perfPush(dt * 1000, simMs, performance.now() - drawT0);
     simMs = 0;
     const bw = window.innerWidth, bh = window.innerHeight;
     if (!backdropDrawn || menubg.width !== Math.round(bw * dpr) || menubg.height !== Math.round(bh * dpr)) {
