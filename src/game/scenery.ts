@@ -238,12 +238,14 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
       if (z.pops != null) { ctx.shadowColor = "transparent"; drawPops(ctx, dx, dy, dw, dh, z.pops); }
     }
     else { const item = fridgeItem(z.itemId); drawBumper(ctx, { x: z.x, y: z.y, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 }); }
-    // a hint of a field: two faint red outlines hugging the toy, drifting outward a few pixels
-    ctx.restore(); ctx.save(); ctx.strokeStyle = "#ff687d"; ctx.lineWidth = 1.2;
+    // a hint of a field. A toy magnet can sit either way round, so the arcs say which: red
+    // creeping outward pushes you off, blue closing inward pulls you in.
+    const pulls = (z.power ?? 0) < 0;
+    ctx.restore(); ctx.save(); ctx.strokeStyle = pulls ? "#63c7ff" : "#ff687d"; ctx.lineWidth = 1.2;
     const rr = toy ? (() => { const iw = (toy as HTMLImageElement).naturalWidth || 1, ih = (toy as HTMLImageElement).naturalHeight || 1; const s = Math.min(z.w / iw, z.h / ih); return { x: z.x + (z.w - iw * s) / 2, y: z.y + (z.h - ih * s) / 2, w: iw * s, h: ih * s }; })() : z;
     const drift = (time * 6) % 6;
     for (let i = 0; i < 2; i++) {
-      const d = 3 + i * 6 + drift; ctx.globalAlpha = 0.32 * (1 - d / 16);
+      const d = 3 + i * 6 + (pulls ? 6 - drift : drift); ctx.globalAlpha = 0.32 * (1 - d / 16);
       ctx.beginPath(); ctx.roundRect(rr.x - d, rr.y - d, rr.w + d * 2, rr.h + d * 2, 10 + d); ctx.stroke();
     }
     ctx.restore(); return;

@@ -57,6 +57,10 @@ const GADGET_VARIANTS = [
   ["clip-grandma-polaroid", "clip", "Grandma's Photo"],
 ] as const satisfies readonly (readonly [string, "swing" | "rotor" | "clip", string])[];
 
+const TOY_LABELS = ["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL", "TAXI", "RACE", "BANANA", "SHUTTLE", "BLOCK", "BRICK", "GUMMY"] as const;
+const TOY_NAMES = ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser",
+  "Yellow Taxi", "Race Car", "Banana", "Space Shuttle", "Letter Block", "Plastic Brick", "Gummy Bear"] as const;
+
 export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   ...(["swing", "rotor", "clip", "polarity"] as const).flatMap((behavior, i) => (["snack", "travel", "doodle"] as const).map((theme, j): FridgeItem => ({
     id: `${behavior}-${theme}`, family: "gadget", behavior, theme,
@@ -103,12 +107,17 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "gap", name: "Door Gap", family: "surface", kind: "void", description: "Nothing to stick to here. Fling across or land on a metal handle." },
   { id: "seam", name: "Centre Seam", family: "surface", kind: "void", description: "The groove between the two doors runs the whole way up. No grip in it; cross it in flight." },
   { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Jump across or use the steel sides." },
-  ...["DONUT", "DUCK", "ROBOT", "DINO", "POP!", "COOL", "TAXI", "RACE", "BANANA", "SHUTTLE", "BLOCK", "BRICK", "GUMMY"].map((label, i): FridgeItem => ({
-    id: `bumper-${i}`, name: ["Rolling Donut", "Duck Dash", "Robot Patrol", "Dino Slide", "Pop Magnet", "Cool Cruiser",
-      "Yellow Taxi", "Race Car", "Banana", "Space Shuttle", "Letter Block", "Plastic Brick", "Gummy Bear"][i],
+  ...TOY_LABELS.map((label, i): FridgeItem => ({
+    id: `bumper-${i}`, name: TOY_NAMES[i],
     family: "bumper", label, hue: [332, 45, 200, 125, 280, 175, 48, 4, 52, 205, 28, 350, 320][i],
     art: [12, 16, 19, 14, 17, 7, 16, 12, 16, 19, 14, 17, 7][i],
-    description: "A toy. On a keychain it is plain resin and just swings when brushed; stuck straight on the door it is a magnet with a slight push. Never a grip.",
+    description: "A toy magnet. Stuck straight on the door it pulls or pushes a little, either way round; on a keychain it is plain resin and just swings when brushed. Never a grip.",
+  })),
+  // v18: the same toys again, this time on the keyring hook and chain. The chain meets each
+  // toy at its own measured hook point, so nothing hangs off thin air.
+  ...TOY_NAMES.map((name, i): FridgeItem => ({
+    id: `swing-toy-${i}`, family: "gadget", behavior: "swing", name: `${name} Keyring`,
+    description: "A toy hung off a magnetic hook on a short chain. The whole thing swings when you grab it; only the silver hook and chain grip.",
   })),
   { id: "kid-hand", name: "Cooper's Hand", family: "bumper", hazard: true, description: "A hand swipes across the door now and then. Watch for the LOOK OUT warning and get out of its curved path." },
   { id: "cat-paw", name: "The Cat's Paw", family: "bumper", hazard: true, description: "A paw drops in from the top and taps three times, the second one deepest. A ring warns where it will land; a hit knocks you loose and costs a heart." },
