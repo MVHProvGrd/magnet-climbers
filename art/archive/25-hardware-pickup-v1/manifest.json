@@ -1,0 +1,71 @@
+[
+  {
+    "file": "ready/rotor-snack-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      160,
+      125,
+      863,
+      898
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 715995,
+      "semi": 7485,
+      "opaque": 325096
+    },
+    "edge_pixels": 3722,
+    "magenta_tinted_opaque": 29,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-doodle-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      242,
+      43,
+      767,
+      1423
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1325302,
+      "semi": 2463,
+      "opaque": 245099
+    },
+    "edge_pixels": 5611,
+    "magenta_tinted_opaque": 77,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-travel-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      258,
+      46,
+      802,
+      1343
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1364520,
+      "semi": 2106,
+      "opaque": 206238
+    },
+    "edge_pixels": 5632,
+    "magenta_tinted_opaque": 4,
+    "clean": true,
+    "reasons": []
+  }
+]

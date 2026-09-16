@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `25-hardware-pickup-v1/` | Travel and glitter-star hanging assemblies, redA plastic rotor; partial batch, remaining prompts saved | Codex built-in imagegen | Three ready for Claude wiring; generation quota blocked B onward |
 | `22-cat-claws-v1/` | Extended-claw contact candidate and three64x256 scratch decals; full source, native key, fit exports | Codex built-in imagegen | Scratches ready; paw needs renderer alignment review |
 | `24-new-papers-v1/` | All12 new paper objects, paper-new-0..11; sources, prompts, alpha QC and review | Codex built-in imagegen | Ready for Claude wiring |
 | `21-story-scenes-v1/` | Life, bedtime and climb story scenes; opaque768x512, phone review, consistent toys | Codex built-in imagegen | Ready for Claude review/wiring |

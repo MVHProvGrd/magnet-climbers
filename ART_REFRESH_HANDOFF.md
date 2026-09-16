@@ -1,5 +1,16 @@
 # Art refresh handoff — 2026-09-14
 
+## Codex checkpoint — 2026-09-16, generation quota reached
+
+31 successful new image generations this continuation; then built-in429 usage_limit_reached while requesting blueB. Service reported reset1789551873 /14516sec after receipt. No promise of background auto-resume. All produced sources and cleaned exports archived and pushed to codex/art-ready-pack; no public/art writes.
+
+Delivered this run: paint23; old papers12..19 (12 was prior source,13..19 newly generated); three story21 scenes plus retained climb-v1; twelve new papers24; cat22 contact candidate plus3 scratch decals; pack25 travel/star swings and redA rotor. Admin archive gallery regenerated. Paw needs alignment review, explicitly documented in22-cat-claws-v1/HANDOFF.md.
+
+RESUME HERE: finish25-hardware-pickup-v1 with blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. Prompts already saved there. Then4 glass variants,6 obstacle refreshes. Then user v3 variety:12 hanging assemblies,4 rotors,7 clips,7 bumpers,8 business magnets,4S+4N destinations (pairs only). Keep current7S/7N balanced. Original and new paper sets are complete; do not regenerate.
+
+Full archive: C:\Users\micha\magnet-art-ready\art\archive
+Gallery: C:\Users\micha\magnet-art-ready\art\archive\index.html
+
 ## New paper set0..11 READY — 2026-09-16
 
 All12 in `art/archive/24-new-papers-v1/ready`, exact title mapping in HANDOFF.md.12 successful generations, all alpha checks pass; review-sheet.jpg supplied. Claude wires. Next: cat22, keyrings, letters, trim, hardware, glass, candy, obstacle refresh and variety.
