@@ -1,9 +1,16 @@
 import type { Vec } from "./types";
 import { objectArtById } from "./gadget-art";
+import { t as tr } from "./i18n";
 
 /** The cat's paw: comes down from the top of the screen at a random x, taps three times, retreats. */
 export interface CatPaw { x: number; t: number; hit: Set<number>; marked?: number }
 export const PAW_DURATION = 1.65;
+/**
+ * Lead time before the paw starts moving, so the warning is readable.
+ * The kid's hand warns for CFG.handWarn (1.1 s); the paw used to warn for 0.3 s and the
+ * ring vanished 0.18 s BEFORE the first tap landed, which is why nobody saw it coming.
+ */
+export const PAW_WARN = 0.75;
 /** leg length above the pad centre at game scale (pack 18 art): how deep a tap can go before the root would show */
 const PAW_LEG = 1840 * (120 / 454);
 /** when each tap first touches the door */
@@ -28,11 +35,15 @@ export function drawScratches(ctx: CanvasRenderingContext2D, marks: readonly Scr
 /** Codex's motion study timings; depths are fractions of the deepest tap, which reaches the climber band (about 60% of the view). */
 const KEYS: [number, number][] = [[0, -70], [0.3, -25], [0.48, 205 / 242], [0.57, 205 / 242], [0.72, 125 / 242], [0.87, 1], [0.95, 1], [1.10, 145 / 242], [1.25, 219 / 242], [1.31, 219 / 242], [1.65, -70]];
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** How deep the deepest tap goes: onto the climber band, capped so the leg's root never shows. */
+export const pawReach = (viewH: number) => Math.min(viewH * 0.55 + 30, PAW_LEG - 40);
+/** Half-width of the pad's hit zone, so the warning can cover exactly what will hurt. */
+export const PAW_HALF_W = 46;
 /** Pad centre in world coordinates (the paw hangs from the camera's top edge) and whether it is touching the door. */
 export function pawPose(p: CatPaw, camY: number, viewH: number): Vec & { contact: boolean; warn: number } {
-  const t = Math.min(p.t, PAW_DURATION);
-  // the selected climber sits at 55% of the view; the deepest tap lands on it, capped so the leg's root never shows
-  const reach = Math.min(viewH * 0.55 + 30, PAW_LEG - 40);
+  // p.t runs from 0; the paw holds off screen for PAW_WARN, then plays the motion study
+  const t = Math.min(Math.max(0, p.t - PAW_WARN), PAW_DURATION);
+  const reach = pawReach(viewH);
   const depth = (k: number) => (k < 0 ? k : k * reach);
   let y = -70;
   for (let i = 1; i < KEYS.length; i++) if (t <= KEYS[i][0]) {
@@ -40,14 +51,34 @@ export function pawPose(p: CatPaw, camY: number, viewH: number): Vec & { contact
     y = depth(ya) + (depth(yb) - depth(ya)) * smooth((t - a) / (b - a)); break;
   }
   const contact = (t >= 0.48 && t <= 0.57) || (t >= 0.87 && t <= 0.95) || (t >= 1.25 && t <= 1.31);
-  return { x: p.x + Math.sin(t * 4) * 7, y: camY + y, contact, warn: t < 0.3 ? t / 0.3 : 0 };
+  // held at full strength through the approach, fading out only as the first tap arrives
+  const untilStrike = PAW_WARN + PAW_TAPS[0] - p.t;
+  const warn = Math.max(0, Math.min(1, untilStrike / 0.25));
+  return { x: p.x + Math.sin(t * 4) * 7, y: camY + y, contact, warn };
 }
 /** Photo cutout (pack 15) at the study's scale; the offscreen foreleg is decorative. */
 export function drawCatPaw(ctx: CanvasRenderingContext2D, p: CatPaw, camY: number, viewH: number) {
   const pose = pawPose(p, camY, viewH), art = objectArtById("cat-paw");
   if (pose.warn > 0) {
-    ctx.save(); ctx.strokeStyle = "#ffc663"; ctx.lineWidth = 3; ctx.globalAlpha = 0.9;
-    ctx.beginPath(); ctx.arc(pose.x, camY + 32, 12 + 10 * pose.warn, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    // Same language as the hand: shade the real danger zone, not a token marker. The band is
+    // the pad's hit width over the depth the taps actually reach, so what is shaded is what hurts.
+    const pulse = 0.6 + Math.sin(p.t * 14) * 0.15;
+    const w = PAW_HALF_W * 2, x0 = pose.x - PAW_HALF_W, depth = pawReach(viewH);
+    ctx.save();
+    ctx.globalAlpha = pose.warn;
+    ctx.fillStyle = `rgba(255,189,90,${pulse * 0.26})`;
+    ctx.fillRect(x0, camY, w, depth);
+    ctx.strokeStyle = `rgba(255,236,167,${pulse})`; ctx.lineWidth = 2; ctx.setLineDash([6, 9]);
+    ctx.beginPath(); ctx.moveTo(pose.x, camY); ctx.lineTo(pose.x, camY + depth); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = `rgba(255,189,90,${pulse * 0.7})`; ctx.lineWidth = 2;
+    ctx.strokeRect(x0, camY, w, depth);
+    const ly = camY + depth + 8;
+    ctx.fillStyle = "#302b30";
+    ctx.beginPath(); ctx.roundRect(pose.x - 56, ly, 112, 26, 9); ctx.fill();
+    ctx.fillStyle = "#ffe0a1"; ctx.font = "800 11px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(tr("LOOK OUT!  PAW"), pose.x, ly + 17);
+    ctx.restore();
   }
   if (art) {
     const iw = (art as HTMLImageElement).naturalWidth || 1, ih = (art as HTMLImageElement).naturalHeight || 1;

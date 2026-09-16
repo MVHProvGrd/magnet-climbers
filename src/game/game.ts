@@ -5,7 +5,7 @@ import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
-import { pawPose, PAW_DURATION, PAW_TAPS, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
+import { pawPose, PAW_DURATION, PAW_TAPS, PAW_WARN, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
 import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
@@ -1097,7 +1097,8 @@ export class Game {
     const pose = pawPose(paw, this.camY, this.viewH);
     // each tap leaves four claw marks where it landed (fixed to the door, off the seam), fading on their own
     const marked = paw.marked ?? 0;
-    if (marked < PAW_TAPS.length && paw.t >= PAW_TAPS[marked]) {
+    // paw.t includes the warning hold, so the tap times are offset by it
+    if (marked < PAW_TAPS.length && paw.t - PAW_WARN >= PAW_TAPS[marked]) {
       paw.marked = marked + 1;
       for (const [dx, dy] of CLAW_TIPS) {
         const x = pose.x + dx; if (x > DOOR_SEAM.x - 4 && x < DOOR_SEAM.x + DOOR_SEAM.w + 4) continue;
@@ -1117,7 +1118,7 @@ export class Game {
       this.damage(c, true);
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
-    if (paw.t >= PAW_DURATION) {
+    if (paw.t >= PAW_DURATION + PAW_WARN) {
       this.paw = null;
       const climbed = Math.max(0, this.startY - this.highestY) / 1000;
       const interval = Math.max(CFG.handIntervalMin, CFG.handIntervalBase - climbed * 3);

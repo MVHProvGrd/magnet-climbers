@@ -8,7 +8,7 @@ import { drawCatPaw, drawScratches } from "./cat-paw";
 import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
-import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
+import { drawDock, drawRunClock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
 
 
 let lastRenderTime = 0;
@@ -266,6 +266,7 @@ export { statRowY, hudButtons, teamDots, teamTapRects, dockRect, redLineCm, inDa
 /** The whole in-run HUD is the dock (see hud.ts); this only adds the idle hint above it. */
 function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   drawDock(ctx, g, viewH, g.time);
+  drawRunClock(ctx, g);
 
   // off-screen climbers: coloured arrows at the edge, tappable
   for (const m of offscreenMarkers(g, viewH)) {

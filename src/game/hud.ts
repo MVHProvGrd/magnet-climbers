@@ -262,6 +262,20 @@ function slabFor(w: number, h: number, danger: boolean): HTMLCanvasElement | nul
   return canvas;
 }
 
+/** Run clock, small and centred at the top: the only thing up there, so it stays out of the way. */
+export function drawRunClock(ctx: CanvasRenderingContext2D, g: Game) {
+  const total = Math.max(0, Math.floor(g.time));
+  const text = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  ctx.save();
+  ctx.font = font(800, 13); ctx.letterSpacing = "1px";
+  const w = ctx.measureText(text).width + 20;
+  ctx.fillStyle = "rgba(20,22,28,.55)";
+  roundRect(ctx, W / 2 - w / 2, 8, w, 24, 8); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, W / 2, 21);
+  ctx.restore();
+}
+
 export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
   const d = dockRect(viewH), cells = cellRects(viewH);
   const danger = inDanger(g);
