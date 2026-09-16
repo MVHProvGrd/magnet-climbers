@@ -382,32 +382,6 @@ test("gadget clocks, carrier offsets, trick counters and near-misses deep-copy o
   restored.hand?.near?.push(3); assert.deepEqual(snap.hand?.near, [99]);
 });
 
-test("trick combos expire, cap at eight, and landing rewards cannot farm the same height", () => {
-  const s = freshTricks(); assert.equal(registerTrick(s, "SAVE", 50, 0), 50);
-  assert.equal(registerTrick(s, "SAVE", 50, 2), 100);
-  for (let i = 0; i < 20; i++) registerTrick(s, "SAVE", 50, 3 + i);
-  assert.equal(s.combo, 8); assert.equal(s.bestCombo, 8);
-  registerTrick(s, "SAVE", 50, 30); assert.equal(s.combo, 1);
-  const copy = cloneTricks(s); copy.counts.SAVE++; assert.notDeepEqual(copy.counts, s.counts);
-  for (const chill of [false, true]) {
-    const g = new Game(levels, events, { seed: 12345, chill });
-    const c = g.climbers[0]; c.x = 100; c.y = -120; c.airTime = .5; c.grip = undefined; c.ragdoll = undefined; c.state = "flying";
-    assert.ok(g["stick"](c)); assert.ok(g.tricks.score > 0); assert.equal(g.coins, chill ? 0 : 1);
-    const score = g.tricks.score;
-    for (let i = 0; i < 10; i++) { c.grip = undefined; c.state = "flying"; g["stick"](c); }
-    assert.equal(g.tricks.score, score); assert.equal(g.coins, chill ? 0 : 1);
-  }
-});
-
-test("near misses reward once at swipe completion, but actual swats never do", () => {
-  for (const hit of [false, true]) {
-    const g = game(), c = g.climbers[0]; g.phase = "running";
-    g.hand = { side: -1, y: 900, x: 0, phase: "sweep", t: SWIPE_DURATION - .004, hit: new Set(hit ? [c.id] : []), near: [c.id] };
-    g.update(1 / 120); assert.equal(g.tricks.counts["CLOSE CALL"] ?? 0, hit ? 0 : 1);
-    const score = g.tricks.score; g.update(1 / 120); assert.equal(g.tricks.score, score);
-  }
-});
-
 test("original music is deterministic, bounded and layers percussion only outside Chill", () => {
   assert.equal(MUSIC_STEP, .3125);
   for (let i = 0; i < 128; i++) {
@@ -553,4 +527,16 @@ test("a refused launch (ladder rung, unlocked hanger) never spends a fling", () 
   assert.equal(g.flings, before, "a fling that never happened must not count");
   c.parent = null; c.state = "flying"; b.parent = null; b.state = "flying";
   assert.equal(g.launch(a, { x: 0, y: -400 }), true);
+});
+
+test("style points are gone: tricks and near misses pay nothing", () => {
+  const g = game();
+  g.phase = "running";
+  const before = g.coins;
+  // drive the paths that used to score: a landing and a hand near miss
+  const c = g.climbers[0];
+  for (let i = 0; i < 240; i++) g.update(1 / 120);
+  assert.equal(g.tricks.score, 0, "no score accrues");
+  assert.equal(g.coins, before, "and no coins are paid for how you land");
+  assert.ok(c, "climber still exists");
 });

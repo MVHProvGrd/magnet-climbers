@@ -6,7 +6,7 @@ import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip,
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
 import { pawPose, PAW_DURATION, PAW_TAPS, PAW_WARN, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
-import { cloneTricks, freshTricks, registerTrick, type TrickState } from "./tricks";
+import { cloneTricks, freshTricks, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
 
@@ -1068,13 +1068,13 @@ export class Game {
     }
   }
 
-  private awardTrick(c: Climber, name: string, points: number) {
-    const score = registerTrick(this.tricks, name, points, this.time);
-    const bonus = this.chill ? 0 : Math.min(3, this.tricks.combo);
-    this.coins += bonus; if (bonus) this.events.onCoins(bonus);
-    sfx.trick();
-    this.floats.push({ x: c.x, y: c.y - 43, text: `${name} +${score}${this.tricks.combo > 1 ? `  x${this.tricks.combo}` : ""}`, life: 1.3, color: "#ffe393" });
-  }
+  /**
+   * Style points are gone: the tester could not control how a climber lands, so scoring it
+   * was noise. No score, no coin bonus, no float. The trick state stays in the save so old
+   * snapshots still load, and the detection below still marks new height, which is what
+   * stops landing on the same ledge from paying out.
+   */
+  private awardTrick(_c: Climber, _name: string, _points: number) { /* scoring removed */ }
 
   private awardNewHeight(c: Climber, name: string, points: number) {
     if (c.y >= this.tricks.frontierY - 45) return;

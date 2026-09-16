@@ -28,9 +28,18 @@ const SLAB = "rgba(20,22,28,.88)";
 const DANGER = "#ff506e", DANGER_LIGHT = "#ff8aa3", COIN = "#ffd23f", GEM = "#7ef0ff";
 const CHILL = "#9be15d", CLIMB = "#4fc3f7", SYNC = "#c77dff", ACCENT = "#ff8a3d", INK = "#1a1d24";
 
-const DOCK_H = 84, DOCK_X = 12, DOCK_W = W - 24;
-/** Cells are grid 1.2fr 1fr 1fr across the dock's inner width. */
-const CELLS = [1.2, 1, 1];
+/**
+ * Top bar: height, run time, and what THIS run has earned -- not the account totals.
+ * Thin, and it stops short of the right edge to leave room for the sound and menu
+ * buttons, which are DOM and positioned to match in style.css.
+ */
+const TOP_Y = 10, TOP_H = 46, TOP_X = 12;
+const BTN = 44, BTN_GAP = 8;
+const TOP_W = W - TOP_X - 12 - BTN * 2 - BTN_GAP * 2;
+/** Cells across the bar: height leads, then the clock, then the run's earnings. */
+const CELLS = [1.15, 0.85, 1];
+/** The red line is the one thing worth glancing at mid-climb, so it gets the bottom edge. */
+const LINE_H = 34;
 
 /** Queried once and kept fresh by the listener; matchMedia per frame is a style read per frame. */
 let reducedMotion = false;
@@ -45,19 +54,19 @@ export const prefersReducedMotion = () => reducedMotion;
 let safeBottom = 28;
 export function setHudSafeBottom(px: number) { safeBottom = Math.max(28, px); }
 /** Raised when the chat strip is showing, so the dock clears it (handoff 1a). */
-let chatStrip = false;
-export function setChatStrip(on: boolean) { chatStrip = on; }
-export const dockLift = () => (chatStrip ? 74 : 34);
+/** Chat is menu-only now; kept as a no-op so callers need not care. */
+export function setChatStrip(_on: boolean) { /* no in-run chat */ }
 
-export function dockRect(viewH: number) {
-  const h = DOCK_H;
-  return { x: DOCK_X, y: viewH - safeBottom - dockLift() - h, w: DOCK_W, h };
-}
-/** Legacy name kept for callers that only want "where does the bottom furniture start". */
-export function statRowY(_g: Game, viewH: number) { return dockRect(viewH).y; }
+export const topBarRect = () => ({ x: TOP_X, y: TOP_Y, w: TOP_W, h: TOP_H });
+export const lineRect = (viewH: number) => ({ x: 12, y: viewH - safeBottom - LINE_H, w: W - 24, h: LINE_H });
+/** Crew tiles and mode buttons sit just above the red line, in thumb reach. */
+const controlsBottom = (viewH: number) => lineRect(viewH).y - 8;
+/** Where the bottom furniture starts; the aim preview uses it to stay clear. */
+export function statRowY(_g: Game, viewH: number) { return controlsBottom(viewH) - 52; }
+export const dockRect = (viewH: number) => ({ x: 12, y: statRowY(null as unknown as Game, viewH), w: W - 24, h: 52 });
 
-function cellRects(viewH: number) {
-  const d = dockRect(viewH), total = CELLS.reduce((a, b) => a + b, 0);
+function cellRects() {
+  const d = topBarRect(), total = CELLS.reduce((a, b) => a + b, 0);
   const out: { x: number; y: number; w: number; h: number }[] = [];
   let x = d.x;
   for (const f of CELLS) { const w = (d.w * f) / total; out.push({ x, y: d.y, w, h: d.h }); x += w; }
@@ -139,15 +148,15 @@ export function clearAvatars() { avatars.clear(); }
 const TILE = { w: 40, h: 46, sel: { w: 44, h: 50 }, gap: 6, lift: 6 };
 /** Crew tiles sit 8 px above the dock; the row is also the selector (handoff 1f). */
 export function teamDots(g: Game, viewH: number): { id: number; x: number; y: number }[] {
-  const d = dockRect(viewH);
+  const bottom = controlsBottom(viewH);
   const out: { id: number; x: number; y: number }[] = [];
-  let x = d.x;
+  let x = 12;
   for (const c of g.climbers) {
     if (c.state === "lost") continue;
     const sel = c.id === g.selectedId;
     const w = sel ? TILE.sel.w : TILE.w, h = sel ? TILE.sel.h : TILE.h;
     // centre of a >=44 px tap target, even for the smaller unselected tile
-    out.push({ id: c.id, x: x + w / 2, y: d.y - 8 - h / 2 });
+    out.push({ id: c.id, x: x + w / 2, y: bottom - h / 2 });
     x += w + TILE.gap;
   }
   return out;
@@ -163,12 +172,12 @@ export function teamTapRects(g: Game, viewH: number) {
 }
 
 function drawCrew(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
-  const d = dockRect(viewH);
+  const bottom = controlsBottom(viewH);
   for (const dot of teamDots(g, viewH)) {
     const c = g.byId(dot.id); if (!c) continue;
     const sel = c.id === g.selectedId;
     const w = sel ? TILE.sel.w : TILE.w, h = sel ? TILE.sel.h : TILE.h;
-    const x = dot.x - w / 2, y = d.y - 8 - h - (sel ? TILE.lift : 0);
+    const x = dot.x - w / 2, y = bottom - h - (sel ? TILE.lift : 0);
     // one blit: slab, rounded crop and avatar are already baked into the tile
     const av = avatarFor(c, w, h);
     if (av) ctx.drawImage(av, x, y, w, h);
@@ -224,137 +233,112 @@ function button(ctx: CanvasRenderingContext2D, r: { x: number; y: number; w: num
 /* ------------------------------------------------------------------ chips */
 
 const CHIP_H = 28;
-function chip(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, color: string, extra?: { text: string; color: string }) {
-  ctx.save();
-  ctx.font = font(800, 12); ctx.letterSpacing = "1.4px";
-  const main = tr(text).toUpperCase();
-  const tail = extra ? ` ${tr(extra.text)}` : "";
-  const w = ctx.measureText(main + tail).width + 22;
-  ctx.fillStyle = SLAB; roundRect(ctx, x, y, w, CHIP_H, 8); ctx.fill();
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillStyle = color; ctx.fillText(main, x + 11, y + CHIP_H / 2 + 1);
-  if (extra) { ctx.fillStyle = extra.color; ctx.fillText(tail, x + 11 + ctx.measureText(main).width, y + CHIP_H / 2 + 1); }
-  ctx.restore();
-  return w;
-}
 
 /* ------------------------------------------------------------------ the dock */
 
-/** The slab and its drop shadow never change within a state; bake them once and blit. */
-let slabCache: { key: string; canvas: HTMLCanvasElement; pad: number } | null = null;
-function slabFor(w: number, h: number, danger: boolean): HTMLCanvasElement | null {
-  if (typeof document === "undefined") return null;
-  const dpr = Math.min(3, (typeof devicePixelRatio === "number" ? devicePixelRatio : 1) || 1);
-  const key = `${w}x${h}|${danger}|${dpr}`;
-  if (slabCache?.key === key) return slabCache.canvas;
-  const pad = 40;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil((w + pad * 2) * dpr); canvas.height = Math.ceil((h + pad * 2) * dpr);
-  const c = canvas.getContext("2d");
-  if (!c) return null;
-  c.scale(dpr, dpr);
-  c.shadowColor = danger ? "rgba(255,80,110,.6)" : "rgba(0,0,0,.35)";
-  c.shadowBlur = danger ? 24 : 30; c.shadowOffsetY = danger ? 0 : 10;
-  c.fillStyle = SLAB; roundRect(c, pad, pad, w, h, 18); c.fill();
-  c.shadowColor = "transparent"; c.shadowBlur = 0; c.shadowOffsetY = 0;
-  c.fillStyle = "rgba(255,255,255,.12)"; c.fillRect(pad, pad, w, 1);
-  slabCache = { key, canvas, pad };
-  return canvas;
+
+
+export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
+  drawTopBar(ctx, g);
+  drawRedLine(ctx, g, viewH, time);
+  drawEffects(ctx, g, viewH);
+  if (g.rules === "crew") drawCrew(ctx, g, viewH);
+  const b = hudButtons(viewH, g);
+  if (g.rules === "crew") {
+    const climbing = g.mode === "move";
+    button(ctx, b.mode, climbing ? "CLIMB" : "FLING", climbing ? SLAB : ACCENT, climbing ? CLIMB : INK);
+    button(ctx, b.sync, "SYNC", g.sync ? SYNC : SLAB, g.sync ? INK : "#fff");
+  }
 }
 
-/** Run clock, small and centred at the top: the only thing up there, so it stays out of the way. */
-export function drawRunClock(ctx: CanvasRenderingContext2D, g: Game) {
-  const total = Math.max(0, Math.floor(g.time));
-  const text = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+/** Height, run time, and what this run has earned. Account totals live on the menu. */
+function drawTopBar(ctx: CanvasRenderingContext2D, g: Game) {
+  const d = topBarRect(), cells = cellRects();
   ctx.save();
-  ctx.font = font(800, 13); ctx.letterSpacing = "1px";
-  const w = ctx.measureText(text).width + 20;
-  ctx.fillStyle = "rgba(20,22,28,.55)";
-  roundRect(ctx, W / 2 - w / 2, 8, w, 24, 8); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(text, W / 2, 21);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = SLAB; roundRect(ctx, d.x, d.y, d.w, d.h, 14); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(d.x, d.y, d.w, 1);
+
+  // height
+  const c1 = cells[0];
+  label(ctx, "HEIGHT", c1.x + 12, d.y + 16);
+  ctx.textAlign = "left";
+  ctx.font = font(900, 24); ctx.fillStyle = "#fff";
+  const hStr = groupNum(g.heightCm);
+  ctx.fillText(hStr, c1.x + 12, d.y + 38);
+  ctx.font = font(700, 11); ctx.fillStyle = "rgba(255,255,255,.65)";
+  ctx.fillText(tr("cm"), c1.x + 12 + ctx.measureText(hStr).width * 0 + measure(ctx, hStr, 900, 24) + 3, d.y + 38);
+
+  // run clock
+  const c2 = cells[1];
+  ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(c2.x, d.y + 9, 1, d.h - 18);
+  label(ctx, "TIME", c2.x + 12, d.y + 16);
+  const total = Math.max(0, Math.floor(g.time));
+  ctx.font = font(800, 20); ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.textAlign = "left";
+  ctx.fillText(`${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`, c2.x + 12, d.y + 37);
+
+  // this run's earnings, not the wallet
+  const c3 = cells[2];
+  ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(c3.x, d.y + 9, 1, d.h - 18);
+  const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
+  const icon = (kind: "coin" | "gem", x: number, y: number) => {
+    ctx.save(); ctx.translate(x + 7, y);
+    if (!drawPickupImage(ctx, kind, 14)) { ctx.fillStyle = kind === "coin" ? COIN : GEM; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  };
+  ctx.font = font(800, 14); ctx.textAlign = "left";
+  icon("coin", c3.x + 10, d.y + 17);
+  ctx.fillStyle = COIN; ctx.fillText(`+${groupNum(runCoins)}`, c3.x + 26, d.y + 21);
+  icon("gem", c3.x + 10, d.y + 34);
+  ctx.fillStyle = GEM; ctx.fillText(`+${groupNum(runGems)}`, c3.x + 26, d.y + 38);
   ctx.restore();
 }
 
-export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
-  const d = dockRect(viewH), cells = cellRects(viewH);
-  const danger = inDanger(g);
-  const reduced = reducedMotion;
+/** Width of a string at a given weight/size without disturbing the caller's font. */
+function measure(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number) {
+  const prev = ctx.font; ctx.font = font(weight, size);
+  const w = ctx.measureText(text).width; ctx.font = prev; return w;
+}
 
+/** The red line, back on the bottom edge where it can be glanced at. */
+function drawRedLine(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
+  const d = lineRect(viewH), danger = inDanger(g);
+  const reduced = prefersReducedMotion();
   ctx.save();
-  ctx.textBaseline = "alphabetic";
-  // danger throb: scale about the dock's centre, 1 -> 1.06 over 0.6 s
+  ctx.textBaseline = "middle";
   if (danger && !reduced) {
-    const k = 1 + 0.06 * (0.5 - 0.5 * Math.cos((time % 0.6) / 0.6 * Math.PI * 2));
-    ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.scale(k, k); ctx.translate(-(d.x + d.w / 2), -(d.y + d.h / 2));
+    const k = 1 + 0.04 * (0.5 - 0.5 * Math.cos((time % 0.6) / 0.6 * Math.PI * 2));
+    ctx.translate(W / 2, d.y + d.h / 2); ctx.scale(k, k); ctx.translate(-W / 2, -(d.y + d.h / 2));
   }
+  ctx.fillStyle = danger ? "rgba(70,20,30,.92)" : SLAB;
+  roundRect(ctx, d.x, d.y, d.w, d.h, 12); ctx.fill();
+  if (danger) { ctx.strokeStyle = DANGER; ctx.lineWidth = 2; roundRect(ctx, d.x + 1, d.y + 1, d.w - 2, d.h - 2, 11); ctx.stroke(); }
 
-  // slab: one blit of a pre-rendered shadow instead of a blur pass every frame
-  const slab = slabFor(d.w, d.h, danger);
-  if (slab) {
-    const pad = slabCache!.pad;
-    ctx.drawImage(slab, d.x - pad, d.y - pad, d.w + pad * 2, d.h + pad * 2);
-  } else {
-    ctx.fillStyle = SLAB; roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.fill();
-  }
-
-  /* cell 1 — height, or the charge meter while a drag is held */
-  const c1 = cells[0];
-  const pull = g.drag ? Math.min(1, Math.hypot(g.drag.cur.x - g.drag.start.x, g.drag.cur.y - g.drag.start.y) / CFG.maxDrag) : 0;
-  if (pull > 0) {
-    ctx.save(); roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.clip();
-    const grad = ctx.createLinearGradient(c1.x, 0, c1.x + c1.w * pull, 0);
-    grad.addColorStop(0, "rgba(199,125,255,.15)"); grad.addColorStop(1, "rgba(199,125,255,.5)");
-    ctx.fillStyle = grad; ctx.fillRect(c1.x, c1.y, c1.w * pull, c1.h);
-    ctx.fillStyle = SYNC; ctx.fillRect(c1.x + c1.w * pull - 2, c1.y, 2, c1.h);
-    ctx.restore();
-  }
-  label(ctx, pull > 0 ? `CHARGE ${Math.round(pull * 100)}%` : "HEIGHT", c1.x + 16, c1.y + 24, pull > 0 ? "#e2c8ff" : "rgba(255,255,255,.5)");
-  ctx.textAlign = "left";
-  ctx.font = font(900, 46); ctx.fillStyle = "#fff"; ctx.letterSpacing = "-0.5px";
-  const hStr = groupNum(g.heightCm);
-  ctx.fillText(hStr, c1.x + 16, c1.y + 68);
-  const hw = ctx.measureText(hStr).width;
-  ctx.letterSpacing = "0px";
-  ctx.font = font(700, 16); ctx.fillStyle = "rgba(255,255,255,.7)";
-  ctx.fillText(tr("cm"), c1.x + 16 + hw + 4, c1.y + 68);
-
-  /* cell 2 — red line distance, or the chill/expedition readout */
-  const c2 = cells[1];
-  ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(c2.x, c2.y + 12, 1, c2.h - 24);
+  const mid = d.y + d.h / 2;
   if (g.chill) {
-    label(ctx, "MODE", c2.x + 14, c2.y + 24);
-    ctx.font = font(900, 26); ctx.fillStyle = CHILL; ctx.textAlign = "left";
-    ctx.fillText(tr("CHILL"), c2.x + 14, c2.y + 56);
-    ctx.font = font(700, 11); ctx.fillStyle = "rgba(255,255,255,.5)";
-    ctx.fillText(tr("NO RED LINE · NOTHING BANKS"), c2.x + 14, c2.y + 72);
+    ctx.font = font(800, 12); ctx.fillStyle = CHILL; ctx.textAlign = "left"; ctx.letterSpacing = "1.4px";
+    ctx.fillText(tr("CHILL · NO RED LINE · NOTHING BANKS"), d.x + 14, mid);
+    ctx.letterSpacing = "0px";
   } else if (g.level) {
     const left = g.level.flings - g.flings;
-    label(ctx, "FLINGS", c2.x + 14, c2.y + 24);
-    ctx.font = font(900, 30); ctx.fillStyle = left <= 2 ? DANGER : "#fff"; ctx.textAlign = "left";
-    ctx.fillText(`${left}`, c2.x + 14, c2.y + 60);
-    const lw = ctx.measureText(`${left}`).width;
-    ctx.font = font(700, 13); ctx.fillStyle = "rgba(255,255,255,.7)";
-    ctx.fillText(`/ ${g.level.flings}`, c2.x + 14 + lw + 5, c2.y + 60);
+    ctx.font = font(800, 12); ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.letterSpacing = "1.4px";
+    ctx.fillText(tr("FLINGS"), d.x + 14, mid); ctx.letterSpacing = "0px";
+    ctx.font = font(900, 18); ctx.fillStyle = left <= 2 ? DANGER : "#fff";
+    ctx.fillText(`${left} / ${g.level.flings}`, d.x + 74, mid);
   } else {
     const dist = redLineCm(g);
-    if (danger) {
-      ctx.save(); roundRect(ctx, d.x, d.y, d.w, d.h, 18); ctx.clip();
-      ctx.fillStyle = "rgba(255,80,110,.18)"; ctx.fillRect(c2.x, c2.y, c2.w, c2.h); ctx.restore();
-    }
-    // the arrow flips and the label blinks once the wall is close
-    const blink = danger && !reduced ? (Math.floor(time / 0.6) % 2 === 0) : true;
-    label(ctx, danger ? "RED LINE ▲" : "RED LINE ▼", c2.x + 14, c2.y + 24,
-      danger ? (blink ? DANGER_LIGHT : "rgba(255,138,163,.35)") : "rgba(255,255,255,.5)");
-    ctx.textAlign = "left";
-    ctx.font = font(900, 30); ctx.fillStyle = danger ? DANGER : "#fff";
+    const blink = danger && !reduced ? Math.floor(time / 0.6) % 2 === 0 : true;
+    ctx.font = font(800, 11); ctx.textAlign = "left"; ctx.letterSpacing = "1.4px";
+    ctx.fillStyle = danger ? (blink ? DANGER_LIGHT : "rgba(255,138,163,.4)") : "rgba(255,255,255,.5)";
+    ctx.fillText(tr(danger ? "RED LINE ▲" : "RED LINE ▼"), d.x + 14, mid);
+    ctx.letterSpacing = "0px";
+    ctx.font = font(900, 19); ctx.fillStyle = danger ? DANGER : "#fff";
     const dStr = groupNum(dist);
-    ctx.fillText(dStr, c2.x + 14, c2.y + 60);
-    const dw = ctx.measureText(dStr).width;
-    ctx.font = font(700, 13); ctx.fillStyle = danger ? DANGER : "rgba(255,255,255,.7)";
-    ctx.fillText(tr("cm"), c2.x + 14 + dw + 4, c2.y + 60);
-    // 4 px gauge: full when the wall is on your heels
-    const gx = c2.x + 14, gw = c2.w - 28, gy = c2.y + c2.h - 16;
+    ctx.fillText(dStr, d.x + 92, mid);
+    ctx.font = font(700, 11); ctx.fillStyle = danger ? DANGER : "rgba(255,255,255,.65)";
+    ctx.fillText(tr("cm"), d.x + 92 + measure(ctx, dStr, 900, 19) + 3, mid);
+    // the gauge fills the rest of the strip: full when the wall is on your heels
+    const gx = d.x + 150, gw = d.x + d.w - 14 - gx, gy = mid - 2;
     ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(gx, gy, gw, 4);
     const frac = Math.max(0, Math.min(1, 1 - dist / 100));
     if (frac > 0) {
@@ -363,48 +347,12 @@ export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, 
       ctx.fillRect(gx, gy, gw * frac, 4);
     }
   }
-
-  /* cell 3 — wallet */
-  const c3 = cells[2];
-  ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(c3.x, c3.y + 12, 1, c3.h - 24);
-  ctx.save();
-  if (danger) ctx.globalAlpha = 0.55;
-  const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
-  const icon = (kind: "coin" | "gem", x: number, y: number) => {
-    ctx.save(); ctx.translate(x + 10, y);
-    if (!drawPickupImage(ctx, kind, 20)) { ctx.fillStyle = kind === "coin" ? COIN : GEM; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill(); }
-    ctx.restore();
-  };
-  ctx.font = font(800, 17); ctx.textAlign = "left";
-  icon("coin", c3.x + 14, c3.y + 30);
-  ctx.fillStyle = COIN; ctx.fillText(groupNum(g.walletCoins + runCoins), c3.x + 38, c3.y + 36);
-  icon("gem", c3.x + 14, c3.y + 58);
-  ctx.fillStyle = GEM; ctx.fillText(groupNum(g.walletGems + runGems), c3.x + 38, c3.y + 64);
-  if (!g.chill && (runCoins > 0 || runGems > 0)) {
-    ctx.font = font(700, 11); ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.textAlign = "right";
-    ctx.fillText(tr(`+${runCoins} run`), c3.x + c3.w - 14, c3.y + 72);
-  }
   ctx.restore();
+}
 
-  // danger outline last, over the cell tints
-  if (danger) {
-    ctx.strokeStyle = DANGER; ctx.lineWidth = 2;
-    roundRect(ctx, d.x + 1, d.y + 1, d.w - 2, d.h - 2, 17); ctx.stroke();
-  }
-  ctx.restore();
-
-  /* chips above the dock */
-  const chipY = d.y - 12 - CHIP_H;
-  let cx = d.x;
-  const modeName = g.level ? tr(g.level.name).toUpperCase() : g.chill ? "CHILL" : g.rules === "crew" ? "CREW" : "SOLO";
-  cx += chip(ctx, cx, chipY, modeName, g.chill ? CHILL : "#fff") + 8;
-  if (g.tricks.score > 0) {
-    const combo = g.time - g.tricks.lastAt <= 4.5 && g.tricks.combo > 1 ? { text: `×${g.tricks.combo}`, color: "#fff" } : undefined;
-    chip(ctx, cx, chipY, `STYLE ${groupNum(g.tricks.score)}`, COIN, combo);
-  }
-
-  /* effects stack above the chips */
-  let ey = chipY - 8 - CHIP_H;
+/** Active effects stack upward from the controls row. */
+function drawEffects(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
+  let ey = controlsBottom(viewH) - (g.rules === "crew" ? TILE.sel.h + TILE.lift : 44) - 8 - CHIP_H;
   const eff: [string, number, string][] = [
     ["SUPER MAGNET", g.effects.superMagnet, "#ff4d4d"],
     ["SLOW-MO", g.effects.slowmo, SYNC],
@@ -417,20 +365,12 @@ export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, 
     ctx.font = font(800, 12); ctx.letterSpacing = "1.4px";
     const text = tr(`${name} ${left.toFixed(0)}S`);
     const w = ctx.measureText(text).width + 22;
-    ctx.fillStyle = SLAB; roundRect(ctx, d.x, ey, w, CHIP_H, 8); ctx.fill();
+    ctx.fillStyle = SLAB; roundRect(ctx, 12, ey, w, CHIP_H, 8); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(text, d.x + 11, ey + CHIP_H / 2);
-    ctx.fillStyle = color; ctx.fillRect(d.x + 11, ey + CHIP_H - 6, (w - 22) * Math.min(1, left / 8), 2);
+    ctx.fillText(text, 23, ey + CHIP_H / 2);
+    ctx.fillStyle = color; ctx.fillRect(23, ey + CHIP_H - 6, (w - 22) * Math.min(1, left / 8), 2);
     ctx.restore();
     ey -= CHIP_H + 6;
   }
-
-  /* crew tiles + mode buttons */
-  if (g.rules === "crew") drawCrew(ctx, g, viewH);
-  const b = hudButtons(viewH, g);
-  if (g.rules === "crew") {
-    const climbing = g.mode === "move";
-    button(ctx, b.mode, climbing ? "CLIMB" : "FLING", climbing ? SLAB : ACCENT, climbing ? CLIMB : INK);
-    button(ctx, b.sync, "SYNC", g.sync ? SYNC : SLAB, g.sync ? INK : "#fff");
-  }
 }
+

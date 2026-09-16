@@ -75,8 +75,9 @@ html, body { margin: 0; height: 100%; height: var(--vh); background: var(--bg); 
 #ui { --dock-lift: 34; }
 #ui.has-chat { --dock-lift: 74; }
 .pause-btn {
+  /* top right, on the same row as the canvas top bar (hud.ts TOP_Y / BTN) */
   position: absolute;
-  bottom: calc(var(--safe-px) + (var(--dock-lift) + 84 + 12) * var(--px));
+  top: calc(env(safe-area-inset-top, 0px) + 10 * var(--px));
   right: calc(12 * var(--px));
   width: calc(44 * var(--px)); height: calc(44 * var(--px)); padding: 0;
   border-radius: calc(12 * var(--px)); border: 0;

@@ -965,7 +965,7 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; style?: number; walletCoins?: number; walletGems?: number }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
@@ -984,7 +984,6 @@ export class Ui {
         <div class="lost-meta">
           <span>BEST <b>${groupNum(o.best)}</b></span>
           <span class="rank" hidden></span>
-          ${o.style ? `<span>STYLE <b class="coin">${groupNum(o.style)}</b></span>` : ""}
         </div>
       </div>
       ${o.chill ? `<p class="lost-banked"><i>Chill mode: no coins or records. Metres added to the world total.</i></p>` : `
