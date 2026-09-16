@@ -64,11 +64,15 @@ const ART: Record<string, string> = {
 };
 const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;
 /**
- * Sources whose subject is not in the middle of the frame, using the same landmarks the
- * game itself uses: kid-hand.ts puts the fingertips at 2.7% and the wrist at 26% of the
- * arm art (the sleeve runs down from there), and cat-paw.ts puts the pad 85% down.
+ * Tall sources whose subject sits at one END of the frame, not in the middle.
+ *
+ * cover on a 44 px square shows only about a third of these images, and an
+ * object-position percentage opens that window part-way down -- which clipped the
+ * fingertips off the hand. Both subjects are hard against an edge, so anchor to the
+ * edge and nothing can be cut: kid-hand.ts puts the fingertips at 2.7% with the sleeve
+ * running down, and cat-paw.ts puts the pad 85% down with the toes below it.
  */
-const FOCUS: Record<string, string> = { "kid-hand": "center 14%", "cat-paw": "center 86%" };
+const FOCUS: Record<string, string> = { "kid-hand": "center top", "cat-paw": "center bottom" };
 const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({
   icon: iconFor(item, fallback), name: item.name, text: item.description,
   art: ART[item.id] ?? ART[item.power ?? ""],
