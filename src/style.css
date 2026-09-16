@@ -451,11 +451,6 @@ select.buy option { background: #1e2229; color: #fff; }
   position: absolute; top: calc(74 * var(--px)); width: calc(340 * var(--px)); height: auto;
   filter: drop-shadow(0 calc(6 * var(--px)) calc(10 * var(--px)) rgba(0,0,0,.55));
 }
-.home-tag {
-  position: absolute; top: calc(232 * var(--px)); left: calc(20 * var(--px)); right: calc(20 * var(--px));
-  margin: 0; text-align: center; color: #fff;
-  font: 700 calc(16 * var(--px)) / 1.3 var(--display); text-shadow: 0 calc(2 * var(--px)) calc(6 * var(--px)) rgba(0,0,0,.7);
-}
 /* icon row sits just above the dock */
 .home-bottom {
   position: absolute; left: calc(12 * var(--px)); right: calc(12 * var(--px));

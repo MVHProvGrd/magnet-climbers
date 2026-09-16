@@ -328,7 +328,6 @@ export class Ui {
         </button>
       </div>
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
-      <p class="home-tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
       <div class="home-bottom">
       <div class="home-icons">
         ${icon("story", "story", "STORY")}
