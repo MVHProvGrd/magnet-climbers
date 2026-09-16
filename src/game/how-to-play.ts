@@ -60,6 +60,7 @@ const ART: Record<string, string> = {
   coin: "art/real-v1/pickups/coin.png", gem: "art/real-v1/pickups/gem.png", heart: "art/real-v1/pickups/heart.png",
   magnet: "art/real-v1/pickups/magnet.png", extra: "art/real-v1/pickups/extra.png",
   slowmo: "art/real-v1/pickups/slowmo.png", reach: "art/real-v1/pickups/reach.png", candy: "art/real-v1/pickups/candy.png",
+  paint: "art/real-v1/pickups/paint.png",
   "kid-hand": "art/real-v1/kid-arm.webp", "cat-paw": "art/real-v1/cat-paw.webp",
 };
 const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;

@@ -570,7 +570,8 @@ select.buy option { background: #1e2229; color: #fff; }
   background: var(--slab-panel); backdrop-filter: none; border-radius: calc(18 * var(--px));
   align-items: center;
 }
-.story-creature { width: calc(150 * var(--px)); height: calc(150 * var(--px)); filter: drop-shadow(0 calc(12 * var(--px)) calc(12 * var(--px)) rgba(0,0,0,.45)); }
+/* 3:2 scene, full card width; the card dims its bottom, so nothing vital sits there. */
+.story-scene { width: 100%; height: auto; display: block; border-radius: calc(12 * var(--px)); }
 .story-label { font: 800 calc(11 * var(--px)) var(--display); letter-spacing: calc(1.4 * var(--px)); color: var(--accent); }
 .panel.story-card h2 { font: 900 calc(30 * var(--px)) var(--display); color: #fff; }
 .story-body { margin: 0; font: 600 calc(16 * var(--px)) / 1.4 var(--display); color: rgba(255,255,255,.85); }

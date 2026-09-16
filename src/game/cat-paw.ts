@@ -22,13 +22,23 @@ export const CLAW_TIPS: readonly [number, number][] = [[-38, 50], [-13, 64], [12
 /** A claw mark on the door: world coordinates, fades over SCRATCH_LIFE seconds. */
 export interface Scratch { x: number; y: number; born: number }
 export const SCRATCH_LIFE = 1.6;
+/** Photographed scratch decals (pack 22); the hand-drawn strokes remain as the fallback. */
+const SCRATCH_W = 7, SCRATCH_H = 26;
 export function drawScratches(ctx: CanvasRenderingContext2D, marks: readonly Scratch[], now: number) {
   for (const m of marks) {
     const age = now - m.born; if (age < 0 || age > SCRATCH_LIFE) continue;
     const grow = Math.min(1, age / 0.1), fade = Math.pow(1 - age / SCRATCH_LIFE, 1.5);
-    ctx.save(); ctx.globalAlpha = fade; ctx.lineCap = "round";
-    ctx.strokeStyle = "#49565d"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.quadraticCurveTo(m.x - 1, m.y + 9 * grow, m.x - 3, m.y + 20 * grow); ctx.stroke();
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(m.x + 0.8, m.y); ctx.quadraticCurveTo(m.x - 0.2, m.y + 9 * grow, m.x - 2.2, m.y + 20 * grow); ctx.stroke();
+    // one of three, chosen by position so a mark never changes sprite mid-life
+    const art = objectArtById(`claw-${1 + (Math.abs(Math.round(m.x) + Math.round(m.y)) % 3)}`);
+    ctx.save(); ctx.globalAlpha = fade;
+    if (art) {
+      // drawn narrowly at game scale, growing downward from where the claw bit
+      ctx.drawImage(art, m.x - SCRATCH_W / 2, m.y, SCRATCH_W, SCRATCH_H * grow);
+    } else {
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#49565d"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.quadraticCurveTo(m.x - 1, m.y + 9 * grow, m.x - 3, m.y + 20 * grow); ctx.stroke();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(m.x + 0.8, m.y); ctx.quadraticCurveTo(m.x - 0.2, m.y + 9 * grow, m.x - 2.2, m.y + 20 * grow); ctx.stroke();
+    }
     ctx.restore();
   }
 }
@@ -58,7 +68,16 @@ export function pawPose(p: CatPaw, camY: number, viewH: number): Vec & { contact
 }
 /** Photo cutout (pack 15) at the study's scale; the offscreen foreleg is decorative. */
 export function drawCatPaw(ctx: CanvasRenderingContext2D, p: CatPaw, camY: number, viewH: number) {
-  const pose = pawPose(p, camY, viewH), art = objectArtById("cat-paw");
+  const pose = pawPose(p, camY, viewH);
+  /**
+   * Claws out on contact, paw closed on the approach and the retreat.
+   *
+   * Safe to swap per frame: the hit test is an ellipse around `pose`, which comes from the
+   * PAW fractions, never from the image. Codex measured the new pose's pad at (182,920) of
+   * 362x1085, which is the same frame fraction as the original to 0.25 px across and 0.00
+   * px down, so the two poses register. Its toes are broader, which is the point.
+   */
+  const art = (pose.contact ? objectArtById("cat-paw-claws") : undefined) ?? objectArtById("cat-paw");
   if (pose.warn > 0) {
     // Same language as the hand: shade the real danger zone, not a token marker. The band is
     // the pad's hit width over the depth the taps actually reach, so what is shaded is what hurts.

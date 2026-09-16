@@ -30,6 +30,8 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   ...["swing-snack", "clip-snack", "clip-travel", "clip-doodle"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/real-v1/kid-arm.webp", (image) => setObjectArt("kid-arm", image)),
   loadImage("art/real-v1/cat-paw.webp", (image) => setObjectArt("cat-paw", image)),
+  loadImage("art/real-v1/cat-paw-claws.webp", (image) => setObjectArt("cat-paw-claws", image)),
+  ...[1, 2, 3].map((n) => loadImage(`art/real-v1/claws/claw-${n}.webp`, (image) => setObjectArt(`claw-${n}`, image))),
 ]);
 /** Hook pivot of the lemon keychain assembly, as fractions of its frame (source point 510,285 of 1024x1536). */
 const KEYCHAIN_PIVOT = { x: 510 / 1024, y: 285 / 1536 };

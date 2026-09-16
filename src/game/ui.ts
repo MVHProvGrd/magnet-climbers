@@ -831,17 +831,18 @@ export class Ui {
   }
 
   showStory(done: () => void) {
+    const base = import.meta.env.BASE_URL;
     const slides = [
-      { icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of Cooper. Good job. Steady work." },
-      { icon: "🧒", title: "Then bedtime came", text: "Cooper \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge." },
-      { icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is Cooper's reach. Stay above it." },
+      { scene: "story-1-life", icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of Cooper. Good job. Steady work." },
+      { scene: "story-2-bedtime", icon: "🧒", title: "Then bedtime came", text: "Cooper \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge." },
+      { scene: "story-3-climb", icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is Cooper's reach. Stay above it." },
     ];
     let i = 0;
     const p = el("div", "panel story-card");
     const render = () => {
       const sl = slides[i];
       p.innerHTML = `
-        <canvas class="story-creature" width="150" height="150" data-look="${this.save().creature ?? "human"}|${this.save().pattern ?? ""}"></canvas>
+        <img class="story-scene" src="${base}art/story/${sl.scene}.webp" alt="" width="768" height="512" />
         <span class="story-label">THE STORY · ${i + 1} OF ${slides.length}</span>
         <h2>${sl.title}</h2>
         <p class="story-body">${sl.text}</p>
