@@ -1,0 +1,96 @@
+[
+  {
+    "file": "ready/cat-paw-claws-v1.webp",
+    "size": [
+      362,
+      1085
+    ],
+    "bbox": [
+      63,
+      0,
+      312,
+      1072
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 224611,
+      "semi": 6503,
+      "opaque": 161656
+    },
+    "edge_pixels": 2834,
+    "magenta_tinted_opaque": 0,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate"
+    ]
+  },
+  {
+    "file": "ready/claw-mark-1-v1.webp",
+    "size": [
+      64,
+      256
+    ],
+    "bbox": [
+      22,
+      12,
+      41,
+      243
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 14239,
+      "semi": 969,
+      "opaque": 1176
+    },
+    "edge_pixels": 414,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/claw-mark-2-v1.webp",
+    "size": [
+      64,
+      256
+    ],
+    "bbox": [
+      25,
+      33,
+      37,
+      222
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 14811,
+      "semi": 772,
+      "opaque": 801
+    },
+    "edge_pixels": 340,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/claw-mark-3-v1.webp",
+    "size": [
+      64,
+      256
+    ],
+    "bbox": [
+      22,
+      8,
+      40,
+      247
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 14619,
+      "semi": 1031,
+      "opaque": 734
+    },
+    "edge_pixels": 404,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  }
+]

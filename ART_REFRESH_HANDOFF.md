@@ -87,7 +87,9 @@ then `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude w
   gem is cyan, heart is red, candy is pink. A strong green or violet would be clear.
 - No text or branding on the tin.
 
-## QUEUED FOR CODEX — cat claws (pack 22) — 2026-09-15
+## GENERATED FOR CLAUDE — cat claws (pack 22) — 2026-09-16
+
+Four assets in `art/archive/22-cat-claws-v1/`. Scratches ready; contact paw is a review candidate because generation shifted the silhouette, not a guaranteed pixel-perfect pose swap. See pack HANDOFF.md and export-review.jpg. No live writes.
 
 Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks
 that are hand-drawn strokes in `cat-paw.ts` (a 1.5 px grey curve with a 0.7 px white
