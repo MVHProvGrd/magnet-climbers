@@ -55,7 +55,9 @@ read as one set. The toys are the translucent rubbery magnet people already in t
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
-## QUEUED FOR CODEX — paint bucket pickup (pack 23) — 2026-09-15
+## READY FOR CLAUDE — paint bucket pickup (pack 23) — 2026-09-16
+
+Generated and keyed successfully. Requested256x256 export: `art/archive/23-paint-bucket-v1/ready/paint.png`. Full source cutout, prompt, QC and review included. Green spill, raised wire handle, no branding. No live file writes. Original request follows.
 
 Owner request. Solo runs no longer spawn "+1 friend" pickups (a crew of one cannot gain a
 teammate); those become paint buckets that repaint your climber mid-run, purely cosmetic.
