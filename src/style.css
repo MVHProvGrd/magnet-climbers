@@ -237,22 +237,24 @@ select.buy option { background: #1e2229; color: #fff; }
 
 /* chat */
 /* Chat uses the shared panel shell; rows are avatar + name + time + bubble. */
-.chat-log { gap: calc(10 * var(--px)); }
-.cmsg { display: flex; gap: calc(8 * var(--px)); align-items: flex-start; }
+.chat-log { gap: calc(5 * var(--px)); }
+/* The portrait is as tall as the name line plus the bubble, so a row reads as one
+   block: name beside the top of the face, message tucked under it. */
+.cmsg { display: flex; gap: calc(7 * var(--px)); align-items: flex-start; }
 .cav {
-  flex: 0 0 auto; width: calc(32 * var(--px)); height: calc(32 * var(--px)); border-radius: calc(10 * var(--px));
+  flex: 0 0 auto; width: calc(38 * var(--px)); height: calc(38 * var(--px)); border-radius: calc(11 * var(--px));
   display: flex; align-items: center; justify-content: center;
-  font: 900 calc(15 * var(--px)) var(--display);
+  font: 900 calc(17 * var(--px)) var(--display);
 }
-.cbody { display: flex; flex-direction: column; gap: calc(3 * var(--px)); min-width: 0; flex: 1; }
-.chead { display: flex; align-items: baseline; gap: calc(6 * var(--px)); }
+.cbody { display: flex; flex-direction: column; gap: calc(1 * var(--px)); min-width: 0; flex: 1; }
+.chead { display: flex; align-items: baseline; gap: calc(6 * var(--px)); line-height: 1.1; }
 .chead b { font: 800 calc(13 * var(--px)) var(--display); }
 .chead i { font: 600 calc(11 * var(--px)) var(--display); font-style: normal; color: var(--text-3); }
 .cbubble {
   align-self: flex-start; max-width: 100%;
-  padding: calc(7 * var(--px)) calc(11 * var(--px)); border-radius: calc(12 * var(--px));
+  padding: calc(5 * var(--px)) calc(10 * var(--px)); border-radius: calc(11 * var(--px));
   background: rgba(255,255,255,.07); color: #eef3f7;
-  font: 600 calc(14 * var(--px)) / 1.35 var(--display); word-break: break-word;
+  font: 600 calc(14 * var(--px)) / 1.3 var(--display); word-break: break-word;
 }
 .cmsg.me .cbubble { background: rgba(255,138,61,.18); box-shadow: inset 0 0 0 1px rgba(255,138,61,.35); }
 /* first ever open has nothing cached: grey rows read better than the word "Loading" */
@@ -311,7 +313,7 @@ select.buy option { background: #1e2229; color: #fff; }
 /* avatars: one sprite sheet, cells picked by background-position (see avatars.ts) */
 .avi { display: inline-block; vertical-align: middle; border-radius: 8px; background-repeat: no-repeat; background-color: #fff; flex: 0 0 auto; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .avi.blank { color: #fff; font-weight: 800; text-align: center; font-family: system-ui, sans-serif; }
-.avi.cav { width: calc(32 * var(--px)); height: calc(32 * var(--px)); border-radius: calc(10 * var(--px)); }
+.avi.cav { width: calc(38 * var(--px)); height: calc(38 * var(--px)); border-radius: calc(11 * var(--px)); }
 .chat-strip .lines span { display: flex; align-items: center; gap: 5px; }
 .chat-strip .lines .avi { border-radius: 5px; }
 .panel .shell-body.avatar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(8 * var(--px)); align-content: start; }
