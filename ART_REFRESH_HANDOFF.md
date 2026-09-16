@@ -201,6 +201,56 @@ Pack 10 hanging keepsakes are WIRED and LIVE (see archive README). Pack 12: kid 
 
 Codex makes ART AND ANIMATION REVIEWS; Claude implements. New pack `12-motion-studies-v1`: realistic kid hand/forearm, enamel reach-badge alternative, interactive lemon bump-and-settle, side-swipe and bottom-entry left/right sweep previews. Review page `public/art-archive/motion-v1/index.html`; full instructions in pack HANDOFF.md. Single-pose hand and approximate source-rectangle lemon split are animation studies, not production articulated rigs. This supersedes older exclusions below for hand/reach art exploration only. No src/game changes. Hanging assets in `10-hanging-keepsakes-v1` remain available too.
 
+## Art placement issues — for Codex, 2026-09-16
+
+Eleven separate defects this session, all of them art meeting the world badly
+rather than the art itself being wrong. Ten are fixed; the eleventh is a
+request. Listed because the pattern matters more than the individual bugs: a
+photographed object gets sized by whatever rectangle the generator hands it,
+and the generator was never told how big the real object is.
+
+| # | What went wrong | Cause | Status |
+|---|---|---|---|
+| 1 | Drawer bins squeezed and smeared | a 340x170 photo nine-sliced into any rectangle | fixed |
+| 2 | Ice tray stretched | width computed from 189/338 when the photo is 340x170 | fixed |
+| 3 | Bins stacked three high, bottom one sliced | tiling to fill the zone | fixed |
+| 4 | A wall of ten identical bins | every plain no-grip zone borrowed the one bin photo | fixed |
+| 5 | Bins straddling the door seam | the carrying zone spans both doors | fixed |
+| 6 | Every bin a different size | sized to the zone, not to itself | fixed |
+| 7 | Paper cards stretched sideways | drawn art authored square, scaled per axis | fixed |
+| 8 | Space Cadet and other cards clipped | cover fit with 4% overscan | fixed |
+| 9 | Souvenir magnets losing their edge | contain fit run 8% oversize | fixed |
+| 10 | Saturated reds keyed to near-black | the cutout skill's despill capped red anywhere it read faintly magenta | fixed in the skill |
+| 11 | One bin photo for the whole fridge | nothing to alternate with, so any repeat is the same object twice | needs art |
+
+### What this changes for the queue
+
+Anything photographed that the fridge repeats needs **variants**, not one hero
+image. A single bin means the only safe number of bins on a door is one. Three
+or four bin variants would let a door carry a column of them the way a real
+fridge door does, which is the look the owner asked for and the one thing the
+code cannot fake.
+
+Priority additions, on top of the existing v3 queue:
+
+- **Door bins, 3 more variants** (`bin-2..4-v1`), same head-on angle and same
+  proportions as the current `plastic.png` (340x170, twice as wide as tall):
+  a deep one, a shallow one with a lip, and one with a milk bottle in it.
+- **Ice trays, 2 more** (`ice-tray-2..3-v1`), 340x170 like the current one; the
+  game stands them on end, so keep them exactly twice as wide as tall.
+- **Plastic panel texture** (`panel-plastic-v1`), 768x384, flat moulded door
+  liner with no bin in it. Plain no-grip zones currently fall back to a drawn
+  dark slab that reads heavier than the steel around it.
+
+### The rule to design to
+
+Every object photo should be **one real object at one real size**, head-on,
+with its own proportions, and nothing in the frame that implies a size other
+than its own. The game now has `src/game/placement.ts` saying how big each
+thing is on the fridge and how often it appears, and an owner workbench at
+`/placement.html` to tune those numbers against a live fridge. Art that matches
+its stated size drops straight in.
+
 ## Codex queue v3 — 2026-09-15 (replaces v2; packs 19 and 20 are LIVE)
 
 **Delivery, unchanged:** generate on flat #FF00FF, key with `.claude/skills/chroma-cutout/scripts/chroma-cut.py`, each batch in a new pack `art/archive/<nn>-<name>-v1/` (sources/ + ready/ + prompts.md + HANDOFF.md), add a README row, `node scripts/art-archive-page.mjs`, `git push origin codex/art-ready-pack`. Next free pack number is **21** (Claude took **22** for chat avatars; use 23 after 21). Never write to `public/art/`; Claude fits and wires every batch as it lands. Full source margins are fine, Claude crops to alpha bounds. 8 to 12 images per session.
