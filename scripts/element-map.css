@@ -1,0 +1,140 @@
+
+  :root {
+    --ground:#d9dde1; --sheet:#f4f6f7; --line:#c3cad1; --line-soft:#d8dee3;
+    --ink:#14171c; --ink-2:#57636e; --ink-3:#7e8a95;
+    --accent:#c2551a; --danger:#b81f3b; --chill:#4a7a18; --coin:#8a6300;
+    --steel-a:rgba(255,255,255,.55); --steel-b:rgba(160,172,182,.16);
+    --display:"Barlow Condensed","Arial Narrow",sans-serif;
+    --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --ground:#0f1216; --sheet:#1a1f25; --line:#313a43; --line-soft:#272e35;
+    --ink:#eef2f5; --ink-2:#a3b0bb; --ink-3:#78848f;
+    --accent:#ff8a3d; --danger:#ff506e; --chill:#9be15d; --coin:#ffd23f;
+    --steel-a:rgba(255,255,255,.05); --steel-b:rgba(0,0,0,.18); color-scheme:dark; } }
+  :root[data-theme="dark"]{
+    --ground:#0f1216; --sheet:#1a1f25; --line:#313a43; --line-soft:#272e35;
+    --ink:#eef2f5; --ink-2:#a3b0bb; --ink-3:#78848f;
+    --accent:#ff8a3d; --danger:#ff506e; --chill:#9be15d; --coin:#ffd23f;
+    --steel-a:rgba(255,255,255,.05); --steel-b:rgba(0,0,0,.18); color-scheme:dark; }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);
+    background-image:repeating-linear-gradient(90deg,var(--steel-a) 0 1px,transparent 1px 3px,var(--steel-b) 3px 4px);
+    color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+  .wrap{max-width:1140px;margin:0 auto;padding:40px 20px 72px}
+  .eyebrow{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:2.4px;text-transform:uppercase;color:var(--accent)}
+  h1{font-family:var(--display);font-weight:900;font-size:clamp(38px,7vw,62px);line-height:.94;margin:8px 0 12px;text-wrap:balance}
+  .standfirst{margin:0 0 16px;max-width:64ch;color:var(--ink-2);font-size:16px}
+  .rig{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:baseline;gap:7px;padding:7px 11px;border:1px solid var(--line);
+    border-radius:7px;background:var(--sheet);font-family:var(--mono);font-size:12.5px}
+  .chip b{font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3)}
+  .chip span{font-variant-numeric:tabular-nums}
+  section{margin-top:40px}
+  h2{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:2.2px;text-transform:uppercase;
+    color:var(--ink);margin:0;padding-bottom:8px;border-bottom:2px solid var(--ink);display:flex;align-items:baseline;gap:10px}
+  h2 .count{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--ink-3);letter-spacing:0}
+  .note{margin:10px 0 16px;color:var(--ink-2);max-width:70ch;font-size:14.5px}
+  .plates{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+  .tile{margin:0;display:flex;flex-direction:column;gap:7px}
+  /* cutouts are drawn on a bright steel door in game, so the plate stays steel in both themes */
+  .plate{display:flex;align-items:center;justify-content:center;aspect-ratio:1;padding:10px;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;
+    background:#c9ced3;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 1px,transparent 1px 3px,rgba(120,132,143,.18) 3px 4px)}
+  .tile.wide .plate{aspect-ratio:3/2}
+  .tile img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  figcaption{display:flex;flex-direction:column;gap:1px;min-width:0}
+  figcaption b{font-family:var(--display);font-weight:800;font-size:15px;line-height:1.15}
+  figcaption i{font-style:normal;font-size:11.5px;color:var(--ink-2);font-family:var(--mono);line-height:1.35}
+  .tile.s .plate{box-shadow:inset 0 0 0 2px #2f7fb8}
+  .tile.n .plate{box-shadow:inset 0 0 0 2px var(--danger)}
+  .tile.hurt figcaption i{color:var(--danger)}
+  .tile.new figcaption b::after{content:"NEW";font-family:var(--display);font-size:9.5px;letter-spacing:1px;
+    color:var(--accent);margin-left:6px;vertical-align:2px}
+  footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
+  footer code{font-family:var(--mono);font-size:12px}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- expand a cutout ---------------------------------------------------
+     The tiles are small on purpose; the art is the point, so any plate opens
+     full size with the path and the pixel dimensions it actually shipped at. */
+  /* the plate is a <button> now; keep the steel look above and add only the affordance */
+  .plate { position: relative; cursor: zoom-in; font: inherit; color: inherit; -webkit-appearance: none; appearance: none; }
+  .plate::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--accent); opacity: 0; transition: opacity .12s ease;
+  }
+  .plate:hover::after, .plate:focus-visible::after { opacity: 1; }
+  .plate:focus-visible { outline: none; }
+
+  /* own this rather than leaning on the host reset: display:grid otherwise beats [hidden] */
+  .lb[hidden] { display: none; }
+  .lb {
+    position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+    padding: clamp(16px, 4vw, 48px);
+    background: var(--ground);
+    background: color-mix(in srgb, var(--ground) 86%, #000 14%);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .lb-fig {
+    margin: 0; display: flex; flex-direction: column; gap: 12px; align-items: center;
+    max-width: 100%; max-height: 100%;
+  }
+  .lb-plate {
+    display: grid; place-items: center; padding: clamp(10px, 2vw, 22px);
+    border: 1px solid var(--line); border-radius: 12px;
+    background: #c9ced3;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.5) 0 2px, transparent 2px 6px, rgba(120,132,143,.18) 6px 8px);
+    box-shadow: 0 18px 50px rgba(0,0,0,.28);
+    max-width: 100%; min-height: 0; overflow: hidden;
+  }
+  .lb-plate img { display: block; max-width: 100%; max-height: 66vh; width: auto; height: auto; }
+  .lb-cap { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+  .lb-cap b { font-family: var(--display); font-weight: 800; font-size: clamp(20px, 3.4vw, 28px); letter-spacing: .2px; }
+  .lb-cap i { font-style: normal; color: var(--ink-2); font-size: 15px; }
+  .lb-cap code { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .lb-cap .dim { font-family: var(--mono); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  .lb-btn {
+    position: absolute; border: 1px solid var(--line); background: var(--sheet); color: var(--ink);
+    border-radius: 8px; cursor: pointer; font-family: var(--display); font-weight: 800;
+    letter-spacing: 1.2px; text-transform: uppercase; font-size: 11px; padding: 9px 12px; line-height: 1;
+  }
+  .lb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .lb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lb-close { top: clamp(12px, 3vw, 24px); right: clamp(12px, 3vw, 24px); }
+  .lb-prev, .lb-next { top: 50%; transform: translateY(-50%); font-size: 15px; padding: 14px 13px; }
+  .lb-prev { left: clamp(6px, 2vw, 20px); }
+  .lb-next { right: clamp(6px, 2vw, 20px); }
+  .lb-count {
+    position: absolute; bottom: clamp(12px, 3vw, 24px); left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 560px) {
+    .lb-prev, .lb-next { top: auto; bottom: clamp(12px, 3vw, 24px); transform: none; }
+    .lb-count { bottom: calc(clamp(12px, 3vw, 24px) + 46px); }
+  }
+
+  /* ---- the section notes now carry the mechanics, not just a caption ---------------- */
+  .note { margin: 10px 0 16px; color: var(--ink-2); max-width: 74ch; font-size: 14.5px; line-height: 1.55; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .rules { margin: 10px 0 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 5px; }
+  .rules li { font-size: 14px; }
+  .rules li::marker { color: var(--accent); }
+  .src {
+    display: inline-block; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    border: 1px solid var(--line-soft); border-radius: 5px; padding: 1px 6px; white-space: nowrap;
+  }
+
+  /* two elements have no photograph: the door gap and the centre seam are drawn each frame */
+  .tile.nophoto .plate { background: var(--sheet-2); background-image: none; border-style: dashed; cursor: pointer; }
+  .drawn {
+    font-family: var(--display); font-weight: 800; font-size: 11px; letter-spacing: 1.1px;
+    text-transform: uppercase; color: var(--ink-3); text-align: center; line-height: 1.35;
+  }
+
+  .lb-desc { max-width: 46ch; color: var(--ink-2); font-size: 14.5px; line-height: 1.55; margin-top: 2px; }
