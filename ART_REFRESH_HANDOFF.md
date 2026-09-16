@@ -75,7 +75,9 @@ then `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude w
   gem is cyan, heart is red, candy is pink. A strong green or violet would be clear.
 - No text or branding on the tin.
 
-## QUEUED FOR CODEX — cat claws (pack 22) — 2026-09-15
+## QUEUED FOR CODEX — cat claws (pack 24) — 2026-09-15
+
+**Renumbered from 22.** Another session shipped `22-avatars-v1` while this was queued, so use 24.
 
 Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks
 that are hand-drawn strokes in `cat-paw.ts` (a 1.5 px grey curve with a 0.7 px white
@@ -83,7 +85,7 @@ highlight, about 20 px long, four per tap, fading over 1.6 s). Both want real ar
 
 Unlike pack 21 these ARE cutouts: generate on flat #FF00FF and key with
 `.claude/skills/chroma-cutout/scripts/chroma-cut.py` as usual. Pack
-`art/archive/22-cat-claws-v1/` with `sources/`, `ready/`, `prompts.md`, a README row, then
+`art/archive/24-cat-claws-v1/` with `sources/`, `ready/`, `prompts.md`, a README row, then
 `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude wires it.
 
 ### 1. Claws-out paw — `cat-paw-claws-v1.webp`
