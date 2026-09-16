@@ -45,6 +45,8 @@ export const CFG = {
   handIntervalBase: 22,
   handIntervalMin: 9,
   handWarn: 1.1,
+  /** rare double attack: Cooper and the cat come at the same climber at once (world v13+) */
+  comboChance: 0.07,
   handShove: 560,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
   /** red line speed while a candy drop is active */

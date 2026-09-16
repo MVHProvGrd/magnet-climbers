@@ -1128,8 +1128,11 @@ export class Game {
   }
   private stepHand(dt: number) {
     if (this.phase !== "running" || this.chill) return;
-    if (this.paw) { this.stepPaw(dt); return; }
+    // no early return: during the rare double both are live at once
+    if (this.paw) this.stepPaw(dt);
     if (!this.hand) {
+      // a lone paw owns the attack slot; only the combo below ever spawns a hand beside one
+      if (this.paw) return;
       if (this.time < this.nextHandAt) return;
       const anchored = this.anchored;
       const focus = anchored.length ? anchored.reduce((m, c) => (c.y < m.y ? c : m)) : this.alive[0];
@@ -1137,6 +1140,17 @@ export class Game {
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       // v13: about a third of the attacks are the cat, tapping down from the top of the screen
       if (this.world.version >= 13 && random() < 0.35) { this.paw = { x: 60 + random() * (W - 120), t: 0, hit: new Set() }; sfx.warning(); return; }
+      // Rare: Cooper and the cat go for the same climber together. No timing work needed --
+      // the hand's 1.1 s warning and the paw's 0.75 s hold plus its 0.48 s first tap land
+      // 0.13 s apart, so they converge on their own. The paw drops on the focus climber and
+      // the hand sweeps across them, so the two threats cross where the player is standing.
+      if (this.world.version >= 13 && random() < CFG.comboChance) {
+        const comboSide: -1 | 1 = random() < 0.5 ? -1 : 1;
+        this.hand = { side: comboSide, y: focus.y + (random() - 0.5) * 40, x: comboSide < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
+        this.paw = { x: Math.max(60, Math.min(W - 60, focus.x)), t: 0, hit: new Set() };
+        sfx.warning();
+        return;
+      }
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
       // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
