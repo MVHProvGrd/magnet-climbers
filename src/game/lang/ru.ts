@@ -73,7 +73,7 @@ export const exact: Record<string, string> = {
   "Super Magnet": "Супермагнит", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "Временно ловит раньше, тянется дальше и держится на стекле, пластике и бумаге как на стали.",
   "Pocket Pal": "Карманный друг", "Adds another climber to your run.": "Добавляет ещё одного альпиниста.",
   "Kitchen Timer": "Кухонный таймер", "Temporarily slows the action.": "Временно замедляет время.",
-  "Reach Badge": "Значок дальности", "Temporarily stretches the distance you can climb to a teammate.": "Временно увеличивает дальность, на которую можно долезть до товарища.",
+  "Reach Badge": "Значок дальности", "Temporarily stretches how far you can reach for your next hold.": "Временно увеличивает дальность, на которую можно долезть до товарища.",
   "Water Station": "Диспенсер воды", "Slippery dispenser. Climb the steel beside it or its silver handle.": "Скользкий диспенсер. Лезьте по стали рядом или по его серебристой ручке.",
   "Busy Month": "Занятой месяц", "A big paper calendar. Follow the open steel side lane.": "Большой бумажный календарь. Идите по открытой стальной полосе сбоку.",
   "Ice Cube Alley": "Аллея льда", "Plastic ice tray: no grip. The exposed door around it is safe.": "Пластиковый лоток для льда: не держит. Дверь вокруг безопасна.",

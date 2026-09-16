@@ -1,9 +1,10 @@
 import { CFG, W } from "./config";
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT } from "./items";
+import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
-import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
+import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -114,7 +115,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 13, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 16, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -238,17 +239,22 @@ export class World {
         break;
       }
       case "pillar": {
-        // whole segment is plastic trim except one or two vertical metal strips
+        // One or two vertical steel strips to climb, with door trim either side.
+        // v15: the trim is a BAND, not the whole segment. Filling a segment with
+        // plastic was a black wall across the door, which no fridge has; a band
+        // leaves steel above and below it and still forces you onto the strips.
         const strips = r() < 0.5 + difficulty * 0.3 ? 1 : 2;
         const sw = rangeOf(r, 56, 80 - difficulty * 14);
         const xs = strips === 1 ? [rangeOf(r, 40, W - sw - 40)] : [rangeOf(r, 20, W / 2 - sw - 20), rangeOf(r, W / 2 + 20, W - sw - 20)];
+        const bandH = this.version >= 15 ? Math.round(h * rangeOf(r, 0.34, 0.46)) : h;
+        const bandY = this.version >= 15 ? y + Math.round(rangeOf(r, 0.1, 0.9) * (h - bandH)) : y;
         // trim on left of first strip, between, and right of last
         let cursor = 0;
         for (const sx of xs.sort((a, b) => a - b)) {
-          if (sx > cursor) zones.push({ x: cursor, y, w: sx - cursor, h, kind: "trim" });
+          if (sx > cursor) zones.push({ x: cursor, y: bandY, w: sx - cursor, h: bandH, kind: "trim" });
           cursor = sx + sw;
         }
-        if (cursor < W) zones.push({ x: cursor, y, w: W - cursor, h, kind: "trim" });
+        if (cursor < W) zones.push({ x: cursor, y: bandY, w: W - cursor, h: bandH, kind: "trim" });
         break;
       }
       case "stickers": {
@@ -366,22 +372,58 @@ export class World {
           zone.itemId = choice.id;
           this.lastCardId = choice.id;
           this.remember(this.recentPapers, choice.id, 10);
-          // v13: a photographed paper keeps its own proportions (shrink to fit rather than crop)
+          // v13: a card takes its art's own proportions. Fitting it inside the slot
+          // was wrong -- a portrait card in a short wide slot collapsed to a stamp,
+          // next to a square one filling its slot. Keep the slot's AREA instead, so
+          // every card carries the same visual weight whatever its shape, then back
+          // off only if that runs into the segment edge or something already placed.
           const aspect = this.version >= 13 ? PAPER_ASPECT[choice.id] : undefined;
           if (aspect) {
             const others = zones.filter((o) => o !== zone);
-            let cw = zone.w, ch = Math.round(cw / aspect);
-            // only ever shrink inside the card's own rectangle, so nothing placed earlier can be overlapped
-            while (ch > zone.h || blocked(others, { x: zone.x, y: zone.y, w: cw, h: ch }, 8, true)) {
-              cw -= 6; ch = Math.round(cw / aspect); if (cw < 40) break;
-            }
-            if (cw >= 40) { zone.w = cw; zone.h = ch; }
+            // a floor on the area: the slot a card lands in varies a lot, and a small
+            // slot made a portrait card read as a stamp beside a landscape one
+            const area = Math.max(zone.w * zone.h, 11000);
+            const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
+            let cw = Math.round(Math.sqrt(area * aspect)), ch = Math.round(cw / aspect);
+            // a resized card may move, so it must clear the bumper paths too --
+            // those were laid down before this pass and expect bare steel
+            const paths = bumpers.map((b) => b.motion === "lift"
+              ? { x: b.x, y: b.minY, w: b.w, h: b.maxY - b.minY + b.h }
+              : b.motion === "slide" ? { x: 0, y: b.y, w: W, h: b.h }
+              : { x: 0, y: b.minY, w: W, h: b.maxY - b.minY + b.h });
+            const fits = (w: number, h: number) => {
+              const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+              if (x < 6 || x + w > W - 6 || y < segment.y + 6 || y + h > segment.y + segment.h - 6) return false;
+              if (blocked(others, { x, y, w, h }, 8, true)) return false;
+              return !paths.some((t) => x < t.x + t.w + 8 && x + w + 8 > t.x && y < t.y + t.h + 8 && y + h + 8 > t.y);
+            };
+            while (!fits(cw, ch) && cw > 40) { cw -= 6; ch = Math.round(cw / aspect); }
+            if (cw >= 40) { zone.w = cw; zone.h = ch; zone.x = Math.round(cx - cw / 2); zone.y = Math.round(cy - ch / 2); }
           }
         }
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
-      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      // A real door bin, on the steel: at most ONE in the whole segment, on one door or
+      // the other. There is a single bin photo, so two of them anywhere near each other
+      // read as wallpaper, side by side across the middle included. It may hang over the
+      // seams between panels -- those are drawn, not physical -- and it always spans the
+      // door it sits on, at the one size a door bin has.
+      if (this.version >= 13) {
+        const bin = rule("bin"), min = bin.minZone ?? { w: 80, h: 58 };
+        const sides = bin.door === "left" ? [0] : bin.door === "right" ? [1] : bin.door === "span" ? [0, 1] : [art() < 0.5 ? 0 : 1];
+        let placed = 0;
+        for (const side of sides) {
+          if (placed >= bin.max) break;
+          // the panel must cover its door, or a door-wide bin would stick out past it
+          const lo = side === 0 ? 0 : DOOR_SEAM.x + DOOR_SEAM.w, hi = side === 0 ? DOOR_SEAM.x : W;
+          const half = zones.filter((z) => z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing
+            && z.h >= min.h && z.w >= min.w && z.x <= lo + 10 && z.x + z.w >= hi - 10);
+          if (half.length && art() < bin.rate) { half[Math.floor(art() * half.length)].itemId = "plastic"; placed++; }
+        }
+      }
+      // v14 added seven more toys; older worlds keep the original six so their terrain is unchanged
+      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-") && (this.version >= 14 || Number(item.id.slice(7)) <= 5));
       for (const zone of zones) if (zone.itemId?.startsWith("toy:")) {
         let item = pick(art, toys);
         for (let k = 0; k < 6 && this.recentToys.includes(item.id); k++) item = pick(art, toys);
@@ -399,13 +441,20 @@ export class World {
       if (this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5, this.version);
       if (this.version >= 4 && i >= 4 && i % 4 === 0) {
         const kind = GADGET_KINDS[(i / 4 - 1) % 4];
-        segment.zones = [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" }];
+        // v15: a letter board on the door, not a plastic wall across it. The steel
+        // lanes either side are what you climb; the board is what the gadget hangs on.
+        segment.zones = this.version >= 15
+          ? [{ x: 104, y: y + 74, w: 192, h: 186, kind: "trim" as const }]
+          : [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" as const }];
         segment.bumpers = [];
-        const themes = [...THEMES]; let first = "";
+        // v16: paper never dangles off a keyring chain. A doodle is a bit of paper,
+        // so it only ever turns up under a clip; hard charms take the swinging hook.
+        const themes = this.version >= 16 && kind === "swing" ? THEMES.filter((t) => !PAPER_THEMES.has(t)) : [...THEMES];
+        let first = "";
         segment.gadgets = [0, 1].map((n) => {
           let theme = pick(art, themes);
           // v12: the two gadgets on a door are never the same theme (no two pancake clips side by side)
-          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * 2)) % themes.length];
+          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * (themes.length - 1))) % themes.length];
           first = theme;
           const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
           // hanging things start still and only move when touched: keyrings since v12, clips since v13
@@ -416,6 +465,23 @@ export class World {
       }
     }
     return segment;
+  }
+
+  /** What a toy is touching at this point, for the sound it makes hitting it. */
+  materialAt(x: number, y: number): "glass" | "plastic" | "paper" | "ice" | undefined {
+    for (const s of this.segments) {
+      if (y < s.y - 60 || y > s.y + s.h + 60) continue;
+      for (const z of s.zones) {
+        if (x < z.x || x > z.x + z.w || y < z.y || y > z.y + z.h) continue;
+        if (z.hue === -1 && z.kind === "void") return undefined; // metal island
+        if (z.itemId === "ice-tray") return "ice";
+        if (z.kind === "glass") return "glass";
+        if (z.kind === "trim") return "plastic";
+        if (z.kind === "sticker") return "paper";
+        if (z.kind === "void") return undefined;
+      }
+    }
+    return undefined;
   }
 
   /** v13: how much a non-steel surface drags a toy sliding down it (per second). Undefined = nothing to slide on (open gap, bare steel).
@@ -429,7 +495,7 @@ export class World {
         if (z.itemId === "ice-tray") return 0.08;
         if (z.kind === "glass" || z.kind === "repel") return 0.7;
         if (z.kind === "trim") return 1.8;
-        if (z.kind === "sticker") return 3.6;
+        if (z.kind === "sticker") return this.version >= 15 ? undefined : 3.6;
         if (z.kind === "void") return undefined;
       }
     }
@@ -448,6 +514,9 @@ export class World {
       }
       for (const z of s.zones) {
         if (z.hue === -1 || z.kind === "attract") continue;
+        // v15: a photo on a fridge is held there by a magnet, so a magnet holds on it.
+        // Paper is scenery you can climb now, not a hole in the door.
+        if (this.version >= 15 && z.kind === "sticker" && !z.swing) continue;
         if (this.superGrip && z.kind !== "void" && !z.swing) continue;
         if (inRect(x, y, z, -pad)) return false;
       }
@@ -549,8 +618,11 @@ function pushSticker(r: Rng, y: number, h: number, zones: NoStickZone[], version
 }
 
 function sticker(r: Rng, y: number, h: number, version = 0): NoStickZone {
-  const w = rangeOf(r, 50, 110);
-  const sh = rangeOf(r, 50, 100);
+  // v15: a card is a thing you look at, so the slot it lands in starts bigger. The
+  // old 50..110 range bottomed out at a stamp, and a portrait card in the small end
+  // of it was unreadable next to a landscape one in the large end.
+  const w = version >= 15 ? rangeOf(r, 84, 132) : rangeOf(r, 50, 110);
+  const sh = version >= 15 ? rangeOf(r, 84, 124) : rangeOf(r, 50, 100);
   const m = version >= 7 ? SEAM_MARGIN : 0;
   return { x: version >= 8 ? onOneDoor(r, w) : rangeOf(r, 0, W - w), y: y + rangeOf(r, m, h - sh - m), w, h: sh, kind: "sticker", hue: Math.floor(r() * 360) };
 }

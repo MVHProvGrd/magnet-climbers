@@ -10,7 +10,7 @@ Reports:
     antialias is a THIN ring of semi-transparent pixels (roughly the perimeter
     length); thousands mean a halo (feathered matte) or a mesh that wanted
     `--soft`
-  * opaque pixels that still carry a magenta cast (min(R,B) − G > 12): a pink
+  * opaque pixels that still carry a magenta cast (min(R,B) − G > 12 with R≈B): a pink
     rim that needs `--soft`, or a gradient / vignette the generator painted
     instead of flat colour (regenerate)
 
@@ -23,7 +23,15 @@ import numpy as np
 from PIL import Image
 
 
-def analyse(path: str) -> dict:
+# (dominance, name) per key colour; mirrors KEYS in chroma-cut.py.
+KEYS = {
+    "magenta": lambda R, G, B: np.minimum(R, B) - G,
+    "green": lambda R, G, B: G - np.maximum(R, B),
+    "blue": lambda R, G, B: B - np.maximum(R, G),
+}
+
+
+def analyse(path: str, key: str = "magenta") -> dict:
     im = Image.open(path).convert("RGBA")
     a = np.asarray(im).astype(np.int32)
     R, G, B, A = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
@@ -31,8 +39,16 @@ def analyse(path: str) -> dict:
     opaque = A >= 250
     clear = A == 0
     semi = ~opaque & ~clear
-    cast = np.minimum(R, B) - G
-    tinted = opaque & (cast > 12)
+    cast = KEYS[key](R, G, B)
+    # Key spill means the key's OWN channels are high together and the channel it
+    # lacks is low. Saturated red (230,57,70) satisfies min(R,B)-G > 12 all by
+    # itself, so the balance test is what separates real magenta spill from art
+    # that merely happens to be red; the same idea holds for the other keys.
+    if key == "magenta":
+        balanced = np.minimum(R, B) > 0.55 * np.maximum(R, B)
+    else:
+        balanced = np.ones_like(cast, dtype=bool)
+    tinted = opaque & (cast > 12) & balanced
 
     ys, xs = np.where(A > 0)
     if len(ys):
@@ -59,7 +75,7 @@ def analyse(path: str) -> dict:
         )
     if tinted.sum() > 0.002 * max(1, opaque.sum()):
         reasons.append(
-            f"{int(tinted.sum())} opaque pixels still read magenta — pink rim (try --soft) or the "
+            f"{int(tinted.sum())} opaque pixels still read {key} — key rim (try --soft) or the "
             "background was a gradient, not flat (regenerate)"
         )
     if clear.sum() == 0:
@@ -79,13 +95,17 @@ def analyse(path: str) -> dict:
 
 
 def main() -> int:
+    key = next((x.split("=", 1)[1] for x in sys.argv[1:] if x.startswith("--key=")), "magenta")
+    if key not in KEYS:
+        print(f"unknown --key={key}; pick one of {', '.join(KEYS)}", file=sys.stderr)
+        return 1
     args = [x for x in sys.argv[1:] if not x.startswith("--")]
     if not args:
         print(__doc__, file=sys.stderr)
         return 2
     rc = 0
     for path in args:
-        r = analyse(path)
+        r = analyse(path, key)
         if "--json" in sys.argv:
             print(json.dumps(r))
         else:

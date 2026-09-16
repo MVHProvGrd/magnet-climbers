@@ -24,12 +24,14 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
   ...["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
   // toy bumpers are keychain payloads; the hook and chain are composited from the lemon keychain at draw time
-  ...["bumper-0", "bumper-1", "bumper-2", "bumper-3", "bumper-4", "bumper-5"].map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
+  ...Array.from({ length: 13 }, (_, i) => `bumper-${i}`).map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
   ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => loadImage(`art/paper/paper-${n}.webp`, (image) => setObjectArt(`paper-${n}`, image))),
   // pack 10 hanging keepsakes: whole photographed assemblies (hook, chain, clip baked in) for the swing and clip gadgets
   ...["swing-snack", "clip-snack", "clip-travel", "clip-doodle"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/real-v1/kid-arm.webp", (image) => setObjectArt("kid-arm", image)),
   loadImage("art/real-v1/cat-paw.webp", (image) => setObjectArt("cat-paw", image)),
+  loadImage("art/real-v1/cat-paw-claws.webp", (image) => setObjectArt("cat-paw-claws", image)),
+  ...[1, 2, 3].map((n) => loadImage(`art/real-v1/claws/claw-${n}.webp`, (image) => setObjectArt(`claw-${n}`, image))),
 ]);
 /** Hook pivot of the lemon keychain assembly, as fractions of its frame (source point 510,285 of 1024x1536). */
 const KEYCHAIN_PIVOT = { x: 510 / 1024, y: 285 / 1536 };
@@ -53,11 +55,12 @@ export const destinationArtById = (id: string) => destinationArt.get(id);
 export function destinationArtFor(x: number, y: number, repel: boolean): CanvasImageSource | undefined {
   return destinationArt.get(polarityDestination(`${Math.round(x)}:${Math.round(y)}`, repel));
 }
-/** Draw a souvenir magnet fitted inside a rectangle (whole cutout visible, slightly oversize). False while the art is still loading. */
+/** Draw a souvenir magnet fitted inside a rectangle, whole cutout visible. The fit
+ *  used to run 8% oversize, which quietly shaved the edge off every wide souvenir. */
 export function drawDestination(ctx: CanvasRenderingContext2D, image: CanvasImageSource, x: number, y: number, w: number, h: number): boolean {
   const iw = (image as HTMLImageElement).naturalWidth || (image as HTMLCanvasElement).width || 1;
   const ih = (image as HTMLImageElement).naturalHeight || (image as HTMLCanvasElement).height || 1;
-  const s = Math.min(w / iw, h / ih) * 1.08, dw = iw * s, dh = ih * s;
+  const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
   ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.clip();
   ctx.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); ctx.restore();
   return true;

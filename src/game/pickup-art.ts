@@ -4,7 +4,7 @@
  */
 import type { PowerKind } from "./types";
 
-const KINDS: PowerKind[] = ["coin", "gem", "heart", "magnet", "extra", "slowmo", "reach", "candy"];
+const KINDS: PowerKind[] = ["coin", "gem", "heart", "magnet", "extra", "slowmo", "reach", "candy", "paint"];
 const images = new Map<PowerKind, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
 

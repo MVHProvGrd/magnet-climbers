@@ -11,7 +11,8 @@ export default defineConfig({
     ),
   },
   server: { host: true, port: 5180 },
-  build: { target: "es2020", sourcemap: false },
+  // the owner-only placement workbench builds alongside the game at /placement.html
+  build: { target: "es2020", sourcemap: false, rollupOptions: { input: { main: "index.html", placement: "placement.html" } } },
   // Stop Vite walking up to the parent repo's Tailwind postcss.config.js
   css: { postcss: { plugins: [] } },
   plugins: [

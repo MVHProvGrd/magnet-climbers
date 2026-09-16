@@ -276,7 +276,9 @@ export class Ui {
       const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
       const last = r.messages.slice(-2);
       if (lines) lines.innerHTML = last.length
-        ? last.map((m) => `<span>${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 18) : ""}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("")
+        ? last.map((m) => { const face = m.player_id === this.save().playerId ? this.save().avatar : m.avatar ?? undefined;
+            // always a tile, portrait or initial, so the two lines start at the same x
+            return `<span>${avatarHtml(face, m.name, "calc(20 * var(--px))")}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
         : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
       const unread = r.messages.filter((m) => m.id > chatSeen()).length;
       if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
@@ -491,10 +493,14 @@ export class Ui {
 
     const row = (m: ChatMessage) => {
       const mine = m.player_id === s.playerId;
+      // your own portrait comes from this device, so it shows before the Worker
+      // that stores avatars is redeployed (and instantly on a just-sent message)
+      const face = mine ? s.avatar : m.avatar ?? undefined;
       const colour = nameColor(m.name);
-      const initial = esc((m.name || "?").trim().charAt(0).toUpperCase());
+      // no portrait picked yet still gets a filled tile of the same size, so a
+      // row without one does not read as a hole in the column of faces
       return `<div class="cmsg ${mine ? "me" : ""}">
-        ${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 32).replace('class="avi"', 'class="avi cav"') : `<span class="cav" style="background:${colour}22;color:${colour}">${initial}</span>`}
+        ${avatarHtml(face, m.name, "calc(44 * var(--px))").replace('class="avi', 'class="cav avi')}
         <span class="cbody">
           <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
           <span class="cbubble">${esc(m.text)}</span>
@@ -606,8 +612,8 @@ export class Ui {
     p.innerHTML = `
       <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Avatar</h2><span class="shell-spacer"></span></div>
       <div class="shell-body avatar-grid">
-        <button class="pick ${s.avatar ? "" : "on"}" data-id="" aria-label="Just your initial">${avatarHtml(undefined, s.name, 56)}</button>
-        ${AVATARS.map((a) => `<button class="pick ${a.id === s.avatar ? "on" : ""}" data-id="${a.id}" title="${esc(a.name)}" aria-label="${esc(a.name)}">${avatarHtml(a.id, a.name, 56)}</button>`).join("")}
+        <button class="pick ${s.avatar ? "" : "on"}" data-id="" aria-label="Just your initial">${avatarHtml(undefined, s.name, "calc(56 * var(--px))")}</button>
+        ${AVATARS.map((a) => `<button class="pick ${a.id === s.avatar ? "on" : ""}" data-id="${a.id}" title="${esc(a.name)}" aria-label="${esc(a.name)}">${avatarHtml(a.id, a.name, "calc(56 * var(--px))")}</button>`).join("")}
       </div>`;
     p.addEventListener("click", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>("[data-id],[data-a]");
@@ -636,7 +642,7 @@ export class Ui {
       <div class="shell-body">
         <p class="sec-label">Profile</p>
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
-        <div class="shell-row">${avatarHtml(s.avatar, s.name, 40)}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
+        <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
         ${SHOP_ENABLED ? row("Upgrades &amp; reserves", "Spend coins on the team", chip("shop", "OPEN")) : ""}
         <p class="sec-label">Play on another device</p>
@@ -827,17 +833,18 @@ export class Ui {
   }
 
   showStory(done: () => void) {
+    const base = import.meta.env.BASE_URL;
     const slides = [
-      { icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of Cooper. Good job. Steady work." },
-      { icon: "🧒", title: "Then bedtime came", text: "Cooper \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge." },
-      { icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is Cooper's reach. Stay above it." },
+      { scene: "story-1-life", icon: "🧲", title: "Life on the fridge", text: "We are the magnet people. We hold up the pizza menu, the dentist card, the photo of Cooper. Good job. Steady work." },
+      { scene: "story-2-bedtime", icon: "🧒", title: "Then bedtime came", text: "Cooper \"tidied up\". Now we are on the floor, and the sock drawer is next. Anyone still on the fridge by morning stays on the fridge." },
+      { scene: "story-3-climb", icon: "⬆️", title: "So we climb", text: "Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is Cooper's reach. Stay above it." },
     ];
     let i = 0;
     const p = el("div", "panel story-card");
     const render = () => {
       const sl = slides[i];
       p.innerHTML = `
-        <canvas class="story-creature" width="150" height="150" data-look="${this.save().creature ?? "human"}|${this.save().pattern ?? ""}"></canvas>
+        <img class="story-scene" src="${base}art/story/${sl.scene}.webp" alt="" width="768" height="512" />
         <span class="story-label">THE STORY · ${i + 1} OF ${slides.length}</span>
         <h2>${sl.title}</h2>
         <p class="story-body">${sl.text}</p>

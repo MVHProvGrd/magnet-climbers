@@ -137,28 +137,36 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   if (photo) {
     const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
     const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
-    const s = Math.max(w / iw, h / ih) * 1.04, dw = iw * s, dh = ih * s;
-    box(ctx, 0, 0, w, h, "#f6efdd");
-    ctx.drawImage(photo, (w - dw) / 2, Math.min(0, -(dh - h) * 0.15), dw, dh);
+    // Contain, and nothing behind it. The photo is a cut-out piece of paper with
+    // its own edges, so a card-coloured rectangle under it only ever showed up as
+    // a cream border wherever the zone was not exactly the photo's shape.
+    const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
+    ctx.drawImage(photo, (w - dw) / 2, (h - dh) / 2, dw, dh);
     ctx.restore(); return;
   }
   if (z.kind === "sticker") {
     const note = variant >= 8 && variant < 12;
-    box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
+    // The drawing is authored square, so the PAPER is square too. Painting the card
+    // across the whole zone and fitting the drawing inside it left the paper showing
+    // as a white border down both sides of anything that was not square.
+    const cs = Math.min(w, h), cx = (w - cs) / 2, cy = (h - cs) / 2;
+    box(ctx, cx, cy, cs, cs, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
+    ctx.save(); ctx.translate(cx, cy);
     if (note) {
       const lines = [["TO DO", "climb fridge", "find snacks", "repeat"], ["YOU GOT", "THIS!", "", "keep climbing"], ["DON'T", "LET", "GO!", ""], ["MILK", "EGGS", "MORE", "MAGNETS"]][variant - 8];
-      ctx.save(); ctx.translate(w * 0.1, h * 0.17); ctx.scale(w * 0.8 / 100, h * 0.75 / 100);
+      ctx.save(); fitSquare(ctx, cs * 0.1, cs * 0.17, cs * 0.8, cs * 0.75);
       for (let i = 0; i < 4; i++) text(ctx, lines[i], 50, 17 + i * 23, i === 0 ? 17 : 13, "#4b5355");
       ctx.restore();
     } else {
-      ctx.save(); ctx.translate(w * 0.07, h * 0.1); ctx.scale(w * 0.86 / 100, h * 0.82 / 100); doodle(ctx, variant); ctx.restore();
+      ctx.save(); fitSquare(ctx, cs * 0.07, cs * 0.1, cs * 0.86, cs * 0.82); doodle(ctx, variant); ctx.restore();
     }
     // A small pin lives inside the nonstick card, never outside its collider.
-    circle(ctx, w * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
-    circle(ctx, w * 0.52, 5, 3.6, ["#ec7284", "#69b5d1", "#e8b54c"][variant % 3]);
-    circle(ctx, w * 0.52 - 1, 4, 1, "rgba(255,255,255,0.7)");
-    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(91,81,64,0.16)");
-    polygon(ctx, [w - 9, h, w - 9, h - 9, w, h - 9], "rgba(255,255,255,0.45)");
+    circle(ctx, cs * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
+    circle(ctx, cs * 0.52, 5, 3.6, ["#ec7284", "#69b5d1", "#e8b54c"][variant % 3]);
+    circle(ctx, cs * 0.52 - 1, 4, 1, "rgba(255,255,255,0.7)");
+    polygon(ctx, [cs - 9, cs, cs - 9, cs - 9, cs, cs - 9], "rgba(91,81,64,0.16)");
+    polygon(ctx, [cs - 9, cs, cs - 9, cs - 9, cs, cs - 9], "rgba(255,255,255,0.45)");
+    ctx.restore();
   } else if (z.kind === "glass") {
     const glass = ctx.createLinearGradient(0, 0, w, h);
     glass.addColorStop(0, "#497788"); glass.addColorStop(0.5, ["#284759", "#345b62", "#364e6b"][variant % 3]); glass.addColorStop(1, "#172c41");
@@ -176,6 +184,14 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
     ctx.strokeStyle = "#354958"; ctx.lineWidth = 5; ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
   }
   ctx.restore();
+}
+
+/** Map the 100x100 space a drawn card is authored in onto `w`x`h`, centred and
+ *  never distorted: a wide card gets paper margins rather than stretched art. */
+function fitSquare(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const s = Math.min(w, h) / 100;
+  ctx.translate(x + (w - 100 * s) / 2, y + (h - 100 * s) / 2);
+  ctx.scale(s, s);
 }
 
 function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean, dim = 1) {

@@ -43,13 +43,25 @@ unusual, solid colour and remove **every pixel of that colour, wherever it is**.
    ```
    python3 scripts/chroma-cut.py in.png out.webp          # default: solid subjects
    python3 scripts/chroma-cut.py in.png out.webp --soft   # fine mesh / nets / rigging / hair
+   python3 scripts/chroma-cut.py in.png out.webp --key=auto    # samples the backdrop it actually painted
+   python3 scripts/chroma-cut.py in.png out.webp --key=green   # pink subjects, keyed on green
    ```
+
+   **Models do not paint the hex you asked for.** Ask Gemini for `#FF00FF` and
+   it returns a flat rose (235,32,138); ask for `#00FF00` and it returns a flat
+   yellow-green. Flat is what matters, and `--key=auto` uses it: it samples the
+   border ring, refuses anything that is not flat (so a gradient still means
+   regenerate), and keys and unmixes against the colour actually there. Reach
+   for it whenever the named key leaves the subject half-dissolved, and prefer
+   it outright for art whose palette crowds the key.
 
    The output format follows the extension (`.png` or `.webp`, both RGBA).
    Default mode keys on magenta dominance (`min(R,B) − G`) with a **steep**
    alpha ramp over a narrow band — a clean ~1px antialias, no halo — and a
-   targeted despill that neutralises only genuinely magenta-tinted rim pixels
-   so amber windows and teal edge-glow in the art survive untouched. It
+   targeted despill confined to the antialias edge, so the rim goes neutral
+   while amber windows, teal edge-glow and saturated reds inside the art survive
+   untouched (a colour-only despill crushed red art to near-black, because red
+   reads faintly "magenta" by the same `min(R,B) − G` test). It
    deliberately does **no erosion** (a 1px erode eats antennas, propeller
    blades, cables, scaffolding) and **no wide feather** (a blurred matte
    leaves a ring of half-transparent pixels that reads as an "ethereal glow"
@@ -86,9 +98,10 @@ unusual, solid colour and remove **every pixel of that colour, wherever it is**.
   behind the object, the key will leave a halo or a box. Regenerate with the
   suffix intact rather than trying to rescue it.
 - **Magenta subjects need a different key.** Pink neon, orchids, a magenta
-  flag — pick a key absent from the subject (pure green `#00FF00` or blue
-  `#0000FF`), and note the script's maths assume magenta; see
-  `references/prompting.md` for the two-line change.
+  flag, pink frosting, a rainbow wig — pass `--key=green` or `--key=blue` and
+  generate on that colour. Keying pink art on magenta does not fail loudly: the
+  art lands in the alpha ramp and comes out half-transparent, which only shows
+  once it sits on a dark page.
 - **Default first, `--soft` on evidence.** Run default, run the checker; only
   switch to `--soft` when the checker or your eyes show swiss-cheese mesh or a
   pink rim. Soft mode on a solid building leaves a faint film in pockets.

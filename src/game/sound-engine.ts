@@ -53,12 +53,16 @@ function playVoice(c: AudioContext, voice: Voice, at: number, bus: GainNode) {
   source.onended = () => { source.disconnect(); filter?.disconnect(); gain.disconnect(); voices--; };
   source.start(t); source.stop(t + voice.duration + 0.02);
 }
-function effect(name: string) {
+/** `rate` pitches the whole effect: the sling uses it so the creak climbs with the draw. */
+function effect(name: string, rate = 1) {
   if (!enabled || !active) return;
   const c = context(); if (!c || c.state !== "running") return;
-  if (c.currentTime - (lastEffect.get(name) ?? -10) < (name === "stretch" ? 0.12 : 0.035)) return;
+  if (c.currentTime - (lastEffect.get(name) ?? -10) < (name === "stretch" ? 0.08 : 0.035)) return;
   lastEffect.set(name, c.currentTime);
-  for (const voice of EFFECTS[name]) playVoice(c, voice, c.currentTime, fxBus);
+  for (const voice of EFFECTS[name]) {
+    const v = rate === 1 ? voice : { ...voice, frequency: voice.frequency * rate, ...(voice.endFrequency ? { endFrequency: voice.endFrequency * rate } : {}) };
+    playVoice(c, v, c.currentTime, fxBus);
+  }
 }
 /**
  * Looped music tracks (public/audio/*.mp3): "theme" under runs and the menu, "chill" in Chill mode.
@@ -137,4 +141,4 @@ export function updateAudio(playing: boolean, danger = 0, chill = false) {
     nextNote += MUSIC_STEP;
   }
 }
-export const sfx = Object.fromEntries(Object.keys(EFFECTS).map((name) => [name, () => effect(name)])) as Record<keyof typeof EFFECTS, () => void>;
+export const sfx = Object.fromEntries(Object.keys(EFFECTS).map((name) => [name, (rate?: number) => effect(name, rate)])) as Record<keyof typeof EFFECTS, (rate?: number) => void>;

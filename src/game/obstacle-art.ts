@@ -1,4 +1,7 @@
 import type { NoStickZone } from './types';
+import { DOOR_SEAM } from './world';
+import { W } from './config';
+import { rule } from './placement';
 
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
@@ -9,7 +12,7 @@ export const obstacleArtReady = typeof Image === 'undefined' ? Promise.resolve()
   img.onload = () => { setObstacleArt(id, img); resolve(); };
   img.onerror = () => resolve();
   img.src = `${base}art/real-v1/obstacles/${id}.png`;
-})).concat(['glass-door', 'glass-wide'].map(id => new Promise<void>(resolve => {
+})).concat(['glass-door', 'glass-door-2', 'glass-door-3', 'glass-wide', 'glass-wide-2', 'glass-wide-3'].map(id => new Promise<void>(resolve => {
   // Codex's bottle doors (pack 07): whole single-door panels, tall and squat; never nine-sliced
   const img = new Image();
   img.onload = () => { setObstacleArt(id, img); resolve(); };
@@ -24,13 +27,18 @@ function artId(z: NoStickZone): string | undefined {
   // N/S plates are souvenir magnets now (scenery.ts); the flat photos stay as the guide's fallback
   if (z.kind === 'attract' || z.kind === 'repel' || z.swing) return undefined;
   if (z.hue === -1) return 'handle';
-  const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: 'plastic', void: 'gap', sticker: undefined }[z.kind];
+  const id = z.itemId && images.has(z.itemId) ? z.itemId : { glass: 'glass', trim: undefined, void: 'gap', sticker: undefined }[z.kind];
   return id && NO_PHOTO.has(id) ? undefined : id;
 }
 
 /** Whole-door bottle art for a glass zone: the tall door or the wide one, whichever is nearer the zone's shape; the wide one also stretches across full-width bands. */
 function doorArt(z: NoStickZone): HTMLImageElement | undefined {
-  const tall = images.get('glass-door'), wide = images.get('glass-wide');
+  // Three stocked windows of each shape now (pack 26). Pick by the zone's own position so a
+  // door keeps the same contents every frame instead of flickering between variants.
+  const variant = Math.abs(Math.round(z.x) * 73 + Math.round(z.y) * 31) % 3;
+  const suffix = variant === 0 ? '' : `-${variant + 1}`;
+  const tall = images.get(`glass-door${suffix}`) ?? images.get('glass-door');
+  const wide = images.get(`glass-wide${suffix}`) ?? images.get('glass-wide');
   if (!tall || !wide) return tall ?? wide;
   // whichever door is nearer the window's proportions (log ratio), so a stretch stays mild
   const a = z.w / z.h;
@@ -52,7 +60,22 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     // full-width bands always show the whole door (owner's call); one-door windows crop only past a 2x stretch
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
-  } else if (['glass', 'plastic', 'gap', 'vent'].includes(id!)) {
+  } else if (id === 'plastic') {
+    // A door bin is a real object of one size: it spans the door it is clipped to,
+    // top to bottom of its own depth, exactly like the one above it would. It is not
+    // scaled to whatever zone happens to carry it, and it is free to hang over the
+    // drawn seams between panels, which is why nothing clips it vertically.
+    const left = z.x + z.w / 2 < DOOR_SEAM.x + DOOR_SEAM.w / 2;
+    const doorX = left ? 0 : DOOR_SEAM.x + DOOR_SEAM.w;
+    const doorW = left ? DOOR_SEAM.x : W - (DOOR_SEAM.x + DOOR_SEAM.w);
+    const size = rule("bin").size;
+    const dw = typeof size === "object" ? size.w : doorW;
+    const dh = typeof size === "object" ? size.h : dw * (img.height / img.width);
+    // Clipped to the panel that carries it: drawing a door-wide bin out of a narrow
+    // zone let it run under the panel next door, which then painted over half of it.
+    c.beginPath(); c.rect(z.x, z.y - dh, z.w, z.h + dh * 2); c.clip();
+    c.drawImage(img, doorX + (doorW - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
+  } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
     const edge = Math.min(10, z.w / 4, z.h / 4);

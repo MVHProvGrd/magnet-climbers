@@ -45,33 +45,17 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
 
-  // CLIMB mode: how far the selected climber can crawl, and who it can climb onto
+  // CLIMB mode: who the selected climber can climb onto. The range ring that used
+  // to sit around the climber is gone with the other rings; the ▲ markers name
+  // the actual targets, which the ring never did.
   const climber = g.byId(g.selectedId);
   if (g.rules === "crew" && g.mode === "move" && climber && (climber.state === "stuck" || climber.state === "linked") && g.phase !== "dead") {
-    ctx.strokeStyle = "rgba(79,195,247,0.55)"; ctx.setLineDash([6, 8]); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(climber.x, climber.y, g.pullRange(), 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
     const pulse = 0.5 + Math.sin(g.time * 5) * 0.5;
     for (const o of g.climbTargets(climber)) {
       ctx.strokeStyle = `rgba(155,225,93,${0.5 + pulse * 0.5})`; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(o.x, o.y - 6, 26 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "rgba(155,225,93,0.95)"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("▲", o.x, o.y - CFG.stackHeight - 4);
-    }
-  }
-
-  // reach rings on anchored climbers when aiming
-  if (g.drag && g.mode !== "move") {
-    const reach = g.currentReach();
-    for (const c of g.anchored) {
-      if (g.chainDepthAbove(c) >= g.stats.maxLinks) continue;
-      ctx.strokeStyle = "rgba(255,255,255,0.35)";
-      ctx.setLineDash([4, 6]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, reach, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
     }
   }
 
@@ -94,13 +78,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   const moving = sel && g.drag && g.rules === "crew" && (g.mode === "move" || g.isStranded(sel));
   if (sel && g.drag && moving) {
     const t = g.moveTarget(sel, { x: sel.x + (g.drag.cur.x - g.drag.start.x), y: sel.y + (g.drag.cur.y - g.drag.start.y) });
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(sel.x, sel.y, g.pullRange(), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // the line to the target and the ghost already say where you land; a range
+    // ring drawn on top of them said nothing extra
     if (t) {
       ctx.strokeStyle = t.parent == null ? "rgba(155,225,93,0.9)" : "rgba(79,195,247,0.9)";
       ctx.lineWidth = 3;
@@ -196,7 +175,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // the kid's hand
   if (g.scratches.length) drawScratches(ctx, g.scratches, g.time);
-  if (g.hand) drawKidHand(ctx, g.hand);
+  if (g.hand) drawKidHand(ctx, g.hand, g.camY, viewH);
   if (g.paw) drawCatPaw(ctx, g.paw, g.camY, viewH);
 
   // your own best: a quiet line to beat, green once you pass it

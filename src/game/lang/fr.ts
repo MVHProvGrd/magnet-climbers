@@ -66,7 +66,7 @@ export const exact: Record<string, string> = {
   "Super Magnet": "Super aimant", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "Un moment : accroche plus tôt, porte plus loin et tient sur le verre, le plastique et le papier comme sur l'acier.",
   "Pocket Pal": "Copain de poche", "Adds another climber to your run.": "Ajoute un grimpeur à votre partie.",
   "Kitchen Timer": "Minuteur de cuisine", "Temporarily slows the action.": "Ralentit l'action un moment.",
-  "Reach Badge": "Badge de portée", "Temporarily stretches the distance you can climb to a teammate.": "Allonge un moment la distance pour grimper jusqu'à un coéquipier.",
+  "Reach Badge": "Badge de portée", "Temporarily stretches how far you can reach for your next hold.": "Allonge un moment la distance pour grimper jusqu'à un coéquipier.",
   "Water Station": "Distributeur d'eau", "Slippery dispenser. Climb the steel beside it or its silver handle.": "Distributeur glissant. Grimpez l'acier à côté ou sa poignée argentée.",
   "Busy Month": "Mois chargé", "A big paper calendar. Follow the open steel side lane.": "Un grand calendrier en papier. Suivez la bande d'acier sur le côté.",
   "Ice Cube Alley": "Allée des glaçons", "Plastic ice tray: no grip. The exposed door around it is safe.": "Bac à glaçons en plastique : aucune prise. La porte autour est sûre.",
