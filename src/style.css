@@ -57,9 +57,14 @@ html, body { margin: 0; height: 100%; height: 100dvh; background: var(--bg); tou
 /* Sound and menu ride above the dock's right shoulder as 44 px squares (handoff 1a).
    --dock-lift is 34, or 74 when the chat strip is showing; the dock itself is 84 tall. */
 /* The bottom inset, in CSS px, identical to the canvas's max(28, inset / scale + 12):
-   scale and --px are the same number. Pure CSS so it cannot be read before JS sets it --
-   env(safe-area-inset-bottom) is 0 at first paint on iOS, which laid the chat strip out
-   with the fallback and left it sitting low until something happened to trigger a resize. */
+   scale and --px are the same number.
+
+   Deliberately pure CSS. This used to be a variable JS published from resize() after
+   probing env(safe-area-inset-bottom), which meant the strip could lay out against the
+   fallback whenever the probe ran before the inset was reported, and only corrected if
+   another resize happened to fire. Reported on a Pixel; the race is not specific to any
+   platform, since any browser is free to report the inset late or change it later.
+   Computed here, the browser re-evaluates it at layout and there is nothing to race. */
 #ui { --safe-px: max(calc(28 * var(--px)), calc(env(safe-area-inset-bottom, 0px) + 12 * var(--px))); }
 #ui { --dock-lift: 34; }
 #ui.has-chat { --dock-lift: 74; }
