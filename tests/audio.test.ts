@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, sfx } from "../src/game/audio";
+import { Game } from "../src/game/game";
+import { UPGRADES, type UpgradeKey } from "../src/game/config";
 import { loadSave } from "../src/game/save";
 
 test("audio waits for gestures, separates music/SFX, mutes on pause and bounds scheduling", () => {
@@ -68,4 +70,28 @@ test("legacy muted profiles stay muted; separate music preference persists", () 
     data = { version: 1, sound: true, music: false }; assert.equal(loadSave().music, false);
     data = { version: 1 }; assert.equal(loadSave().music, true);
   } finally { if (prior) globalThis.localStorage = prior; else Reflect.deleteProperty(globalThis, "localStorage"); }
+});
+
+test("drawing the sling creaks: every notch of pull asks for the rubber", () => {
+  const levels = Object.fromEntries(UPGRADES.map((u) => [u.key, 0])) as Record<UpgradeKey, number>;
+  const g = new Game(levels, { onPower() {}, onGameOver() {}, onCoins() {}, onGems() {} }, { seed: 7, rules: "solo" });
+  g.phase = "running";
+  const c = g.climbers[0];
+  g.pointerDown({ x: c.x, y: c.y });
+  assert.ok(g.drag, "a press on a climber starts the draw");
+  const rates: number[] = [];
+  const real = sfx.stretch;
+  sfx.stretch = (rate?: number) => { rates.push(rate ?? 1); };
+  try {
+    for (let i = 1; i <= 6; i++) g.pointerMove({ x: c.x, y: c.y + i * 18 });
+  } finally { sfx.stretch = real; }
+  assert.equal(rates.length, 6, "every notch of draw creaks");
+  assert.ok(rates.every((r, i) => i === 0 || r >= rates[i - 1]), "and creaks higher as the band tightens");
+  assert.ok(rates[rates.length - 1] > rates[0], "a long pull ends up above where it started");
+  // a move with no drag, or in move mode, stays silent
+  const quiet: number[] = [];
+  sfx.stretch = (rate?: number) => { quiet.push(rate ?? 1); };
+  try { g.mode = "move"; g.pointerMove({ x: c.x, y: c.y + 400 }); g.drag = null; g.pointerMove({ x: c.x, y: c.y + 500 }); }
+  finally { sfx.stretch = real; g.mode = "fling"; }
+  assert.equal(quiet.length, 0);
 });

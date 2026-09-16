@@ -57,7 +57,7 @@ function playVoice(c: AudioContext, voice: Voice, at: number, bus: GainNode) {
 function effect(name: string, rate = 1) {
   if (!enabled || !active) return;
   const c = context(); if (!c || c.state !== "running") return;
-  if (c.currentTime - (lastEffect.get(name) ?? -10) < (name === "stretch" ? 0.08 : 0.035)) return;
+  if (c.currentTime - (lastEffect.get(name) ?? -10) < (name === "stretch" ? 0.055 : 0.035)) return;
   lastEffect.set(name, c.currentTime);
   for (const voice of EFFECTS[name]) {
     const v = rate === 1 ? voice : { ...voice, frequency: voice.frequency * rate, ...(voice.endFrequency ? { endFrequency: voice.endFrequency * rate } : {}) };

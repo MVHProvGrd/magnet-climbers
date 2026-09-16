@@ -21,9 +21,12 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
   launch: [{ frequency: 145, endFrequency: 510, duration: 0.22, gain: 0.12, type: "triangle" }, { frequency: 900, endFrequency: 2400, duration: 0.12, gain: 0.035, type: "noise" }],
   // Drawing the sling: rubber creaking under tension. The whole effect is pitched
   // up as the draw grows (see sfx.stretch(rate)), so a full pull sings.
+  // It lives in the mid band on purpose: the first version creaked at 150 Hz and
+  // a phone speaker, which has nothing below about 400, simply did not play it.
   stretch: [
-    { frequency: 150, endFrequency: 215, duration: 0.13, gain: 0.045, type: "triangle" },
-    { frequency: 460, endFrequency: 700, duration: 0.1, gain: 0.02, type: "noise" },
+    { frequency: 300, endFrequency: 430, duration: 0.14, gain: 0.12, type: "triangle" },
+    { frequency: 1250, endFrequency: 1900, duration: 0.12, gain: 0.055, type: "noise" },
+    { frequency: 600, endFrequency: 860, duration: 0.1, gain: 0.035, type: "sine" },
   ],
   // Letting go: the band snaps back past its rest length and wobbles.
   twang: [

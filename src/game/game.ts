@@ -262,7 +262,7 @@ export class Game {
     if (this.drag) {
       const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
       // rubber under tension: each notch of draw creaks a little higher than the last
-      if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) {
+      if (this.mode === "fling" && Math.floor(distance(p) / 16) > Math.floor(distance(this.drag.cur) / 16)) {
         sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * 0.8);
       }
       this.drag.cur = p; return;
