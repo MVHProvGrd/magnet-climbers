@@ -549,7 +549,7 @@ function submitScore(cm: number, panel: HTMLElement) {
   const seconds = game ? Math.round(game.runTime) : 0;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds, Date.now()).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
       ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");

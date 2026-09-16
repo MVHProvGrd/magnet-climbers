@@ -68,13 +68,19 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   if (path === "/score/delete") {
     const mode = str("mode", 8);
     const player = str("playerId");
+    // what is being cleared, so a stale client cannot post the same climb back
+    const going = await env.DB.prepare(mode
+      ? "SELECT mode, cm FROM scores WHERE player_id = ? AND mode = ?"
+      : "SELECT mode, cm FROM scores WHERE player_id = ?").bind(...(mode ? [player, mode] : [player])).all<{ mode: string; cm: number }>();
+    const clearedCm = new Map((going.results ?? []).map((r) => [r.mode, r.cm]));
     await env.DB.prepare(mode ? "DELETE FROM scores WHERE player_id = ? AND mode = ?" : "DELETE FROM scores WHERE player_id = ?").bind(...(mode ? [player, mode] : [player])).run();
     // remember the clear, or the device that set the score posts it straight back on its
     // next boot: the board heals itself from each player's local best
     await ensureScoreResets(env);
     const now = Date.now();
     for (const m of mode ? [mode] : ["crew", "solo"]) {
-      await env.DB.prepare("INSERT OR REPLACE INTO score_resets (player_id, mode, at) VALUES (?, ?, ?)").bind(player, m, now).run().catch(() => {});
+      await env.DB.prepare("INSERT OR REPLACE INTO score_resets (player_id, mode, at, cm) VALUES (?, ?, ?, ?)")
+        .bind(player, m, now, clearedCm.get(m) ?? 0).run().catch(() => {});
     }
     return json({ ok: true });
   }

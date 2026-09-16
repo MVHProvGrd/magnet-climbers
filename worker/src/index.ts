@@ -84,8 +84,11 @@ export async function ensureScoreResets(env: Env): Promise<void> {
     player_id TEXT NOT NULL,
     mode TEXT NOT NULL,
     at INTEGER NOT NULL,
+    cm INTEGER,
     PRIMARY KEY (player_id, mode)
   )`).run().catch(() => {});
+  // the column arrived after the table; D1 tolerates the failed ALTER when it is already there
+  await env.DB.prepare("ALTER TABLE score_resets ADD COLUMN cm INTEGER").run().catch(() => {});
   resetsReady = true;
 }
 
@@ -197,6 +200,16 @@ export default {
         return json({ error: "bad score" }, h, 400);
       }
       const now = Date.now();
+      // A score the owner cleared does not come back. An updated client knows this already -
+      // it drops the best when /rank reports the clear - but a phone still running the old
+      // bundle keeps re-posting, so the Worker refuses it here too: same climb or smaller,
+      // and nothing to show it was climbed after the clear.
+      await ensureScoreResets(env);
+      const wiped = await env.DB.prepare("SELECT at, cm FROM score_resets WHERE player_id = ? AND mode = ?")
+        .bind(playerId, body.mode).first<{ at: number; cm: number | null }>().catch(() => null);
+      const when = Math.floor(Number(body.at));
+      const climbedSince = Number.isFinite(when) && when > (wiped?.at ?? 0);
+      if (wiped && !climbedSince && cm <= (wiped.cm ?? 0)) return json({ ok: true, best: 0, ignored: "cleared" }, h);
       // A device re-posting a best it set earlier says when it set it, so a healed row keeps
       // the day the climb happened instead of claiming it was set the moment the app opened.
       const claimed = Math.floor(Number(body.at));
