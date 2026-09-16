@@ -55,6 +55,49 @@ read as one set. The toys are the translucent rubbery magnet people already in t
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
+## QUEUED FOR CODEX — cat claws (pack 22) — 2026-09-15
+
+Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks
+that are hand-drawn strokes in `cat-paw.ts` (a 1.5 px grey curve with a 0.7 px white
+highlight, about 20 px long, four per tap, fading over 1.6 s). Both want real art.
+
+Unlike pack 21 these ARE cutouts: generate on flat #FF00FF and key with
+`.claude/skills/chroma-cutout/scripts/chroma-cut.py` as usual. Pack
+`art/archive/22-cat-claws-v1/` with `sources/`, `ready/`, `prompts.md`, a README row, then
+`node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude wires it.
+
+### 1. Claws-out paw — `cat-paw-claws-v1.webp`
+
+A second pose of the SAME paw with the claws extended, for the moment of contact. The
+existing paw stays as the approach and retreat pose.
+
+**Geometry is a contract, not a suggestion.** `cat-paw.ts` locates the pad and the four
+claw tips by fraction of the image, and the hitbox is pad-only, so the two poses must be
+interchangeable frame-for-frame:
+- identical canvas size to `public/art/real-v1/cat-paw.webp`: **362x1085**
+- pad centre at the same place: x 365/725, y 1840/2170 of the frame
+- paw width the same fraction: 454/725
+- the leg above the pad unchanged in position and thickness, so a swap mid-strike does not
+  make the limb jump
+- only the toes change: claws out and forward, past the toe pads
+- claws should read at the four existing tip offsets from the pad centre, which are
+  (-38, 50), (-13, 64), (12, 64), (37, 50) at game scale
+
+Same tabby, same lighting and same key as the existing paw: it is the same cat.
+
+### 2. Claw marks left on the door — `claw-mark-1..3-v1.webp`
+
+Three variations of a single fresh scratch on brushed stainless, to scatter so repeated
+taps do not look stamped.
+- about 64x256 each, transparent, the mark running top to bottom
+- a bright metal gouge with a darker shadow edge, as if the coating is scored: it must read
+  on both the light steel door and the darker panels
+- slightly curved, tapering to nothing at the bottom, like a claw dragging down
+- no cat, no paw, no background: the mark only
+- each of the three a different length and curvature
+
+Claude animates the growth and the fade; supply the finished mark at full extent.
+
 ## Plain-item realism batch 20 — 2026-09-15
 
 Four more prepared papers in `art/archive/20-paper-notes-v1/ready`: indices7,9,10,11 (Stay Cool, You Got This, Don't Let Go, More Magnets). All pass alpha QC; original sources/prompts and light/dark review included. Combined this continuation:12 prepared assets,14 successful generation calls (two background corrections), no limit encountered. No game/live art changes. Claude wires; next old papers12..19, then rest of priority queue. Gallery includes both packs19/20.
