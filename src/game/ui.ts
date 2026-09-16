@@ -4,6 +4,7 @@ import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
+import type { DeathCause } from "./game";
 import type { SaveData } from "./save";
 import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { AVATARS, avatarHtml, avatarById } from "./avatars";
@@ -1065,11 +1066,21 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
     const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED" : "ALL CLIMBERS LOST";
+    // what actually ended it, in the run's own words. A banked or won run has no cause.
+    const causes: Record<DeathCause, string> = {
+      redline: "The red line caught the last climber.",
+      fell: "The last climber fell off the fridge.",
+      paw: "The cat got the last climber.",
+      hand: "Cooper swatted the last climber off.",
+      bumper: "A moving magnet knocked the last climber loose.",
+      flings: "Out of flings, short of the goal.",
+    };
+    const cause = !o.ended && o.cause ? causes[o.cause] : "";
     const revives = [
       o.tokens > 0 ? { a: "token", top: "TOKEN", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
       !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "FREE", cls: "accent" } : null,
@@ -1080,6 +1091,7 @@ export class Ui {
         <div>
           <span class="lost-label">${title}</span>
           <div class="lost-cm"><b>${groupNum(o.cm)}</b><i>cm</i></div>
+          ${cause ? `<p class="lost-cause">${esc(t(cause))}</p>` : ""}
         </div>
         <div class="lost-meta">
           <span>BEST <b>${groupNum(o.best)}</b></span>

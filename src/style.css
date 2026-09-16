@@ -382,6 +382,8 @@ select.buy option { background: #1e2229; color: #fff; }
 .lost-head { display: flex; align-items: flex-start; justify-content: space-between; gap: calc(12 * var(--px)); }
 .lost-label { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(1.6 * var(--px)); text-transform: uppercase; color: var(--danger-light); }
 .lost-label.dim { color: var(--text-3); }
+/* one line under the height saying what actually ended the run */
+.lost-cause { margin: calc(2 * var(--px)) 0 0; font: 600 calc(12 * var(--px)) / 1.35 var(--display); color: var(--text-2); max-width: calc(190 * var(--px)); }
 .lost-cm { display: flex; align-items: baseline; gap: calc(4 * var(--px)); margin-top: calc(2 * var(--px)); }
 .lost-cm b { font: 900 calc(64 * var(--px)) / .9 var(--display); letter-spacing: calc(-1.5 * var(--px)); color: #fff; }
 .lost-cm i { font: 700 calc(16 * var(--px)) var(--display); font-style: normal; color: rgba(255,255,255,.7); }

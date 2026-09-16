@@ -601,3 +601,24 @@ test("the cat's paw hurts wherever it is on the door, not only at the bottom of 
   for (let i = 0; i < 30; i++) g.update(1 / 120);
   assert.equal(c.hp, after, "one hit per paw");
 });
+
+test("the run remembers what ended it", () => {
+  // the red line catching the last climber
+  const g = game(); g.phase = "running";
+  const c = g.climbers[0];
+  c.state = "flying"; c.grip = undefined; c.y = g.floorY + 40;
+  g.update(1 / 120);
+  assert.equal(c.state, "lost");
+  assert.equal(g.lastCause, "redline");
+
+  // the cat, through the damage that empties the last heart
+  const p2 = game(); p2.phase = "running";
+  const c2 = p2.climbers[0];
+  c2.hp = 1;
+  p2.paw = { x: c2.x, t: PAW_WARN + 0.7, hit: new Set() };
+  const pose = pawPose(p2.paw, p2.camY, p2.viewH);
+  c2.x = pose.x; c2.y = pose.y; c2.state = "flying"; c2.iframes = 0; c2.grip = undefined;
+  p2.update(1 / 120);
+  assert.equal(c2.state, "lost");
+  assert.equal(p2.lastCause, "paw");
+});
