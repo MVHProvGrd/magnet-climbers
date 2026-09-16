@@ -1149,7 +1149,7 @@ export class Game {
       // A paw comes straight down, so it drives you down the door rather than sideways,
       // and holds you off the steel long enough to actually lose ground: at 0.3s a climber
       // could catch the very next panel and the swat cost nothing but a heart.
-      c.vx = (c.x < pose.x ? -1 : 1) * 90; c.vy = CFG.handShove * 1.15; c.spin = 6; c.noStick = 0.6; resetRagdoll(c);
+      c.vx = (c.x < pose.x ? -1 : 1) * 90; c.vy = CFG.handShove; c.spin = 6; c.noStick = CFG.attackNoStick; resetRagdoll(c);
       this.damage(c, true, "paw");
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
@@ -1241,7 +1241,7 @@ export class Game {
         c.state = "flying"; c.grip = undefined; c.parent = null;
         c.leftLauncher = true; c.airTime = 0; c.fell = true;
         c.vx = -h.side * 260; c.vy = CFG.handShove; c.spin = -h.side * 7;
-        c.noStick = 0.3;
+        c.noStick = CFG.attackNoStick;
         resetRagdoll(c);
         this.damage(c, true, "hand");
         if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED  -1 ♥", life: 1, color: "#ffd23f" });

@@ -54,6 +54,9 @@ export const CFG = {
   /** rare double attack: Cooper and the cat come at the same climber at once (world v13+) */
   comboChance: 0.07,
   handShove: 560,
+  /** How long an attack holds you off the steel. Shared, so the cat and the kid cost the
+   *  same ground: the paw drives you down, the hand sideways, but neither is the harder hit. */
+  attackNoStick: 0.45,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
   /** Picking one up while it is already running adds its time instead of replacing
    *  it, up to this ceiling — so a lucky double is worth having without parking
