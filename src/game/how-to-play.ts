@@ -14,6 +14,7 @@
  * named here; while the rows come from FRIDGE_ITEMS that holds by construction, and the
  * assertion is there to fail the day someone writes the list out by hand again.
  */
+import { EXPEDITIONS_ENABLED } from "./config";
 import { FRIDGE_ITEMS, type FridgeItem } from "./items";
 
 export interface HowToRow {
@@ -47,7 +48,9 @@ const surfaces = (kind: FridgeItem["kind"]) => tally((i) => i.family === "surfac
 
 /** Currency and health read as their own rules; everything else in the pickup pool is a boost. */
 const CARRIED = ["coin", "gem", "heart"];
-export const boostItems = () => FRIDGE_ITEMS.filter((i) => i.family === "pickup" && !CARRIED.includes(i.power ?? ""));
+const CREW_ONLY = ["extra"];
+export const boostItems = () => FRIDGE_ITEMS.filter((i) =>
+  i.family === "pickup" && !CARRIED.includes(i.power ?? "") && (EXPEDITIONS_ENABLED || !CREW_ONLY.includes(i.power ?? "")));
 export const hazardItems = () => FRIDGE_ITEMS.filter((i) => i.hazard);
 
 /** One icon per mechanic; anything new falls back to a neutral mark rather than vanishing. */
@@ -63,6 +66,12 @@ const ART: Record<string, string> = {
   paint: "art/real-v1/pickups/paint.png",
   "kid-hand": "art/real-v1/kid-arm.webp", "cat-paw": "art/real-v1/cat-paw.webp",
 };
+/** Tile captions: the full description is the row text, this is what fits under a 44 px tile. */
+const NOTES: Record<string, string> = {
+  magnet: "grip anything", reach: "longer reach", slowmo: "slows the run", extra: "adds a climber",
+  candy: "red line crawls", paint: "repaints you",
+  "kid-hand": "sweeps across", "cat-paw": "taps three times",
+};
 const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;
 /**
  * Tall sources whose subject sits at one END of the frame, not in the middle.
@@ -76,7 +85,7 @@ const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[
 const FOCUS: Record<string, string> = { "kid-hand": "center top", "cat-paw": "center bottom" };
 const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({
   icon: iconFor(item, fallback), name: item.name, text: item.description,
-  art: ART[item.id] ?? ART[item.power ?? ""],
+  art: ART[item.id] ?? ART[item.power ?? ""], note: NOTES[item.id] ?? NOTES[item.power ?? ""],
   fit: FOCUS[item.id] ? "cover" : undefined, focus: FOCUS[item.id],
 });
 
@@ -124,10 +133,14 @@ export function howToSections(): HowToSection[] {
     {
       title: "Climbing",
       rows: [
-        { icon: "👆", name: "Fling", text: "Drag back from anywhere on the screen and let go. The dashed ring shows who you're throwing." },
-        { icon: "🐸", name: "Leapfrog", text: "The lowest free climber is picked for you, so a good run is a rhythm of bottom over top." },
-        { icon: "🪜", name: "Chains", text: "CLIMB builds a ladder of teammates across a wide gap. A climber holding someone is a rung and can't launch." },
-        { icon: "🌟", name: "Tricks", text: "Handstands, one-hand saves and close calls pay small coin bonuses. They can't be farmed at the same height." },
+        { icon: "👆", name: "Fling", text: "Drag back from anywhere on the screen and let go. The longer the line, the harder the throw." },
+        { icon: "🧲", name: "Landing", text: "Hands and feet catch on their own. A single tip holds too, and you swing from it until you settle." },
+        { icon: "❤️", name: "Hearts", text: "Three of them. A moving magnet, Cooper's hand or the cat's paw each cost one; a Little Lifeline gives one back." },
+        // crew play is unreachable while Expeditions is shelved, so its rules are not rules right now
+        ...(EXPEDITIONS_ENABLED ? [
+          { icon: "🐸", name: "Leapfrog", text: "The lowest free climber is picked for you, so a good run is a rhythm of bottom over top." },
+          { icon: "🪜", name: "Chains", text: "CLIMB builds a ladder of teammates across a wide gap. A climber holding someone is a rung and can't launch." },
+        ] : []),
       ],
     },
   ];
