@@ -114,7 +114,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 13, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 14, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -381,7 +381,8 @@ export class World {
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
-      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-"));
+      // v14 added seven more toys; older worlds keep the original six so their terrain is unchanged
+      const toys = BUMPER_ITEMS.filter(item => item.id.startsWith("bumper-") && (this.version >= 14 || Number(item.id.slice(7)) <= 5));
       for (const zone of zones) if (zone.itemId?.startsWith("toy:")) {
         let item = pick(art, toys);
         for (let k = 0; k < 6 && this.recentToys.includes(item.id); k++) item = pick(art, toys);

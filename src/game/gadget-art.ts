@@ -24,7 +24,7 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
   ...["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
   // toy bumpers are keychain payloads; the hook and chain are composited from the lemon keychain at draw time
-  ...["bumper-0", "bumper-1", "bumper-2", "bumper-3", "bumper-4", "bumper-5"].map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
+  ...Array.from({ length: 13 }, (_, i) => `bumper-${i}`).map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
   ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => loadImage(`art/paper/paper-${n}.webp`, (image) => setObjectArt(`paper-${n}`, image))),
   // pack 10 hanging keepsakes: whole photographed assemblies (hook, chain, clip baked in) for the swing and clip gadgets
   ...["swing-snack", "clip-snack", "clip-travel", "clip-doodle"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
