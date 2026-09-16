@@ -1,0 +1,279 @@
+[
+  {
+    "file": "ready/attract-cancun-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      39,
+      84,
+      1215,
+      1169
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 545025,
+      "semi": 3013,
+      "opaque": 1024478
+    },
+    "edge_pixels": 4732,
+    "magenta_tinted_opaque": 1576,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "_history/ready/attract-maldives-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      0,
+      32,
+      1195,
+      1253
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 618544,
+      "semi": 30068,
+      "opaque": 923904
+    },
+    "edge_pixels": 6824,
+    "magenta_tinted_opaque": 3253,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate",
+      "semi-transparent pixels (30068) far exceed the edge length (6824) \u2014 halo from a feathered matte, or a mesh that wants --soft",
+      "3253 opaque pixels still read magenta \u2014 key rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ],
+    "selected": false
+  },
+  {
+    "file": "ready/attract-maldives-v2.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      50,
+      95,
+      1193,
+      1168
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 624463,
+      "semi": 2425,
+      "opaque": 945628
+    },
+    "edge_pixels": 4621,
+    "magenta_tinted_opaque": 2058,
+    "clean": false,
+    "reasons": [
+      "2058 opaque pixels still read magenta \u2014 key rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ],
+    "selected": true
+  },
+  {
+    "file": "ready/attract-phuket-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      46,
+      51,
+      1205,
+      1179
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 535865,
+      "semi": 1453,
+      "opaque": 1035198
+    },
+    "edge_pixels": 4145,
+    "magenta_tinted_opaque": 1110,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "_history/ready/attract-zanzibar-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      0,
+      50,
+      1209,
+      1253
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 516377,
+      "semi": 28408,
+      "opaque": 1027731
+    },
+    "edge_pixels": 7608,
+    "magenta_tinted_opaque": 2845,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate",
+      "semi-transparent pixels (28408) far exceed the edge length (7608) \u2014 halo from a feathered matte, or a mesh that wants --soft",
+      "2845 opaque pixels still read magenta \u2014 key rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ],
+    "selected": false
+  },
+  {
+    "file": "ready/attract-zanzibar-v2.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      42,
+      70,
+      1205,
+      1176
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 528644,
+      "semi": 12731,
+      "opaque": 1031141
+    },
+    "edge_pixels": 8730,
+    "magenta_tinted_opaque": 1188,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "ready/repel-banff-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      53,
+      36,
+      1200,
+      1210
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 499022,
+      "semi": 1916,
+      "opaque": 1071578
+    },
+    "edge_pixels": 4360,
+    "magenta_tinted_opaque": 2109,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "_history/ready/repel-hokkaido-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      0,
+      23,
+      1201,
+      1253
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 539287,
+      "semi": 29553,
+      "opaque": 1003676
+    },
+    "edge_pixels": 7248,
+    "magenta_tinted_opaque": 425,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate",
+      "semi-transparent pixels (29553) far exceed the edge length (7248) \u2014 halo from a feathered matte, or a mesh that wants --soft"
+    ],
+    "selected": false
+  },
+  {
+    "file": "ready/repel-hokkaido-v2.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      75,
+      73,
+      1181,
+      1187
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 554222,
+      "semi": 1815,
+      "opaque": 1016479
+    },
+    "edge_pixels": 4045,
+    "magenta_tinted_opaque": 1201,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "ready/repel-svalbard-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      44,
+      40,
+      1203,
+      1207
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 499906,
+      "semi": 1368,
+      "opaque": 1071242
+    },
+    "edge_pixels": 3658,
+    "magenta_tinted_opaque": 1589,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  },
+  {
+    "file": "ready/repel-tromso-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      55,
+      44,
+      1191,
+      1202
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 521121,
+      "semi": 1505,
+      "opaque": 1049890
+    },
+    "edge_pixels": 3668,
+    "magenta_tinted_opaque": 1347,
+    "clean": true,
+    "reasons": [],
+    "selected": true
+  }
+]
