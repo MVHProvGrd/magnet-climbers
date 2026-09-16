@@ -6,10 +6,11 @@
   "scripts": {
     "test": "node tests/run.mjs",
     "dev": "vite",
-    "build": "tsc --noEmit && node scripts/element-map.mjs && vite build",
+    "build": "tsc --noEmit && node scripts/element-map.mjs && node scripts/art-archive-page.mjs && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "elements": "node scripts/element-map.mjs"
+    "elements": "node scripts/element-map.mjs",
+    "archive": "node scripts/art-archive-page.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

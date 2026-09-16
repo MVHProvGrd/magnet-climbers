@@ -44,4 +44,9 @@ if(location.protocol==='file:') document.querySelectorAll('[src],[href]').forEac
 </script></body></html>`;
 
 await writeFile("art/archive/index.html", html);
-console.log("wrote art/archive/index.html", (await stat("art/archive/index.html")).size, "bytes");
+// The per-pack review pages already ship under public/art-archive/, so the index has to
+// ship with them or magnetclimbers.com/art-archive/ is a 404 that reads as a blank page.
+// The pictures still load from the GitHub repo, so this is one file, not the whole archive.
+await mkdir("public/art-archive", { recursive: true });
+await writeFile("public/art-archive/index.html", html);
+console.log("wrote art/archive/index.html and public/art-archive/index.html", (await stat("art/archive/index.html")).size, "bytes");
