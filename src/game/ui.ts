@@ -53,6 +53,30 @@ export interface UiHandlers {
 }
 
 /** newest chat id the player has looked at (per device) */
+/**
+ * Last messages we saw, kept in memory and mirrored to localStorage.
+ *
+ * The panel used to open on "Loading..." and sit blank for the round trip. Chat is a
+ * read-mostly list, so paint the last known messages immediately and let the poll correct
+ * them. A reopen is then instant, and a cold start still shows the previous session.
+ */
+const CHAT_CACHE_KEY = "mc-chat-cache", CHAT_CACHE_MAX = 60;
+let chatCache: ChatMessage[] = (() => {
+  try { const raw = localStorage.getItem(CHAT_CACHE_KEY); return raw ? (JSON.parse(raw) as ChatMessage[]) : []; } catch { return []; }
+})();
+function rememberChat(messages: ChatMessage[]) {
+  const byId = new Map(chatCache.map((m) => [m.id, m]));
+  for (const m of messages) byId.set(m.id, m);
+  chatCache = [...byId.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+  try { localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(chatCache)); } catch { /* private mode */ }
+}
+/** HH:MM in local time; the API sends seconds or milliseconds depending on age. */
+function chatTime(at: number) {
+  const ms = at > 1e12 ? at : at * 1000;
+  const d = new Date(ms);
+  return Number.isFinite(d.getTime()) ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+}
+
 const chatSeen = () => { try { return Number(localStorage.getItem("mc-chat-seen") ?? 0) || 0; } catch { return 0; } };
 /** a stable hue per name so the ticker reads like a chat */
 const nameColor = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return `hsl(${h % 360} 70% 68%)`; };
@@ -170,6 +194,8 @@ export class Ui {
       // the panel with no way out but the backdrop.
       if (!ownsBack && (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("expeditions"))) exit.hidden = true;
     }
+    // any panel that is not the home screen covers the strip; do not leave it peeking out
+    if (!panel.classList.contains("home")) this.setChatStripVisible(false);
     translateTree(panel);
     this.root.appendChild(panel);
     this.fit(panel);
@@ -209,7 +235,7 @@ export class Ui {
     this.pauseBtn.hidden = !inRun;
     this.muteBtn.hidden = !inRun;
     this.refreshMute();
-    // Chat is hidden for now: no strip in a run and none on the menu (owner call).
+    // The strip is a home-screen thing: there is no time to read it mid-climb.
     this.setChatStripVisible(false);
   }
 
@@ -312,7 +338,7 @@ export class Ui {
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
-    this.setChatStripVisible(false);
+    this.setChatStripVisible(leaderboardEnabled);
     this.startPreviews(p);
   }
 
@@ -446,38 +472,65 @@ export class Ui {
   private chatTimer: number | null = null;
   showChat() {
     const s = this.save();
-    const p = el("div", "panel chat");
-    p.innerHTML = `<h2>Global chat</h2>
-      <p class="fine">Everyone playing right now. Be kind. No personal info, no links. <span class="online"></span></p>
-      <div class="chat-log" aria-live="polite"><p class="fine">Loading…</p></div>
-      <form class="chat-form"><input type="text" maxlength="160" placeholder="Say something as ${esc(s.name)}" autocomplete="off" enterkeyhint="send" /><button class="primary" type="submit">SEND</button></form>
-      <p class="fine err" hidden></p>
-      <button class="ghost" data-a="back">BACK</button>`;
+    const p = el("div", "panel shell chat");
+    p.innerHTML = `
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Global chat</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body chat-log" aria-live="polite"></div>
+      <span class="shell-fade"></span>
+      <div class="shell-foot">
+        <form class="chat-form"><input type="text" maxlength="160" placeholder="Message as ${esc(s.name)}" autocomplete="off" enterkeyhint="send" /><button class="send" type="submit" aria-label="Send">➤</button></form>
+        <p class="fine"><span class="online"></span></p>
+        <p class="fine err" hidden></p>
+      </div>`;
     const log = p.querySelector<HTMLElement>(".chat-log")!, online = p.querySelector<HTMLElement>(".online")!, err = p.querySelector<HTMLElement>(".err")!;
     const input = p.querySelector<HTMLInputElement>("input")!;
-    let lastId = 0; const seen = new Map<number, ChatMessage>();
+    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0;
+    const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
+
+    const row = (m: ChatMessage) => {
+      const mine = m.player_id === s.playerId;
+      const colour = nameColor(m.name);
+      const initial = esc((m.name || "?").trim().charAt(0).toUpperCase());
+      return `<div class="cmsg ${mine ? "me" : ""}">
+        <span class="cav" style="background:${colour}22;color:${colour}">${initial}</span>
+        <span class="cbody">
+          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
+          <span class="cbubble">${esc(m.text)}</span>
+        </span>
+      </div>`;
+    };
+    // a few grey rows beat the word "Loading" on a first ever open
+    const skeleton = `<div class="cskel">${"<span></span>".repeat(5)}</div>`;
     const render = () => {
-      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-60);
-      log.innerHTML = rows.length ? rows.map((m) => `<div class="msg ${m.player_id === s.playerId ? "me" : ""}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join("") : `<p class="fine">Nobody has said anything yet. You could be first.</p>`;
+      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+      log.innerHTML = rows.length ? rows.map(row).join("") : skeleton;
       log.scrollTop = log.scrollHeight;
     };
+    render();
+
     const poll = async () => {
       if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }
       const r = await chat.list(lastId);
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
+      rememberChat(r.messages);
       if (lastId > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(lastId)); } catch { /* private mode */ } }
-      online.textContent = r.online ? `· ${r.online} chatting lately` : "";
+      online.textContent = r.online ? `${r.online} chatting lately` : "";
       if (r.messages.length || !seen.size) render();
+      if (!seen.size) log.innerHTML = `<p class="how-blurb">Nobody has said anything yet. You could be first.</p>`;
     };
     if (this.chatTimer) clearInterval(this.chatTimer);
     void poll(); this.chatTimer = window.setInterval(poll, 4000);
+
     p.querySelector("form")!.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = input.value.trim(); if (!text) return;
       input.value = ""; err.hidden = true;
+      // show it straight away; the poll replaces it with the server's copy
+      const pending: ChatMessage = { id: lastId + 0.5, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
+      seen.set(pending.id, pending); render();
       const problem = await this.h.onChat(text);
-      if (problem) { err.textContent = problem; err.hidden = false; input.value = text; }
+      if (problem) { seen.delete(pending.id); render(); err.textContent = problem; err.hidden = false; input.value = text; }
       else void poll();
     });
     p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });

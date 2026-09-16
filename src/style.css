@@ -235,13 +235,42 @@ select.buy option { background: #1e2229; color: #fff; }
 .panel button.unlock small { font-weight: 600; opacity: 0.8; letter-spacing: 0; }
 
 /* chat */
-.panel.chat { width: min(94vw, 420px); }
-.chat-log { text-align: left; max-height: 46vh; min-height: 160px; overflow: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: rgba(0,0,0,0.25); border-radius: 12px; }
-.chat-log .msg { font-size: 14px; line-height: 1.35; word-break: break-word; }
-.chat-log .msg b { color: var(--coin); margin-right: 4px; }
-.chat-log .msg.me b { color: var(--accent); }
-.chat-form { display: flex; gap: 8px; }
-.chat-form input { flex: 1; text-align: left; font-size: 16px; padding: 10px 12px; }
+/* Chat uses the shared panel shell; rows are avatar + name + time + bubble. */
+.chat-log { gap: calc(10 * var(--px)); }
+.cmsg { display: flex; gap: calc(8 * var(--px)); align-items: flex-start; }
+.cav {
+  flex: 0 0 auto; width: calc(32 * var(--px)); height: calc(32 * var(--px)); border-radius: calc(10 * var(--px));
+  display: flex; align-items: center; justify-content: center;
+  font: 900 calc(15 * var(--px)) var(--display);
+}
+.cbody { display: flex; flex-direction: column; gap: calc(3 * var(--px)); min-width: 0; flex: 1; }
+.chead { display: flex; align-items: baseline; gap: calc(6 * var(--px)); }
+.chead b { font: 800 calc(13 * var(--px)) var(--display); }
+.chead i { font: 600 calc(11 * var(--px)) var(--display); font-style: normal; color: var(--text-3); }
+.cbubble {
+  align-self: flex-start; max-width: 100%;
+  padding: calc(7 * var(--px)) calc(11 * var(--px)); border-radius: calc(12 * var(--px));
+  background: rgba(255,255,255,.07); color: #eef3f7;
+  font: 600 calc(14 * var(--px)) / 1.35 var(--display); word-break: break-word;
+}
+.cmsg.me .cbubble { background: rgba(255,138,61,.18); box-shadow: inset 0 0 0 1px rgba(255,138,61,.35); }
+/* first ever open has nothing cached: grey rows read better than the word "Loading" */
+.cskel { display: flex; flex-direction: column; gap: calc(12 * var(--px)); padding: calc(4 * var(--px)) 0; }
+.cskel span { height: calc(32 * var(--px)); border-radius: calc(10 * var(--px)); background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.1), rgba(255,255,255,.05)); background-size: 200% 100%; animation: cskel 1.2s linear infinite; }
+.cskel span:nth-child(2n) { width: 80%; } .cskel span:nth-child(3n) { width: 65%; }
+@keyframes cskel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .cskel span { animation: none; } }
+.chat-form { display: flex; gap: calc(8 * var(--px)); }
+.chat-form input {
+  flex: 1; min-width: 0; text-align: left; border: 0; border-radius: calc(12 * var(--px));
+  padding: calc(11 * var(--px)) calc(12 * var(--px)); background: var(--row-fill); color: #fff;
+  font: 600 calc(15 * var(--px)) var(--display);
+}
+.panel .chat-form .send {
+  flex: 0 0 auto; width: calc(46 * var(--px)); height: calc(46 * var(--px)); padding: 0;
+  border: 0; border-radius: calc(12 * var(--px)); background: var(--accent); color: var(--ink);
+  font-size: calc(18 * var(--px)); cursor: pointer;
+}
 .chat-form button { padding: 10px 14px; }
 .panel .err { color: #ff8a8a; opacity: 1; }
 .panel .legal a { color: rgba(255,255,255,0.6); }
@@ -279,8 +308,7 @@ select.buy option { background: #1e2229; color: #fff; }
 .how-count { font-style: normal; font-size: 11px; font-weight: 700; opacity: 0.5; margin-left: 5px; letter-spacing: 0.3px; }
 
 /* In-run global chat strip: bottom 64 px, two latest lines, tap to open (handoff 1a). */
-.chat-strip { display: none !important; }
-.chat-strip--disabled {
+.chat-strip {
   /* 64 px of strip plus the bottom inset underneath it, so the dock's 74 lift lands
      exactly 10 px above the strip's top edge rather than somewhere near it. */
   position: absolute; left: 0; right: 0; bottom: 0;
