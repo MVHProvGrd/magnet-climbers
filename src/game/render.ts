@@ -45,12 +45,11 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);
   }
 
-  // CLIMB mode: how far the selected climber can crawl, and who it can climb onto
+  // CLIMB mode: who the selected climber can climb onto. The range ring that used
+  // to sit around the climber is gone with the other rings; the ▲ markers name
+  // the actual targets, which the ring never did.
   const climber = g.byId(g.selectedId);
   if (g.rules === "crew" && g.mode === "move" && climber && (climber.state === "stuck" || climber.state === "linked") && g.phase !== "dead") {
-    ctx.strokeStyle = "rgba(79,195,247,0.55)"; ctx.setLineDash([6, 8]); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(climber.x, climber.y, g.pullRange(), 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
     const pulse = 0.5 + Math.sin(g.time * 5) * 0.5;
     for (const o of g.climbTargets(climber)) {
       ctx.strokeStyle = `rgba(155,225,93,${0.5 + pulse * 0.5})`; ctx.lineWidth = 2.5;
