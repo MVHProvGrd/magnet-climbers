@@ -137,13 +137,10 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
   if (photo) {
     const iw = (photo as HTMLImageElement).naturalWidth || (photo as HTMLCanvasElement).width || 1;
     const ih = (photo as HTMLImageElement).naturalHeight || (photo as HTMLCanvasElement).height || 1;
-    // Contain, not cover: the card's rect is already cut to the photo's own shape,
-    // so this fills it exactly, and where it cannot be (an older world, or a rect
-    // that had no room to shrink) the photo keeps its proportions and shows a
-    // little paper instead of losing a corner. Cover with a 4% overscan clipped
-    // every card, which is how Space Cadet lost its edge.
+    // Contain, and nothing behind it. The photo is a cut-out piece of paper with
+    // its own edges, so a card-coloured rectangle under it only ever showed up as
+    // a cream border wherever the zone was not exactly the photo's shape.
     const s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
-    box(ctx, 0, 0, w, h, "#f6efdd");
     ctx.drawImage(photo, (w - dw) / 2, (h - dh) / 2, dw, dh);
     ctx.restore(); return;
   }
