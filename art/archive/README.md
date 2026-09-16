@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `24-new-papers-v1/` | All12 new paper objects, paper-new-0..11; sources, prompts, alpha QC and review | Codex built-in imagegen | Ready for Claude wiring |
 | `21-story-scenes-v1/` | Life, bedtime and climb story scenes; opaque768x512, phone review, consistent toys | Codex built-in imagegen | Ready for Claude review/wiring |
 | `21-paper-classics-v1/` | Final eight original papers12..19, all alpha QC passed, original sources and light/dark sheet | Codex built-in imagegen | Ready for Claude wiring; distinct from21-story-scenes |
 | `23-paint-bucket-v1/` | Green paint tin pickup, full source cutout plus transparent256x256 paint.png, alpha QC and review | Codex built-in imagegen | Ready for Claude wiring |
