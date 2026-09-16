@@ -1,0 +1,188 @@
+[
+  {
+    "file": "ready/business-car-wash-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      45,
+      158,
+      1732,
+      731
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 626906,
+      "semi": 5358,
+      "opaque": 941274
+    },
+    "edge_pixels": 4724,
+    "magenta_tinted_opaque": 1450,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-locksmith-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      76,
+      138,
+      1699,
+      739
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 606172,
+      "semi": 1389,
+      "opaque": 965977
+    },
+    "edge_pixels": 4237,
+    "magenta_tinted_opaque": 838,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-pool-cleaner-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      52,
+      143,
+      1719,
+      746
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 574727,
+      "semi": 1494,
+      "opaque": 997317
+    },
+    "edge_pixels": 4332,
+    "magenta_tinted_opaque": 1714,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-realtor-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      115,
+      117,
+      1657,
+      767
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 577505,
+      "semi": 2044,
+      "opaque": 993989
+    },
+    "edge_pixels": 4188,
+    "magenta_tinted_opaque": 1814,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-sushi-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      85,
+      149,
+      1690,
+      728
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 656262,
+      "semi": 1412,
+      "opaque": 915864
+    },
+    "edge_pixels": 4160,
+    "magenta_tinted_opaque": 1497,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-tattoo-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      74,
+      116,
+      1699,
+      762
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 539290,
+      "semi": 1947,
+      "opaque": 1032301
+    },
+    "edge_pixels": 4357,
+    "magenta_tinted_opaque": 1693,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/business-tax-prep-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      86,
+      97,
+      1692,
+      781
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 482404,
+      "semi": 3170,
+      "opaque": 1087964
+    },
+    "edge_pixels": 5842,
+    "magenta_tinted_opaque": 4810,
+    "clean": false,
+    "reasons": [
+      "4810 opaque pixels still read magenta \u2014 key rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ]
+  },
+  {
+    "file": "ready/business-taxi-v1.webp",
+    "size": [
+      1774,
+      887
+    ],
+    "bbox": [
+      90,
+      145,
+      1684,
+      735
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 646219,
+      "semi": 952,
+      "opaque": 926367
+    },
+    "edge_pixels": 4109,
+    "magenta_tinted_opaque": 705,
+    "clean": true,
+    "reasons": []
+  }
+]
