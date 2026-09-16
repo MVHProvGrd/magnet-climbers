@@ -1134,7 +1134,6 @@ export class Ui {
       <h2>Paused</h2>
       <button class="primary" data-a="resume">RESUME</button>
       <button data-a="end">END RUN &amp; BANK SCORE</button>
-      <p class="fine">Banks this height, then the summary with a way back to the menu. Nothing a run has earned is ever thrown away.</p>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
