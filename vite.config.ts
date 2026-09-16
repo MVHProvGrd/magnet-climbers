@@ -44,6 +44,10 @@ export default defineConfig({
           // for every player, and neither of these is reachable from inside the game.
           globIgnores: ["elements/**", "art-archive/**"],
         navigateFallback: "index.html",
+        // ...but the fallback must not swallow them. Excluding a page from the precache means
+        // its navigation falls through to index.html, and the game's index is built with a
+        // relative base, so its asset paths resolve under /elements/ and 404: a white page.
+        navigateFallbackDenylist: [/^\/elements\//, /^\/art-archive\//],
       },
     }),
   ],
