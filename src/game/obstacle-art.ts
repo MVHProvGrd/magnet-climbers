@@ -3,7 +3,9 @@ import { DOOR_SEAM } from './world';
 import { W } from './config';
 import { rule } from './placement';
 
-export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
+// 'attract'/'repel' were replaced by the souvenir plates and 'gap' is drawn on canvas:
+// all three were still being precached, downloaded and decoded without ever being painted.
+export const OBSTACLE_IDS = ['glass', 'plastic', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
 export function setObstacleArt(id: string, image: HTMLImageElement) { images.set(id, image); }

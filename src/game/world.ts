@@ -1,6 +1,6 @@
 import { CFG, W } from "./config";
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
-import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT } from "./items";
+import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS } from "./items";
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
@@ -56,7 +56,23 @@ export class World {
   private lastKind = "";
   private recentBumpers: string[] = [];
   private recentToys: string[] = [];
+  private recentGadgets: string[] = [];
   private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
+  /**
+   * v17: a hanging gadget is one of the photographed variants, not just its theme. Polarity
+   * keeps its three themed toys - the compass, crayon and candy pole are drawn, not photographed.
+   */
+  private pickGadgetItem(art: () => number, kind: Gadget["kind"], theme: string): string {
+    if (kind === "polarity" || this.version < 17) return `${kind}-${theme}`;
+    // the v16 rule still holds: a doodle is a bit of paper, so it is clipped, never hung
+    const pool = FRIDGE_ITEMS.filter((it) => it.family === "gadget" && it.behavior === kind
+      && !(kind === "swing" && this.version >= 16 && it.theme !== undefined && PAPER_THEMES.has(it.theme)));
+    if (!pool.length) return `${kind}-${theme}`;
+    let item = pick(art, pool);
+    for (let k = 0; k < 6 && this.recentGadgets.includes(item.id); k++) item = pick(art, pool);
+    this.remember(this.recentGadgets, item.id, 6);
+    return item.id;
+  }
   /** Swings are damped pendulums (Codex's motion study: a = -9.8 sin θ - 1.4 ω). Still until something touches them. */
   /** everything that hangs: gadgets and toy keychain zones */
   private get hanging(): { swing?: { angle: number; vel: number; cool: number } }[] {
@@ -115,7 +131,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 16, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 17, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -456,7 +472,7 @@ export class World {
           // v12: the two gadgets on a door are never the same theme (no two pancake clips side by side)
           if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * (themes.length - 1))) % themes.length];
           first = theme;
-          const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
+          const g: Gadget = { id: `g${i}-${n}`, itemId: this.pickGadgetItem(art, kind, theme), kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
           // hanging things start still and only move when touched: keyrings since v12, clips since v13
           if ((kind === "swing" && this.version >= 12) || (kind === "clip" && this.version >= 13)) g.swing = { angle: 0, vel: 0, cool: 0 };
           // v16: the clip is part of the photo, a real steel clip biting the board.

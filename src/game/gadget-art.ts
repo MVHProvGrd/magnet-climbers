@@ -1,6 +1,20 @@
 import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
 import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
+import { GADGET_PIVOTS } from "./gadget-pivots";
+
+/** Every gadget that ships as a photograph rather than drawn canvas art. */
+export const GADGET_ASSEMBLIES = [
+  "swing-snack", "swing-travel", "swing-doodle",
+  "swing-baby-shoe", "swing-bead-lanyard", "swing-bottle-opener", "swing-carabiner-whistle",
+  "swing-disco-ball", "swing-fishing-lure", "swing-keys", "swing-measuring-spoons",
+  "swing-rubber-duck", "swing-scissors", "swing-souvenir-spoon", "swing-wind-chime",
+  "clip-snack", "clip-travel", "clip-doodle",
+  "clip-birthday-invite", "clip-concert-ticket", "clip-coupon-sheet", "clip-grandma-polaroid",
+  "clip-lost-cat", "clip-report-card", "clip-takeout-receipt",
+  "rotor-snack", "rotor-travel", "rotor-doodle",
+  "rotor-clock", "rotor-fidget-spinner", "rotor-pinwheel", "rotor-thermometer",
+] as const;
 
 const art = new Map<string, CanvasImageSource>();
 const destinationArt = new Map<string, CanvasImageSource>();
@@ -25,9 +39,11 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   ...["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
   // toy bumpers are keychain payloads; the hook and chain are composited from the lemon keychain at draw time
   ...Array.from({ length: 13 }, (_, i) => `bumper-${i}`).map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
-  ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => loadImage(`art/paper/paper-${n}.webp`, (image) => setObjectArt(`paper-${n}`, image))),
-  // pack 10 hanging keepsakes: whole photographed assemblies (hook, chain, clip baked in) for the swing and clip gadgets
-  ...["swing-snack", "clip-snack", "clip-travel", "clip-doodle"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
+  ...Array.from({ length: 20 }, (_, n) => `paper-${n}`).concat(Array.from({ length: 12 }, (_, n) => `paper-new-${n}`))
+    .map((id) => loadImage(`art/paper/${id}.webp`, (image) => setObjectArt(id, image))),
+  // Whole photographed assemblies - hook, chain, clip or spindle baked in - keyed by the item id
+  // the world hands out. Each one hangs or turns about its own measured point in GADGET_PIVOTS.
+  ...GADGET_ASSEMBLIES.map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/real-v1/kid-arm.webp", (image) => setObjectArt("kid-arm", image)),
   loadImage("art/real-v1/cat-paw.webp", (image) => setObjectArt("cat-paw", image)),
   loadImage("art/real-v1/cat-paw-claws.webp", (image) => setObjectArt("cat-paw-claws", image)),
@@ -80,7 +96,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const p = gadgetPose(g, time), z = gadgetZone(g, time), theme = g.itemId.split("-")[1];
   const index = THEMES.indexOf(theme as typeof THEMES[number]);
   ctx.save(); ctx.lineCap = "round";
-  const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(`${g.kind}-${theme}`) : undefined;
+  // by item id, not by theme: a gadget may be any one of the photographed variants
+  const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(g.itemId) : undefined;
+  const pivot = GADGET_PIVOTS[g.itemId] ?? [KEYCHAIN_PIVOT.x, KEYCHAIN_PIVOT.y];
   const hardware = objectArt.get("swing-snack"), charmImg = art.get(theme);
   if (!assembly && g.kind === "swing" && hardware && charmImg) {
     // keyring charms without their own photo hang from the lemon keychain's hook and chain (cropped at draw time)
@@ -96,10 +114,10 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   } else if (assembly && g.kind === "swing") {
     // the keychain photo carries its own hook and chain: swing the whole thing about the hook.
     // The steel hold goes BEHIND it, as the mount the chain hangs in front of (it is still the only grip).
-    const { w, h } = imageSize(assembly), s = 95 / ((1 - KEYCHAIN_PIVOT.y) * h);
+    const { w, h } = imageSize(assembly), s = 95 / ((1 - pivot[1]) * h);
     // aim the chain through the steel bar (the real hold), not the raw pendulum angle
     const lean = Math.atan2(p.hold.x - g.x, p.hold.y - (g.y - 62));
-    const px = KEYCHAIN_PIVOT.x * w, py = KEYCHAIN_PIVOT.y * h;
+    const px = pivot[0] * w, py = pivot[1] * h;
     ctx.save(); ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
     // the round hook magnet stays put on the door; only the chain and lemon swing about its ring
     ctx.drawImage(assembly, 0, 0, w, py, g.x - px * s, g.y - 62 - py * s, w * s, py * s);
@@ -115,7 +133,12 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   // photo assemblies carry their own hook, chain or clip: that IS the hold, so no plate or drawn hardware over it
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
-  if (g.kind === "rotor") {
+  const rotorImg = g.kind === "rotor" ? objectArt.get(g.itemId) : undefined;
+  if (rotorImg) {
+    // spindle-centred by the install script, so the draw offset IS the pivot
+    const { w, h } = imageSize(rotorImg), s = 76 / Math.max(w, h);
+    ctx.drawImage(rotorImg, -pivot[0] * w * s, -pivot[1] * h * s, w * s, h * s);
+  } else if (g.kind === "rotor") {
     plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
     ctx.shadowColor = "transparent";
     ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -25, 50, 50, 12); ctx.stroke();
@@ -124,7 +147,7 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   } else if (assembly && g.kind === "clip") {
     // clipped paper photo hangs from the grip: its clip ring sits on the steel bar
     const { w, h } = imageSize(assembly), s = Math.min(78 / h, 70 / w);
-    ctx.drawImage(assembly, -w * s / 2, -27 - 9, w * s, h * s);
+    ctx.drawImage(assembly, -pivot[0] * w * s, -27 - pivot[1] * h * s, w * s, h * s);
   } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charmImg)) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
     charm(ctx, theme, g.kind === "clip" ? 58 : 62);

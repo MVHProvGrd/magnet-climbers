@@ -108,7 +108,7 @@ export function howToSections(): HowToSection[] {
       rows: [
         { icon: "🫙", name: "Glass", fit: "cover", art: "art/real-v1/obstacles/glass.png", note: "no catch", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
         { icon: "🧊", name: "Plastic", fit: "cover", art: "art/real-v1/obstacles/plastic.png", note: "no hold", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
-        { icon: "🕳️", name: "Open gaps", fit: "cover", art: "art/real-v1/obstacles/gap.png", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
+        { icon: "🕳️", name: "Open gaps", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
       ],
     },
     {
