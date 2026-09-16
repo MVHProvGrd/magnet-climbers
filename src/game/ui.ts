@@ -56,6 +56,42 @@ export interface UiHandlers {
 const chatSeen = () => { try { return Number(localStorage.getItem("mc-chat-seen") ?? 0) || 0; } catch { return 0; } };
 /** a stable hue per name so the ticker reads like a chat */
 const nameColor = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return `hsl(${h % 360} 70% 68%)`; };
+/**
+ * What the bottom of the screen actually measures on this device.
+ *
+ * Desktop always reports env(safe-area-inset-bottom) as 0, so the inset branch of the
+ * layout can only ever be checked on a real phone. This prints the resolved numbers and
+ * where the chat strip's text really lands, so a screenshot answers it instead of a guess.
+ */
+function layoutReport() {
+  if (typeof document === "undefined") return null;
+  const ui = document.getElementById("ui");
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden";
+  document.body.appendChild(probe);
+  const envBottom = probe.getBoundingClientRect().height;
+  probe.remove();
+  const px = ui ? parseFloat(getComputedStyle(ui).paddingBottom) : 0;
+  const strip = document.querySelector<HTMLElement>(".chat-strip");
+  const lines = strip?.querySelector<HTMLElement>(".lines");
+  const r = (el: HTMLElement | null | undefined) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height) }; };
+  const measure = (expr: string) => {
+    const el = document.createElement("div");
+    el.style.cssText = `position:fixed;left:0;bottom:0;width:0;pointer-events:none;visibility:hidden;height:${expr}`;
+    (ui ?? document.body).appendChild(el);
+    const h = el.getBoundingClientRect().height; el.remove(); return Math.round(h * 100) / 100;
+  };
+  const stripRect = r(strip), linesRect = r(lines);
+  return {
+    innerH: innerHeight, visualH: Math.round(visualViewport?.height ?? 0), dpr: devicePixelRatio,
+    envBottom, pxUnit: measure("calc(1 * var(--px))"), safePx: measure("var(--safe-px)"),
+    strip: stripRect, lines: linesRect,
+    linesClipped: linesRect ? linesRect.bottom > innerHeight : null,
+    gapUnderLines: linesRect ? Math.round(innerHeight - linesRect.bottom) : null,
+    uiPad: px,
+  };
+}
+
 const fmtDistance = (cm: number) => (cm >= 100000 ? `${(cm / 100000).toFixed(2)} km` : `${(cm / 100).toFixed(1)} m`);
 /** m:ss for a run duration */
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -552,7 +588,7 @@ export class Ui {
       if (a === "update") { this.h.onUpdate(); return; }
       if (a === "perf") {
         const out = p.querySelector<HTMLElement>(".perf-out");
-        if (out) { out.textContent = JSON.stringify(this.h.onPerf(), null, 1); out.hidden = false; }
+        if (out) { out.textContent = JSON.stringify({ build: __BUILD__, layout: layoutReport(), frames: this.h.onPerf() }, null, 1); out.hidden = false; }
         return;
       }
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
