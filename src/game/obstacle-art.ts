@@ -1,8 +1,18 @@
 import type { NoStickZone } from './types';
+import { DOOR_SEAM } from './world';
 
-/** A door bin reads as a bin only between these heights. Outside them the zone is a
- *  plastic panel or a trim strip, and the moulded surface draws instead. */
-const BIN_MIN_H = 58, BIN_MAX_H = 150;
+/** Below this a plastic zone is trim, not a bin, and the moulded surface draws instead. */
+const BIN_MIN_H = 58;
+
+/** Split a horizontal span into the parts that fall on each door, dropping the seam
+ *  itself. A zone on one door comes back as one part. */
+function doorSpans(x: number, w: number): [number, number][] {
+  const s0 = DOOR_SEAM.x, s1 = DOOR_SEAM.x + DOOR_SEAM.w;
+  const parts: [number, number][] = [];
+  if (x < s0) parts.push([x, Math.min(x + w, s0) - x]);
+  if (x + w > s1) { const px = Math.max(x, s1); parts.push([px, x + w - px]); }
+  return parts.length ? parts.filter(([, pw]) => pw > 1) : [[x, w]];
+}
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
@@ -61,18 +71,24 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (id === 'plastic') {
-    // The photo is one door bin, about twice as wide as it is tall, and a bin has a
-    // real size. Past that height the zone is a plastic wall, not a bin, so hand it
-    // back to the moulded panel rather than stacking copies up it: stacking repeated
-    // the moulded lip three times and cut the last one in half.
-    if (z.h > BIN_MAX_H || z.h < BIN_MIN_H) { c.restore(); return false; }
-    // One row, fitted to the zone's height at the photo's own proportions, repeated
-    // sideways and centred so any crop is shared evenly between the two ends.
-    const tw = z.h * (img.width / img.height);
-    const tiles = Math.max(1, Math.ceil(z.w / tw - 0.01));
+    // A door of bins, drawn per door rather than across the pair: the seam is a real
+    // gap between two doors, so a bin that spans it looks wrong however well it fits.
+    // Each side gets a whole number of rows, sized from the bin's own proportions, so
+    // no row is ever cut in half; the sideways repeat is centred, sharing any crop.
+    if (z.h < BIN_MIN_H) { c.restore(); return false; }
+    const a = img.width / img.height;
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 4); c.clip();
-    const x0 = z.x + (z.w - tiles * tw) / 2;
-    for (let i = 0; i < tiles; i++) c.drawImage(img, x0 + i * tw, z.y, tw, z.h);
+    for (const [px, pw] of doorSpans(z.x, z.w)) {
+      const rows = Math.max(1, Math.round(z.h / (pw / a)));
+      const bh = z.h / rows, bw = bh * a;
+      const cols = Math.max(1, Math.ceil(pw / bw - 0.01));
+      const x0 = px + (pw - cols * bw) / 2;
+      for (let ry = 0; ry < rows; ry++) for (let cx = 0; cx < cols; cx++) {
+        c.save(); c.beginPath(); c.rect(px, z.y, pw, z.h); c.clip();
+        c.drawImage(img, x0 + cx * bw, z.y + ry * bh, bw, bh);
+        c.restore();
+      }
+    }
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
