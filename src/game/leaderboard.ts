@@ -62,8 +62,9 @@ export const leaderboard = {
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
-  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number) =>
-    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}) }) }),
+  /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
+  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number, at?: number) =>
+    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
 };
 
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }

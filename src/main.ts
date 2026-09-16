@@ -539,7 +539,7 @@ async function resubmitBests() {
       save[bestKey] = 0; save[atKey] = 0; save[secKey] = 0; persist();
       continue;
     }
-    void leaderboard.submit(save.playerId, save.name, mode, save[bestKey], save[secKey] || undefined);
+    void leaderboard.submit(save.playerId, save.name, mode, save[bestKey], save[secKey] || undefined, save[atKey] || undefined);
   }
 }
 

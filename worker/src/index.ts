@@ -186,7 +186,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/score") {
-      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown };
+      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown; at?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
@@ -197,6 +197,10 @@ export default {
         return json({ error: "bad score" }, h, 400);
       }
       const now = Date.now();
+      // A device re-posting a best it set earlier says when it set it, so a healed row keeps
+      // the day the climb happened instead of claiming it was set the moment the app opened.
+      const claimed = Math.floor(Number(body.at));
+      const at = Number.isFinite(claimed) && claimed > 1700000000000 && claimed <= now ? claimed : now;
       // keep only the player's best per mode; the name updates every submit
       const upsert = (withSeconds: boolean) => env.DB.prepare(withSeconds
         ? `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
@@ -211,9 +215,9 @@ export default {
              cm = MAX(scores.cm, excluded.cm),
              created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`);
       // add the column on the fly if it is missing (D1 tolerates a failed ALTER), then write
-      await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(async () => {
+      await upsert(true).bind(playerId, name, body.mode, cm, at, secs).run().catch(async () => {
         await env.DB.prepare("ALTER TABLE scores ADD COLUMN seconds INTEGER").run().catch(() => {});
-        await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(() => upsert(false).bind(playerId, name, body.mode, cm, now).run());
+        await upsert(true).bind(playerId, name, body.mode, cm, at, secs).run().catch(() => upsert(false).bind(playerId, name, body.mode, cm, at).run());
       });
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
