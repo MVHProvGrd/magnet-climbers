@@ -277,7 +277,8 @@ export class Ui {
       const last = r.messages.slice(-2);
       if (lines) lines.innerHTML = last.length
         ? last.map((m) => { const face = m.player_id === this.save().playerId ? this.save().avatar : m.avatar ?? undefined;
-            return `<span>${avatarById(face) ? avatarHtml(face, m.name, "calc(20 * var(--px))") : ""}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
+            // always a tile, portrait or initial, so the two lines start at the same x
+            return `<span>${avatarHtml(face, m.name, "calc(20 * var(--px))")}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
         : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
       const unread = r.messages.filter((m) => m.id > chatSeen()).length;
       if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
