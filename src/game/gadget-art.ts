@@ -1,6 +1,6 @@
 import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
-import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
+import { drawFieldMagnet, drawHardwareGrip, BUSINESS_MAGNETS } from "./fridge-art";
 import { GADGET_PIVOTS } from "./gadget-pivots";
 import { toyHook } from "./items";
 
@@ -37,7 +37,7 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   loadImage("art/gadgets/crayon.webp", (image) => setObjectArt("crayon", image)),
   loadImage("art/gadgets/candy-pole.webp", (image) => setObjectArt("candy-pole", image)),
   // photographic business magnets (bumpers) and paper, keyed by item id; missing files fall back to canvas art
-  ...["business-0", "business-1", "business-2", "business-3", "business-4", "business-5", "business-6", "business-7"].map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
+  ...Array.from({ length: BUSINESS_MAGNETS.length }, (_, i) => `business-${i}`).map((id) => loadImage(`art/business/${id}.webp`, (image) => setObjectArt(id, image))),
   // toy bumpers are keychain payloads; the hook and chain are composited from the lemon keychain at draw time
   ...Array.from({ length: 13 }, (_, i) => `bumper-${i}`).map((id) => loadImage(`art/bumpers/${id}.webp`, (image) => setObjectArt(id, image))),
   ...Array.from({ length: 20 }, (_, n) => `paper-${n}`).concat(Array.from({ length: 12 }, (_, n) => `paper-new-${n}`))

@@ -4,8 +4,12 @@ export const THEMES = ["snack", "travel", "doodle"] as const;
 /** Themes whose art is a bit of paper: they get clipped, never hung off a chain. */
 export const PAPER_THEMES = new Set<typeof THEMES[number]>(["doodle"]);
 /** Souvenir art is cosmetic; polarity, timing, and collision remain the same for every destination. */
-export const ATTRACT_DESTINATIONS = ["attract-fiji", "attract-hawaii", "attract-bali", "attract-tahiti", "attract-seychelles", "attract-cape-town", "attract-rio"] as const;
-export const REPEL_DESTINATIONS = ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala", "repel-kyiv", "repel-edinburgh", "repel-lapland"] as const;
+export const ATTRACT_DESTINATIONS = ["attract-fiji", "attract-hawaii", "attract-bali", "attract-tahiti",
+  "attract-seychelles", "attract-cape-town", "attract-rio",
+  "attract-cancun", "attract-maldives", "attract-phuket", "attract-zanzibar"] as const;
+export const REPEL_DESTINATIONS = ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala",
+  "repel-kyiv", "repel-edinburgh", "repel-lapland",
+  "repel-banff", "repel-hokkaido", "repel-svalbard", "repel-tromso"] as const;
 export const POLARITY_DESTINATIONS = [...ATTRACT_DESTINATIONS, ...REPEL_DESTINATIONS] as const;
 export function polarityDestination(id: string, repel = false): typeof POLARITY_DESTINATIONS[number] {
   let hash = 2166136261;

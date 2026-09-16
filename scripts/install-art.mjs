@@ -59,6 +59,20 @@ const JOBS = [
   ...["birthday-invite", "concert-ticket", "coupon-sheet", "grandma-polaroid", "lost-cat",
       "report-card", "takeout-receipt"].map((n) =>
     [`29-clip-variety-v1/ready/clip-${n}-v1.webp`, `public/art/gadgets/clip-${n}.webp`, 384, "clip"]),
+
+  // pack 31: eight more advertising magnets, shipped like business-0..7 (480 px)
+  ...["taxi", "locksmith", "sushi", "car-wash", "realtor", "tax-prep", "pool-cleaner", "tattoo"].map((n, k) =>
+    [`31-business-variety-v1/ready/business-${n}-v1.webp`, `public/art/business/business-${8 + k}.webp`, 480]),
+
+  // pack 32: four S and four N souvenirs, taking both pools to eleven. The v1 takes of
+  // maldives/zanzibar/hokkaido are deliberately NOT wired - Codex rejected them for stray
+  // low-alpha pixels reaching the frame edge and kept them only as history.
+  ...[
+    ["attract-cancun-v1", "attract-cancun"], ["attract-maldives-v2", "attract-maldives"],
+    ["attract-phuket-v1", "attract-phuket"], ["attract-zanzibar-v2", "attract-zanzibar"],
+    ["repel-banff-v1", "repel-banff"], ["repel-hokkaido-v2", "repel-hokkaido"],
+    ["repel-svalbard-v1", "repel-svalbard"], ["repel-tromso-v1", "repel-tromso"],
+  ].map(([src, id]) => [`32-balanced-destinations-v1/ready/${src}.webp`, `public/art/destinations/${id}.webp`, 384]),
 ];
 
 /** Pivot in SOURCE pixels, before the trim and rescale below moves it. */
