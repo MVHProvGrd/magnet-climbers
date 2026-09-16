@@ -147,11 +147,11 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
     box(ctx, 0, 0, w, h, note ? ["#ffdf81", "#d8edb7", "#fac4d2", "#bae4ea"][variant - 8] : "#fcf6e8");
     if (note) {
       const lines = [["TO DO", "climb fridge", "find snacks", "repeat"], ["YOU GOT", "THIS!", "", "keep climbing"], ["DON'T", "LET", "GO!", ""], ["MILK", "EGGS", "MORE", "MAGNETS"]][variant - 8];
-      ctx.save(); ctx.translate(w * 0.1, h * 0.17); ctx.scale(w * 0.8 / 100, h * 0.75 / 100);
+      ctx.save(); fitSquare(ctx, w * 0.1, h * 0.17, w * 0.8, h * 0.75);
       for (let i = 0; i < 4; i++) text(ctx, lines[i], 50, 17 + i * 23, i === 0 ? 17 : 13, "#4b5355");
       ctx.restore();
     } else {
-      ctx.save(); ctx.translate(w * 0.07, h * 0.1); ctx.scale(w * 0.86 / 100, h * 0.82 / 100); doodle(ctx, variant); ctx.restore();
+      ctx.save(); fitSquare(ctx, w * 0.07, h * 0.1, w * 0.86, h * 0.82); doodle(ctx, variant); ctx.restore();
     }
     // A small pin lives inside the nonstick card, never outside its collider.
     circle(ctx, w * 0.52 + 1.5, 7, 4, "rgba(40,52,60,0.2)");
@@ -176,6 +176,14 @@ function paintZone(ctx: CanvasRenderingContext2D, z: NoStickZone, seed: number) 
     ctx.strokeStyle = "#354958"; ctx.lineWidth = 5; ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
   }
   ctx.restore();
+}
+
+/** Map the 100x100 space a drawn card is authored in onto `w`x`h`, centred and
+ *  never distorted: a wide card gets paper margins rather than stretched art. */
+function fitSquare(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const s = Math.min(w, h) / 100;
+  ctx.translate(x + (w - 100 * s) / 2, y + (h - 100 * s) / 2);
+  ctx.scale(s, s);
 }
 
 function drawFieldArcs(ctx: CanvasRenderingContext2D, z: NoStickZone, time: number, outward: boolean, dim = 1) {
