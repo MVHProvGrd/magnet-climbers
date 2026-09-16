@@ -175,7 +175,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // the kid's hand
   if (g.scratches.length) drawScratches(ctx, g.scratches, g.time);
-  if (g.hand) drawKidHand(ctx, g.hand);
+  if (g.hand) drawKidHand(ctx, g.hand, g.camY, viewH);
   if (g.paw) drawCatPaw(ctx, g.paw, g.camY, viewH);
 
   // your own best: a quiet line to beat, green once you pass it

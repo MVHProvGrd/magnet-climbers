@@ -4,7 +4,7 @@ import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT } from "./items";
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
-import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "./gadgets";
+import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -115,7 +115,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 15, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 16, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -447,11 +447,14 @@ export class World {
           ? [{ x: 104, y: y + 74, w: 192, h: 186, kind: "trim" as const }]
           : [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" as const }];
         segment.bumpers = [];
-        const themes = [...THEMES]; let first = "";
+        // v16: paper never dangles off a keyring chain. A doodle is a bit of paper,
+        // so it only ever turns up under a clip; hard charms take the swinging hook.
+        const themes = this.version >= 16 && kind === "swing" ? THEMES.filter((t) => !PAPER_THEMES.has(t)) : [...THEMES];
+        let first = "";
         segment.gadgets = [0, 1].map((n) => {
           let theme = pick(art, themes);
           // v12: the two gadgets on a door are never the same theme (no two pancake clips side by side)
-          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * 2)) % themes.length];
+          if (this.version >= 12 && n === 1 && theme === first) theme = themes[(themes.indexOf(theme) + 1 + Math.floor(art() * (themes.length - 1))) % themes.length];
           first = theme;
           const g: Gadget = { id: `g${i}-${n}`, itemId: `${kind}-${theme}`, kind, x: 135 + n * 130, y: y + 105 + n * 125, phase: art() * 6 };
           // hanging things start still and only move when touched: keyrings since v12, clips since v13

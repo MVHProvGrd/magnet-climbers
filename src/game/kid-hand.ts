@@ -109,16 +109,18 @@ export function handTouches(h: KidHand, p: Vec, pad = 8): boolean {
 /** Codex pack 18 long arm (724x2172): highest fingertip row 58, wrist row 560, hand centre column 350 */
 const ARM = { tipRow: 58 / 2172, wristRow: 560 / 2172, centreCol: 350 / 724 };
 const ARM_SCALE = 1.6;
-function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource) {
+function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof handPose>, arm: CanvasImageSource, minReach = 0) {
   const iw = (arm as HTMLImageElement).naturalWidth || (arm as HTMLCanvasElement).width || 1;
   const ih = (arm as HTMLImageElement).naturalHeight || (arm as HTMLCanvasElement).height || 1;
   const tip = ARM.tipRow * ih, wristRow = ARM.wristRow * ih, c0 = ARM.centreCol * iw;
   // local hand frame: +x along the fingers, palm heel at x = -34, fingertips at x = 62 (the hit-test's geometry).
   // The photo is drawn ARM_SCALE bigger than that, about the palm centre (x = 14): the hitbox stays inside the palm.
   const s = ARM_SCALE * 96 / (wristRow - tip), tipX = 14 + 48 * ARM_SCALE;
-  // the sleeve must still run offscreen when the camera drops below the arm (a bottom-entry hand seen from above), so
-  // extend well past the anchor: tiles are cheap
-  const reach = Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 1000;
+  // The sleeve has to leave the screen wherever the camera is, or the arm ends in
+  // mid-air the moment you drop below its shoulder. `minReach` is the distance to
+  // the furthest corner of the view, so it is long enough by construction rather
+  // than by a guessed constant. Tiles are cheap.
+  const reach = Math.max(Math.hypot(pose.anchor.x - pose.point.x, pose.anchor.y - pose.point.y) + 1000, minReach);
   ctx.save(); ctx.translate(pose.point.x, pose.point.y); ctx.rotate(pose.angle);
   ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;
   // image (col,row) -> local (62 + (tip - row) * s, (c0 - col) * s): thumb lands on the drawn hand's side
@@ -133,8 +135,13 @@ function drawPhotoArm(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof han
   }
   ctx.restore();
 }
-export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
+/** `camY`/`viewH` let the sleeve run past whichever edge of the view is furthest,
+ *  the same way the cat's foreleg is drawn from the top edge down. */
+export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand, camY?: number, viewH = 720) {
   const pose = handPose(h);
+  const minReach = camY === undefined ? 1000 : Math.max(
+    ...[camY, camY + viewH].flatMap((y) => [0, W].map((x) => Math.hypot(x - pose.point.x, y - pose.point.y))),
+  ) + 90;
   ctx.save();
   if (h.side > 0) { ctx.translate(W, 0); ctx.scale(-1, 1); }
   if (h.phase === "warn") {
@@ -161,7 +168,7 @@ export function drawKidHand(ctx: CanvasRenderingContext2D, h: KidHand) {
     }
   }
   const arm = objectArtById("kid-arm");
-  if (arm) { drawPhotoArm(ctx, pose, arm); ctx.restore(); return; }
+  if (arm) { drawPhotoArm(ctx, pose, arm, minReach); ctx.restore(); return; }
   const wrist = { x: pose.point.x - Math.cos(pose.angle) * 28, y: pose.point.y - Math.sin(pose.angle) * 28 };
   // A continuous tapered forearm connects the wrist to an offscreen sleeve.
   ctx.save(); ctx.shadowColor = "rgba(30,28,35,0.30)"; ctx.shadowBlur = 15; ctx.shadowOffsetX = 14; ctx.shadowOffsetY = 17;

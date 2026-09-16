@@ -207,7 +207,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 15);
+  assert.equal(modern.snapshot()!.worldVersion, 16);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -322,7 +322,11 @@ test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", 
       }
     }
   }
-  assert.equal(ids.size, 12);
+  // every kind x theme except swing-doodle: paper is clipped, never hung off a keyring chain (v16)
+  assert.equal(ids.size, 11);
+  assert.ok(!ids.has("swing-doodle"), "paper never dangles from a chain");
+  const legacy = new World(4, 0, 15); legacy.generateTo(60);
+  assert.ok(legacy.gadgets.some((g) => g.itemId === "swing-doodle"), "saved v15 runs keep their layout");
 });
 
 test("gadget holds are real steel, decorative plastic is not, and polarity switches", () => {
