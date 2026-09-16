@@ -526,10 +526,14 @@ export class Ui {
       const colour = nameColor(m.name);
       // no portrait picked yet still gets a filled tile of the same size, so a
       // row without one does not read as a hole in the column of faces
-      return `<div class="cmsg ${mine ? "me" : ""}">
-        ${avatarHtml(face, m.name, "calc(44 * var(--px))").replace('class="avi', 'class="cav avi')}
+      // The portrait is the handle on a message: tap someone's face to block or report them.
+      const face_ = avatarHtml(face, m.name, "calc(44 * var(--px))")
+        .replace('class="avi', 'class="cav avi')
+        .replace("<span ", mine ? "<span " : `<span tabindex="0" title="Block or report ${esc(m.name)}" `);
+      return `<div class="cmsg ${mine ? "me" : ""}"${mine ? "" : ` data-flag="${esc(m.player_id)}" data-msg="${m.id}" data-name="${esc(m.name)}"`}>
+        ${face_}
         <span class="cbody">
-          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i>${mine ? "" : `<button class="cflag" data-flag="${esc(m.player_id)}" data-msg="${m.id}" data-name="${esc(m.name)}" aria-label="Block or report ${esc(m.name)}">⋯</button>`}</span>
+          <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
           <span class="cbubble">${esc(m.text)}</span>
         </span>
       </div>`;
@@ -582,12 +586,14 @@ export class Ui {
     const flag = async (kind: "block" | "report", targetId: string, messageId: number, name: string) => {
       if (kind === "block") { setBlocked(targetId, true); render(); this.toast(`Blocked ${name}`); }
       else this.toast(`Reported ${name}`);
-      await chat.report(s.playerId, s.token ?? "", kind, targetId, messageId);
+      // send the words as they were read here: by the time the owner looks, the message
+      // itself may have been deleted, and a flag with no message is no use to anyone
+      await chat.report(s.playerId, s.token ?? "", kind, targetId, messageId, seen.get(messageId)?.text ?? "");
     };
     log.addEventListener("click", (e) => {
-      const button = (e.target as HTMLElement).closest<HTMLElement>(".cflag");
-      if (!button) return;
-      const targetId = button.dataset.flag!, messageId = Number(button.dataset.msg ?? 0), name = button.dataset.name ?? "them";
+      const row = (e.target as HTMLElement).closest<HTMLElement>(".cav")?.closest<HTMLElement>(".cmsg");
+      if (!row?.dataset.flag) return;
+      const targetId = row.dataset.flag, messageId = Number(row.dataset.msg ?? 0), name = row.dataset.name ?? "them";
       const menu = el("div", "cmenu");
       menu.innerHTML = `<p class="fine">${esc(name)}</p>
         <button data-k="block">Block ${esc(name)}</button>

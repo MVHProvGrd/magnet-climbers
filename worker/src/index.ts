@@ -421,7 +421,7 @@ export default {
     // A player blocking or reporting someone. Blocking is enforced on the device that
     // did it; both land here so the owner can see who is being complained about.
     if (req.method === "POST" && url.pathname === "/chat/report") {
-      let body: { playerId?: unknown; token?: unknown; kind?: unknown; targetId?: unknown; messageId?: unknown };
+      let body: { playerId?: unknown; token?: unknown; kind?: unknown; targetId?: unknown; messageId?: unknown; text?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
       const token = String(body.token ?? "").slice(0, 64);
@@ -439,9 +439,13 @@ export default {
       const name = msg?.name
         ?? (await env.DB.prepare("SELECT name FROM lifetime WHERE player_id = ?").bind(targetId).first<{ name: string }>())?.name
         ?? "climber";
+      // the message as the reporter read it; the chat row is gone once it is deleted or pruned,
+      // so fall back to what the client sent rather than filing a flag with nothing on it
+      const sent = cleanChat(String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 160));
+      const reported = msg?.text ?? (sent || null);
       await env.DB.prepare(
         "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      ).bind(kind, targetId, name, playerId, messageId, msg?.text ?? null, Date.now()).run();
+      ).bind(kind, targetId, name, playerId, messageId, reported, Date.now()).run();
       return json({ ok: true }, h);
     }
 
