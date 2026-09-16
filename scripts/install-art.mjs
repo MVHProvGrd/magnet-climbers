@@ -39,18 +39,34 @@ for (const [src, dst, longest] of JOBS) {
   if (!existsSync(path)) { console.log("missing", path); continue; }
   const raw = readFileSync(path);
   const img = await loadImage(raw);
-  // trim to the opaque bounds first so the subject fills its frame, then fit the longest edge
-  const scale = Math.min(1, longest / Math.max(img.width, img.height));
-  const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+  // Trim to the opaque bounds FIRST so the subject fills its frame, then fit the
+  // longest edge. This used to only say it did: a generation with generous margins
+  // shipped those margins, and since the game fits art inside its slot, a padded
+  // toy drew at half the size of one that was trimmed.
+  const probe = createCanvas(img.width, img.height);
+  const pctx = probe.getContext("2d");
+  pctx.drawImage(img, 0, 0);
+  const px = pctx.getImageData(0, 0, img.width, img.height).data;
+  let x0 = img.width, y0 = img.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
+    if (px[(y * img.width + x) * 4 + 3] > 32) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  const cw = x1 >= x0 ? x1 - x0 + 1 : img.width, ch = y1 >= y0 ? y1 - y0 + 1 : img.height;
+  if (x1 < x0) { x0 = 0; y0 = 0; }
+  const scale = Math.min(1, longest / Math.max(cw, ch));
+  const w = Math.max(1, Math.round(cw * scale)), h = Math.max(1, Math.round(ch * scale));
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, w, h);
+  ctx.drawImage(img, x0, y0, cw, ch, 0, 0, w, h);
   const out = dst.endsWith(".png") ? canvas.toBuffer("image/png") : canvas.toBuffer("image/webp", 92);
   mkdirSync(dirname(dst), { recursive: true });
   const prev = existsSync(dst) ? readFileSync(dst).length : 0;
   writeFileSync(dst, out);
   before += prev || raw.length; after += out.length;
-  console.log(`${dst.padEnd(48)} ${img.width}x${img.height} ${(raw.length/1024)|0}KB -> ${w}x${h} ${(out.length/1024)|0}KB`);
+  console.log(`${dst.padEnd(46)} ${img.width}x${img.height} -> trimmed ${cw}x${ch} -> ${w}x${h} ${(out.length/1024)|0}KB`);
 }
 console.log(`\nshipped ${JOBS.length} assets: ${(after/1024)|0} KB (masters were ${(before/1024)|0} KB)`);
