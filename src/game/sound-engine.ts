@@ -69,18 +69,50 @@ const TRACKS = { theme: "theme.mp3", chill: "chill.mp3" } as const;
 const LOOP_SECONDS = 60 / 112 * 4 * 16, MP3_DELAY = 1105 / 48000;
 const trackGain: Partial<Record<keyof typeof TRACKS, GainNode>> = {};
 let tracksState: "idle" | "loading" | "ready" | "failed" = "idle", trackMix: keyof typeof TRACKS | null = null;
+/**
+ * Cut the loop out of the decoded MP3 once, and de-click its seam.
+ *
+ * The loop points were already sample-exact -- 34.2857 s is 64 beats at 112 BPM, with the
+ * encoder's 23 ms of head padding and 16 ms of tail skipped -- but the waveform still steps
+ * from +0.15 to +0.01 across the join, and a step in a waveform is a click. Every 34
+ * seconds you hear the edit.
+ *
+ * A few milliseconds of fade at each end removes the step. It is far too short to hear as a
+ * level change (this is how a sampler de-clicks a one-shot) and it cannot drift, because the
+ * trimmed buffer loops on itself with no offsets left to get wrong.
+ */
+const DECLICK_MS = 4;
+function loopTrim(c: AudioContext, decoded: AudioBuffer): AudioBuffer {
+  const sr = decoded.sampleRate;
+  const start = Math.round(MP3_DELAY * sr);
+  const length = Math.min(Math.round(LOOP_SECONDS * sr), decoded.length - start);
+  if (length <= 0 || typeof c.createBuffer !== "function") return decoded;
+  const out = c.createBuffer(decoded.numberOfChannels, length, sr);
+  const fade = Math.min(Math.round((DECLICK_MS / 1000) * sr), Math.floor(length / 2));
+  for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
+    const src = decoded.getChannelData(ch), dst = out.getChannelData(ch);
+    dst.set(src.subarray(start, start + length));
+    for (let i = 0; i < fade; i++) {
+      const k = i / fade;
+      dst[i] *= k;
+      dst[length - 1 - i] *= k;
+    }
+  }
+  return out;
+}
+
 function loadTracks(c: AudioContext) {
   if (tracksState !== "idle" || typeof fetch !== "function" || typeof c.decodeAudioData !== "function") return;
   tracksState = "loading";
   const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
   Promise.all((Object.keys(TRACKS) as (keyof typeof TRACKS)[]).map(async (name) => {
     const res = await fetch(`${base}audio/${TRACKS[name]}`); if (!res.ok) throw new Error(String(res.status));
-    const buffer = await c.decodeAudioData(await res.arrayBuffer());
+    const buffer = loopTrim(c, await c.decodeAudioData(await res.arrayBuffer()));
     const source = c.createBufferSource(); source.buffer = buffer; source.loop = true;
-    source.loopStart = Math.min(MP3_DELAY, buffer.duration); source.loopEnd = Math.min(buffer.duration, MP3_DELAY + LOOP_SECONDS);
+    source.loopStart = 0; source.loopEnd = buffer.duration;
     const gain = c.createGain(); gain.gain.value = 0; source.connect(gain).connect(musicBus);
     trackGain[name] = gain; return source;
-  })).then((sources) => { const t = c.currentTime + 0.05; for (const s of sources) s.start(t, MP3_DELAY); tracksState = "ready"; })
+  })).then((sources) => { const t = c.currentTime + 0.05; for (const s of sources) s.start(t); tracksState = "ready"; })
     .catch(() => { tracksState = "failed"; });
 }
 /** Existing render loop supplies a short scheduling horizon; no hidden timers. */
