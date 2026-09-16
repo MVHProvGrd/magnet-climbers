@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack30 READY — seven bumper toys
+
+Seven1024square toys in30-bumper-variety-v1/ready, without hardware per v3. Reviewed light/dark; red car tint checker false-positive documented.45 new generations this continuation. Remaining8 business magnets,4S+4N destinations.
+
 ## Pack29 READY — seven clipped papers
 
 Seven in29-clip-variety-v1/ready. All visually reviewed; coupon checker false-positive is red printed text, diagnostics retained.38 successful new generations this continuation. Remaining7 bumpers,8 business cards,4S+4N souvenirs.

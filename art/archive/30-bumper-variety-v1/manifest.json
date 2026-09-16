@@ -1,0 +1,165 @@
+[
+  {
+    "file": "ready/bumper-banana-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      78,
+      70,
+      946,
+      918
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 790712,
+      "semi": 6032,
+      "opaque": 251832
+    },
+    "edge_pixels": 3013,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/bumper-gummy-bear-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      229,
+      91,
+      794,
+      932
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 655984,
+      "semi": 6289,
+      "opaque": 386303
+    },
+    "edge_pixels": 3178,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/bumper-letter-block-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      139,
+      130,
+      886,
+      893
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 557212,
+      "semi": 6039,
+      "opaque": 485325
+    },
+    "edge_pixels": 3411,
+    "magenta_tinted_opaque": 360,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/bumper-plastic-brick-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      72,
+      163,
+      950,
+      911
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 628466,
+      "semi": 5427,
+      "opaque": 414683
+    },
+    "edge_pixels": 2728,
+    "magenta_tinted_opaque": 28,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/bumper-race-car-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      55,
+      252,
+      972,
+      784
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 741684,
+      "semi": 5157,
+      "opaque": 301735
+    },
+    "edge_pixels": 2678,
+    "magenta_tinted_opaque": 644,
+    "clean": false,
+    "reasons": [
+      "644 opaque pixels still read magenta \u2014 pink rim (try --soft) or the background was a gradient, not flat (regenerate)"
+    ]
+  },
+  {
+    "file": "ready/bumper-space-shuttle-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      133,
+      65,
+      889,
+      958
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 734440,
+      "semi": 5969,
+      "opaque": 308167
+    },
+    "edge_pixels": 2928,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/bumper-taxi-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      49,
+      202,
+      976,
+      822
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 691563,
+      "semi": 6142,
+      "opaque": 350871
+    },
+    "edge_pixels": 3208,
+    "magenta_tinted_opaque": 7,
+    "clean": true,
+    "reasons": []
+  }
+]
