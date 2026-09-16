@@ -2,6 +2,7 @@ import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
 import { drawFieldMagnet, drawHardwareGrip } from "./fridge-art";
 import { GADGET_PIVOTS } from "./gadget-pivots";
+import { toyHook } from "./items";
 
 /** Every gadget that ships as a photograph rather than drawn canvas art. */
 export const GADGET_ASSEMBLIES = [
@@ -100,7 +101,12 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(g.itemId) : undefined;
   const pivot = GADGET_PIVOTS[g.itemId] ?? [KEYCHAIN_PIVOT.x, KEYCHAIN_PIVOT.y];
   const hardware = objectArt.get("swing-snack"), charmImg = art.get(theme);
-  if (!assembly && g.kind === "swing" && hardware && charmImg) {
+  // v18: a toy on a keyring. It has no assembly photo of its own, so it rides the lemon's
+  // hook and chain, meeting them at the hook point measured on that toy.
+  const toyN = /^swing-toy-(\d+)$/.exec(g.itemId)?.[1];
+  const toyImg = toyN === undefined ? undefined : objectArt.get(`bumper-${toyN}`);
+  const charm2 = toyImg ?? charmImg;
+  if (!assembly && g.kind === "swing" && hardware && charm2) {
     // keyring charms without their own photo hang from the lemon keychain's hook and chain (cropped at draw time)
     const { w, h } = imageSize(hardware), pivotY = KEYCHAIN_PIVOT.y, chainEnd = 0.615;
     const chain = 50, s = chain / ((chainEnd - pivotY) * h);
@@ -109,7 +115,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.drawImage(hardware, 0, 0, w, pivotY * h, g.x - KEYCHAIN_PIVOT.x * w * s, g.y - 62 - pivotY * h * s, w * s, pivotY * h * s);
     ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
     ctx.drawImage(hardware, 0, pivotY * h, w, (chainEnd - pivotY) * h, -KEYCHAIN_PIVOT.x * w * s, 0, w * s, chain);
-    ctx.drawImage(charmImg, -31, chain - 4, 62, 62);
+    if (toyImg) {
+      const t = imageSize(toyImg), f = Math.min(68 / t.w, 68 / t.h), dw = t.w * f, dh = t.h * f;
+      const [hu, hv] = toyHook(`bumper-${toyN}`);
+      ctx.drawImage(toyImg, -hu * dw, chain - 2 - hv * dh, dw, dh);
+    } else ctx.drawImage(charm2, -31, chain - 4, 62, 62);
     ctx.restore();
   } else if (assembly && g.kind === "swing") {
     // the keychain photo carries its own hook and chain: swing the whole thing about the hook.
@@ -123,7 +133,7 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.drawImage(assembly, 0, 0, w, py, g.x - px * s, g.y - 62 - py * s, w * s, py * s);
     ctx.translate(g.x, g.y - 62); ctx.rotate(-lean);
     ctx.drawImage(assembly, 0, py, w, h - py, -px * s, 0, w * s, (h - py) * s); ctx.restore();
-  } else if ((g.kind === "swing" && !(hardware && charmImg)) || (g.kind === "clip" && !assembly)) {
+  } else if ((g.kind === "swing" && !(hardware && charm2)) || (g.kind === "clip" && !assembly)) {
     // A photographed clip carries its own steel: no drawn rod and pin over it.
     ctx.strokeStyle = "#46565c"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(g.x, g.y - 62); ctx.lineTo(p.hold.x, p.hold.y); ctx.stroke();
@@ -148,7 +158,7 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     // clipped paper photo hangs from the grip: its clip ring sits on the steel bar
     const { w, h } = imageSize(assembly), s = Math.min(78 / h, 70 / w);
     ctx.drawImage(assembly, -pivot[0] * w * s, -27 - pivot[1] * h * s, w * s, h * s);
-  } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charmImg)) {
+  } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charm2)) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
     charm(ctx, theme, g.kind === "clip" ? 58 : 62);
   }
@@ -187,7 +197,7 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
     ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
-  } else if (!assembly && !(g.kind === "swing" && hardware && charmImg)) {
+  } else if (!assembly && !(g.kind === "swing" && hardware && charm2)) {
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
     drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }

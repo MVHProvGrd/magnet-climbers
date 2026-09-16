@@ -66,7 +66,8 @@ export class World {
     if (kind === "polarity" || this.version < 17) return `${kind}-${theme}`;
     // the v16 rule still holds: a doodle is a bit of paper, so it is clipped, never hung
     const pool = FRIDGE_ITEMS.filter((it) => it.family === "gadget" && it.behavior === kind
-      && !(kind === "swing" && this.version >= 16 && it.theme !== undefined && PAPER_THEMES.has(it.theme)));
+      && !(kind === "swing" && this.version >= 16 && it.theme !== undefined && PAPER_THEMES.has(it.theme))
+      && !(this.version < 18 && it.id.startsWith("swing-toy-")));
     if (!pool.length) return `${kind}-${theme}`;
     let item = pick(art, pool);
     for (let k = 0; k < 6 && this.recentGadgets.includes(item.id); k++) item = pick(art, pool);
@@ -131,7 +132,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 17, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 18, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -316,12 +317,15 @@ export class World {
       let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
       // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
       for (let k = 0; k < 3 && blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
-      // half hang on a keychain (plain resin: no field, they just swing when brushed); half are stuck straight on the
-      // door by their magnet backing (a weak N push, no grip)
+      // half hang on a keychain (plain resin: no field, they just swing when brushed); half are stuck straight on
+      // the door by their magnet backing. Those are magnets, so from v18 they are as likely to pull as to push:
+      // a negative power flips the same field round, which keeps them ungrippable - an attract ZONE would read
+      // as bare steel to isMetal and quietly turn every other toy into a hold.
       const hanging = r() < 0.5;
+      const pull = this.version >= 18 && r() < 0.5;
       if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push(hanging
         ? { ...toy, kind: "trim", itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
-        : { ...toy, kind: "repel", power: 0.2, itemId: `toy:${Math.floor(r() * 6)}` });
+        : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: `toy:${Math.floor(r() * 6)}` });
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
