@@ -1,5 +1,30 @@
 # Art refresh handoff — 2026-09-14
 
+## QUEUED — opossum avatar (add to pack 22) — 2026-09-16
+
+Owner wants an opossum in the chat avatars. There is no opossum and no raccoon in the 83;
+the nearest are fox, panda and sloth, so nothing already covers it.
+
+This is cheap and needs no layout change: 83 avatars in a 12-column grid is 7 rows of 12 =
+84 cells, so exactly **one cell is free**. An 84th avatar fills the sheet perfectly.
+
+Whoever has `GEMINI_API_KEY` (this session does not) can run the existing pipeline:
+
+1. Append to `art/archive/22-avatars-v1/avatars.json`:
+   `["opossum", "Opossum", "a cheeky opossum with a pink pointed snout, round black eyes, grey fur and little ears"]`
+2. `python art/archive/22-avatars-v1/gen.py opossum`   (skips the 83 already in `sources/`)
+3. Key it with `key.py` into `ready/opossum.webp`, then repack with `sheet.py`
+4. Rebuild the gallery page
+
+Keep it in the same house style as the rest: sticker bust, thick outlines, flat bright
+colours, and no pink or magenta ON the character -- the keyer treats magenta as the
+backdrop, so a pink snout has to be muted enough to survive `key.py`'s cast test
+(`min(R,B) - G > 24` starts the alpha ramp). A dusty rose or warm grey-pink snout is safer
+than a saturated pink, which is the same trap the vampire cape and candy cane hit.
+
+Do NOT add the JSON entry without the art: the id would resolve to an empty sheet cell and
+render as a blank square instead of falling back to the coloured initial.
+
 ## QUEUED FOR CODEX — three story scenes (pack 21) — 2026-09-15
 
 Owner request. The story is three slides and each one currently shows the player's own
