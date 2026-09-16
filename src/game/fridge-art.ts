@@ -107,6 +107,9 @@ export const BUSINESS_MAGNETS = [
   ["Bright Smile Dentist", "DENTIST"], ["Midnight Pizza", "PIZZA"], ["Happy Paws Vet", "VET"],
   ["Emergency Plumber", "PLUMBER"], ["Takeaway Noodles", "NOODLES"], ["Library Due Date", "LIBRARY"],
   ["School Bus Hotline", "SCHOOL"], ["Corner Bakery", "BAKERY"],
+  ["City Cab Co.", "TAXI"], ["24h Locksmith", "LOCKS"], ["Sushi Counter", "SUSHI"],
+  ["Shine Car Wash", "WASH"], ["Corner Realty", "REALTY"], ["Tax Prep Desk", "TAX"],
+  ["Clear Pool Care", "POOL"], ["Ink & Needle Tattoo", "TATTOO"],
 ] as const;
 /** Printed vinyl advertising magnets: 100x60, with actual miniature business art. */
 export function drawBusinessMagnet(c: CanvasRenderingContext2D, index: number) {

@@ -79,7 +79,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
     }[behavior],
   })),
   ...PAPER_ADDITIONS.map((name, i): FridgeItem => ({ id: `paper-new-${i}`, name, family: "paper", art: 100 + i, kind: "sticker", grips: true, description: "A print under its own magnet. It holds you like the door does." })),
-  ...BUSINESS_MAGNETS.map(([name, label], i): FridgeItem => ({ id: `business-${i}`, name, label, family: "bumper", art: 100 + i, hue: [195, 5, 110, 205, 15, 255, 40, 25][i], description: "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart." })),
+  ...BUSINESS_MAGNETS.map(([name, label], i): FridgeItem => ({ id: `business-${i}`, name, label, family: "bumper", art: 100 + i, hue: [195, 5, 110, 205, 15, 255, 40, 25, 48, 215, 350, 190, 145, 0, 175, 280][i], description: "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart." })),
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },
   { id: "coin", name: "Pocket Change", family: "pickup", power: "coin", description: "Coins feed the prize machine for new patterns. Chill mode doesn't award currency." },
   { id: "gem", name: "Ice Gem", family: "pickup", power: "gem", description: "Rare gem currency. Not awarded in Chill mode." },
@@ -94,11 +94,13 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
   // every destination souvenir gets its own card; the plates in the game pick from these pools by position
-  ...[["fiji", "Fiji (S)"], ["hawaii", "Hawaii (S)"], ["bali", "Bali (S)"], ["tahiti", "Tahiti (S)"], ["seychelles", "Seychelles (S)"], ["cape-town", "Cape Town (S)"], ["rio", "Rio (S)"]].map(([place, name]): FridgeItem => ({
+  ...[["fiji", "Fiji (S)"], ["hawaii", "Hawaii (S)"], ["bali", "Bali (S)"], ["tahiti", "Tahiti (S)"], ["seychelles", "Seychelles (S)"], ["cape-town", "Cape Town (S)"], ["rio", "Rio (S)"],
+      ["cancun", "Cancún (S)"], ["maldives", "Maldives (S)"], ["phuket", "Phuket (S)"], ["zanzibar", "Zanzibar (S)"]].map(([place, name]): FridgeItem => ({
     id: `attract-${place}`, name, family: "surface", kind: "attract", metal: true,
     description: "A fridge souvenir marked S. Its blue field pulls airborne climbers in from a distance and its face catches you. The aim dots turn blue where it bends your flight.",
   })),
-  ...[["norway", "Norway (N)"], ["alaska", "Alaska (N)"], ["iceland", "Iceland (N)"], ["jurmala", "Jūrmala (N)"], ["kyiv", "Kyiv (N)"], ["edinburgh", "Edinburgh (N)"], ["lapland", "Lapland (N)"]].map(([place, name]): FridgeItem => ({
+  ...[["norway", "Norway (N)"], ["alaska", "Alaska (N)"], ["iceland", "Iceland (N)"], ["jurmala", "Jūrmala (N)"], ["kyiv", "Kyiv (N)"], ["edinburgh", "Edinburgh (N)"], ["lapland", "Lapland (N)"],
+      ["banff", "Banff (N)"], ["hokkaido", "Hokkaido (N)"], ["svalbard", "Svalbard (N)"], ["tromso", "Tromsø (N)"]].map(([place, name]): FridgeItem => ({
     id: `repel-${place}`, name, family: "surface", kind: "repel",
     description: "A fridge souvenir marked N. Its red field pushes airborne climbers away; the wider the arcs, the stronger the push. The big ones are slingshots.",
   })),

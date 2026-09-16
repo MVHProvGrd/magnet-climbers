@@ -507,7 +507,7 @@ export class Ui {
       </div>`;
     const log = p.querySelector<HTMLElement>(".chat-log")!, online = p.querySelector<HTMLElement>(".online")!, err = p.querySelector<HTMLElement>(".err")!;
     const input = p.querySelector<HTMLInputElement>("input")!;
-    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0;
+    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0, pendingSeq = 0;
     const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
 
     const row = (m: ChatMessage) => {
@@ -529,6 +529,19 @@ export class Ui {
     // a few grey rows beat the word "Loading" on a first ever open
     const skeleton = `<div class="cskel">${"<span></span>".repeat(5)}</div>`;
     const render = (keepScroll = false) => {
+      // A message sent from here is shown at once under a fractional id, before the server
+      // has given it a real one. Nothing used to clear that copy, so once the poll brought
+      // the real message back you saw your own line twice - and only your own, which is why
+      // it looked fine to everybody else. Drop the pending copy once its real one lands.
+      const all = [...seen.values()];
+      const settled = all.filter((m) => Number.isInteger(m.id));
+      for (const m of all) {
+        if (Number.isInteger(m.id)) continue;
+        // must be the server's copy of THIS send, not an identical line from earlier in the
+        // log, or saying the same thing twice would make the second one vanish until the poll
+        if (settled.some((o) => o.player_id === m.player_id && o.text === m.text && o.created_at >= m.created_at - 30000))
+          seen.delete(m.id);
+      }
       const rows = [...seen.values()].filter((m) => !isBlocked(m.player_id)).sort((a, b) => a.id - b.id).slice(-CHAT_VIEW_MAX);
       // loading older messages grows the log upwards: hold the reading position by
       // restoring the distance from the bottom, which is what does not move
@@ -603,7 +616,10 @@ export class Ui {
       const text = input.value.trim(); if (!text) return;
       input.value = ""; err.hidden = true;
       // show it straight away; the poll replaces it with the server's copy
-      const pending: ChatMessage = { id: lastId + 0.5, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
+      // a unique fraction per send: two quick messages both used lastId + 0.5 and the
+      // second overwrote the first in the map
+      pendingSeq = (pendingSeq + 1) % 1000;
+      const pending: ChatMessage = { id: lastId + (pendingSeq + 1) / 1001, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
       seen.set(pending.id, pending); render();
       const problem = await this.h.onChat(text);
       if (problem) { seen.delete(pending.id); render(); err.textContent = problem; err.hidden = false; input.value = text; }
