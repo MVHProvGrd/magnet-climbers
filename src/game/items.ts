@@ -30,6 +30,33 @@ const papers: FridgeItem[] = paperNames.map((name, art) => ({
 /** Stable IDs are shared by world generation, artwork, and the player's field guide.
  * Cosmetic additions must never consume the gameplay RNG or change a collider.
  */
+/** Photographed gadget assemblies beyond the three themed originals: id, behaviour, name. */
+const GADGET_VARIANTS = [
+  ["swing-keys", "swing", "House Keys"],
+  ["swing-bottle-opener", "swing", "Bottle Opener"],
+  ["swing-disco-ball", "swing", "Disco Ball"],
+  ["swing-rubber-duck", "swing", "Rubber Duck"],
+  ["swing-bead-lanyard", "swing", "Bead Lanyard"],
+  ["swing-carabiner-whistle", "swing", "Carabiner and Whistle"],
+  ["swing-wind-chime", "swing", "Wind Chime"],
+  ["swing-baby-shoe", "swing", "Baby Shoe"],
+  ["swing-scissors", "swing", "Kitchen Scissors"],
+  ["swing-measuring-spoons", "swing", "Measuring Spoons"],
+  ["swing-souvenir-spoon", "swing", "Souvenir Spoon"],
+  ["swing-fishing-lure", "swing", "Fishing Lure"],
+  ["rotor-clock", "rotor", "Kitchen Clock"],
+  ["rotor-pinwheel", "rotor", "Paper Pinwheel"],
+  ["rotor-thermometer", "rotor", "Dial Thermometer"],
+  ["rotor-fidget-spinner", "rotor", "Fidget Spinner"],
+  ["clip-concert-ticket", "clip", "Kitchen Sessions Ticket"],
+  ["clip-report-card", "clip", "Report Card"],
+  ["clip-takeout-receipt", "clip", "Takeaway Receipt"],
+  ["clip-birthday-invite", "clip", "Birthday Invitation"],
+  ["clip-lost-cat", "clip", "Lost Cat Poster"],
+  ["clip-coupon-sheet", "clip", "Coupon Sheet"],
+  ["clip-grandma-polaroid", "clip", "Grandma's Photo"],
+] as const satisfies readonly (readonly [string, "swing" | "rotor" | "clip", string])[];
+
 export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   ...(["swing", "rotor", "clip", "polarity"] as const).flatMap((behavior, i) => (["snack", "travel", "doodle"] as const).map((theme, j): FridgeItem => ({
     id: `${behavior}-${theme}`, family: "gadget", behavior, theme,
@@ -37,6 +64,16 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
     description: ["Swinging silver grip carries you. Fling from it to cross the panel.", "A rotating letter carries a silver grip around its face. Time your launch.", "A dangling clip carries you above the paper. Only its silver top grips.", "A pole-flipping toy: blue holds for three seconds, then red pushes for three. The countdown warns before it flips."][i],
   }))),
   ...papers,
+  // Packs 25, 27, 28 and 29: photographed assemblies, one item each so they count and
+  // can be named. Behaviour is the kind's, not the variant's: a keyring is a keyring.
+  ...GADGET_VARIANTS.map(([id, behavior, name]): FridgeItem => ({
+    id, family: "gadget", behavior, name,
+    description: {
+      swing: "A keyring hanging off a magnetic hook. The whole assembly swings when you grab it; only the silver grips.",
+      rotor: "A round magnet that turns all the way round, carrying a silver grip about its face. Time your launch.",
+      clip: "A bulldog clip holding a sheet of paper. It dangles and only the silver clip grips - the paper does not.",
+    }[behavior],
+  })),
   ...PAPER_ADDITIONS.map((name, i): FridgeItem => ({ id: `paper-new-${i}`, name, family: "paper", art: 100 + i, kind: "sticker", grips: true, description: "A print under its own magnet. It holds you like the door does." })),
   ...BUSINESS_MAGNETS.map(([name, label], i): FridgeItem => ({ id: `business-${i}`, name, label, family: "bumper", art: 100 + i, hue: [195, 5, 110, 205, 15, 255, 40, 25][i], description: "A moving advertising magnet. Its path can be sideways, vertical or zigzag; contact knocks a climber loose and costs a heart." })),
   { id: "heart", name: "Little Lifeline", family: "pickup", power: "heart", description: "Restores one heart to the climber who collects it, up to three." },

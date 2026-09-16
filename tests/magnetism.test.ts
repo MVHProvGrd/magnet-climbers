@@ -179,7 +179,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 99);
+  assert.equal(FRIDGE_ITEMS.length, 122);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -207,7 +207,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 16);
+  assert.equal(modern.snapshot()!.worldVersion, 17);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -322,8 +322,8 @@ test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", 
       }
     }
   }
-  // every kind x theme except swing-doodle: paper is clipped, never hung off a keyring chain (v16)
-  assert.equal(ids.size, 11);
+  // v17: every photographed gadget variant, less swing-doodle - paper is clipped, never hung off a chain (v16)
+  assert.equal(ids.size, 34);
   assert.ok(!ids.has("swing-doodle"), "paper never dangles from a chain");
   const legacy = new World(4, 0, 15); legacy.generateTo(60);
   assert.ok(legacy.gadgets.some((g) => g.itemId === "swing-doodle"), "saved v15 runs keep their layout");
