@@ -1,5 +1,8 @@
 import type { NoStickZone } from './types';
 
+/** A door bin reads as a bin only between these heights. Outside them the zone is a
+ *  plastic panel or a trim strip, and the moulded surface draws instead. */
+const BIN_MIN_H = 58, BIN_MAX_H = 150;
 export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
@@ -58,18 +61,18 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (id === 'plastic') {
-    // A drawer bin is a photographed object, not a frame: nine-slicing it into a
-    // tall rect squeezed the moulded handle sideways and smeared the middle. Repeat
-    // the whole bin at its own proportions instead, along whichever way the zone runs.
-    const a = img.width / img.height;
-    const tall = z.h >= z.w;
-    const tw = tall ? z.w : z.h * a, th = tall ? z.w / a : z.h;
-    const tiles = Math.max(1, Math.ceil((tall ? z.h / th : z.w / tw) - 0.001));
+    // The photo is one door bin, about twice as wide as it is tall, and a bin has a
+    // real size. Past that height the zone is a plastic wall, not a bin, so hand it
+    // back to the moulded panel rather than stacking copies up it: stacking repeated
+    // the moulded lip three times and cut the last one in half.
+    if (z.h > BIN_MAX_H || z.h < BIN_MIN_H) { c.restore(); return false; }
+    // One row, fitted to the zone's height at the photo's own proportions, repeated
+    // sideways and centred so any crop is shared evenly between the two ends.
+    const tw = z.h * (img.width / img.height);
+    const tiles = Math.max(1, Math.ceil(z.w / tw - 0.01));
     c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 4); c.clip();
-    for (let i = 0; i < tiles; i++) {
-      const dx = tall ? z.x : z.x + i * tw, dy = tall ? z.y + i * th : z.y;
-      c.drawImage(img, dx, dy, tw, th);
-    }
+    const x0 = z.x + (z.w - tiles * tw) / 2;
+    for (let i = 0; i < tiles; i++) c.drawImage(img, x0 + i * tw, z.y, tw, z.h);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
