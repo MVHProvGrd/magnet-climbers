@@ -548,6 +548,8 @@ select.buy option { background: #1e2229; color: #fff; }
   background: var(--control-fill); color: var(--coin);
   font: 800 calc(13 * var(--px)) var(--display); letter-spacing: calc(1.2 * var(--px)); cursor: pointer; white-space: nowrap;
 }
+/* the owner rows open a page rather than running code, so their chip is a link */
+.panel a.shell-chip { display: inline-flex; align-items: center; text-decoration: none; }
 .shell-toggle { position: relative; width: calc(44 * var(--px)); height: calc(26 * var(--px)); flex: 0 0 auto; }
 .shell-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .shell-toggle i { position: absolute; inset: 0; border-radius: calc(13 * var(--px)); background: rgba(255,255,255,.18); transition: background .15s; }

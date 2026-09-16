@@ -6,7 +6,7 @@ import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { DeathCause } from "./game";
 import type { SaveData } from "./save";
-import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
+import { leaderboard, leaderboardEnabled, chat, apiBase, checkAdminKey, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { AVATARS, avatarHtml, avatarById } from "./avatars";
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
@@ -73,6 +73,14 @@ const CHAT_VIEW_MAX = 400;
  * stop rendering here whatever the Worker sends. The flag is also posted so the
  * owner can see who is being complained about, but nothing waits on that.
  */
+/**
+ * The owner's ADMIN_KEY, typed once on this device. It is never in the bundle: the door in
+ * Settings asks for it, the Worker says whether it is right, and only then is it kept here.
+ * The same storage key the placement workbench reads, so both open without asking twice.
+ */
+const ADMIN_KEY = "mc-admin-key";
+const adminKey = () => { try { return localStorage.getItem(ADMIN_KEY) ?? ""; } catch { return ""; } };
+const setAdminKey = (key: string) => { try { key ? localStorage.setItem(ADMIN_KEY, key) : localStorage.removeItem(ADMIN_KEY); } catch { /* private mode */ } };
 const BLOCK_KEY = "mc-blocked";
 let blockedIds: Set<string> = (() => {
   try { return new Set(JSON.parse(localStorage.getItem(BLOCK_KEY) ?? "[]") as string[]); } catch { return new Set(); }
@@ -740,6 +748,14 @@ export class Ui {
         ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
         <p class="sec-label">App</p>
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
+        ${adminKey() ? `
+        <p class="sec-label">Owner</p>
+        ${row("Admin panel", "Boards, chat, flags and players", `<a class="shell-chip" href="${apiBase}/admin#key=${encodeURIComponent(adminKey())}" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Placement workbench", "How often each thing spawns, and how big it is drawn", `<a class="shell-chip" href="${base}placement.html" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Element map", "Every element in the game and what it does to you", `<a class="shell-chip" href="${base}elements/" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Art archive", "Every art pack delivered so far", `<a class="shell-chip" href="${base}art-archive/" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Forget the key", "Removes owner access from this device", chip("owner-out", "SIGN OUT"))}
+        ` : ""}
         <p class="sec-label">Performance</p>
         ${row("Frame times", "Last 600 frames of the most recent run, split into simulation and drawing.", chip("perf", "SHOW"))}
         <pre class="perf-out" hidden></pre>
@@ -767,8 +783,21 @@ export class Ui {
       if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
       if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
       if (a === "shop") { this.showShop(); return; }
+      if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
       if (a === "back") this.showMenu();
     });
+    // The owner's door: seven taps on the build line, then the key, which the Worker checks.
+    // Nothing here grants anything - every admin call is authorised by the Worker itself.
+    const build = [...p.querySelectorAll<HTMLElement>(".shell-row")].find((r) => r.textContent?.includes("Build"));
+    if (build && !adminKey()) {
+      let taps = 0, since = 0;
+      build.addEventListener("click", () => {
+        const now = Date.now();
+        taps = now - since > 2000 ? 1 : taps + 1;
+        since = now;
+        if (taps >= 7) { taps = 0; this.showAdminPrompt(); }
+      });
+    }
     p.querySelector<HTMLSelectElement>('select[data-a="lang"]')!.addEventListener("change", (e) => {
       this.h.onSetLang((e.target as HTMLSelectElement).value as Lang); this.refreshLang(); this.showSettings();
     });
@@ -867,6 +896,35 @@ export class Ui {
       if (a === "back") this.showSettings();
     });
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") this.h.onEnterCode(input.value); });
+    this.show(p);
+    setTimeout(() => input.focus(), 50);
+  }
+
+  /** Type the ADMIN_KEY once per device. It is checked against the Worker before it is kept. */
+  showAdminPrompt() {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Owner tools</h2>
+      <p class="tag">The Worker's ADMIN_KEY. Checked before it is kept, and stored only on this device.</p>
+      <input id="admin-in" type="password" placeholder="ADMIN_KEY" autocomplete="off" />
+      <p class="fine err" hidden></p>
+      <button class="primary" data-a="ok">UNLOCK</button>
+      <button class="ghost" data-a="back">CANCEL</button>`;
+    const input = p.querySelector<HTMLInputElement>("#admin-in")!;
+    const err = p.querySelector<HTMLElement>(".err")!;
+    const submit = async () => {
+      const key = input.value.trim();
+      if (!key) return;
+      err.hidden = false; err.textContent = "Checking...";
+      if (await checkAdminKey(key)) { setAdminKey(key); this.toast("Owner tools unlocked"); this.showSettings(); return; }
+      err.textContent = "That key was refused.";
+    };
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "ok") void submit();
+      if (a === "back") this.showSettings();
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") void submit(); });
     this.show(p);
     setTimeout(() => input.focus(), 50);
   }

@@ -150,5 +150,10 @@ async function unmute(id){await api("/unmute",{playerId:id||$("#pid").value.trim
 async function delChat(id){await api("/chat/delete",{id});load();}
 async function clearReport(id){await api("/report/clear",{id});load();}
 async function clearChat(){if(!confirm("Delete every chat message?"))return;await api("/chat/clear",{});load();}
+// The game hands the key over in the link's fragment (never sent to a server), so the
+// owner types it once, in the game, rather than again here on a phone keyboard.
+(function(){const m=/[#&]key=([^&]+)/.exec(location.hash);if(!m)return;
+try{localStorage.setItem("mc-admin-key",decodeURIComponent(m[1]));}catch(e){}
+history.replaceState(null,"",location.pathname);})();
 $("#key").value=key();if(key())load();
 </script></body></html>`;

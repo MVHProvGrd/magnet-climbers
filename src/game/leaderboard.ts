@@ -18,6 +18,16 @@ const raw = envUrl || DEFAULT_API;
 const API = raw === "off" ? "" : raw.replace(/\/$/, "");
 
 export const leaderboardEnabled = API.length > 0;
+/** Where the Worker lives, for the owner's admin panel. Empty when the board is off. */
+export const apiBase = API;
+/** Check an ADMIN_KEY against the Worker. Nothing is stored unless it answers. */
+export async function checkAdminKey(key: string): Promise<boolean> {
+  if (!API || !key) return false;
+  try {
+    const r = await fetch(`${API}/admin/api/overview`, { headers: { Authorization: `Bearer ${key}` } });
+    return r.ok;
+  } catch { return false; }
+}
 
 async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
   if (!leaderboardEnabled) return null;
