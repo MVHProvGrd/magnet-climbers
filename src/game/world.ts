@@ -415,8 +415,10 @@ export class World {
         let placed = 0;
         for (const side of sides) {
           if (placed >= bin.max) break;
+          // the panel must cover its door, or a door-wide bin would stick out past it
+          const lo = side === 0 ? 0 : DOOR_SEAM.x + DOOR_SEAM.w, hi = side === 0 ? DOOR_SEAM.x : W;
           const half = zones.filter((z) => z.kind === "trim" && z.hue !== -1 && !z.itemId && !z.swing
-            && z.h >= min.h && z.w >= min.w && (side === 0 ? z.x + z.w <= DOOR_SEAM.x + 2 : z.x >= DOOR_SEAM.x + DOOR_SEAM.w - 2));
+            && z.h >= min.h && z.w >= min.w && z.x <= lo + 10 && z.x + z.w >= hi - 10);
           if (half.length && art() < bin.rate) { half[Math.floor(art() * half.length)].itemId = "plastic"; placed++; }
         }
       }

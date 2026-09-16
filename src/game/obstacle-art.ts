@@ -71,6 +71,9 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     const size = rule("bin").size;
     const dw = typeof size === "object" ? size.w : doorW;
     const dh = typeof size === "object" ? size.h : dw * (img.height / img.width);
+    // Clipped to the panel that carries it: drawing a door-wide bin out of a narrow
+    // zone let it run under the panel next door, which then painted over half of it.
+    c.beginPath(); c.rect(z.x, z.y - dh, z.w, z.h + dh * 2); c.clip();
     c.drawImage(img, doorX + (doorW - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
