@@ -28,6 +28,13 @@ export interface HowToRow {
   swatch?: "steel" | "redline";
   /** Short note under the tile name. */
   note?: string;
+  /**
+   * How the art sits in its 44 px tile. Flat surfaces fill it (the handoff asks for cover);
+   * objects are shown whole. A few sources are tall with the subject at one end -- the paw
+   * pad sits 85% down its art -- so those crop to a focus point instead.
+   */
+  fit?: "cover" | "contain";
+  focus?: string;
 }
 export interface HowToSection {
   title: string;
@@ -56,7 +63,17 @@ const ART: Record<string, string> = {
   "kid-hand": "art/real-v1/kid-arm.webp", "cat-paw": "art/real-v1/cat-paw.webp",
 };
 const iconFor = (item: FridgeItem, fallback: string) => ICONS[item.id] ?? ICONS[item.power ?? ""] ?? fallback;
-const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({ icon: iconFor(item, fallback), name: item.name, text: item.description, art: ART[item.id] ?? ART[item.power ?? ""] });
+/**
+ * Sources whose subject is not in the middle of the frame, using the same landmarks the
+ * game itself uses: kid-hand.ts puts the fingertips at 2.7% and the wrist at 26% of the
+ * arm art (the sleeve runs down from there), and cat-paw.ts puts the pad 85% down.
+ */
+const FOCUS: Record<string, string> = { "kid-hand": "center 14%", "cat-paw": "center 86%" };
+const fromItem = (item: FridgeItem, fallback: string): HowToRow => ({
+  icon: iconFor(item, fallback), name: item.name, text: item.description,
+  art: ART[item.id] ?? ART[item.power ?? ""],
+  fit: FOCUS[item.id] ? "cover" : undefined, focus: FOCUS[item.id],
+});
 
 export function howToSections(): HowToSection[] {
   return [
@@ -74,10 +91,10 @@ export function howToSections(): HowToSection[] {
       title: "What won't",
       blurb: "No grip at all. Cross these in flight, or go around by the steel at the edges.",
       rows: [
-        { icon: "🫙", name: "Glass", art: "art/real-v1/obstacles/glass.png", note: "no catch", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
-        { icon: "🧊", name: "Plastic", art: "art/real-v1/obstacles/plastic.png", note: "no hold", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
-        { icon: "📄", name: "Paper", art: "art/real-v1/obstacles/calendar.png", note: "blocks a catch", text: "Drawings, notes, prints and the calendar. Catch the bare door around them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
-        { icon: "🕳️", name: "Open gaps", art: "art/real-v1/obstacles/gap.png", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
+        { icon: "🫙", name: "Glass", fit: "cover", art: "art/real-v1/obstacles/glass.png", note: "no catch", text: "Panels and the water station. Use the steel at the sides or a handle across it.", count: surfaces("glass") },
+        { icon: "🧊", name: "Plastic", fit: "cover", art: "art/real-v1/obstacles/plastic.png", note: "no hold", text: "Trim, air vents and the ice tray. Nothing magnetic to hold.", count: surfaces("trim") },
+        { icon: "📄", name: "Paper", fit: "cover", art: "art/real-v1/obstacles/calendar.png", note: "blocks a catch", text: "Drawings, notes, prints and the calendar. Catch the bare door around them.", count: tally((i) => i.family === "paper" || i.kind === "sticker") },
+        { icon: "🕳️", name: "Open gaps", fit: "cover", art: "art/real-v1/obstacles/gap.png", note: "fling across", text: "The door gap and the centre seam that runs the whole way up. Fling across.", count: surfaces("void") },
       ],
     },
     {

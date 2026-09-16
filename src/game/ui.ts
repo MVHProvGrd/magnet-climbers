@@ -676,9 +676,11 @@ export class Ui {
   showHowToPlay() {
     const p = el("div", "panel shell how-to");
     const base = import.meta.env.BASE_URL;
-    const tile = (r: { name: string; art?: string; swatch?: string; note?: string; count?: number; icon: string }) => {
+    const tile = (r: { name: string; art?: string; swatch?: string; note?: string; count?: number; icon: string; fit?: string; focus?: string }) => {
+      // objects are shown whole; only the flat surfaces fill their tile
+      const style = r.focus ? ` style="object-position:${r.focus}"` : "";
       const art = r.art
-        ? `<img class="art" src="${base}${r.art}" alt="" loading="lazy" />`
+        ? `<img class="art ${r.fit ?? "contain"}" src="${base}${r.art}" alt="" loading="lazy"${style} />`
         : `<span class="art ${r.swatch ?? ""}"></span>`;
       const note = r.count ? `${r.note ?? ""} · ${r.count}`.replace(/^ · /, "") : (r.note ?? "");
       return `<div class="art-tile">${art}<b>${r.name}</b>${note ? `<i>${note}</i>` : ""}</div>`;
