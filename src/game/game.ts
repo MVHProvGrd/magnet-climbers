@@ -48,7 +48,7 @@ export interface RunSnapshot {
 }
 
 /** Facts about the run that creature unlocks are checked against. Not gameplay. */
-export interface RunFeats { maxChain: number; gadgetRides: number; hits: number }
+export interface RunFeats { maxChain: number; gadgetRides: number; hits: number; paints: number }
 
 export interface RunEvents {
   onPower(kind: PowerUp["kind"], at: Vec): void;
@@ -114,7 +114,7 @@ export class Game {
   palette: string[];
   /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
   lineup: Look[];
-  feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0 };
+  feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0, paints: 0 };
   /** banked totals from the save, so the HUD can show wallet + this run */
   walletCoins = 0;
   walletGems = 0;
@@ -1262,6 +1262,7 @@ export class Game {
       }
       case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
       case "paint": {
+        this.feats.paints++;
         // cosmetic only, and off the sim RNG so a replay of the same seed repaints the same
         const palette = this.palette.filter((col) => col !== c.color);
         c.color = palette[Math.floor(this.simNoise(p.x + p.y) * palette.length) % palette.length] ?? c.color;

@@ -17,11 +17,16 @@ test("creature contract: ids unique, every pattern has six colours, every rule h
 });
 
 test("creatures unlock from run facts; chill runs never unlock by height or coins", () => {
-  const base = { mode: "solo" as const, cm: 0, chill: false, maxChain: 0, gadgetRides: 0, coins: 0, hitsTotal: 0, stars: 0 };
+  const base = { mode: "solo" as const, cm: 0, chill: false, maxChain: 0, gadgetRides: 0, coins: 0, hitsTotal: 0, stars: 0, paints: 0 };
   assert.deepEqual(creaturesEarned(["toy"], base), []);
   assert.deepEqual(creaturesEarned(["toy"], { ...base, cm: 1000 }).map((c) => c.id), ["gecko"]);
   assert.deepEqual(creaturesEarned(["toy"], { ...base, cm: 5000, chill: true, coins: 99 }), []);
-  assert.deepEqual(creaturesEarned(["toy"], { ...base, stars: 9, maxChain: 3 }).map((c) => c.id).sort(), ["frog", "octopus"]);
+  // Expeditions is hidden, so neither expedition stars nor crew chains can unlock anything.
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, stars: 9, maxChain: 3 }), [], "stars and chains no longer unlock");
+  // Tree Frog moved onto paint buckets, Octopus onto a deeper solo climb.
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, paints: 3 }).map((c) => c.id), ["frog"]);
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, paints: 3, chill: true }), [], "chill unlocks nothing");
+  assert.deepEqual(creaturesEarned(["toy"], { ...base, cm: 5000 }).map((c) => c.id).sort(), ["gecko", "octopus"]);
   assert.deepEqual(creaturesEarned(["toy"], { ...base, mode: "crew", cm: 1200 }), [], "crew height no longer unlocks anything");
   assert.deepEqual(creaturesEarned(["toy", "crab"], { ...base, hitsTotal: 15, gadgetRides: 5, coins: 40 }).map((c) => c.id).sort(), ["dino", "robot"]);
 });
@@ -54,6 +59,6 @@ test("lineup dresses climbers and colours come from the pattern; snapshots keep 
   g.phase = "running"; g.feats.gadgetRides = 2; g.feats.hits = 1;
   const snap = g.snapshot()!;
   const back = Game.restore(levels(), events, snap, undefined, [{ creature: "dino", pattern: "classic" }]);
-  assert.deepEqual(back.feats, { maxChain: 0, gadgetRides: 2, hits: 1 });
+  assert.deepEqual(back.feats, { maxChain: 0, gadgetRides: 2, hits: 1, paints: 0 });
   assert.equal(back.climbers[0].creature, "gecko", "restored climbers keep the look they were spawned with");
 });

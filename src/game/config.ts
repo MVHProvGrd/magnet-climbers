@@ -3,6 +3,12 @@ export const W = 400;
 
 /** Upgrades and reserve climbers are hidden until the mechanics settle; the code stays for the revamp. */
 export const SHOP_ENABLED = false;
+/**
+ * Expeditions are hidden while the crew-puzzle concept gets more work; the game is the
+ * single climber for now. Everything behind this still builds and still has its tests --
+ * flip to true to bring the mode, its star counters and its picker back.
+ */
+export const EXPEDITIONS_ENABLED = false;
 
 export const CFG = {
   gravity: 950,
