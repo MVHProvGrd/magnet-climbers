@@ -75,6 +75,22 @@ function cors(req: Request, env: Env): Record<string, string> {
   };
 }
 
+/** How many times each player has had a word starred out of their chat. Created on demand. */
+let censorsReady = false;
+export async function ensureCensors(env: Env): Promise<void> {
+  if (censorsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_censors (
+    player_id TEXT PRIMARY KEY,
+    n INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`).run().catch(() => {});
+  censorsReady = true;
+}
+/** Words starred out of this message. A stripped link is not a swear, so it does not count. */
+const wasCensored = (text: string) => text.split(/(\s+)/).some((tok) => !/\s/.test(tok) && nameIsProfane(tok));
+/** Strikes before a player's own words start going to the owner for review. */
+const CENSOR_REVIEW_AT = 3;
+
 /** Board rows the owner has cleared, so a device does not put its old best straight back.
  *  Created on demand, like the reports table, so nothing has to be migrated by hand. */
 let resetsReady = false;
@@ -94,7 +110,7 @@ export async function ensureScoreResets(env: Env): Promise<void> {
 
 /** Blocks and reports from players. Created on demand so no migration has to be run by hand. */
 let reportsReady = false;
-async function ensureReports(env: Env): Promise<void> {
+export async function ensureReports(env: Env): Promise<void> {
   if (reportsReady) return;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -458,6 +474,21 @@ export default {
       });
       const id = Number(ins.meta.last_row_id ?? 0);
       if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - CHAT_HISTORY).run();
+      // Three strikes and the owner sees what they actually typed. The room only ever shows
+      // the starred version; the raw text is kept on the flag, not in the chat log.
+      if (wasCensored(text)) {
+        await ensureCensors(env);
+        await env.DB.prepare(
+          "INSERT INTO chat_censors (player_id, n, updated_at) VALUES (?, 1, ?) ON CONFLICT(player_id) DO UPDATE SET n = chat_censors.n + 1, updated_at = excluded.updated_at",
+        ).bind(playerId, now).run().catch(() => {});
+        const strikes = (await env.DB.prepare("SELECT n FROM chat_censors WHERE player_id = ?").bind(playerId).first<{ n: number }>().catch(() => null))?.n ?? 0;
+        if (strikes >= CENSOR_REVIEW_AT) {
+          await ensureReports(env);
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES ('censor', ?, ?, 'filter', ?, ?, ?)",
+          ).bind(playerId, name, id, text, now).run().catch(() => {});
+        }
+      }
       return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now, avatar } }, h);
     }
 
