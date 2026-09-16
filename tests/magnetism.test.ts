@@ -4,7 +4,7 @@ import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { DOOR_SEAM, World } from "../src/game/world";
-import { UPGRADES, type UpgradeKey } from "../src/game/config";
+import { CFG, UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, itemZone } from "../src/game/items";
@@ -539,4 +539,20 @@ test("style points are gone: tricks and near misses pay nothing", () => {
   assert.equal(g.tricks.score, 0, "no score accrues");
   assert.equal(g.coins, before, "and no coins are paid for how you land");
   assert.ok(c, "climber still exists");
+});
+
+test("a second pickup stacks its timer up to the cap, it does not restart it", () => {
+  const g = game(); g.phase = "running";
+  const c = g.climbers[0];
+  const take = (kind: "candy" | "slowmo") => (g as unknown as { collect(p: unknown, c: unknown): void })
+    .collect({ kind, x: c.x, y: c.y, taken: false, bob: 0 }, c);
+  take("candy");
+  assert.equal(g.effects.candy, CFG.effectDurations.candy);
+  g.effects.candy -= 2;
+  take("candy");
+  assert.equal(g.effects.candy, CFG.effectDurations.candy * 2 - 2, "the second candy adds its seconds");
+  for (let i = 0; i < 5; i++) take("candy");
+  assert.equal(g.effects.candy, CFG.effectCaps.candy, "stacking stops at the cap");
+  take("slowmo"); take("slowmo");
+  assert.equal(g.effects.slowmo, Math.min(CFG.effectCaps.slowmo, CFG.effectDurations.slowmo * 2));
 });

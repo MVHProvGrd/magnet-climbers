@@ -1246,12 +1246,16 @@ export class Game {
   private collect(p: PowerUp, c: Climber) {
     p.taken = true;
     const d = CFG.effectDurations;
+    /** Stack the timer rather than restart it, never past the effect's ceiling. */
+    const add = (k: keyof ActiveEffects) => {
+      this.effects[k] = Math.min(CFG.effectCaps[k], this.effects[k] + d[k]);
+    };
     switch (p.kind) {
       case "coin": this.coins += CFG.coinValue; sfx.coin(); this.events.onCoins(CFG.coinValue); this.floats.push({ x: p.x, y: p.y, text: `+${CFG.coinValue}`, life: 0.9, color: "#ffd23f" }); break;
       case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
-      case "magnet": this.effects.superMagnet = d.superMagnet; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
-      case "slowmo": this.effects.slowmo = d.slowmo; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
-      case "candy": this.effects.candy = d.candy; sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });
+      case "magnet": add("superMagnet"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
+      case "slowmo": add("slowmo"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
+      case "candy": add("candy"); sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });
         this.drops.push({ x: p.x, y: p.y, vx: (this.simNoise(p.x) - 0.5) * 120, vy: -120, spin: 0 }); break;
       case "heart": {
         const healed = c.hp < CFG.maxHp;
@@ -1260,7 +1264,7 @@ export class Game {
         this.floats.push({ x: p.x, y: p.y, text: healed ? "+1 ♥" : "FULL ♥", life: 1, color: "#ff5c8a" });
         break;
       }
-      case "reach": this.effects.reach = d.reach; sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
+      case "reach": add("reach"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
       case "paint": {
         this.feats.paints++;
         // cosmetic only, and off the sim RNG so a replay of the same seed repaints the same

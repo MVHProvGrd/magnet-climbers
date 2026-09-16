@@ -55,6 +55,10 @@ export const CFG = {
   comboChance: 0.07,
   handShove: 560,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
+  /** Picking one up while it is already running adds its time instead of replacing
+   *  it, up to this ceiling — so a lucky double is worth having without parking
+   *  the red line (or the rest of the threat) for the best part of a minute. */
+  effectCaps: { superMagnet: 16, slowmo: 12, reach: 28, candy: 18 },
   /** red line speed while a candy drop is active */
   candySlow: 0.3,
   coinValue: 5,
