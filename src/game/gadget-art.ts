@@ -50,8 +50,15 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   loadImage("art/real-v1/cat-paw-claws.webp", (image) => setObjectArt("cat-paw-claws", image)),
   ...[1, 2, 3].map((n) => loadImage(`art/real-v1/claws/claw-${n}.webp`, (image) => setObjectArt(`claw-${n}`, image))),
 ]);
-/** Hook pivot of the lemon keychain assembly, as fractions of its frame (source point 510,285 of 1024x1536). */
-const KEYCHAIN_PIVOT = { x: 510 / 1024, y: 285 / 1536 };
+/**
+ * The lemon keychain, measured on the file that actually ships (256x384, trimmed).
+ *
+ * chainEnd is where the chain stops and the fruit starts: row 218, the 6px neck below the
+ * split ring. It used to be 0.615 - row 236 - which is a dozen rows INTO the lemon, so every
+ * assembly composited onto this hardware carried a slice of lemon leaf above its own charm.
+ */
+export const KEYCHAIN = { x: 0.4936, y: 0.1771, chainEnd: 218 / 384 };
+const KEYCHAIN_PIVOT = { x: KEYCHAIN.x, y: KEYCHAIN.y };
 const imageSize = (img: CanvasImageSource) => ({
   w: (img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width || 1,
   h: (img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height || 1,
@@ -108,8 +115,8 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const charm2 = toyImg ?? charmImg;
   if (!assembly && g.kind === "swing" && hardware && charm2) {
     // keyring charms without their own photo hang from the lemon keychain's hook and chain (cropped at draw time)
-    const { w, h } = imageSize(hardware), pivotY = KEYCHAIN_PIVOT.y, chainEnd = 0.615;
-    const chain = 50, s = chain / ((chainEnd - pivotY) * h);
+    const { w, h } = imageSize(hardware), pivotY = KEYCHAIN.y, chainEnd = KEYCHAIN.chainEnd;
+    const chain = 44, s = chain / ((chainEnd - pivotY) * h);
     const lean = Math.atan2(p.hold.x - g.x, p.hold.y - (g.y - 62));
     ctx.save(); ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
     ctx.drawImage(hardware, 0, 0, w, pivotY * h, g.x - KEYCHAIN_PIVOT.x * w * s, g.y - 62 - pivotY * h * s, w * s, pivotY * h * s);
@@ -156,7 +163,10 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
   } else if (assembly && g.kind === "clip") {
     // clipped paper photo hangs from the grip: its clip ring sits on the steel bar
-    const { w, h } = imageSize(assembly), s = Math.min(78 / h, 70 / w);
+    const { w, h } = imageSize(assembly);
+    // fit by AREA, not by bounding box: 78/h made the tall thin receipt read as a stamp
+    // beside the postcard, at barely half its area. Caps keep it inside the slot.
+    const s = Math.min(Math.sqrt(4600 / (w * h)), 78 / w, 120 / h);
     ctx.drawImage(assembly, -pivot[0] * w * s, -27 - pivot[1] * h * s, w * s, h * s);
   } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charm2)) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
@@ -197,7 +207,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
     ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
-  } else if (!assembly && !(g.kind === "swing" && hardware && charm2)) {
+  } else if (!assembly && !rotorImg && !(g.kind === "swing" && hardware && charm2)) {
+    // a photographed rotor is a magnet - a clock, a dial, a letter - so it carries no drawn
+    // clip. The metal object IS the hold; only the drawn letter board still needs hardware.
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
     drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }
