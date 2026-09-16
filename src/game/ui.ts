@@ -276,7 +276,8 @@ export class Ui {
       const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
       const last = r.messages.slice(-2);
       if (lines) lines.innerHTML = last.length
-        ? last.map((m) => `<span>${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 18) : ""}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`).join("")
+        ? last.map((m) => { const face = m.player_id === this.save().playerId ? this.save().avatar : m.avatar ?? undefined;
+            return `<span>${avatarById(face) ? avatarHtml(face, m.name, 18) : ""}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
         : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
       const unread = r.messages.filter((m) => m.id > chatSeen()).length;
       if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
@@ -491,10 +492,13 @@ export class Ui {
 
     const row = (m: ChatMessage) => {
       const mine = m.player_id === s.playerId;
+      // your own portrait comes from this device, so it shows before the Worker
+      // that stores avatars is redeployed (and instantly on a just-sent message)
+      const face = mine ? s.avatar : m.avatar ?? undefined;
       const colour = nameColor(m.name);
       const initial = esc((m.name || "?").trim().charAt(0).toUpperCase());
       return `<div class="cmsg ${mine ? "me" : ""}">
-        ${avatarById(m.avatar ?? undefined) ? avatarHtml(m.avatar ?? undefined, m.name, 32).replace('class="avi"', 'class="avi cav"') : `<span class="cav" style="background:${colour}22;color:${colour}">${initial}</span>`}
+        ${avatarById(face) ? avatarHtml(face, m.name, 32).replace('class="avi"', 'class="avi cav"') : `<span class="cav" style="background:${colour}22;color:${colour}">${initial}</span>`}
         <span class="cbody">
           <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
           <span class="cbubble">${esc(m.text)}</span>

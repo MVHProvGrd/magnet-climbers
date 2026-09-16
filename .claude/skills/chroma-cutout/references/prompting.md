@@ -75,8 +75,9 @@ the subject is itself pink/magenta, pick pure green `#00FF00` or pure blue
 `#0000FF` instead — whichever is furthest from the subject's palette — and
 swap the suffix's colour name and hex.
 
-`chroma-cut.py` computes "how magenta is this pixel" as `min(R, B) − G` and
-unmixes against `K = (255, 0, 255)`. For another key, change both:
+Pass the choice to the script — `--key=green`, `--key=blue`, or `--key=auto`
+to sample whatever flat colour the model actually painted. The dominance
+expression and key vector behind each name:
 
 | key            | dominance expression   | `Kr, Kg, Kb`     |
 |----------------|------------------------|------------------|
@@ -84,9 +85,18 @@ unmixes against `K = (255, 0, 255)`. For another key, change both:
 | green #00FF00   | `G − max(R, B)`       | `0, 255, 0`      |
 | blue #0000FF    | `B − max(R, G)`       | `0, 0, 255`      |
 
-Everything else in the script (the ramp, the despill caps, soft-mode unmix)
-is written in terms of that dominance value and the key vector, so those two
-edits are the whole change.
+| auto           | distance from the sampled backdrop | measured from the border ring |
+
+Everything else in the script (the ramp, the despill, soft-mode unmix) is
+written in terms of that dominance value and the key vector, so a new key is
+one row in `KEYS`.
+
+`auto` exists because generators will not hit an exact hex: a prompt demanding
+`#FF00FF` comes back as a flat rose, `#00FF00` as a flat yellow-green. The key
+still works when the off-hue colour is far from the art (rose vs. a green
+dinosaur) and fails quietly when it is not (rose vs. pink frosting, which ends
+up half-transparent). `auto` removes the guesswork by measuring the screen, and
+still refuses a backdrop that is not flat.
 
 ## When to regenerate instead of rescuing
 
