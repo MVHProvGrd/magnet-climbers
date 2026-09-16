@@ -66,7 +66,7 @@ export const exact: Record<string, string> = {
   "Super Magnet": "スーパーマグネット", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "しばらくの間、早くつかめて遠くまで届き、ガラス・プラスチック・紙にも鉄のようにくっつく。",
   "Pocket Pal": "ポケットの相棒", "Adds another climber to your run.": "仲間がひとり増える。",
   "Kitchen Timer": "キッチンタイマー", "Temporarily slows the action.": "しばらくスローモーション。",
-  "Reach Badge": "リーチバッジ", "Temporarily stretches the distance you can climb to a teammate.": "仲間まで登れる距離がしばらく伸びる。",
+  "Reach Badge": "リーチバッジ", "Temporarily stretches how far you can reach for your next hold.": "仲間まで登れる距離がしばらく伸びる。",
   "Water Station": "ウォーターサーバー", "Slippery dispenser. Climb the steel beside it or its silver handle.": "つるつるの給水口。横の鉄か銀の取っ手を登ろう。",
   "Busy Month": "忙しい月", "A big paper calendar. Follow the open steel side lane.": "大きな紙のカレンダー。横の空いた鉄のレーンを進もう。",
   "Ice Cube Alley": "製氷皿の路地", "Plastic ice tray: no grip. The exposed door around it is safe.": "プラスチックの製氷皿：くっつかない。周りのドアは安全。",

@@ -66,7 +66,7 @@ export const exact: Record<string, string> = {
   "Super Magnet": "슈퍼 자석", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "잠시 동안 더 빨리 붙고 더 멀리 닿으며, 유리·플라스틱·종이에도 강철처럼 붙어요.",
   "Pocket Pal": "주머니 친구", "Adds another climber to your run.": "인형이 하나 늘어나요.",
   "Kitchen Timer": "주방 타이머", "Temporarily slows the action.": "잠시 느려져요.",
-  "Reach Badge": "팔 늘리기 배지", "Temporarily stretches the distance you can climb to a teammate.": "동료에게 기어갈 수 있는 거리가 잠시 늘어나요.",
+  "Reach Badge": "팔 늘리기 배지", "Temporarily stretches how far you can reach for your next hold.": "동료에게 기어갈 수 있는 거리가 잠시 늘어나요.",
   "Water Station": "정수기", "Slippery dispenser. Climb the steel beside it or its silver handle.": "미끄러운 정수기. 옆의 철이나 은색 손잡이로 올라가세요.",
   "Busy Month": "바쁜 달", "A big paper calendar. Follow the open steel side lane.": "큰 종이 달력. 옆에 열린 철 길을 따라가세요.",
   "Ice Cube Alley": "얼음틀 골목", "Plastic ice tray: no grip. The exposed door around it is safe.": "플라스틱 얼음틀: 안 붙어요. 주변 문은 안전해요.",

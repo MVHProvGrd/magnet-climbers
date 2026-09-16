@@ -66,7 +66,7 @@ export const exact: Record<string, string> = {
   "Super Magnet": "超级磁铁", "Temporarily catch earlier, reach farther, and grip glass, plastic and paper as if they were steel.": "暂时更早抓住、够得更远，并能像钢一样吸住玻璃、塑料和纸。",
   "Pocket Pal": "口袋伙伴", "Adds another climber to your run.": "给本局加一名攀登者。",
   "Kitchen Timer": "厨房计时器", "Temporarily slows the action.": "暂时放慢节奏。",
-  "Reach Badge": "延伸徽章", "Temporarily stretches the distance you can climb to a teammate.": "暂时增加能爬到队友身边的距离。",
+  "Reach Badge": "延伸徽章", "Temporarily stretches how far you can reach for your next hold.": "暂时增加能爬到队友身边的距离。",
   "Water Station": "饮水口", "Slippery dispenser. Climb the steel beside it or its silver handle.": "滑溜的饮水口。爬旁边的钢板或它的银色把手。",
   "Busy Month": "忙碌的一月", "A big paper calendar. Follow the open steel side lane.": "一张大纸日历。沿着旁边空出的钢板通道走。",
   "Ice Cube Alley": "冰格巷", "Plastic ice tray: no grip. The exposed door around it is safe.": "塑料冰格：吸不住。周围露出的门板是安全的。",
