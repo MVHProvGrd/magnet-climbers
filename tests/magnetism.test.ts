@@ -7,7 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
-import { FRIDGE_ITEMS, BUMPER_ITEMS, itemZone } from "../src/game/items";
+import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone } from "../src/game/items";
 import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
@@ -559,4 +559,15 @@ test("a second pickup stacks its timer up to the cap, it does not restart it", (
   assert.equal(g.effects.candy, CFG.effectCaps.candy, "stacking stops at the cap");
   take("slowmo"); take("slowmo");
   assert.equal(g.effects.slowmo, Math.min(CFG.effectCaps.slowmo, CFG.effectDurations.slowmo * 2));
+});
+
+test("every toy keychain knows where its chain meets it", () => {
+  const toys = BUMPER_ITEMS.filter((item) => item.id.startsWith("bumper-"));
+  assert.ok(toys.length >= 13);
+  for (const toy of toys) {
+    assert.ok(TOY_HOOKS[toy.id], `${toy.name} has no measured hook point, so its chain would stop in mid-air`);
+    const [u, v] = toyHook(toy.id);
+    assert.ok(u > 0 && u < 1 && v >= 0 && v < 0.3, `${toy.name} hook ${u},${v} is not on the toy`);
+  }
+  assert.deepEqual(toyHook("not-a-toy"), [0.5, 0.02], "anything unmeasured hangs from the top of its centre");
 });

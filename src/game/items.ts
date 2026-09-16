@@ -87,6 +87,20 @@ const PHOTO_ASPECT: Record<string, number> = {
 export const PAPER_ASPECT: Record<string, number> = Object.fromEntries(
   FRIDGE_ITEMS.filter((item) => item.family === "paper").map((item) => [item.id, PHOTO_ASPECT[item.id] ?? 1]),
 );
+/** Where a toy's keychain actually meets it, as fractions of its photo.
+ *  Measured from the art itself: the highest point of the silhouette, which is the
+ *  duck's head, the banana's stem, a block's top corner — not the middle of the
+ *  bounding box, where the chain used to stop in mid-air over a sloping toy.
+ *  The gummy bear is the one hand-set entry: it hangs by the dip between its ears
+ *  rather than by an ear tip. */
+export const TOY_HOOKS: Record<string, readonly [number, number]> = {
+  "bumper-0": [0.534, 0.02], "bumper-1": [0.303, 0.019], "bumper-2": [0.498, 0.017],
+  "bumper-3": [0.512, 0.024], "bumper-4": [0.533, 0.029], "bumper-5": [0.5, 0.017],
+  "bumper-6": [0.547, 0], "bumper-7": [0.448, 0], "bumper-8": [0.08, 0],
+  "bumper-9": [0.5, 0], "bumper-10": [0.379, 0], "bumper-11": [0.35, 0],
+  "bumper-12": [0.5, 0.056],
+};
+export const toyHook = (id?: string): readonly [number, number] => (id ? TOY_HOOKS[id] : undefined) ?? [0.5, 0.02];
 export const BUMPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "bumper" && !item.hazard);
 const byId = new Map(FRIDGE_ITEMS.map((item) => [item.id, item]));
 export const fridgeItem = (id?: string) => id ? byId.get(id) : undefined;
