@@ -427,7 +427,7 @@ select.buy option { background: #1e2229; color: #fff; }
 /* Header with a back button, a scrolling body under a bottom fade, and a footer. */
 .panel.shell {
   position: absolute; left: calc(12 * var(--px)); right: calc(12 * var(--px));
-  top: calc(74 * var(--px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 34 * var(--px));
+  top: calc(74 * var(--px)); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dock-lift) * var(--px));
   width: auto; max-width: none; max-height: none; transform: none; overflow: hidden;
   padding: 0; gap: 0; border-radius: calc(18 * var(--px));
   background: var(--slab-panel); backdrop-filter: none; text-align: left;
@@ -449,7 +449,7 @@ select.buy option { background: #1e2229; color: #fff; }
 .shell-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: calc(8 * var(--px)) calc(10 * var(--px)) calc(10 * var(--px)); display: flex; flex-direction: column; gap: calc(8 * var(--px)); }
 /* the fade is a sibling overlay so it does not scroll with the content */
 .shell-fade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(40 * var(--px)); pointer-events: none; background: linear-gradient(rgba(20,22,28,0), var(--slab-panel)); }
-.shell-foot { flex: 0 0 auto; position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,.1); padding: calc(8 * var(--px)) calc(10 * var(--px)) calc(10 * var(--px)); display: flex; flex-direction: column; gap: calc(6 * var(--px)); }
+.shell-foot { flex: 0 0 auto; min-height: -moz-fit-content; min-height: fit-content; position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,.1); padding: calc(8 * var(--px)) calc(10 * var(--px)) calc(10 * var(--px)); display: flex; flex-direction: column; gap: calc(6 * var(--px)); }
 .sec-label { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(1.6 * var(--px)); text-transform: uppercase; color: var(--text-3); margin: calc(4 * var(--px)) 0 0; }
 .shell-row {
   display: flex; align-items: center; gap: calc(10 * var(--px));

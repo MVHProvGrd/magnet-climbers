@@ -534,13 +534,15 @@ export class Ui {
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
+        <p class="sec-label">App</p>
+        ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
         <p class="sec-label">Performance</p>
         ${row("Frame times", "Last 600 frames of the most recent run, split into simulation and drawing.", chip("perf", "SHOW"))}
         <pre class="perf-out" hidden></pre>
       </div>
       <span class="shell-fade"></span>
       <div class="shell-foot">
-        <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced after every run · Build ${__BUILD__} · <button class="link" data-a="update">check for update</button></p>
+        <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced after every run</p>
         <p class="fine"><a href="${base}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${base}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${base}contact/" target="_blank" rel="noopener">Contact</a></p>
       </div>`;
     p.addEventListener("click", (e) => {
