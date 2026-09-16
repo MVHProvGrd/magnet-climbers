@@ -242,9 +242,9 @@ select.buy option { background: #1e2229; color: #fff; }
    block: name beside the top of the face, message tucked under it. */
 .cmsg { display: flex; gap: calc(7 * var(--px)); align-items: flex-start; }
 .cav {
-  flex: 0 0 auto; width: calc(38 * var(--px)); height: calc(38 * var(--px)); border-radius: calc(11 * var(--px));
+  flex: 0 0 auto; width: calc(44 * var(--px)); height: calc(44 * var(--px)); border-radius: calc(12 * var(--px));
   display: flex; align-items: center; justify-content: center;
-  font: 900 calc(17 * var(--px)) var(--display);
+  font: 900 calc(19 * var(--px)) var(--display);
 }
 .cbody { display: flex; flex-direction: column; gap: calc(1 * var(--px)); min-width: 0; flex: 1; }
 .chead { display: flex; align-items: baseline; gap: calc(6 * var(--px)); line-height: 1.1; }
@@ -311,9 +311,15 @@ select.buy option { background: #1e2229; color: #fff; }
 .how-count { font-style: normal; font-size: 11px; font-weight: 700; opacity: 0.5; margin-left: 5px; letter-spacing: 0.3px; }
 
 /* avatars: one sprite sheet, cells picked by background-position (see avatars.ts) */
-.avi { display: inline-block; vertical-align: middle; border-radius: 8px; background-repeat: no-repeat; background-color: #fff; flex: 0 0 auto; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
-.avi.blank { color: #fff; font-weight: 800; text-align: center; font-family: system-ui, sans-serif; }
-.avi.cav { width: calc(38 * var(--px)); height: calc(38 * var(--px)); border-radius: calc(11 * var(--px)); }
+.avi {
+  display: inline-block; vertical-align: middle; flex: 0 0 auto;
+  width: var(--avi); height: var(--avi); border-radius: calc(var(--avi) * .26);
+  background-repeat: no-repeat; background-color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+.avi.blank { color: #fff; font: 800 calc(var(--avi) * .55) / var(--avi) var(--display, system-ui), sans-serif; text-align: center; }
+/* the portrait is exactly as tall as the name line plus a one-line bubble */
+.avi.cav { border-radius: calc(12 * var(--px)); }
+.cav.avi.blank { background-color: transparent; }
 .chat-strip .lines span { display: flex; align-items: center; gap: 5px; }
 .chat-strip .lines .avi { border-radius: 5px; }
 .panel .shell-body.avatar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(8 * var(--px)); align-content: start; }
