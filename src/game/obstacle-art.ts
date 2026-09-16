@@ -1,8 +1,22 @@
 import type { NoStickZone } from './types';
 import { DOOR_SEAM } from './world';
 
-/** Below this a plastic zone is trim, not a bin, and the moulded surface draws instead. */
+/** Below this a plastic zone is trim, not a bin, and only the moulded surface draws. */
 const BIN_MIN_H = 58;
+
+/** One door bin per door, drawn over the moulded panel. There is a single bin photo,
+ *  so it is never repeated side by side or stacked: the same object back to back reads
+ *  as wallpaper, and the copies at the far end always ended up sliced. It is sized to
+ *  the door it sits on, shrunk if the panel is shallow, and centred, so it is whole. */
+export function drawPlasticBins(c: CanvasRenderingContext2D, z: NoStickZone): void {
+  const img = images.get('plastic');
+  if (!img || z.h < BIN_MIN_H) return;
+  const a = img.width / img.height;
+  for (const [px, pw] of doorSpans(z.x, z.w)) {
+    const bw = Math.min(pw, z.h * a), bh = bw / a;
+    c.drawImage(img, px + (pw - bw) / 2, z.y + (z.h - bh) / 2, bw, bh);
+  }
+}
 
 /** Split a horizontal span into the parts that fall on each door, dropping the seam
  *  itself. A zone on one door comes back as one part. */
@@ -71,24 +85,9 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     if (stretch <= 2 || z.w > 260) c.drawImage(door, z.x, z.y, z.w, z.h);
     else { const s = Math.max(sx, sy), dw = door.width * s, dh = door.height * s; c.drawImage(door, z.x + (z.w - dw) / 2, z.y + (z.h - dh) / 2, dw, dh); }
   } else if (id === 'plastic') {
-    // A door of bins, drawn per door rather than across the pair: the seam is a real
-    // gap between two doors, so a bin that spans it looks wrong however well it fits.
-    // Each side gets a whole number of rows, sized from the bin's own proportions, so
-    // no row is ever cut in half; the sideways repeat is centred, sharing any crop.
-    if (z.h < BIN_MIN_H) { c.restore(); return false; }
-    const a = img.width / img.height;
-    c.beginPath(); c.roundRect(z.x, z.y, z.w, z.h, 4); c.clip();
-    for (const [px, pw] of doorSpans(z.x, z.w)) {
-      const rows = Math.max(1, Math.round(z.h / (pw / a)));
-      const bh = z.h / rows, bw = bh * a;
-      const cols = Math.max(1, Math.ceil(pw / bw - 0.01));
-      const x0 = px + (pw - cols * bw) / 2;
-      for (let ry = 0; ry < rows; ry++) for (let cx = 0; cx < cols; cx++) {
-        c.save(); c.beginPath(); c.rect(px, z.y, pw, z.h); c.clip();
-        c.drawImage(img, x0 + cx * bw, z.y + ry * bh, bw, bh);
-        c.restore();
-      }
-    }
+    // Bins are painted over the moulded panel by drawPlasticBins, not tiled into the
+    // rect: there is only one bin photo, and a grid of the same one read as wallpaper.
+    c.restore(); return false;
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];
