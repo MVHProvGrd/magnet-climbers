@@ -11,6 +11,7 @@ import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone } from "../src
 import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
+import { pawPose, PAW_WARN } from "../src/game/cat-paw";
 import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
 import { cloneTricks, freshTricks, registerTrick } from "../src/game/tricks";
 import { EFFECTS, MUSIC_STEP, musicStep } from "../src/game/music-score";
@@ -574,4 +575,22 @@ test("every toy keychain knows where its chain meets it", () => {
     assert.ok(u > 0 && u < 1 && v >= 0 && v < 0.3, `${toy.name} hook ${u},${v} is not on the toy`);
   }
   assert.deepEqual(toyHook("not-a-toy"), [0.5, 0.02], "anything unmeasured hangs from the top of its centre");
+});
+
+test("the cat's paw hurts wherever it is on the door, not only at the bottom of a tap", () => {
+  const g = game(); g.phase = "running";
+  const c = g.climbers[0];
+  // mid-swing, between the first and second taps: the pad is deep on the door but not striking
+  g.paw = { x: c.x, t: PAW_WARN + 0.7, hit: new Set() };
+  const pose = pawPose(g.paw, g.camY, g.viewH);
+  assert.equal(pose.contact, false, "this instant is between taps");
+  assert.ok(pose.y > g.camY, "and the pad is on screen");
+  c.x = pose.x; c.y = pose.y; c.state = "flying"; c.iframes = 0; c.grip = undefined;
+  const hp = c.hp;
+  g.update(1 / 120);
+  assert.equal(c.hp, hp - 1, "flying into the paw costs a heart");
+  // and only once per paw, however long it stays on top of them
+  const after = c.hp; c.iframes = 0;
+  for (let i = 0; i < 30; i++) g.update(1 / 120);
+  assert.equal(c.hp, after, "one hit per paw");
 });

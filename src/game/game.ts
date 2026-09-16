@@ -1126,7 +1126,11 @@ export class Game {
       while (this.scratches.length > 24) this.scratches.shift();
     }
     this.scratches = this.scratches.filter((m) => this.time - m.born <= SCRATCH_LIFE);
-    if (pose.contact) for (const c of this.climbers) {
+    // The pad hurts whenever it is on the door, not only at the bottom of a tap: flying up
+    // into a paw on its way down is a collision, and it used to pass straight through.
+    // One hit per paw either way, so a climber caught between taps is not hit twice.
+    const live = paw.t > PAW_WARN && pose.y > this.camY - 10;
+    if (live) for (const c of this.climbers) {
       if (c.state === "lost" || paw.hit.has(c.id) || c.iframes > 0) continue;
       const dx = (c.x - pose.x) / 46, dy = (c.y - pose.y) / 36;
       if (dx * dx + dy * dy > 1) continue;
