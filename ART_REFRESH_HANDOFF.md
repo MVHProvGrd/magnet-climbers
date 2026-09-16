@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack28 READY — four new rotors
+
+Clock/pinwheel/thermometer/spinner in28-rotor-variety-v1/ready.1024square exports centered on actual estimated spindle(512,512); native positions in pivots.json.31 successful generations this continuation so far. Remaining:7 clips,7 bumpers,8 businesses,4S+4N destinations.
+
 ## Pack27 READY — twelve new swings
 
 All12 requested hanging assemblies in27-hanging-variety-v1/ready, source1024x1536, pivot estimates and renderer caveats in prompts/HANDOFF. Alpha and visual review pass.27 successful generations this continuation so far. Next4 rotors,7 clips,7 bumpers,8 businesses,4 pairedS/N sets.
