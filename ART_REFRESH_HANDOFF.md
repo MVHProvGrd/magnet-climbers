@@ -1,5 +1,13 @@
 # Art refresh handoff — 2026-09-14
 
+## CURRENT — v3 generation queue COMPLETE, packs31–32 ready (2026-09-16)
+
+Latest resume delivered eight business magnets (pack31, commit d3f6439) and eight destinations (pack32: four S/four N). 19 successful built-in image calls: 16 selected assets plus three retained background-repair takes. No new quota block. All supplied v3 A/B items now generated across prior packs and these final packs. No public/art or runtime writes; Claude still fits, wires and deploys.
+
+Read art/archive/32-balanced-destinations-v1/HANDOFF.md for the exact eight selected filenames and QC. Use Maldives/Zanzibar/Hokkaido v2; their v1 alpha exports are rejected history, NOT delivery candidates. Keep existing field arcs and destination plate wiring. Updated full-history gallery: art/archive/index.html (local file resolves local images; hosted raw links wait for main merge). Existing admin-gallery deployment is Claude's responsibility.
+
+Absolute paths: C:\Users\micha\magnet-art-ready\art\archive\31-business-variety-v1\ready and C:\Users\micha\magnet-art-ready\art\archive\32-balanced-destinations-v1\ready. Full prompts and sources in each pack. Destination totals after integration: 11 S / 11 N based on the owner's prior 7/7 pool. Earlier quota/remaining-count notes below are historical checkpoints, superseded by this section.
+
 ## Latest: pack31 READY; eight destination souvenirs remain
 
 Generation resumed successfully on owner request. Eight business magnets delivered in art/archive/31-business-variety-v1/ready; source prompts, review and QC included. This supersedes the quota checkpoint below. Eight generations since resuming (53 across the two continuation chunks). Next/final v3 items: Maldives, Zanzibar, Phuket, Cancun (S), paired with Tromso, Banff, Hokkaido, Svalbard (N). Claude wires; archive-only changes.

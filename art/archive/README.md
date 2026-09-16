@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `32-balanced-destinations-v1/` | Four S + four N resin souvenirs; all sources, three rejected alpha takes and selected cutouts retained | Codex built-in imagegen | Ready for Claude; use selected ready files, Maldives colour-QC exception inspected |
 | `31-business-variety-v1/` | Eight realistic local-business magnets; native sources, cutouts and light/dark review | Codex built-in imagegen | Ready for Claude; burgundy tax-card QC exception inspected |
 | `30-bumper-variety-v1/` | Seven photo toy bumpers without hardware,1024square; native/source/QC preserved | Codex built-in imagegen | Ready for Claude; red car QC exception inspected |
 | `29-clip-variety-v1/` | Seven clipped papers: concert, school, receipt, birthday, lost cat, coupons, grandma photo | Codex built-in imagegen | Ready for Claude; coupon red-print QC false positive documented |
