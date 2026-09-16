@@ -1,0 +1,190 @@
+[
+  {
+    "file": "ready/door-gap-v4.webp",
+    "size": [
+      768,
+      160
+    ],
+    "bbox": [
+      0,
+      24,
+      767,
+      135
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 36864,
+      "semi": 1624,
+      "opaque": 84392
+    },
+    "edge_pixels": 1750,
+    "magenta_tinted_opaque": 0,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate"
+    ]
+  },
+  {
+    "file": "ready/grip-bar-v1.webp",
+    "size": [
+      512,
+      128
+    ],
+    "bbox": [
+      0,
+      36,
+      511,
+      91
+    ],
+    "touches_edge": true,
+    "pixels": {
+      "transparent": 36864,
+      "semi": 456,
+      "opaque": 28216
+    },
+    "edge_pixels": 1130,
+    "magenta_tinted_opaque": 0,
+    "clean": false,
+    "reasons": [
+      "subject touches the frame edge \u2014 likely cropped; regenerate"
+    ]
+  },
+  {
+    "file": "ready/pickup-candy-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      72,
+      287,
+      957,
+      722
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 767571,
+      "semi": 6254,
+      "opaque": 274751
+    },
+    "edge_pixels": 3057,
+    "magenta_tinted_opaque": 5,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-doodle-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      229,
+      123,
+      794,
+      900
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 756756,
+      "semi": 6789,
+      "opaque": 285031
+    },
+    "edge_pixels": 3490,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-snack-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      160,
+      125,
+      863,
+      898
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 715995,
+      "semi": 7485,
+      "opaque": 325096
+    },
+    "edge_pixels": 3722,
+    "magenta_tinted_opaque": 29,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-travel-v1.webp",
+    "size": [
+      1024,
+      1024
+    ],
+    "bbox": [
+      229,
+      148,
+      803,
+      875
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 707628,
+      "semi": 7700,
+      "opaque": 333248
+    },
+    "edge_pixels": 4269,
+    "magenta_tinted_opaque": 389,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-doodle-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      242,
+      43,
+      767,
+      1423
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1325302,
+      "semi": 2463,
+      "opaque": 245099
+    },
+    "edge_pixels": 5611,
+    "magenta_tinted_opaque": 77,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-travel-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      258,
+      46,
+      802,
+      1343
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1364520,
+      "semi": 2106,
+      "opaque": 206238
+    },
+    "edge_pixels": 5632,
+    "magenta_tinted_opaque": 4,
+    "clean": true,
+    "reasons": []
+  }
+]

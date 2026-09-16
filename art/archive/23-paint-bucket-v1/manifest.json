@@ -1,0 +1,25 @@
+[
+  {
+    "file": "ready/paint-v1.webp",
+    "size": [
+      1254,
+      1254
+    ],
+    "bbox": [
+      250,
+      72,
+      1002,
+      1151
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1056113,
+      "semi": 1699,
+      "opaque": 514704
+    },
+    "edge_pixels": 4714,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  }
+]

@@ -1,31 +1,31 @@
 # Art refresh handoff — 2026-09-14
 
-## QUEUED — opossum avatar (add to pack 22) — 2026-09-16
+## Pack25 COMPLETE — latest continuation
 
-Owner wants an opossum in the chat avatars. There is no opossum and no raccoon in the 83;
-the nearest are fox, panda and sloth, so nothing already covers it.
+Image generation resumed. Five added: blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. All eight pack25 assets now ready, gallery updated. See25-hardware-pickup-v1/HANDOFF.md for exact sizes and strip edge exceptions. Next: four glass variants and six obstacle refreshes, then variety. No public/art writes.
 
-This is cheap and needs no layout change: 83 avatars in a 12-column grid is 7 rows of 12 =
-84 cells, so exactly **one cell is free**. An 84th avatar fills the sheet perfectly.
+## Codex checkpoint — 2026-09-16, generation quota reached
 
-Whoever has `GEMINI_API_KEY` (this session does not) can run the existing pipeline:
+31 successful new image generations this continuation; then built-in429 usage_limit_reached while requesting blueB. Service reported reset1789551873 /14516sec after receipt. No promise of background auto-resume. All produced sources and cleaned exports archived and pushed to codex/art-ready-pack; no public/art writes.
 
-1. Append to `art/archive/22-avatars-v1/avatars.json`:
-   `["opossum", "Opossum", "a cheeky opossum with a pink pointed snout, round black eyes, grey fur and little ears"]`
-2. `python art/archive/22-avatars-v1/gen.py opossum`   (skips the 83 already in `sources/`)
-3. Key it with `key.py` into `ready/opossum.webp`, then repack with `sheet.py`
-4. Rebuild the gallery page
+Delivered this run: paint23; old papers12..19 (12 was prior source,13..19 newly generated); three story21 scenes plus retained climb-v1; twelve new papers24; cat22 contact candidate plus3 scratch decals; pack25 travel/star swings and redA rotor. Admin archive gallery regenerated. Paw needs alignment review, explicitly documented in22-cat-claws-v1/HANDOFF.md.
 
-Keep it in the same house style as the rest: sticker bust, thick outlines, flat bright
-colours, and no pink or magenta ON the character -- the keyer treats magenta as the
-backdrop, so a pink snout has to be muted enough to survive `key.py`'s cast test
-(`min(R,B) - G > 24` starts the alpha ramp). A dusty rose or warm grey-pink snout is safer
-than a saturated pink, which is the same trap the vampire cape and candy cane hit.
+RESUME HERE: finish25-hardware-pickup-v1 with blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. Prompts already saved there. Then4 glass variants,6 obstacle refreshes. Then user v3 variety:12 hanging assemblies,4 rotors,7 clips,7 bumpers,8 business magnets,4S+4N destinations (pairs only). Keep current7S/7N balanced. Original and new paper sets are complete; do not regenerate.
 
-Do NOT add the JSON entry without the art: the id would resolve to an empty sheet cell and
-render as a blank square instead of falling back to the coloured initial.
+Full archive: C:\Users\micha\magnet-art-ready\art\archive
+Gallery: C:\Users\micha\magnet-art-ready\art\archive\index.html
 
-## QUEUED FOR CODEX — three story scenes (pack 21) — 2026-09-15
+## New paper set0..11 READY — 2026-09-16
+
+All12 in `art/archive/24-new-papers-v1/ready`, exact title mapping in HANDOFF.md.12 successful generations, all alpha checks pass; review-sheet.jpg supplied. Claude wires. Next: cat22, keyrings, letters, trim, hardware, glass, candy, obstacle refresh and variety.
+
+## Paper originals12..19 READY — 2026-09-16
+
+`art/archive/21-paper-classics-v1/ready` contains all eight final old-set papers, alpha QC passed. All original paper indices now have realistic candidates. Original pack21-paper folder retained; story21 is a separate folder. Next: story scenes and v3 new papers, claws22, remaining v3 queue. Paint23 ready as recorded below.
+
+## READY FOR CLAUDE — three story scenes (pack 21) — 2026-09-16
+
+Three opaque768x512 exports in21-story-scenes-v1/ready; phone-review.jpg shows340px previews. Climb-v2 selected, all sources retained. Four generation calls. Original brief follows.
 
 Owner request. The story is three slides and each one currently shows the player's own
 creature rendered on a canvas, which is generic: the same toy three times, telling none of
@@ -80,7 +80,9 @@ read as one set. The toys are the translucent rubbery magnet people already in t
 
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
-## QUEUED FOR CODEX — paint bucket pickup (pack 23) — 2026-09-15
+## READY FOR CLAUDE — paint bucket pickup (pack 23) — 2026-09-16
+
+Generated and keyed successfully. Requested256x256 export: `art/archive/23-paint-bucket-v1/ready/paint.png`. Full source cutout, prompt, QC and review included. Green spill, raised wire handle, no branding. No live file writes. Original request follows.
 
 Owner request. Solo runs no longer spawn "+1 friend" pickups (a crew of one cannot gain a
 teammate); those become paint buckets that repaint your climber mid-run, purely cosmetic.
@@ -100,9 +102,9 @@ then `node scripts/art-archive-page.mjs`. Never write to `public/art/`; Claude w
   gem is cyan, heart is red, candy is pink. A strong green or violet would be clear.
 - No text or branding on the tin.
 
-## QUEUED FOR CODEX — cat claws (pack 24) — 2026-09-15
+## GENERATED FOR CLAUDE — cat claws (pack 22) — 2026-09-16
 
-**Renumbered from 22.** Another session shipped `22-avatars-v1` while this was queued, so use 24.
+Four assets in `art/archive/22-cat-claws-v1/`. Scratches ready; contact paw is a review candidate because generation shifted the silhouette, not a guaranteed pixel-perfect pose swap. See pack HANDOFF.md and export-review.jpg. No live writes.
 
 Owner request. The cat currently strikes with one rigid paw cutout and leaves claw marks
 that are hand-drawn strokes in `cat-paw.ts` (a 1.5 px grey curve with a 0.7 px white
