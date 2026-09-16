@@ -14,7 +14,7 @@ STYLE = LOOK + key_suffix("MAGENTA", "#FF00FF", "pink or magenta or purple")
 # Pink subjects cannot be keyed on magenta (their own colour reads as the key), so they
 # are generated on green instead and cut with `chroma-cut.py --key=green`.
 # purple dragon included: a magenta screen would eat purple art.
-GREEN_KEY = {"donut", "popit", "unicorn", "clown", "purpledragon", "watermelon", "snowglobe"}
+GREEN_KEY = {"donut", "popit", "unicorn", "clown", "purpledragon", "watermelon", "snowglobe", "opossum"}
 # Gemini renders a polite sage green unless the prompt insists on the saturated
 # screen colour; a muted green does not clear the keyer's threshold.
 GREEN_STYLE = LOOK + ("IMPORTANT: place the character on a VIVID PURE NEON GREEN CHROMA KEY SCREEN, exact hex #00FF00 "

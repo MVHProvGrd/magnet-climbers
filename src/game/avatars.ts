@@ -6,15 +6,18 @@ export const AVATARS: AvatarDef[] = (list as [string, string, string][]).map(([i
 export const AVATAR_COLS = 12;
 export const AVATAR_CELL = 96;
 const index = new Map(AVATARS.map((a, i) => [a.id, i]));
+/** Ids that were renamed after release, so a save made under the old one still resolves. */
+const ALIASES: Record<string, string> = { possum: "opossum" };
+const slot = (id?: string) => (id === undefined ? undefined : index.get(ALIASES[id] ?? id));
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
 export const AVATAR_SHEET = `${base}art/avatars/sheet.webp`;
 
-export const avatarById = (id?: string) => (id && index.has(id) ? AVATARS[index.get(id)!] : undefined);
-export const isAvatarId = (id: unknown): id is string => typeof id === "string" && index.has(id);
+export const avatarById = (id?: string) => { const i = slot(id); return i === undefined ? undefined : AVATARS[i]; };
+export const isAvatarId = (id: unknown): id is string => typeof id === "string" && slot(id) !== undefined;
 
 /** Inline HTML for an avatar at `size` px. Unknown or empty ids fall back to a coloured initial. */
 export function avatarHtml(id: string | undefined, name: string, size = 28): string {
-  const i = id ? index.get(id) : undefined;
+  const i = slot(id || undefined);
   if (i === undefined) {
     let h = 0; for (let k = 0; k < name.length; k++) h = (h * 31 + name.charCodeAt(k)) >>> 0;
     const initial = (name.trim()[0] ?? "?").toUpperCase();
