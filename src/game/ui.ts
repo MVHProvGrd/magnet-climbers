@@ -51,8 +51,8 @@ export interface UiHandlers {
   onPerf(): unknown;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
-  /** Global chat send; resolves to an error string or null on success. */
-  onChat(text: string): Promise<string | null>;
+  /** Global chat send: the stored message on success, an error string, or null if unreachable. */
+  onChat(text: string): Promise<ChatMessage | string | null>;
 }
 
 /** newest chat id the player has looked at (per device) */
@@ -621,9 +621,20 @@ export class Ui {
       pendingSeq = (pendingSeq + 1) % 1000;
       const pending: ChatMessage = { id: lastId + (pendingSeq + 1) / 1001, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
       seen.set(pending.id, pending); render();
-      const problem = await this.h.onChat(text);
-      if (problem) { seen.delete(pending.id); render(); err.textContent = problem; err.hidden = false; input.value = text; }
-      else void poll();
+      // The send returns the row the server actually stored, so swap the pending copy for that
+      // rather than trying to recognise it later: the worker rewrites links and masks words, so
+      // the text it keeps is not always the text that was typed. Matching on text would then
+      // never fire, and the line would stay doubled for good.
+      let sent: ChatMessage | string | null = null;
+      try { sent = await this.h.onChat(text); } catch { sent = "Could not send"; }
+      seen.delete(pending.id);
+      if (typeof sent === "string") {
+        render(); err.textContent = sent; err.hidden = false; input.value = text;
+      } else {
+        if (sent) { seen.set(sent.id, sent); lastId = Math.max(lastId, sent.id); }
+        render();
+        void poll();
+      }
     });
     p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });
     this.show(p);

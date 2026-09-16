@@ -307,7 +307,8 @@ const ui = new Ui(uiRoot, () => save, {
     if (save.cloudRev === 0) await cloudSync("chat");
     const r = await chat.send(save.playerId, save.token, save.name, text, save.avatar);
     if (!r) return "Could not reach the chat";
-    return "error" in r ? r.error : null;
+    // hand the stored row back: the panel shows that instead of its own optimistic copy
+    return "error" in r ? r.error : r.message;
   },
 });
 uiReady = true;
