@@ -1,5 +1,58 @@
 # Art refresh handoff — 2026-09-14
 
+## QUEUED FOR CODEX — three story scenes (pack 21) — 2026-09-15
+
+Owner request. The story is three slides and each one currently shows the player's own
+creature rendered on a canvas, which is generic: the same toy three times, telling none of
+the story. Replace it with three illustrated scenes, one per slide.
+
+**These are SCENES, not cutouts.** Do not generate on flat #FF00FF and do not run
+chroma-cut.py: these are opaque rectangular illustrations that sit inside a dark card. The
+usual cutout rules in the queue below do not apply to this pack.
+
+Pack `art/archive/21-story-scenes-v1/` with the usual `sources/`, `ready/`, `prompts.md`,
+a README row, then `node scripts/art-archive-page.mjs`. Never write to `public/art/`;
+Claude wires it.
+
+### Format
+- 768x512 (3:2), `.webp`, opaque, no alpha, no transparent margin.
+- Shown at about 340x227 logical px on a phone, inside a dark slab (`rgba(20,22,28,.9)`)
+  with white text directly beneath. Keep the important content in the middle; the bottom
+  ~15% may be dimmed by the card. Nothing critical in the corners.
+- Must read at that size on a phone: strong silhouettes, few subjects, no fine detail and
+  no text anywhere in the image.
+- Files: `story-1-life.webp`, `story-2-bedtime.webp`, `story-3-climb.webp`.
+
+### The three scenes, matching the slide copy exactly
+
+1. `story-1-life` — "Life on the fridge"
+   > We are the magnet people. We hold up the pizza menu, the dentist card, the photo of
+   > Cooper. Good job. Steady work.
+   Daytime kitchen, stainless fridge door filling the frame, warm and calm. Several rubbery
+   magnet toys posed proudly, each holding up a piece of paper: a pizza menu, a dentist
+   appointment card, a child's photo. Everything tidy and in its place. This is the "before".
+
+2. `story-2-bedtime` — "Then bedtime came"
+   > Cooper "tidied up". Now we are on the floor, and the sock drawer is next. Anyone still
+   > on the fridge by morning stays on the fridge.
+   Evening, lights low. Looking down at the kitchen floor: the same toys scattered in a heap
+   where they were swept off, papers fallen around them. The fridge looms above, bare and
+   out of reach. An open sock drawer waits in the background. Slightly ominous, still toy-like
+   and funny, not frightening. No child's face in frame.
+
+3. `story-3-climb` — "So we climb"
+   > Fling, stick, climb. Steel holds. Glass, plastic and stickers don't. The red line is
+   > Cooper's reach. Stay above it.
+   Low hero angle looking up the fridge door. A chain of magnet toys mid-climb, one flung
+   through the air with its magnet hands reaching. Determined, upward, energetic. A red
+   danger line low in the frame, well below them.
+
+### Style
+Match the existing title art (`public/art/title-fridge.webp`) and the photographed realism
+of packs 19/20: real kitchen, real stainless steel, real lighting, with the toys as the one
+stylised element. Consistent lighting, palette and camera character across all three so they
+read as one set. The toys are the translucent rubbery magnet people already in the game.
+
 ## Claude: cat paw and POP! are WIRED (2026-09-15). Paw = third attack type from the top, three taps, pad-only hitbox, depth scaled to the view. POP! = ten bubble bits per toy, nearest bubble flips on contact (0.16 s debounce), three pop sounds + push-in sound.
 
 ## Plain-item realism batch 20 — 2026-09-15

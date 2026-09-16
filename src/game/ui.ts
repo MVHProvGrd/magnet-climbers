@@ -738,6 +738,9 @@ export class Ui {
       if (a === "skip") { this.clear(); done(); }
     });
     this.show(p);
+    // render() runs once before the panel is appended, and the preview loop stops on a
+    // disconnected node, so the first slide's creature never drew. Start it once it is in.
+    this.startPreviews(p);
   }
 
   /** Small non-blocking coaching bubble during the tutorial run. */
