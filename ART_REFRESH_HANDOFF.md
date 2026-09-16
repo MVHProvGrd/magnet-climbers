@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack27 READY — twelve new swings
+
+All12 requested hanging assemblies in27-hanging-variety-v1/ready, source1024x1536, pivot estimates and renderer caveats in prompts/HANDOFF. Alpha and visual review pass.27 successful generations this continuation so far. Next4 rotors,7 clips,7 bumpers,8 businesses,4 pairedS/N sets.
+
 ## Pack26 READY — section A generation complete
 
 Ten assets in26-glass-obstacles-v1:4 stocked glass variants + dispenser/calendar/ice-tray/handle/plastic/vent refreshes. All keyed, exact delivery sizes, alpha checks pass and visual review done. Pack25 also complete.15 successful new generations this continuation so far. Next: user v3 section B variety. Claude wires; no public/art writes.

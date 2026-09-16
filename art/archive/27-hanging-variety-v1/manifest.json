@@ -1,0 +1,278 @@
+[
+  {
+    "file": "ready/swing-baby-shoe-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      313,
+      68,
+      706,
+      1429
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1292392,
+      "semi": 1435,
+      "opaque": 279037
+    },
+    "edge_pixels": 4005,
+    "magenta_tinted_opaque": 1,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-bead-lanyard-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      327,
+      31,
+      695,
+      1480
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1318185,
+      "semi": 14259,
+      "opaque": 240420
+    },
+    "edge_pixels": 6314,
+    "magenta_tinted_opaque": 196,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-bottle-opener-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      340,
+      48,
+      673,
+      1435
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1376985,
+      "semi": 1803,
+      "opaque": 194076
+    },
+    "edge_pixels": 5037,
+    "magenta_tinted_opaque": 105,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-carabiner-whistle-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      383,
+      36,
+      638,
+      1437
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1435188,
+      "semi": 1943,
+      "opaque": 135733
+    },
+    "edge_pixels": 4816,
+    "magenta_tinted_opaque": 14,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-disco-ball-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      251,
+      67,
+      765,
+      1338
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1259266,
+      "semi": 1685,
+      "opaque": 311913
+    },
+    "edge_pixels": 4028,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-fishing-lure-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      374,
+      41,
+      649,
+      1447
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1420804,
+      "semi": 2095,
+      "opaque": 149965
+    },
+    "edge_pixels": 5570,
+    "magenta_tinted_opaque": 16,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-keys-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      230,
+      61,
+      809,
+      1326
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1272470,
+      "semi": 1911,
+      "opaque": 298483
+    },
+    "edge_pixels": 5322,
+    "magenta_tinted_opaque": 1,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-measuring-spoons-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      237,
+      43,
+      785,
+      1401
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1292216,
+      "semi": 2208,
+      "opaque": 278440
+    },
+    "edge_pixels": 5538,
+    "magenta_tinted_opaque": 4,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-rubber-duck-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      308,
+      43,
+      724,
+      1351
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1302278,
+      "semi": 1830,
+      "opaque": 268756
+    },
+    "edge_pixels": 4214,
+    "magenta_tinted_opaque": 5,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-scissors-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      386,
+      47,
+      737,
+      1426
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1431989,
+      "semi": 1458,
+      "opaque": 139417
+    },
+    "edge_pixels": 5169,
+    "magenta_tinted_opaque": 3,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-souvenir-spoon-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      400,
+      24,
+      617,
+      1440
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1435326,
+      "semi": 1725,
+      "opaque": 135813
+    },
+    "edge_pixels": 3988,
+    "magenta_tinted_opaque": 28,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/swing-wind-chime-v1.webp",
+    "size": [
+      1024,
+      1536
+    ],
+    "bbox": [
+      389,
+      25,
+      633,
+      1458
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 1442342,
+      "semi": 2144,
+      "opaque": 128378
+    },
+    "edge_pixels": 6699,
+    "magenta_tinted_opaque": 1,
+    "clean": true,
+    "reasons": []
+  }
+]
