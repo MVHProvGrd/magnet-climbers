@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack26 READY — section A generation complete
+
+Ten assets in26-glass-obstacles-v1:4 stocked glass variants + dispenser/calendar/ice-tray/handle/plastic/vent refreshes. All keyed, exact delivery sizes, alpha checks pass and visual review done. Pack25 also complete.15 successful new generations this continuation so far. Next: user v3 section B variety. Claude wires; no public/art writes.
+
 ## Pack25 COMPLETE — latest continuation
 
 Image generation resumed. Five added: blueB, greenC, door-gap-v4, grip-bar-v1, pickup-candy-v1. All eight pack25 assets now ready, gallery updated. See25-hardware-pickup-v1/HANDOFF.md for exact sizes and strip edge exceptions. Next: four glass variants and six obstacle refreshes, then variety. No public/art writes.
