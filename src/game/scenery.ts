@@ -4,7 +4,7 @@ import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview, obstacleImage } from "./obstacle-art";
 import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
-import { destinationArtFor, destinationArtById, drawDestination, objectArtById } from "./gadget-art";
+import { destinationArtFor, destinationArtById, drawDestination, objectArtById, KEYCHAIN } from "./gadget-art";
 import { drawPickupImage, pickupImage } from "./pickup-art";
 import { drawKidHand, handPose } from "./kid-hand";
 import { DOOR_SEAM, POP_BUBBLES, POP_RADIUS } from "./world";
@@ -313,7 +313,8 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
 /** Visual-only pendulum per toy keychain bumper: the ring hangs from the slider, so reversals and stops swing the toy. */
 const keychainSwing = new WeakMap<Bumper, { angle: number; vel: number; time: number; vx: number }>();
 /** Hook and chain rows of the lemon keychain image (fractions of its height); the pivot is the hook's ring. */
-const CHAIN = { pivotX: 510 / 1024, pivotY: 285 / 1536, chainEnd: 0.615 };
+// the keychain hardware is measured once, in gadget-art, so both composites agree
+const CHAIN = { pivotX: KEYCHAIN.x, pivotY: KEYCHAIN.y, chainEnd: KEYCHAIN.chainEnd };
 /** POP! bubbles pushed in: a concave shadow over each bubble whose bit is set, drawn over the toy image rect. */
 function drawPops(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pops: number) {
   const r = POP_RADIUS * w;
@@ -331,7 +332,7 @@ export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: n
   const hh = (hardware as HTMLImageElement).naturalHeight || (hardware as HTMLCanvasElement).height || 1;
   const tw = (toy as HTMLImageElement).naturalWidth || (toy as HTMLCanvasElement).width || 1;
   const th = (toy as HTMLImageElement).naturalHeight || (toy as HTMLCanvasElement).height || 1;
-  const chain = 34; // visible chain length in px
+  const chain = 30; // visible chain length in px
   const s = chain / ((CHAIN.chainEnd - CHAIN.pivotY) * hh);
   const f = Math.min(b.w / tw, b.h / th) * 1.1, dw = tw * f, dh = th * f;
   // The chain ends ON the toy: over the duck's head, the banana's stem, the block's
