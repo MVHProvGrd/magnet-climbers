@@ -40,5 +40,12 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
     for (let i = 0; i < 3; i++) s.zones.push(itemZone("handle", x + (i % 2 ? w - 90 : 20), y + 55 + i * 95, 70, 24));
   }
   // Guarantee a reachable pickup in the clear lane, not buried inside the art.
-  if (s.powerUps[0]) { s.powerUps[0].x = rightLane ? 367 : 32; s.powerUps[0].y = y + 170; }
+  if (s.powerUps[0]) {
+    s.powerUps[0].x = rightLane ? 367 : 32; s.powerUps[0].y = y + 170;
+    // v19: pinning it to the lane can drop it straight onto the segment's other pickup, which
+    // is how two magnets ended up sitting on top of each other. Send that one across instead.
+    const other = s.powerUps[1];
+    if (version >= 19 && other && Math.hypot(other.x - s.powerUps[0].x, other.y - s.powerUps[0].y) < 96)
+      other.x = rightLane ? 32 : 367;
+  }
 }

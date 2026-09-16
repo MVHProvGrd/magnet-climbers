@@ -1,4 +1,7 @@
 import { CFG, W } from "./config";
+
+/** Closest two pickups in one segment may sit, centre to centre. */
+const PICKUP_GAP = 96;
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS } from "./items";
 import { rule } from "./placement";
@@ -132,7 +135,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 18, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 19, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -370,7 +373,13 @@ export class World {
     for (let k = 0; k < pn; k++) {
       let kindP = pick(r, table);
       if (kindP === "gem" && r() < 0.6) kindP = "coin";
-      powerUps.push({ x: rangeOf(r, 30, W - 30), y: y + rangeOf(r, 30, h - 30), kind: kindP, taken: false, bob: r() * 6 });
+      let px = rangeOf(r, 30, W - 30), py = y + rangeOf(r, 30, h - 30);
+      // v19: the two pickups in a segment were rolled independently, so they regularly landed
+      // on top of each other. The version guard comes first so older worlds consume no extra RNG.
+      for (let t = 0; t < 6 && this.version >= 19 && powerUps.some((o) => Math.hypot(o.x - px, o.y - py) < PICKUP_GAP); t++) {
+        px = rangeOf(r, 30, W - 30); py = y + rangeOf(r, 30, h - 30);
+      }
+      powerUps.push({ x: px, y: py, kind: kindP, taken: false, bob: r() * 6 });
     }
 
     const segment: Segment = { y, h, zones, powerUps, bumpers };
@@ -402,7 +411,7 @@ export class World {
             const others = zones.filter((o) => o !== zone);
             // a floor on the area: the slot a card lands in varies a lot, and a small
             // slot made a portrait card read as a stamp beside a landscape one
-            const area = Math.max(zone.w * zone.h, 11000);
+            const area = Math.max(zone.w * zone.h, this.version >= 19 ? 20000 : 11000);
             const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
             let cw = Math.round(Math.sqrt(area * aspect)), ch = Math.round(cw / aspect);
             // a resized card may move, so it must clear the bumper paths too --
@@ -484,7 +493,13 @@ export class World {
           if (kind === "clip" && this.version >= 16) g.fixed = true;
           return g;
         });
-        if (powerUps[0]) { powerUps[0].x = 32; powerUps[0].y = y + 170; }
+        if (powerUps[0]) {
+          powerUps[0].x = 32; powerUps[0].y = y + 170;
+          // moving it can land it back on the other one, so push that one clear
+          const other = powerUps[1];
+          if (this.version >= 19 && other && Math.hypot(other.x - 32, other.y - (y + 170)) < PICKUP_GAP)
+            other.x = W - 32;
+        }
       }
     }
     return segment;

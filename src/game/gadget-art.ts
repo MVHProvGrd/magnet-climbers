@@ -163,7 +163,10 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.fillStyle = "#fff1c9"; ctx.fillText("ABC"[index] ?? "A", 0, 14);
   } else if (assembly && g.kind === "clip") {
     // clipped paper photo hangs from the grip: its clip ring sits on the steel bar
-    const { w, h } = imageSize(assembly), s = Math.min(78 / h, 70 / w);
+    const { w, h } = imageSize(assembly);
+    // fit by AREA, not by bounding box: 78/h made the tall thin receipt read as a stamp
+    // beside the postcard, at barely half its area. Caps keep it inside the slot.
+    const s = Math.min(Math.sqrt(4600 / (w * h)), 78 / w, 120 / h);
     ctx.drawImage(assembly, -pivot[0] * w * s, -27 - pivot[1] * h * s, w * s, h * s);
   } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charm2)) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);
@@ -204,7 +207,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     plate(ctx, z.x + 5, z.y + 51, 54, 8, "#1c334a88", 3);
     plate(ctx, z.x + 5, z.y + 51, Math.max(1, 54 * p.remaining / 3), 8, urgent ? "#fff" : "#ffe19a", 3);
     ctx.font = "bold 11px system-ui"; ctx.fillText(p.active ? "−" : "+", z.x + 8, p.y + 4); ctx.fillText(`${Math.ceil(p.remaining)}`, z.x + 55, p.y + 4);
-  } else if (!assembly && !(g.kind === "swing" && hardware && charm2)) {
+  } else if (!assembly && !rotorImg && !(g.kind === "swing" && hardware && charm2)) {
+    // a photographed rotor is a magnet - a clock, a dial, a letter - so it carries no drawn
+    // clip. The metal object IS the hold; only the drawn letter board still needs hardware.
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
     drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }
