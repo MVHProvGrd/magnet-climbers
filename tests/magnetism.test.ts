@@ -589,6 +589,13 @@ test("the cat's paw hurts wherever it is on the door, not only at the bottom of 
   const hp = c.hp;
   g.update(1 / 120);
   assert.equal(c.hp, hp - 1, "flying into the paw costs a heart");
+  // and it drives you down the door: a swat that costs a heart but no ground is no swat
+  assert.ok(c.vy > 0, "knocked downward, not up");
+  const from = c.y;
+  for (let i = 0; i < 48; i++) g.update(1 / 120);
+  assert.equal(c.state, "flying", "still falling 0.4s later, not stuck to the next panel up");
+  for (let i = 0; i < 12; i++) g.update(1 / 120);
+  assert.ok(c.y - from > 150, `dropped ${Math.round(c.y - from)}px in half a second`);
   // and only once per paw, however long it stays on top of them
   const after = c.hp; c.iframes = 0;
   for (let i = 0; i < 30; i++) g.update(1 / 120);

@@ -1137,7 +1137,10 @@ export class Game {
       paw.hit.add(c.id); sfx.paw();
       if (this.effects.superMagnet > 0 && c.state !== "flying") { c.squash = 1; this.floats.push({ x: c.x, y: c.y - 50, text: "HELD ON!", life: 1, color: "#ff4d4d" }); continue; }
       c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; c.fell = true;
-      c.vx = (c.x < pose.x ? -1 : 1) * 180; c.vy = CFG.handShove * 0.8; c.spin = 6; c.noStick = 0.3; resetRagdoll(c);
+      // A paw comes straight down, so it drives you down the door rather than sideways,
+      // and holds you off the steel long enough to actually lose ground: at 0.3s a climber
+      // could catch the very next panel and the swat cost nothing but a heart.
+      c.vx = (c.x < pose.x ? -1 : 1) * 90; c.vy = CFG.handShove * 1.15; c.spin = 6; c.noStick = 0.6; resetRagdoll(c);
       this.damage(c, true);
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
