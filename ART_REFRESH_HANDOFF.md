@@ -1,5 +1,9 @@
 # Art refresh handoff — 2026-09-14
 
+## Pack29 READY — seven clipped papers
+
+Seven in29-clip-variety-v1/ready. All visually reviewed; coupon checker false-positive is red printed text, diagnostics retained.38 successful new generations this continuation. Remaining7 bumpers,8 business cards,4S+4N souvenirs.
+
 ## Pack28 READY — four new rotors
 
 Clock/pinwheel/thermometer/spinner in28-rotor-variety-v1/ready.1024square exports centered on actual estimated spindle(512,512); native positions in pivots.json.31 successful generations this continuation so far. Remaining:7 clips,7 bumpers,8 businesses,4S+4N destinations.
