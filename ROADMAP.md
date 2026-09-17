@@ -7,6 +7,13 @@ moving bumpers, kid hand swipes, tricks, gadgets, field guide, cloud save with
 device linking and merge, global and lifetime boards, challenge links with
 verified share cards, PWA auto-update, generated music loops.
 
+## Done in the league / seasons pass (September)
+**Weekly league** — buckets of ~30 by metres climbed that week, top ten up and
+bottom ten down across Paper, Plastic, Steel, Chrome, Gold; seated lazily, no
+cron. **Fridge of the month** — twelve doors, repainted on the first, each with
+one pattern only that month gives out. **Input recorder** — every fling and
+climb taped; a tape replays into the same climb to the centimetre.
+
 ## Done in the retention pass (September)
 **Daily climb** — one fridge for everyone from the UTC date, one scored
 attempt, no kit, a TODAY board; the Worker owns the day. **Missions** — three
@@ -22,16 +29,15 @@ with the near-miss line** (#7) are all in the game. Also since: per-run kit
 (coins buy a higher jump and a stickier floor for one climb), chat with
 moderation, and the owner's scale bench.
 
-## Now — worth caring about
-1. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
-   promote, bottom 10 drop. Tier badge on the scoreboard. The global board is
-   unwinnable outside the top ten; a bucket is a board you can lead.
-2. **Themed fridges:** a monthly skin of the fridge (stickers, plates, palette)
-   with one limited pattern. The daily run is what makes a post worth clicking;
-   this is what gives the post something to look at.
-3. **Input recorder:** log every fling/climb as `{tick, id, vector}` per run.
-   Foundation for replay, ghosts and score validation — and with a daily board
-   live, validation matters more than it did.
+## Now — what the recorder unlocks
+1. **Ghost of your best run** drawn live on the fridge. The tape of your best
+   climb is already kept on the device; this is playback plus a faintly drawn
+   second climber.
+2. **Server-side replay of the daily.** A shared board is the first thing worth
+   cheating. The sim is deterministic and a tape is about a kilobyte, so the
+   Worker can climb it again and keep the row only if it agrees.
+3. **Async race:** race a friend's recorded run as a ghost from a share link.
+   Needs the ghost renderer and the same tape storage the replay check wants.
 
 ## Next — social and progression
 8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
