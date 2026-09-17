@@ -166,7 +166,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     const { w, h } = imageSize(assembly);
     // fit by AREA, not by bounding box: 78/h made the tall thin receipt read as a stamp
     // beside the postcard, at barely half its area. Caps keep it inside the slot.
-    const s = Math.min(Math.sqrt(4600 / (w * h)), 78 / w, 120 / h);
+    const s = Math.min(Math.sqrt(8000 / (w * h)), 104 / w, 150 / h);
+    // hooked near one end, the clip tips: rotate the sheet about the clip itself, which is
+    // where the pivot lands, so the paper swings under it rather than sliding sideways
+    const tip = g.lean ?? 0;
+    if (tip) { ctx.translate(0, -27); ctx.rotate(tip); ctx.translate(0, 27); }
     ctx.drawImage(assembly, -pivot[0] * w * s, -27 - pivot[1] * h * s, w * s, h * s);
   } else if (g.kind !== "polarity" && !assembly && !(g.kind === "swing" && hardware && charm2)) {
     if (g.kind === "clip") plate(ctx, -29, -27, 58, 62, "#fff3d7", 2);

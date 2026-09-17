@@ -622,3 +622,32 @@ test("the run remembers what ended it", () => {
   assert.equal(c2.state, "lost");
   assert.equal(p2.lastCause, "paw");
 });
+
+test("a clip only tips when it is caught near one end of its bar", () => {
+  const g = game(); g.phase = "running";
+  // as the world builds one since v16: held still by its own clip, so its bar does not drift
+  const clip = { id: "c1", itemId: "clip-report-card", kind: "clip" as const, x: 200, y: -300, phase: 0, fixed: true, swing: { angle: 0, vel: 0, cool: 0 } };
+  g.world.segments[0].gadgets = [clip];
+  const z = gadgetZone(clip, 0);
+  const c = g.climbers[0];
+  c.state = "stuck"; c.x = z.x + z.w; c.y = z.y;
+  const hold = (x: number) => { c.grip = { contacts: [{ x, y: z.y + z.h / 2, limb: 0 }], pose: "single", lift: 0, age: 0, angularVelocity: 0 }; };
+
+  // caught in the middle: nothing moves, however long they hang there
+  hold(z.x + z.w / 2);
+  for (let i = 0; i < 60; i++) g.update(1 / 120);
+  assert.equal(clip.lean ?? 0, 0, "a centred grab leaves it level");
+
+  // caught at the right end: the right side drops, so the sheet swings the other way
+  hold(z.x + z.w - 2);
+  for (let i = 0; i < 60; i++) g.update(1 / 120);
+  assert.ok((clip.lean ?? 0) > 0.1, `tips to ${clip.lean}`);
+
+  // and the mirror, then back to level once they let go
+  hold(z.x + 2);
+  for (let i = 0; i < 120; i++) g.update(1 / 120);
+  assert.ok((clip.lean ?? 0) < -0.1);
+  c.grip = undefined;
+  for (let i = 0; i < 240; i++) g.update(1 / 120);
+  assert.equal(clip.lean, 0, "and hangs level again once nobody is on it");
+});

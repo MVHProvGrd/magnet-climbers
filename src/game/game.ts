@@ -2,6 +2,7 @@ import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
+import { gadgetZone } from "./gadgets";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
@@ -11,6 +12,8 @@ import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
 
 export type Phase = "idle" | "running" | "dead";
+/** How far a clip tips when a climber hangs off one end of its bar. */
+const TIP_ANGLE = 0.22;
 /** How a climber was lost. The lost card turns this into a line of prose. */
 export type DeathCause = "redline" | "fell" | "paw" | "hand" | "bumper" | "flings";
 
@@ -748,6 +751,7 @@ export class Game {
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
     if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
+    this.tipClips(sdt);
     this.world.superGrip = this.effects.superMagnet > 0;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
@@ -1118,6 +1122,32 @@ export class Game {
   }
 
   /** Warn on a fixed curved route, reach across the door, then recoil to the same edge. */
+  /**
+   * A clip hangs level until someone hooks it near one end, and then their weight tips it.
+   * Catch the bar near the middle and nothing moves, which is most of the time: only the
+   * outer third of a 36 px bar counts, so this is a reward for a precise landing rather
+   * than something that happens on every grab. Cosmetic: the hold does not move with it.
+   */
+  private tipClips(dt: number) {
+    for (const g of this.world.gadgets) {
+      if (g.kind !== "clip") continue;
+      const z = gadgetZone(g, this.world.gadgetTime), mid = z.x + z.w / 2, half = z.w / 2;
+      let sum = 0, held = 0;
+      for (const c of this.climbers) {
+        if (c.state !== "stuck" && c.state !== "linked") continue;
+        for (const p of c.grip?.contacts ?? []) {
+          if (p.x < z.x - 2 || p.x > z.x + z.w + 2 || p.y < z.y - 8 || p.y > z.y + z.h + 8) continue;
+          sum += (p.x - mid) / half; held++;
+        }
+      }
+      // gripped right of centre, the right side drops: the sheet's foot swings left
+      const off = held ? sum / held : 0;
+      const target = Math.abs(off) > 0.62 ? Math.sign(off) * TIP_ANGLE : 0;
+      g.lean = (g.lean ?? 0) + (target - (g.lean ?? 0)) * Math.min(1, dt * 7);
+      if (Math.abs(g.lean) < 0.001) g.lean = 0;
+    }
+  }
+
   /** Cat paw: warn, three taps (the second deepest), retreat. Only the pad and toes hit; the foreleg is decorative. */
   private stepPaw(dt: number) {
     const paw = this.paw; if (!paw) return;
