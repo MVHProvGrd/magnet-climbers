@@ -95,8 +95,9 @@ export const leaderboard = {
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
-  submit: (playerId: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number) =>
-    call<{ ok: boolean; best: number; taken?: boolean; day?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
+  /** A daily post carries the run's tape: the Worker climbs it again and that height is the score. */
+  submit: (playerId: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number, tape?: unknown) =>
+    call<{ ok: boolean; best: number; taken?: boolean; day?: string; verified?: boolean; reason?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}), ...(tape ? { tape } : {}) }) }),
 };
 
 export interface LeagueStanding {

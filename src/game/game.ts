@@ -91,6 +91,13 @@ export class Game {
   coins = 0;
   gems = 0;
   revivesLeft: number;
+  /**
+   * Unscaled and counted from the first update, idle included. It is what the recorder stamps
+   * events with, and both halves of that matter: `runTime` slows to 0.45 under a Kitchen Timer,
+   * so its stamps drift off the step grid; and the steps taken before the first fling are not
+   * inert - clips swing and gadgets turn while the player is still looking - so a replay that
+   * skipped them would start from a different door and diverge on the first catch.
+   */
   time = 0;
   shake = 0;
   nextId = 1;
@@ -371,7 +378,7 @@ export class Game {
     }
     // kicking off a hanging gadget swings it the other way
     for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
-    this.tape.fling(this.runTime, c.id, v);
+    this.tape.fling(this.time, c.id, v);
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -600,7 +607,7 @@ export class Game {
   move(c: Climber, p: Vec) {
     const t = this.moveTarget(c, p);
     if (!t) { this.floats.push({ x: c.x, y: c.y - 30, text: "out of reach", life: 0.9, color: "#ff6b6b" }); return; }
-    this.tape.move(this.runTime, c.id, { x: t.x, y: t.y });
+    this.tape.move(this.time, c.id, { x: t.x, y: t.y });
     if (this.phase === "idle") this.phase = "running";
     const was = { x: c.x, y: c.y, grip: c.grip, state: c.state, parent: c.parent, locked: c.locked, angle: c.angle };
     if (t.parent == null) {

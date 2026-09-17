@@ -26,6 +26,8 @@ import { handleShare, type Challenge } from "./card";
 import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
+import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
+import { World } from "../../src/game/world";
 
 /** Server-side mirror of the client name filter — same word list, same leetspeak/Unicode/
  *  repeat normalization, kept in one place (src/game/profanity.ts) so the two never drift. */
@@ -35,12 +37,24 @@ const nameIsProfane = nameHasProfanity;
 // runs, which are effectively never anything else in a chat message — a climb height tops
 // out at 6 digits (MAX_CM) and nobody spells out a 10-digit age or score.
 const PHONE_RE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b|\b\d{10,11}\b/g;
+// International: a + and country code, then 8-13 digits in any grouping ("+44 7911 123456").
+const INTL_PHONE_RE = /\+\d{1,3}(?:[\s.-]?\d){8,13}\b/g;
+// Digits typed one at a time to slip past the patterns above ("5 5 5 1 2 3 4 5 6 7"): ten
+// or more single digits with a space or dot between each is never a score or an age.
+const SPACED_DIGITS_RE = /\b\d(?:[\s.]\d){9,12}\b/g;
+// An email, and the spelled-out kind a kid reaches for once the real one is caught
+// ("kid99 at gmail dot com").
+const EMAIL_RE = /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi;
+const SPELLED_EMAIL_RE = /\b[a-z0-9._-]{2,}\s+(?:at|\[at\]|\(at\))\s+[a-z0-9-]+(?:\s+(?:dot|\[dot\]|\(dot\))\s+[a-z]{2,})+\b/gi;
+// A bare handle: @ then a name. Chat has no mentions, so that is only ever a handle.
+const AT_HANDLE_RE = /(?<![a-z0-9])@[a-z0-9_.]{3,30}\b/gi;
 // House-number + street-name + suffix, e.g. "123 Main St" / "45 Oak Avenue".
 const ADDRESS_RE = /\b\d{1,5}\s+[a-z]+(?:\s+[a-z]+){0,2}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|ct|court|way|pl|place|cir|circle|hwy|highway)\b\.?/gi;
-// A messaging-app name followed by a handle ("my snap is john.doe99", "discord: Kid_99"), or
-// a Discord-style "name#1234" tag on its own. The handle must contain a digit or a joining
-// character (a plain word after "is" — "discord is fun" — is left alone).
-const HANDLE_RE = /\b(?:snap(?:chat)?|insta(?:gram)?|ig|discord|kik|tiktok|whatsapp|telegram|skype|facebook)\b(?:\s*(?:is|:|=|@)\s*)([a-z0-9](?:[a-z0-9._-]{1,22}[a-z0-9])?)/gi;
+// A messaging-app name followed by a handle ("my snap is john.doe99", "discord: Kid_99",
+// "add me on discord Kid_99"), or a Discord-style "name#1234" tag on its own. The handle must
+// contain a digit or a joining character (a plain word after "is" — "discord is fun" — is
+// left alone; so is "on discord tonight", since "tonight" has neither).
+const HANDLE_RE = /\b(?:snap(?:chat)?|insta(?:gram)?|ig|discord|kik|tiktok|whatsapp|telegram|skype|facebook|roblox|fortnite|xbox|psn)\b(?:\s*(?:is|:|=|@|-)\s*|\s+(?:name|user|username|tag|id)?\s*(?:is|:|=)?\s*)([a-z0-9](?:[a-z0-9._-]{1,22}[a-z0-9])?)/gi;
 const TAG_RE = /\b[a-z0-9_]{2,20}#\d{3,6}\b/gi;
 
 /** Phone numbers, street addresses and social handles, masked out before anything else runs.
@@ -48,9 +62,13 @@ const TAG_RE = /\b[a-z0-9_]{2,20}#\d{3,6}\b/gi;
  *  age ("I'm 8"), a score ("1234 cm") or a plain sentence ("level 100") never gets touched. */
 function maskPII(text: string): { clean: string; hit: boolean } {
   let hit = false;
-  let out = text.replace(PHONE_RE, () => { hit = true; return "[redacted]"; });
-  out = out.replace(ADDRESS_RE, () => { hit = true; return "[redacted]"; });
-  out = out.replace(TAG_RE, () => { hit = true; return "[redacted]"; });
+  const cut = () => { hit = true; return "[redacted]"; };
+  // email first: an address is dots and digits that the phone and handle patterns would
+  // otherwise chew through and leave half of it standing
+  let out = text.replace(EMAIL_RE, cut).replace(SPELLED_EMAIL_RE, cut);
+  out = out.replace(INTL_PHONE_RE, cut).replace(PHONE_RE, cut).replace(SPACED_DIGITS_RE, cut);
+  out = out.replace(ADDRESS_RE, cut);
+  out = out.replace(TAG_RE, cut).replace(AT_HANDLE_RE, cut);
   out = out.replace(HANDLE_RE, (full, handle: string) => {
     if (!/[0-9._-]/.test(handle)) return full; // "discord is fun" — no real handle here
     hit = true;
@@ -62,15 +80,19 @@ function maskPII(text: string): { clean: string; hit: boolean } {
 /** Chat text filter: PII is redacted, profane words become stars, links are dropped.
  *  Whole-message rejection is for names only. */
 function cleanChat(text: string): { clean: string; censored: boolean; pii: boolean } {
-  const noLinks = text.replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|io|gg|xyz)\b\S*/gi, "[link]");
-  const { clean: noPII, hit: pii } = maskPII(noLinks);
-  const { clean, censored } = censorChat(noPII);
+  // PII before links: the link pattern's "anything.com" tail swallows an email whole, so an
+  // address went out as [link] - hidden, but never flagged to the owner as the thing it is.
+  const { clean: noPII, hit: pii } = maskPII(text);
+  const noLinks = noPII.replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|io|gg|xyz)\b\S*/gi, "[link]");
+  const { clean, censored } = censorChat(noLinks);
   return { clean, censored, pii };
 }
 
 export interface Env {
   DB: D1Database;
   ALLOWED_ORIGINS: string;
+  /** "shadow" (default): verify daily tapes, log the verdict, keep every row. "enforce": refuse unverified rows. */
+  TAPE_MODE?: string;
   /** owner key for /admin; set with `npx wrangler secret put ADMIN_KEY` */
   ADMIN_KEY?: string;
 }
@@ -255,6 +277,27 @@ async function placeInLeague(env: Env, playerId: string, name: string): Promise<
 }
 
 let dailyReady = false;
+/** The world version a daily is generated with. A tape from any other version is another climb. */
+const DAILY_WORLD = new World(1, 0).version;
+
+/** Every daily tape the Worker has been shown, with what replaying it gave. */
+let tapesReady = false;
+async function ensureTapes(env: Env): Promise<void> {
+  if (tapesReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS tapes (
+    player_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    claimed INTEGER NOT NULL,
+    replayed INTEGER,
+    verdict TEXT NOT NULL,
+    ms INTEGER,
+    tape TEXT,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, day)
+  )`).run().catch(() => {});
+  tapesReady = true;
+}
+
 async function ensureDaily(env: Env): Promise<void> {
   if (dailyReady) return;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily (
@@ -374,9 +417,22 @@ export default {
         const day = dayKey();
         const had = await env.DB.prepare("SELECT cm FROM daily WHERE player_id = ? AND day = ?").bind(playerId, day).first<{ cm: number }>();
         if (had) return json({ ok: true, best: had.cm, day, taken: true }, h);
+        // The daily board is the one worth cheating, so it is the one that is checked: the post
+        // carries the run's tape and the Worker climbs it again. In shadow mode the verdict is
+        // recorded and the row kept whatever it says; in enforce mode a row the replay does not
+        // confirm never lands. Either way the height that lands is never above the replay's.
+        const enforce = (env.TAPE_MODE ?? "shadow") === "enforce";
+        const rawTape = (body as { tape?: unknown }).tape;
+        const v = verifyDaily(rawTape, cm, day, DAILY_WORLD);
+        await ensureTapes(env);
+        await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+          .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null,
+            rawTape ? JSON.stringify(rawTape).slice(0, MAX_TAPE_BYTES) : null, Date.now()).run().catch(() => {});
+        if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
+        const kept = v.ok ? Math.min(cm, v.cm) : cm;
         await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(playerId, day, name, cm, secs, Date.now()).run();
-        return json({ ok: true, best: cm, day }, h);
+          .bind(playerId, day, name, kept, secs, Date.now()).run();
+        return json({ ok: true, best: kept, day, verified: v.ok, ...(v.ok ? {} : { reason: v.reason }) }, h);
       }
       if (!validMode(body.mode)) return json({ error: "bad score" }, h, 400);
       const now = Date.now();

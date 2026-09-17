@@ -51,10 +51,10 @@ export class Recorder {
   invalidate(): void { this.broken = true; }
 
   fling(t: number, id: number, v: Vec): void {
-    this.push({ t: round(t), k: "fling", id, v: { x: round(v.x), y: round(v.y) } });
+    this.push({ t: snap(t), k: "fling", id, v: { x: round(v.x), y: round(v.y) } });
   }
   move(t: number, id: number, to: Vec): void {
-    this.push({ t: round(t), k: "move", id, to: { x: round(to.x), y: round(to.y) } });
+    this.push({ t: snap(t), k: "move", id, to: { x: round(to.x), y: round(to.y) } });
   }
   private push(e: TapeEvent): void {
     if (this.full) return;
@@ -69,8 +69,21 @@ export class Recorder {
   }
 }
 
-/** Two decimal places is finer than any input and keeps a tape small. */
+/** Positions to two decimal places: finer than any input, and it keeps a tape small. */
 const round = (n: number): number => Math.round(n * 100) / 100;
+/** The fixed step the sim runs at. A tape's clock is counted in these, never in wall time. */
+export const STEP = 1 / 120;
+/**
+ * Times are snapped onto the step grid and stored to four places. Two places was not enough:
+ * the step is 8.33 ms, so steps 3 and 4 both rounded to 0.03 and a replay could not tell
+ * which one a fling belonged to - it applied it a step early and the climb diverged. Four
+ * places keeps every step distinct (the closest pair differ by 0.0083), so `stepOf` gets the
+ * exact step back, and a Worker replaying the tape lands each input on the same step it
+ * was played on.
+ */
+const snap = (t: number): number => Math.round(Math.round(t / STEP) * STEP * 10000) / 10000;
+/** The step index an event belongs to. Inverse of `snap`. */
+export const stepOf = (t: number): number => Math.round(t / STEP);
 
 /** Rough size of a tape on the wire, for deciding whether to keep or send one. */
 export const tapeBytes = (tape: Tape): number => JSON.stringify(tape).length;
@@ -85,16 +98,22 @@ export function replay<T>(
   game: T,
   apply: (game: T, e: TapeEvent) => void,
   step: (game: T, dt: number) => void,
-  dt = 1 / 120,
+  /** stop early once this says so - a verifier stops at the death it is checking for */
+  done: (game: T) => boolean = () => false,
+  dt = STEP,
 ): T {
-  let t = 0;
+  // Counted in whole steps, not accumulated seconds: `t += dt` a few thousand times drifts
+  // off the grid and lands an input a step early or late, and one step is enough to turn
+  // a catch into a miss. The live run played each input before the step it is stamped
+  // with, so the replay does the same: run up to that step, apply, then keep stepping.
+  let n = 0;
   for (const e of tape.events) {
-    // step up to the moment, then do the thing that happened at it
-    let guard = 0;
-    while (t + dt <= e.t && guard++ < 100_000) { step(game, dt); t += dt; }
+    const at = stepOf(e.t);
+    while (n < at) { if (done(game)) return game; step(game, dt); n++; }
     apply(game, e);
   }
   // and run out whatever was still in the air when the last input happened
-  for (let i = 0; i < Math.ceil(Math.max(0, tape.seconds - t) / dt); i++) step(game, dt);
+  const end = Math.max(n, Math.ceil(tape.seconds / dt));
+  while (n < end) { if (done(game)) return game; step(game, dt); n++; }
   return game;
 }

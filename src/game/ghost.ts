@@ -17,7 +17,7 @@
  * the seed to the world and the tape to this.
  */
 import { Game, type RunEvents } from "./game";
-import type { Tape, TapeEvent } from "./recorder";
+import { stepOf, type Tape, type TapeEvent } from "./recorder";
 import type { Climber, Vec } from "./types";
 import type { Look } from "./creatures";
 import type { UpgradeKey } from "./config";
@@ -32,7 +32,8 @@ export class Ghost {
   private readonly events: TapeEvent[];
   /** how far down the event list we have got */
   private at = 0;
-  private t = 0;
+  /** steps taken, which is what the tape counts in - not seconds, which drift */
+  private n = 0;
 
   constructor(readonly tape: Tape, look?: Look) {
     this.events = tape.events;
@@ -44,6 +45,12 @@ export class Ghost {
       lineup: look ? [look] : [],
       silent: true,
     });
+    // The tape counts steps from the moment the door appeared, so the wait before the first
+    // fling is part of it - and it is not dead time, the door was moving. Take those steps
+    // now, in one go, so the ghost starts climbing when the live run does instead of standing
+    // there for as long as the recorded player did.
+    const first = this.events.length ? stepOf(this.events[0].t) : 0;
+    while (this.n < first) { this.game.update(1 / 120); this.n++; }
   }
 
   /** The ghost's climber, or null once the recorded run is over. */
@@ -56,20 +63,21 @@ export class Ghost {
   get heightCm(): number { return this.game.heightCm; }
 
   /** The recorded run has played out; there is nothing further to draw. */
-  get done(): boolean { return this.at >= this.events.length && this.t >= this.tape.seconds; }
+  get done(): boolean { return this.at >= this.events.length && this.n >= this.tape.seconds * 120; }
 
   /**
-   * One step of the live run is one step of the ghost. Events are applied when the ghost's
-   * clock reaches them, before the step, which is the order the recorder wrote them in.
+   * One step of the live run is one step of the ghost. An input stamped with step N was
+   * played after N updates and before the next, so it is applied when the ghost has taken
+   * exactly N steps, then the step runs - the order the recorder wrote it in.
    */
   step(dt: number): void {
     if (this.done) return;
-    this.t += dt;
-    while (this.at < this.events.length && this.events[this.at].t <= this.t) {
+    while (this.at < this.events.length && stepOf(this.events[this.at].t) <= this.n) {
       this.apply(this.events[this.at]);
       this.at++;
     }
     this.game.update(dt);
+    this.n++;
   }
 
   private apply(e: TapeEvent): void {

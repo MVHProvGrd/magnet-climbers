@@ -55,6 +55,10 @@ export function makeFakeDB(): { DB: unknown; raw: DatabaseSync } {
       name TEXT NOT NULL, cm INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (player_id, week)
     );
     CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC);
+    CREATE TABLE IF NOT EXISTS tapes (
+      player_id TEXT NOT NULL, day TEXT NOT NULL, claimed INTEGER NOT NULL, replayed INTEGER,
+      verdict TEXT NOT NULL, ms INTEGER, tape TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (player_id, day)
+    );
     CREATE TABLE IF NOT EXISTS daily (
       player_id TEXT NOT NULL, day TEXT NOT NULL, name TEXT NOT NULL, cm INTEGER NOT NULL,
       seconds INTEGER, created_at INTEGER NOT NULL, PRIMARY KEY (player_id, day)

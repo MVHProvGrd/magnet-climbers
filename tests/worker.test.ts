@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import worker, { type Env, ensureReports } from "../worker/src/index";
 import { makeFakeDB } from "./worker-db";
+import { Game } from "../src/game/game";
+import { World } from "../src/game/world";
+import { dailySeed as workerDailySeed } from "../worker/src/replay";
+import { dailySeed as clientDailySeed, todayKey } from "../src/game/leaderboard";
 
-function env(): Env {
+function env(mode: "shadow" | "enforce" = "shadow"): Env {
   const { DB } = makeFakeDB();
-  return { DB: DB as never, ALLOWED_ORIGINS: "http://localhost" };
+  return { DB: DB as never, ALLOWED_ORIGINS: "http://localhost", TAPE_MODE: mode };
 }
 
 let nextPlayer = 0;
@@ -149,4 +153,144 @@ test("GET /chat hides a blocked sender from the player who blocked them", async 
   const filtered = await worker.fetch(get(`/chat?after=0&player=${victim.playerId}`), e);
   const filteredBody = (await filtered.json()) as { messages: { player_id: string }[] };
   assert.ok(!filteredBody.messages.some((m) => m.player_id === bully.playerId), "the blocked sender's message is gone for the blocker");
+});
+
+
+// -------------------------------------------------------------------------------------------
+// The daily score is checked by replaying its tape, not by trusting the number.
+// -------------------------------------------------------------------------------------------
+
+const NO_EVENTS = { onPower: () => {}, onGameOver: () => {}, onCoins: () => {}, onGems: () => {} };
+const DAILY_KIT = { magnet: 0, power: 0, floor: 0 } as const;
+
+/** A real daily climb, played through the sim so the recorder writes a genuine tape. */
+function climbToday(flings = 60) {
+  const seed = clientDailySeed(todayKey());
+  const game = new Game({ ...DAILY_KIT }, NO_EVENTS, { rules: "solo", seed, worldVersion: new World(1, 0).version, chill: false, lineup: [], silent: true });
+  const dt = 1 / 120;
+  let n = 0, done = 0;
+  for (let i = 0; i < 37; i++) { game.update(dt); n++; }          // a moment before the first fling, as a player would
+  while (game.phase !== "dead" && done < flings && n < 40_000) {
+    const c = game.climbers[0];
+    if (c && c.state !== "lost" && (done === 0 || n % 90 === 0)) { game.launch(c, { x: (n % 180 ? 1 : -1) * 260, y: -640 }); done++; }
+    game.update(dt); n++;
+  }
+  const tape = game.sealTape(true);
+  assert.ok(tape, "the run produced a tape");
+  return { tape: tape!, cm: game.heightCm };
+}
+
+test("the Worker's daily seed is the client's daily seed", () => {
+  for (const day of ["2026-09-17", "2026-01-01", "2030-12-31"]) assert.equal(workerDailySeed(day), clientDailySeed(day));
+});
+
+test("a daily score with its tape is replayed and kept at the height the replay reaches", async () => {
+  const e = env("enforce");
+  const { playerId } = await seedPlayer(e);
+  const { tape, cm } = climbToday();
+  assert.ok(cm > 0);
+  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm, seconds: tape.seconds, tape }), e);
+  const j = await res.json() as { ok: boolean; best: number; verified: boolean };
+  assert.equal(res.status, 200);
+  assert.equal(j.verified, true);
+  assert.equal(j.best, cm);
+  const row = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
+  assert.equal(row?.cm, cm);
+  const log = await e.DB.prepare("SELECT claimed, replayed, verdict FROM tapes WHERE player_id = ?").bind(playerId).first<{ claimed: number; replayed: number; verdict: string }>();
+  assert.equal(log?.claimed, cm); assert.equal(log?.replayed, cm); assert.equal(log?.verdict, "ok");
+});
+
+test("a claim above what the tape climbs to is refused in enforce mode and never lands", async () => {
+  const e = env("enforce");
+  const { playerId } = await seedPlayer(e);
+  const { tape, cm } = climbToday();
+  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  assert.equal(res.status, 422);
+  const j = await res.json() as { ok: boolean; verified: boolean; reason: string };
+  assert.equal(j.ok, false);
+  assert.equal(j.reason, "claim above replay");
+  const row = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first();
+  assert.equal(row, null, "no row for a claim the replay does not confirm");
+  const log = await e.DB.prepare("SELECT verdict, replayed FROM tapes WHERE player_id = ?").bind(playerId).first<{ verdict: string; replayed: number }>();
+  assert.equal(log?.verdict, "claim above replay");
+  assert.equal(log?.replayed, cm);
+});
+
+test("in shadow mode the same bad claim lands, but the verdict is on record for the owner", async () => {
+  const e = env("shadow");
+  const { playerId } = await seedPlayer(e);
+  const { tape, cm } = climbToday();
+  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  assert.equal(res.status, 200);
+  const j = await res.json() as { verified: boolean; reason: string };
+  assert.equal(j.verified, false);
+  assert.equal(j.reason, "claim above replay");
+  const log = await e.DB.prepare("SELECT verdict FROM tapes WHERE player_id = ?").bind(playerId).first<{ verdict: string }>();
+  assert.equal(log?.verdict, "claim above replay");
+});
+
+test("a console fetch with a number and no tape is refused in enforce mode", async () => {
+  const e = env("enforce");
+  const { playerId } = await seedPlayer(e);
+  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: 99999 }), e);
+  assert.equal(res.status, 422);
+  assert.equal(((await res.json()) as { reason: string }).reason, "no tape");
+});
+
+test("a tape from another day, with kit, or off the step grid is refused before any replay runs", async () => {
+  const e = env("enforce");
+  const { tape } = climbToday();
+  const cases: [string, unknown][] = [
+    ["wrong day", { ...tape, seed: clientDailySeed("2001-01-01") }],
+    ["kit on a daily", { ...tape, kit: { magnet: 2, power: 0, floor: 0 } }],
+    ["not a daily tape", { ...tape, daily: false }],
+    ["event off the step grid", { ...tape, events: [{ ...tape.events[0], t: tape.events[0].t + 0.004 }, ...tape.events.slice(1)] }],
+    ["too many events", { ...tape, events: Array.from({ length: 4001 }, (_, i) => ({ t: i / 120, k: "fling", id: 0, v: { x: 1, y: -1 } })) }],
+  ];
+  for (const [reason, bad] of cases) {
+    const { playerId } = await seedPlayer(e);
+    const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: 10, tape: bad }), e);
+    assert.equal(res.status, 422, reason);
+    assert.equal(((await res.json()) as { reason: string }).reason, reason);
+  }
+});
+
+// -------------------------------------------------------------------------------------------
+// PII the first filter missed: email, international and digit-spaced numbers, bare handles.
+// -------------------------------------------------------------------------------------------
+
+test("chat redacts emails, international and digit-spaced numbers, and bare handles", async () => {
+  const e = env();
+  const { playerId, token } = await seedPlayer(e);
+  const cases: [string, string][] = [
+    ["email me kid99@gmail.com", "email me [redacted]"],
+    ["kid99 at gmail dot com", "[redacted]"],
+    ["+44 7911 123456", "[redacted]"],
+    ["text me at 5 5 5 1 2 3 4 5 6 7", "text me at [redacted]"],
+    ["@kid_99 on insta", "[redacted] on insta"],
+    ["add me on discord Kid_99", "add me on [redacted]"],
+  ];
+  let last = 0;
+  for (const [text, want] of cases) {
+    // the per-player 3 s throttle: reset the last post's clock so each case posts
+    if (last) await e.DB.prepare("UPDATE chat SET created_at = created_at - 10000 WHERE player_id = ?").bind(playerId).run();
+    const res = await worker.fetch(post("/chat", { playerId, token, name: "Kid", text }), e);
+    assert.equal(res.status, 200, text);
+    const j = await res.json() as { message: { text: string } };
+    assert.equal(j.message.text, want, text);
+    last++;
+  }
+  const flags = await e.DB.prepare("SELECT COUNT(*) AS n FROM chat_reports WHERE kind = 'pii' AND target_id = ?").bind(playerId).first<{ n: number }>();
+  assert.equal(flags?.n, cases.length, "every redaction went to the owner");
+});
+
+test("chat still leaves an age, a score, a plain platform mention and a handle-less word alone", async () => {
+  const e = env();
+  const { playerId, token } = await seedPlayer(e);
+  for (const text of ["I'm 8 and I got 1234 cm", "discord is fun", "ig: coolkid", "on discord tonight?"]) {
+    await e.DB.prepare("UPDATE chat SET created_at = created_at - 10000 WHERE player_id = ?").bind(playerId).run();
+    const res = await worker.fetch(post("/chat", { playerId, token, name: "Kid", text }), e);
+    const j = await res.json() as { message: { text: string } };
+    assert.equal(j.message.text, text, text);
+  }
 });

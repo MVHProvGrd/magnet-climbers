@@ -20,4 +20,7 @@ database_name = "magnet-climbers"
 database_id = "27e2ffee-ec73-4b7a-80a0-b68633ffb132"
 
 [vars]
+# Daily score replay. "shadow" verifies the tape and records the verdict but keeps every
+# row; "enforce" refuses a row the replay does not confirm. Flip once the shadow log is clean.
+TAPE_MODE = "shadow"
 ALLOWED_ORIGINS = "https://magnetclimbers.com,https://www.magnetclimbers.com,https://mvhprovgrd.github.io,http://localhost:5180"

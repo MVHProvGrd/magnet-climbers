@@ -370,11 +370,11 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-      // the tape of your best climb is kept for the ghost that will draw it
-      if (!chill && cm > 0 && cm >= save.bestSolo) {
-        const tape = game.sealTape(dailyRun);
-        if (tape) saveBestTape(tape);
-      }
+      // the tape of your best climb is kept for the ghost that will draw it; a daily's tape
+      // always goes with its score, because the Worker replays it rather than trusting the number
+      const tape = !chill && cm > 0 ? game.sealTape(dailyRun) : null;
+      if (tape && cm >= save.bestSolo) saveBestTape(tape);
+      dailyTape = dailyRun ? tape : null;
       // the fridge of the month pays its pattern the first time you finish a climb on it
       const month = monthKey();
       if (save.themeMonth !== month) {
@@ -639,14 +639,18 @@ async function resubmitBests() {
 }
 
 /** Push the run to the global board (best per player is kept server-side). */
+/** The tape of the daily run that just ended, sealed at game over for the score post. */
+let dailyTape: Tape | null = null;
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
   const seconds = game ? Math.round(game.runTime) : 0;
   const board = dailyRun ? "daily" as const : rulesNow;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, board, cm, seconds, Date.now()).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, board, cm, seconds, Date.now(), dailyRun ? dailyTape ?? undefined : undefined).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
+      // the Worker could not confirm the climb: say so rather than pretend it counted
+      if (dailyRun && r.verified === false) { ui.setGameOverRank(panel, r.reason === "no tape" ? "Update the app to post to the daily" : "Climb could not be verified"); return; }
       const rank = await leaderboard.rank(board, save.playerId);
       const where = dailyRun ? "Today" : "Global";
       ui.setGameOverRank(panel, rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
