@@ -203,7 +203,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 23);
+  assert.equal(modern.snapshot()!.worldVersion, 24);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -394,7 +394,9 @@ test("a resumed run finds the door where it left it, not back at rest", () => {
 });
 
 test("gadget clocks, carrier offsets, trick counters and near-misses deep-copy on save", () => {
-  const g = game(); g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
+  // pinned to v23: this is about the save/restore round trip, not about which gadget kind a
+  // seed lands on, and the +21/+20 offset below is tuned to a swing gadget's own hitbox.
+  const g = new Game(levels, events, { seed: 12345, rules: "solo", worldVersion: 23 }); g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
   const gadget = g.world.gadgets[0], hold = gadgetPose(gadget, g.world.gadgetTime).hold, c = g.climbers[0];
   Object.assign(c, { x: hold.x + 21, y: hold.y + 20, angle: 0, grip: undefined, ragdoll: undefined, state: "flying" });
   attachGrip(c, findContacts(c, g.world, 0).filter((p) => p.limb === 0)); c.state = "stuck";
@@ -825,6 +827,36 @@ test("toys still go straight on the door, not only on keyrings", () => {
   const now = count(22);
   assert.ok(now.stuck >= now.keyrings / 2, `stuck toys ${now.stuck} against ${now.keyrings} keyrings`);
   assert.ok(count(21).stuck < now.stuck, "v22 is the version that brought them back");
+});
+
+test("v24 gadget doors and set pieces fall on RNG-driven columns, not a fixed i % 4 / i % 5 skeleton", () => {
+  const doorIndices = (version: number, seed: number) => {
+    const w = new World(seed, 0, version); w.generateTo(120);
+    const gadgetAt: number[] = [], setPieceAt: number[] = [];
+    w.segments.forEach((s, i) => {
+      if (s.gadgets?.length) gadgetAt.push(i);
+      // a set piece door clears the segment and fills it with one non-gadget zone plus a lane pickup;
+      // populateSetPiece never leaves gadgets, so this is unambiguous against a gadget door
+      else if (s.zones.some((z) => z.itemId && ["dispenser", "calendar", "ice-tray", "vent"].includes(z.itemId))) setPieceAt.push(i);
+    });
+    return { gadgetAt, setPieceAt };
+  };
+  // v23 (and every version before it): gadget doors land on i % 4 === 0 and set pieces on
+  // i >= 5 && i % 5 === 0 && i % 4 !== 0, so two different seeds land on the exact same columns.
+  const oldA = doorIndices(23, 1), oldB = doorIndices(23, 2);
+  assert.deepEqual(oldA.gadgetAt, oldB.gadgetAt, "v23 gadget doors are seed-independent");
+  assert.deepEqual(oldA.setPieceAt, oldB.setPieceAt, "v23 set pieces are seed-independent");
+  assert.deepEqual(oldA.gadgetAt, [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116]);
+  // v24: cooldowns rolled from the world RNG make the pacing itself part of the seed, so two
+  // seeds must land on different columns, not just carry different content on the same columns.
+  const newA = doorIndices(24, 1), newB = doorIndices(24, 2);
+  assert.notDeepEqual(newA.gadgetAt, newB.gadgetAt, "v24 gadget doors differ by seed");
+  assert.notDeepEqual(newA.setPieceAt, newB.setPieceAt, "v24 set pieces differ by seed");
+  // and the average cadence should still land roughly where it did before (a gadget door every
+  // ~4-5 segments, a set piece every ~5-6), not drift off to something far sparser or denser
+  const spacing = (xs: number[]) => (xs[xs.length - 1] - xs[0]) / (xs.length - 1);
+  assert.ok(spacing(newA.gadgetAt) > 3 && spacing(newA.gadgetAt) < 7, `gadget cadence ${spacing(newA.gadgetAt)}`);
+  assert.ok(spacing(newA.setPieceAt) > 3.5 && spacing(newA.setPieceAt) < 8, `set piece cadence ${spacing(newA.setPieceAt)}`);
 });
 
 test("the compass needle follows a climber and settles back to north", () => {
