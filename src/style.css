@@ -500,9 +500,11 @@ select.buy option { background: #1e2229; color: #fff; }
   display: flex; flex-direction: column; gap: calc(2 * var(--px));
 }
 .mode-tile.solo { background: linear-gradient(160deg,#6fd6ff,#2fa9e6); }
-.mode-tile.exp { background: linear-gradient(160deg,#ffa95f,#ff8a3d); }
+.mode-tile.daily { background: linear-gradient(160deg,#c9a4ff,#8d5bff); }
+.mode-tile.daily.spent { background: linear-gradient(160deg,#5a5f6b,#3d424c); }
 .mode-tile b { font: 900 calc(20 * var(--px)) var(--display); letter-spacing: calc(1 * var(--px)); }
 .mode-tile small { font: 700 calc(12 * var(--px)) / 1.25 var(--display); opacity: .8; }
+.mode-tile i { margin-top: auto; }
 .mode-tile i { margin-top: auto; font: 800 calc(10 * var(--px)) var(--display); font-style: normal; letter-spacing: calc(1.2 * var(--px)); }
 .home-row {
   height: calc(44 * var(--px)); padding: 0 calc(12 * var(--px)); border: 0; border-radius: calc(12 * var(--px));

@@ -9,7 +9,19 @@ export interface ScoreRow {
 }
 
 export type Mode = "crew" | "solo";
-export type BoardMode = Mode | "lifetime" | "coins";
+export type BoardMode = Mode | "lifetime" | "coins" | "daily";
+
+/**
+ * The daily climb: one fridge for everybody for a UTC day. The seed comes from the date alone,
+ * so every device generates the same door without asking the server for it, and the board the
+ * Worker keeps is the same day's.
+ */
+export const todayKey = (at = Date.now()): string => new Date(at).toISOString().slice(0, 10);
+export function dailySeed(day = todayKey()): number {
+  let hash = 2166136261;
+  for (let i = 0; i < day.length; i++) hash = Math.imul(hash ^ day.charCodeAt(i), 16777619);
+  return (hash >>> 0) || 1;
+}
 
 const DEFAULT_API = "https://magnet-climbers-api.magnetclimbers.workers.dev";
 /** Override with VITE_LEADERBOARD_URL; set it to "off" to disable the board. */
@@ -73,8 +85,8 @@ export const leaderboard = {
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
-  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number, at?: number) =>
-    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
+  submit: (playerId: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number) =>
+    call<{ ok: boolean; best: number; taken?: boolean; day?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
 };
 
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }

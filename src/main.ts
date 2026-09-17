@@ -10,7 +10,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
-import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
+import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
 /**
@@ -171,6 +171,7 @@ canvas.addEventListener("touchend", (e) => { const now = Date.now(); if (now - l
 setLang(save.lang || detectLang());
 const ui = new Ui(uiRoot, () => save, {
   onPlay: () => startRun("solo"),
+  onPlayDaily: () => startRun("solo", false, true),
   onIntroSeen: (key) => { if (!save.intros.includes(key)) { save.intros.push(key); persist(); } },
   onResume: () => { paused = false; },
   onPause: () => { paused = true; },
@@ -358,6 +359,14 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      if (dailyRun) {
+        const day = todayKey();
+        save.daily = { day, cm };
+        // yesterday's climb keeps the streak; a missed day starts it again at one
+        const yesterday = todayKey(Date.now() - 86_400_000);
+        save.streak = save.streak.last === day ? save.streak
+          : { days: save.streak.last === yesterday ? save.streak.days + 1 : 1, last: day };
+      }
       const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
@@ -434,7 +443,9 @@ function tickTutorial(dt: number) {
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 /** coins picked up this run, across revives; feeds the dino unlock */
 let runCoinsTotal = 0;
-function startRun(rules: "solo", withTutorial = false) {
+/** True while the current run is today's shared climb. */
+let dailyRun = false;
+function startRun(rules: "solo", withTutorial = false, daily = false) {
   void cloudPull(true);
   rulesNow = rules;
   ui.clear();
@@ -445,12 +456,18 @@ function startRun(rules: "solo", withTutorial = false) {
   runCoinsTotal = 0;
   paused = false;
   const lineup = lineupFor(rules);
-  game = new Game(save.kit, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
+  dailyRun = daily;
+  // everyone climbs the same door with the same gear, so a daily leaves the kit in the drawer
+  const kit = daily ? ({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>) : save.kit;
+  game = new Game(kit, runEvents(),
+    withTutorial ? { rules, seed: TUTORIAL_SEED, lineup }
+    : daily ? { rules, seed: dailySeed(), lineup }
+    : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
-  if (!withTutorial && !save.chill) {
-    const best = rules === "solo" ? save.bestSolo : save.bestCm;
+  if (!withTutorial && !save.chill && !daily) {
+    const best = save.bestSolo;
     if (best > 0) game.best = { cm: best, beaten: false };
   }
   if (pendingChallenge && pendingChallenge.mode === rules) {
@@ -491,12 +508,14 @@ async function resubmitBests() {
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
   const seconds = game ? Math.round(game.runTime) : 0;
+  const board = dailyRun ? "daily" as const : rulesNow;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds, Date.now()).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, board, cm, seconds, Date.now()).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
-      const rank = await leaderboard.rank(rulesNow, save.playerId);
-      ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
+      const rank = await leaderboard.rank(board, save.playerId);
+      const where = dailyRun ? "Today" : "Global";
+      ui.setGameOverRank(panel, rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
     });
   };
   // every finished run posts; the name is whatever the player has (a guest name if they skipped)

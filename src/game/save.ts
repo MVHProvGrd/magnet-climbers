@@ -49,6 +49,10 @@ export interface SaveData {
   /** chat and profile portrait id from `avatars.ts`; empty = coloured initial */
   avatar: string;
   introSeen: boolean;
+  /** the daily climb already taken: its UTC day, what it scored, and the streak it continued */
+  daily: { day: string; cm: number } | null;
+  /** consecutive days with a daily climb, and the last day counted */
+  streak: { days: number; last: string };
   /** the one-time name offer has been shown */
   namePrompted: boolean;
   tutorialDone: boolean;
@@ -71,6 +75,8 @@ function defaults(): SaveData {
     totalCm: 0,
     upgrades,
     kit,
+    daily: null,
+    streak: { days: 0, last: "" },
     sound: true,
     music: true,
     lang: "",
@@ -121,6 +127,7 @@ export function loadSave(): SaveData {
       pattern: parsed.pattern ?? parsed.skin ?? d.pattern,
       upgrades: { ...d.upgrades, ...(parsed.upgrades ?? {}) },
       kit: { ...d.kit, ...(parsed.kit ?? {}) },
+      streak: { ...d.streak, ...(parsed.streak ?? {}) },
       version: 1 as const,
     };
     // players who already chose a name never see the one-time offer

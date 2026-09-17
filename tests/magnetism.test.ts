@@ -6,6 +6,7 @@ import { Game } from "../src/game/game";
 import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
+import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -831,6 +832,22 @@ test("the prize machine doubles its price every spin", () => {
   assert.ok(total > 100_000 && total < 250_000, `collecting everything should cost about 179k: ${total}`);
   // and a spin is never free, however the counter arrives
   assert.equal(prizeCost(-3), 100);
+});
+
+test("the daily climb is one fridge a day, the same for everyone", () => {
+  // the seed comes from the date alone, so two devices build the same door without asking
+  assert.equal(dailySeed("2026-09-17"), dailySeed("2026-09-17"));
+  assert.notEqual(dailySeed("2026-09-17"), dailySeed("2026-09-18"));
+  assert.ok(dailySeed("2026-09-17") > 0);
+  // and the door itself is identical, not just the number
+  const a = new World(dailySeed("2026-09-17"), 0), b = new World(dailySeed("2026-09-17"), 0);
+  a.ensure(-4000); b.ensure(-4000);
+  assert.deepEqual(a.segments, b.segments);
+  const other = new World(dailySeed("2026-09-18"), 0); other.ensure(-4000);
+  assert.notDeepEqual(a.segments, other.segments);
+  // the day rolls at UTC midnight
+  assert.equal(todayKey(Date.parse("2026-09-17T23:59:00Z")), "2026-09-17");
+  assert.equal(todayKey(Date.parse("2026-09-18T00:01:00Z")), "2026-09-18");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

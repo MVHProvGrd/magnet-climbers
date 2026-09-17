@@ -6,7 +6,7 @@ import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { DeathCause } from "./game";
 import type { SaveData } from "./save";
-import { leaderboard, leaderboardEnabled, chat, apiBase, checkAdminKey, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
+import { leaderboard, leaderboardEnabled, chat, apiBase, checkAdminKey, todayKey, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { AVATARS, avatarHtml, avatarById } from "./avatars";
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
@@ -15,6 +15,8 @@ import { setChatStrip, groupNum } from "./hud";
 
 export interface UiHandlers {
   onPlay(rules: "solo"): void;
+  /** Today's shared climb: same fridge for everyone, one attempt. */
+  onPlayDaily(): void;
   onIntroSeen(key: string): void;
   onResume(): void;
   /** the MENU button: freeze the sim before the pause panel shows */
@@ -314,6 +316,9 @@ export class Ui {
     const p = el("div", "home");
     const icon = (a: string, art: string, text: string) =>
       `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
+    const today = todayKey();
+    const done = s.daily?.day === today;
+    const streak = s.streak.last === today || s.streak.last === todayKey(Date.now() - 86_400_000) ? s.streak.days : 0;
     p.innerHTML = `
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
@@ -334,6 +339,10 @@ export class Ui {
             <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
             <i>BEST ${groupNum(s.bestSolo)} CM</i>
           </button>
+          <button class="mode-tile daily ${done ? "spent" : ""}" data-a="daily">
+            <b>DAILY CLIMB</b><small>${done ? "New one tomorrow." : "One shared fridge, one go."}</small>
+            <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : "TAKE TODAY'S"}${streak ? ` · ${streak}🔥` : ""}</i>
+          </button>
         </div>
         <label class="home-row ${s.chill ? "on" : ""}">
           <b class="chill">CHILL</b><small>no red line</small>
@@ -353,6 +362,9 @@ export class Ui {
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "solo") this.showQuickKit(() => this.h.onPlay("solo"));
+      // the daily is the same climb for everyone, so no kit sheet stands in front of it
+      if (a === "daily" && !done) { this.clear(); this.h.onPlayDaily(); }
+      if (a === "daily" && done) this.showBoard("daily");
       if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"));
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard("solo");
@@ -993,15 +1005,16 @@ export class Ui {
       const list = rows && rows.length
         ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span>${r.seconds ? `<span class="t" title="run time">${fmtTime(r.seconds)}</span>` : ""}</div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
-      const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : s.bestSolo;
+      const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : mode === "daily" ? (s.daily?.day === todayKey() ? s.daily.cm : 0) : s.bestSolo;
       const fmt = (n: number) => mode === "coins" ? `$${n.toLocaleString()}` : fmtDistance(n);
       const mine = leaderboardEnabled
         ? rank?.rank ? `You: #${rank.rank} · ${fmt(rank.cm ?? 0)}` : "You: not on the board yet"
         : `You: ${fmt(localMine)}`;
       p.innerHTML = `
-        <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2><span class="shell-spacer"></span></div>
+        <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : mode === "daily" ? "Today\u2019s climb" : "Highest climbs"}</h2><span class="shell-spacer"></span></div>
         <div class="shell-body">
-          <div class="seg seg-3">
+          <div class="seg">
+            <button class="${mode === "daily" ? "on" : ""}" data-m="daily">TODAY</button>
             <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
             <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
             <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>

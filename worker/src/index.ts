@@ -132,6 +132,28 @@ const json = (data: unknown, headers: Record<string, string>, status = 200) =>
 
 const validMode = (m: unknown): m is "crew" | "solo" => m === "crew" || m === "solo";
 
+/**
+ * The daily climb: one fridge for everybody, one scored attempt, a fresh board at UTC midnight.
+ * The day is decided here, never by the client -- otherwise a player could pick the day whose
+ * board they like. The client derives the same seed from the same date string.
+ */
+const dayKey = (at = Date.now()) => new Date(at).toISOString().slice(0, 10);
+let dailyReady = false;
+async function ensureDaily(env: Env): Promise<void> {
+  if (dailyReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily (
+    player_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL,
+    seconds INTEGER,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, day)
+  )`).run().catch(() => {});
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS daily_board ON daily (day, cm DESC)").run().catch(() => {});
+  dailyReady = true;
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const h = cors(req, env);
@@ -163,6 +185,13 @@ export default {
         ).bind(limit).all();
         return json(rows.results, h);
       }
+      if (mode === "daily") {
+        await ensureDaily(env);
+        const rows = await env.DB.prepare(
+          "SELECT name, cm, player_id, created_at, seconds FROM daily WHERE day = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, created_at ASC LIMIT ?",
+        ).bind(dayKey(), limit).all();
+        return json(rows.results, h);
+      }
       if (!validMode(mode)) return json({ error: "bad mode" }, h, 400);
       // `seconds` arrived after launch; until the column exists the board still answers
       const rows = await env.DB.prepare(
@@ -191,6 +220,14 @@ export default {
           if (!mine) return json({ rank: null, resetAt: cleared.at }, h);
         }
       }
+      if (mode === "daily" && player) {
+        await ensureDaily(env);
+        const day = dayKey();
+        const me = await env.DB.prepare("SELECT cm FROM daily WHERE player_id = ? AND day = ?").bind(player, day).first<{ cm: number }>();
+        if (!me) return json({ rank: null, day }, h);
+        const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM daily WHERE day = ? AND cm > ? AND player_id NOT LIKE 'smoke-%'").bind(day, me.cm).first<{ n: number }>();
+        return json({ rank: (above?.n ?? 0) + 1, cm: me.cm, day }, h);
+      }
       if (mode === "coins" && player) {
         const me = await env.DB.prepare("SELECT coins FROM wallet WHERE player_id = ?").bind(player).first<{ coins: number }>();
         if (!me) return json({ rank: null }, h);
@@ -212,9 +249,19 @@ export default {
       if (nameIsProfane(name)) name = "climber";
       const cm = Math.floor(Number(body.cm));
       const secs = Number.isFinite(Number(body.seconds)) && Number(body.seconds) > 0 ? Math.min(86400, Math.round(Number(body.seconds))) : null;
-      if (!playerId || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
-        return json({ error: "bad score" }, h, 400);
+      if (!playerId || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad score" }, h, 400);
+      // The daily climb is one attempt on one shared fridge: the first score of the day stands,
+      // whatever a later one says, and the day is this server's, not the caller's.
+      if (body.mode === "daily") {
+        await ensureDaily(env);
+        const day = dayKey();
+        const had = await env.DB.prepare("SELECT cm FROM daily WHERE player_id = ? AND day = ?").bind(playerId, day).first<{ cm: number }>();
+        if (had) return json({ ok: true, best: had.cm, day, taken: true }, h);
+        await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(playerId, day, name, cm, secs, Date.now()).run();
+        return json({ ok: true, best: cm, day }, h);
       }
+      if (!validMode(body.mode)) return json({ error: "bad score" }, h, 400);
       const now = Date.now();
       // A score the owner cleared does not come back. An updated client knows this already -
       // it drops the best when /rank reports the clear - but a phone still running the old
