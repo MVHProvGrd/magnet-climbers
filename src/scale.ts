@@ -87,16 +87,23 @@ function askForKey() {
 
 /* --------------------------------------------------------------- the subject */
 /** Things that really do appear on a door, grouped the way an owner thinks about them. */
-const GROUPS: { label: string; of: (i: FridgeItem) => boolean }[] = [
-  { label: "Paper on the door", of: (i) => i.family === "paper" },
-  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-") },
-  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") },
+/**
+ * `done` hides a group from the walk. Temporary: these three were measured on 17 September
+ * and their sizes are kept in data/scale-audit.json, waiting to be applied to the game in one
+ * pass. Hiding them keeps the walk to what is actually left rather than making the owner step
+ * past sixty-one things already decided. Clear the flags to audit them again.
+ */
+const GROUPS: { label: string; of: (i: FridgeItem) => boolean; done?: true }[] = [
+  { label: "Paper on the door", of: (i) => i.family === "paper", done: true },
+  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-"), done: true },
+  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard, done: true },
   { label: "Hanging gadgets", of: (i) => i.family === "gadget" },
   { label: "Souvenir plates", of: (i) => i.kind === "attract" || i.kind === "repel" },
   { label: "Surfaces and fittings", of: (i) => i.family === "surface" && i.kind !== "attract" && i.kind !== "repel" },
   { label: "Pickups", of: (i) => i.family === "pickup" },
 ];
-/** A gadget draws itself at a size baked into gadget-art, so the sliders cannot move it. */
+/** gadget-art fits every gadget's art into this many pixels, whatever its own shape. */
+const GADGET_FIT = 76;
 const isGadget = (i: FridgeItem) => i.family === "gadget";
 /** The advertising magnets: family "bumper", but not one of the photographed toys. */
 const isAdvert = (i: FridgeItem) => i.family === "bumper" && !i.id.startsWith("bumper-");
@@ -144,9 +151,17 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
     drawZone(ctx, zone(item.kind), 0, 42); return;
   }
   if (isGadget(item)) {
-    // drawn at its own size about the hold, so centre it in the box we were given
-    drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior!, x: x + w / 2, y: y + h / 2, phase: 0,
+    // drawGadget fits its art into a baked 76px and takes no size from the caller, so the
+    // slider moved the number and nothing else -- a letter stayed the same size at 8px as at
+    // 516. Scale the whole draw instead, about the centre of the box, so what is on screen is
+    // the size the readout claims and a gadget can actually be judged against the climber.
+    const px = artPixels(item);
+    const drawnH = px ? GADGET_FIT * (px.h / Math.max(px.w, px.h)) : GADGET_FIT;
+    const k = h / drawnH;
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(k, k);
+    drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior!, x: 0, y: 0, phase: 0,
       ...(item.behavior === "swing" || item.behavior === "clip" ? { swing: { angle: 0, vel: 0, cool: 0 } } : {}) }, 0);
+    ctx.restore();
     return;
   }
   if (item.family === "pickup") {
@@ -177,7 +192,14 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
 
 /* ------------------------------------------------------------------ the bench */
 /** Everything the bench can walk, in the order the groups are listed. */
-const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of));
+/**
+ * Cooper's hand and the cat's paw are guide cards, not things on the door. They are animated
+ * by kid-hand.ts and cat-paw.ts at their own scale, they never become a zone, and the bench
+ * drew each as a red rectangle with its name in it -- nothing you could judge and nothing a
+ * number would reach. They stay as they are, so the walk no longer asks about them.
+ */
+const OPEN = GROUPS.filter((gr) => !gr.done);
+const WALK: FridgeItem[] = OPEN.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter((i) => !i.hazard);
 /**
  * v2: every number recorded before this was taken against whatever the bench happened to
  * draw, and for the sixteen advertising magnets that was a sheet of dark plastic trim rather
@@ -317,7 +339,7 @@ function boot() {
   /** The picker doubles as the checklist: a tick marks every size already recorded. */
   const fillPicker = () => {
     const keep = item.id;
-    picker.innerHTML = GROUPS.map((gr) => {
+    picker.innerHTML = OPEN.map((gr) => {
       const of = FRIDGE_ITEMS.filter(gr.of);
       const done = of.filter((i) => audit[i.id]).length;
       return of.length ? `<optgroup label="${esc(gr.label)} — ${done}/${of.length}">${of.map((i) =>
@@ -361,7 +383,17 @@ function boot() {
   root.querySelector("#skip")!.addEventListener("click", () => go(1));
   root.querySelector("#prev")!.addEventListener("click", () => go(-1));
   root.querySelector("#export")!.addEventListener("click", () => { file.hidden = !file.hidden; file.value = fileText(); });
-  root.querySelector("#copyall")!.addEventListener("click", () => void navigator.clipboard.writeText(fileText()));
+  // Copying silently is the same as not copying: you cannot tell, so you click it again and
+  // still cannot tell. The button says what happened, and falls back to showing the text when
+  // the clipboard is refused -- which it is on any page that is not served over https.
+  root.querySelector("#copyall")!.addEventListener("click", (e) => {
+    const btn = e.target as HTMLButtonElement, was = btn.textContent;
+    const rows = WALK.filter((i) => audit[i.id]).length;
+    navigator.clipboard.writeText(fileText()).then(
+      () => { btn.textContent = `Copied ${rows} of ${WALK.length}`; },
+      () => { file.hidden = false; file.value = fileText(); file.select(); btn.textContent = "Copy it from the box"; },
+    ).finally(() => setTimeout(() => { btn.textContent = was; }, 2200));
+  });
   root.querySelector("#wipe")!.addEventListener("click", () => {
     if (!confirm("Forget every size recorded on this device?")) return;
     audit = {}; writeAudit(audit); fillPicker(); tell();

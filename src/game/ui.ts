@@ -790,7 +790,6 @@ export class Ui {
           `<select class="shell-chip" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>`)}
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
-        ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
         <p class="sec-label">App</p>
         ${installRow()}
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
@@ -814,7 +813,7 @@ export class Ui {
       </div>`;
     const syncToggles = () => {
       const now = this.save();
-      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["chill", now.chill]] as const) {
+      for (const [key, on] of [["sound", now.sound], ["music", now.music]] as const) {
         const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
         if (!input) continue;
         input.checked = on;
@@ -836,8 +835,8 @@ export class Ui {
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
-      if (a === "sound" || a === "music" || a === "chill") {
-        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), chill: () => this.h.onToggleChill() })[a]();
+      if (a === "sound" || a === "music") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic() })[a]();
         syncToggles();
         return;
       }
