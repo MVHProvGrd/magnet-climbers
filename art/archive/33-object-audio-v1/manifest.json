@@ -1,0 +1,926 @@
+[
+  {
+    "id": "keys",
+    "label": "House keys + fob",
+    "description": "Irregular brass key jangle with a dull plastic fob tap.",
+    "variants": [
+      {
+        "file": "ready/keys-1.wav",
+        "seconds": 0.5,
+        "peakDb": -10.85,
+        "rmsDb": -26.7,
+        "sha256": "8eb73667014c0987356b0acccd13c63e8bfa9fcee04adb99197ab0c99dce1071"
+      },
+      {
+        "file": "ready/keys-2.wav",
+        "seconds": 0.5,
+        "peakDb": -11.03,
+        "rmsDb": -26.73,
+        "sha256": "219317a4c92cd9f270b587e162cf0a614b3926dbf2dfbacb4c7d1bba2b2c6b11"
+      },
+      {
+        "file": "ready/keys-3.wav",
+        "seconds": 0.5,
+        "peakDb": -9.62,
+        "rmsDb": -26.71,
+        "sha256": "bf550cc3f63d2cf1d08cb1104cedad741d18f76b4aa1b421d3cfb23cdbb4d14b"
+      }
+    ]
+  },
+  {
+    "id": "bottle-opener",
+    "label": "Bottle opener",
+    "description": "Short low steel clank, followed by a small chain tick.",
+    "variants": [
+      {
+        "file": "ready/bottle-opener-1.wav",
+        "seconds": 0.41,
+        "peakDb": -12.09,
+        "rmsDb": -27.61,
+        "sha256": "ecc695e42af615f7d278e6f0b4025f0bee614713bc216f6b90f69c0ec083a3da"
+      },
+      {
+        "file": "ready/bottle-opener-2.wav",
+        "seconds": 0.41,
+        "peakDb": -11.51,
+        "rmsDb": -27.61,
+        "sha256": "e483dd572079a133dfec396624f946a03da07445cb0bead9670d708c447a2853"
+      },
+      {
+        "file": "ready/bottle-opener-3.wav",
+        "seconds": 0.41,
+        "peakDb": -11.2,
+        "rmsDb": -27.6,
+        "sha256": "2e807388179c978cdeba7b316286e0a291d811b9aa568f764d30a6186cb9cc09"
+      }
+    ]
+  },
+  {
+    "id": "disco-ball",
+    "label": "Disco ball",
+    "description": "Light glassy tile tinks and a tiny mounting-chain rattle; no melody.",
+    "variants": [
+      {
+        "file": "ready/disco-ball-1.wav",
+        "seconds": 0.42,
+        "peakDb": -11.65,
+        "rmsDb": -28.0,
+        "sha256": "cc59ae11391632200c86ec3fcf4d83b7a7afea4c7cad8f412eda4f992eae1c43"
+      },
+      {
+        "file": "ready/disco-ball-2.wav",
+        "seconds": 0.42,
+        "peakDb": -12.08,
+        "rmsDb": -28.07,
+        "sha256": "f1f865567d8d0bc6180b171cadc76bc2d332192e6167ea11a0cbd42eebe40e76"
+      },
+      {
+        "file": "ready/disco-ball-3.wav",
+        "seconds": 0.42,
+        "peakDb": -12.76,
+        "rmsDb": -28.1,
+        "sha256": "cb5646d2e3730206da352695e713c9fb173e944f07b77a69334406573240179c"
+      }
+    ]
+  },
+  {
+    "id": "rubber-duck",
+    "label": "Rubber duck",
+    "description": "Air-driven toy squeaker: nasal squeeze and release.",
+    "variants": [
+      {
+        "file": "ready/rubber-duck-1.wav",
+        "seconds": 0.5,
+        "peakDb": -15.04,
+        "rmsDb": -26.05,
+        "sha256": "2a5810784faa3483ab6a2e343b810ecc7c05a54fd445e8d782332cb10cd25d1b"
+      },
+      {
+        "file": "ready/rubber-duck-2.wav",
+        "seconds": 0.5,
+        "peakDb": -15.09,
+        "rmsDb": -26.08,
+        "sha256": "3e816aecd11358ef947b301b7191f6ad72e6d9d070c4df6b9745dbc68d032e94"
+      },
+      {
+        "file": "ready/rubber-duck-3.wav",
+        "seconds": 0.5,
+        "peakDb": -15.18,
+        "rmsDb": -26.04,
+        "sha256": "05bbdf72ec74770922fe1893044b6b63d5cbd22d97c092a096a80ca871bd4e14"
+      }
+    ]
+  },
+  {
+    "id": "bead-lanyard",
+    "label": "Wooden bead lanyard",
+    "description": "Dry uneven wooden beads, with a light badge slap.",
+    "variants": [
+      {
+        "file": "ready/bead-lanyard-1.wav",
+        "seconds": 0.42,
+        "peakDb": -17.42,
+        "rmsDb": -35.35,
+        "sha256": "cfca9fb1b9e411af6ab1236d0eb7112cb0ef809049b1ec5aacfd8aa9b14f0f54"
+      },
+      {
+        "file": "ready/bead-lanyard-2.wav",
+        "seconds": 0.42,
+        "peakDb": -16.68,
+        "rmsDb": -35.46,
+        "sha256": "03f14ed9259585aab7e1d7cbf0650dd10514c788d4996e3c818c232af1724c67"
+      },
+      {
+        "file": "ready/bead-lanyard-3.wav",
+        "seconds": 0.42,
+        "peakDb": -18.68,
+        "rmsDb": -35.39,
+        "sha256": "b219f72dbb84030789ea984cc3b92a2a9ce31abad28d44a245f9cd2871f59635"
+      }
+    ]
+  },
+  {
+    "id": "carabiner-whistle",
+    "label": "Carabiner + whistle",
+    "description": "Hollow metal whistle body clack and spring-gate tick, not a blown whistle.",
+    "variants": [
+      {
+        "file": "ready/carabiner-whistle-1.wav",
+        "seconds": 0.37,
+        "peakDb": -10.99,
+        "rmsDb": -27.16,
+        "sha256": "e0a1307ca7692d4548e4075ce6213d09507ee3900e1c02996a757ebc8cccafba"
+      },
+      {
+        "file": "ready/carabiner-whistle-2.wav",
+        "seconds": 0.37,
+        "peakDb": -11.43,
+        "rmsDb": -28.69,
+        "sha256": "c97a9d73fd901ed22b4e5b6e11e8acef8fe9cd5bfe321c7587d1305cf4ea3416"
+      },
+      {
+        "file": "ready/carabiner-whistle-3.wav",
+        "seconds": 0.37,
+        "peakDb": -12.0,
+        "rmsDb": -27.14,
+        "sha256": "ea31ec9a59a436588afd38d7bd410963cffdfa2557932b5fcbc0c247f25d2c30"
+      }
+    ]
+  },
+  {
+    "id": "wind-chime",
+    "label": "Three-tube wind chime",
+    "description": "Three irregular tube strikes with long inharmonic decay; no scale run.",
+    "variants": [
+      {
+        "file": "ready/wind-chime-1.wav",
+        "seconds": 1.43,
+        "peakDb": -9.16,
+        "rmsDb": -26.89,
+        "sha256": "2e95cec2945fe480d0df119529309737d881a6d0fd91e8521426bd57ccccad21"
+      },
+      {
+        "file": "ready/wind-chime-2.wav",
+        "seconds": 1.43,
+        "peakDb": -8.34,
+        "rmsDb": -26.79,
+        "sha256": "7d6a647a1d22e0d4d30110454c01c981c0be2c60351b2a51bf7f7b94671d8ae7"
+      },
+      {
+        "file": "ready/wind-chime-3.wav",
+        "seconds": 1.43,
+        "peakDb": -8.72,
+        "rmsDb": -26.73,
+        "sha256": "5bf7cadfb97a876ba44d7296b45b5de3f56ae6aa27f9de4f6d1fe183c9e6dea1"
+      }
+    ]
+  },
+  {
+    "id": "baby-shoe",
+    "label": "Baby shoe on ribbon",
+    "description": "Soft rubber-sole tap and cloth/ribbon shuffle, not a bell.",
+    "variants": [
+      {
+        "file": "ready/baby-shoe-1.wav",
+        "seconds": 0.38,
+        "peakDb": -19.06,
+        "rmsDb": -36.79,
+        "sha256": "754b3c3e2498b8f0bd44135998438644ea99c3a5b04de263d7ade91ea6f86ab6"
+      },
+      {
+        "file": "ready/baby-shoe-2.wav",
+        "seconds": 0.38,
+        "peakDb": -14.64,
+        "rmsDb": -36.79,
+        "sha256": "029d83552d5b3d138a215e3f3aa439eb479a351300f910ba4f70c92aa327e343"
+      },
+      {
+        "file": "ready/baby-shoe-3.wav",
+        "seconds": 0.38,
+        "peakDb": -17.55,
+        "rmsDb": -36.89,
+        "sha256": "b9559f40650dcf6d96e4fecfc2332007c65998999ae7ba30a430498767398f92"
+      }
+    ]
+  },
+  {
+    "id": "scissors",
+    "label": "Scissors",
+    "description": "Loose steel blades chatter against each other, with a short pivot scrape.",
+    "variants": [
+      {
+        "file": "ready/scissors-1.wav",
+        "seconds": 0.46,
+        "peakDb": -12.77,
+        "rmsDb": -32.42,
+        "sha256": "3ad0c3ed2c601190e47b97d895a9fd69d4cab60ee9c39263a04e163e16373717"
+      },
+      {
+        "file": "ready/scissors-2.wav",
+        "seconds": 0.46,
+        "peakDb": -13.0,
+        "rmsDb": -32.5,
+        "sha256": "93925940e1cef233c504d60135d826f0b2dfd242ec4e2c8144ed7e4e6813f75d"
+      },
+      {
+        "file": "ready/scissors-3.wav",
+        "seconds": 0.46,
+        "peakDb": -11.54,
+        "rmsDb": -32.46,
+        "sha256": "24d196a124b934308fe0a8a4f24f004e78c55134f8802bcdc9eeed846269864f"
+      }
+    ]
+  },
+  {
+    "id": "measuring-spoons",
+    "label": "Measuring spoons",
+    "description": "Several hollow stainless cups collide and settle at different pitches.",
+    "variants": [
+      {
+        "file": "ready/measuring-spoons-1.wav",
+        "seconds": 0.6,
+        "peakDb": -12.08,
+        "rmsDb": -27.19,
+        "sha256": "ed67b93a3c3d1d0c9945fb9f487f19e09d039606a9e84d402cd784032410355c"
+      },
+      {
+        "file": "ready/measuring-spoons-2.wav",
+        "seconds": 0.6,
+        "peakDb": -11.42,
+        "rmsDb": -27.21,
+        "sha256": "a7052618f5eaf44f06136080c322189d0d670dae6e46c8604f869a5e5b78e629"
+      },
+      {
+        "file": "ready/measuring-spoons-3.wav",
+        "seconds": 0.6,
+        "peakDb": -11.66,
+        "rmsDb": -27.2,
+        "sha256": "cf01ffe0ac370240b57979d1e7673bcbd4e61af4df6444f244d04febec0e3559"
+      }
+    ]
+  },
+  {
+    "id": "souvenir-spoon",
+    "label": "Souvenir spoon",
+    "description": "One fine silver spoon ting with a faint chain tick.",
+    "variants": [
+      {
+        "file": "ready/souvenir-spoon-1.wav",
+        "seconds": 0.53,
+        "peakDb": -11.12,
+        "rmsDb": -28.75,
+        "sha256": "489cd4f00b06843ce4126d51abe9c7eef5b7a52defb3dbd381683f2e22f1886f"
+      },
+      {
+        "file": "ready/souvenir-spoon-2.wav",
+        "seconds": 0.53,
+        "peakDb": -12.29,
+        "rmsDb": -28.74,
+        "sha256": "637b644e12a61b157cc978dc71391b5d066d62041f22da6bd763fb7f4c287f91"
+      },
+      {
+        "file": "ready/souvenir-spoon-3.wav",
+        "seconds": 0.53,
+        "peakDb": -10.84,
+        "rmsDb": -28.71,
+        "sha256": "7c7b70ab898feace02a4a5972e035ffa289e0cd00af02b2ee6fe070ebfe45599"
+      }
+    ]
+  },
+  {
+    "id": "fishing-lure",
+    "label": "Fishing lure",
+    "description": "Tiny internal pellets rattle against a hard lure body; small hook tick.",
+    "variants": [
+      {
+        "file": "ready/fishing-lure-1.wav",
+        "seconds": 0.46,
+        "peakDb": -16.23,
+        "rmsDb": -35.14,
+        "sha256": "47fea3daec039e73b21f0355efca9858e514c632da6d82738ec0cae4b3a8cfcd"
+      },
+      {
+        "file": "ready/fishing-lure-2.wav",
+        "seconds": 0.46,
+        "peakDb": -15.91,
+        "rmsDb": -35.29,
+        "sha256": "ad3d695cc2298feb50933041e1c6850fd8052efd0bed2a41d4575d79a48c7e8c"
+      },
+      {
+        "file": "ready/fishing-lure-3.wav",
+        "seconds": 0.46,
+        "peakDb": -16.32,
+        "rmsDb": -35.19,
+        "sha256": "10249a39444cc78f0ff80c75aa57f70bef3957f6d1c2b196584d04f6f6cb010b"
+      }
+    ]
+  },
+  {
+    "id": "lemon",
+    "label": "Lemon charm",
+    "description": "Resin lemon tock with a small split-ring jingle; no wet fruit sound.",
+    "variants": [
+      {
+        "file": "ready/lemon-1.wav",
+        "seconds": 0.36,
+        "peakDb": -17.9,
+        "rmsDb": -36.49,
+        "sha256": "6c2407ad70d74efb7cefc07bcbda912d0d8160c3b3941cb657d08085a2fe06fd"
+      },
+      {
+        "file": "ready/lemon-2.wav",
+        "seconds": 0.36,
+        "peakDb": -16.59,
+        "rmsDb": -36.17,
+        "sha256": "e2978940c639244fe8f0a0c5c7a6ee65bbedb7bb2586dea5ecf5e397af13b17c"
+      },
+      {
+        "file": "ready/lemon-3.wav",
+        "seconds": 0.36,
+        "peakDb": -18.69,
+        "rmsDb": -36.36,
+        "sha256": "1e66ed41ac29c7b1c7a79da959366aa75455a9a764e2ab73ff14581ce20c684f"
+      }
+    ]
+  },
+  {
+    "id": "trail",
+    "label": "Trail keyring",
+    "description": "Boot charm knocks against the metal compass; dry mixed-material rattle.",
+    "variants": [
+      {
+        "file": "ready/trail-1.wav",
+        "seconds": 0.43,
+        "peakDb": -16.28,
+        "rmsDb": -35.42,
+        "sha256": "2fb17c45f8850f1fb93f2925a3c45d5c579ff7c26038d61f5c1c92bf0602a2c5"
+      },
+      {
+        "file": "ready/trail-2.wav",
+        "seconds": 0.43,
+        "peakDb": -16.3,
+        "rmsDb": -35.33,
+        "sha256": "733d607f1918ef705f149a9104e9f057c274f27452aac2b88c41826ee176c665"
+      },
+      {
+        "file": "ready/trail-3.wav",
+        "seconds": 0.43,
+        "peakDb": -16.39,
+        "rmsDb": -35.37,
+        "sha256": "0d546ee978ac0ff6a0eda594f2a4b9272a207c7c86f17a5dce6c82dc9d61181b"
+      }
+    ]
+  },
+  {
+    "id": "star",
+    "label": "Glitter star keyring",
+    "description": "Light hard-acrylic tick with split-ring chatter; no magic chime.",
+    "variants": [
+      {
+        "file": "ready/star-1.wav",
+        "seconds": 0.34,
+        "peakDb": -16.4,
+        "rmsDb": -36.03,
+        "sha256": "2488667ee1e57f444bc2a986292479b5c24a0217b27bf5867c4ccaf15b3369d8"
+      },
+      {
+        "file": "ready/star-2.wav",
+        "seconds": 0.34,
+        "peakDb": -17.54,
+        "rmsDb": -36.42,
+        "sha256": "381b1591157764a9845ac376422675eed882f34b40dd1af68bdff50db5911a9c"
+      },
+      {
+        "file": "ready/star-3.wav",
+        "seconds": 0.34,
+        "peakDb": -18.05,
+        "rmsDb": -36.31,
+        "sha256": "0df9ae7570c3d5ac8fd342ce907c1becde9292d752bb476755e440b67db25ae8"
+      }
+    ]
+  },
+  {
+    "id": "donut",
+    "label": "Donut toy",
+    "description": "Soft hollow vinyl squeeze/tap, not a bell or eating sound.",
+    "variants": [
+      {
+        "file": "ready/donut-1.wav",
+        "seconds": 0.38,
+        "peakDb": -16.17,
+        "rmsDb": -34.82,
+        "sha256": "7acb4b10a4f63c2d415c2a23c9b38707f095c2bd934105dfdc7bcdaf6ef9f4fc"
+      },
+      {
+        "file": "ready/donut-2.wav",
+        "seconds": 0.38,
+        "peakDb": -16.88,
+        "rmsDb": -35.22,
+        "sha256": "a709070cb1c71149f54a27991987ab55ca37d5ce0edfc1fbb291f4734a03b098"
+      },
+      {
+        "file": "ready/donut-3.wav",
+        "seconds": 0.38,
+        "peakDb": -14.97,
+        "rmsDb": -34.9,
+        "sha256": "43710b04009d7b4e6f274f762ae4697be09f74746ce1953127d1908c5ba30c3c"
+      }
+    ]
+  },
+  {
+    "id": "robot",
+    "label": "Robot toy",
+    "description": "Tiny mechanical servo chirrup with a hard body click.",
+    "variants": [
+      {
+        "file": "ready/robot-1.wav",
+        "seconds": 0.49,
+        "peakDb": -18.72,
+        "rmsDb": -30.44,
+        "sha256": "e790c85cf984968430fa429d015371fd83df1b0c57839a3050e18109b6cdee69"
+      },
+      {
+        "file": "ready/robot-2.wav",
+        "seconds": 0.49,
+        "peakDb": -18.47,
+        "rmsDb": -30.38,
+        "sha256": "869460d0f111f72744fa2aa4cdf006f41ff37d6a5717302de90655dd475752e5"
+      },
+      {
+        "file": "ready/robot-3.wav",
+        "seconds": 0.49,
+        "peakDb": -18.48,
+        "rmsDb": -30.4,
+        "sha256": "e400a819d3486ab586465158eaf2b644d68e7b289043684343f188bc2b22eda7"
+      }
+    ]
+  },
+  {
+    "id": "dino",
+    "label": "Dinosaur toy",
+    "description": "Small raspy toy growl with a rubber body tap.",
+    "variants": [
+      {
+        "file": "ready/dino-1.wav",
+        "seconds": 0.58,
+        "peakDb": -8.1,
+        "rmsDb": -23.55,
+        "sha256": "861fdc3fa6f7cbfd471ef4c82c9c60807e5403ebaa017322f0e0c39d34aa1b50"
+      },
+      {
+        "file": "ready/dino-2.wav",
+        "seconds": 0.58,
+        "peakDb": -8.56,
+        "rmsDb": -23.62,
+        "sha256": "e8ce87340beff949acbb24c2463692fdbd4d96d0b578acb94d6b79cd396cbcb3"
+      },
+      {
+        "file": "ready/dino-3.wav",
+        "seconds": 0.58,
+        "peakDb": -8.85,
+        "rmsDb": -23.76,
+        "sha256": "7a95933942a82b9e8deeaa6894950eec85987936c60d8a1df4bfca658a5f4f39"
+      }
+    ]
+  },
+  {
+    "id": "penguin",
+    "label": "COOL penguin toy",
+    "description": "Short rubber squeaker chirp with a soft body knock.",
+    "variants": [
+      {
+        "file": "ready/penguin-1.wav",
+        "seconds": 0.37,
+        "peakDb": -15.31,
+        "rmsDb": -27.11,
+        "sha256": "64510d02126d3207871dad1944f95e50a7623018b6334bc80f192681fae5babb"
+      },
+      {
+        "file": "ready/penguin-2.wav",
+        "seconds": 0.37,
+        "peakDb": -15.09,
+        "rmsDb": -27.1,
+        "sha256": "a7b9c8d85364254a7a950803f1b12fd17945d9366f148840a0669e3dd427cedc"
+      },
+      {
+        "file": "ready/penguin-3.wav",
+        "seconds": 0.37,
+        "peakDb": -15.2,
+        "rmsDb": -27.07,
+        "sha256": "be7a16522e3b53e8273fbb2c81bf6d7b8ba50df21a11326e7d68903b771d76bd"
+      }
+    ]
+  },
+  {
+    "id": "taxi",
+    "label": "Taxi toy",
+    "description": "Small two-tone car horn over a toy body click; no musical two-note jingle.",
+    "variants": [
+      {
+        "file": "ready/taxi-1.wav",
+        "seconds": 0.45,
+        "peakDb": -14.3,
+        "rmsDb": -26.89,
+        "sha256": "e439df83f98aee6a38356f8ed0eed0322af20e8d56ee7fb011ef7fd8c615a3f7"
+      },
+      {
+        "file": "ready/taxi-2.wav",
+        "seconds": 0.45,
+        "peakDb": -14.26,
+        "rmsDb": -26.89,
+        "sha256": "d004175b0b5d8721a7131879b4c737c6aa25cf180684ea8d28333a34b3331f6e"
+      },
+      {
+        "file": "ready/taxi-3.wav",
+        "seconds": 0.45,
+        "peakDb": -14.16,
+        "rmsDb": -26.89,
+        "sha256": "2b6a5bfca473753bb4ccd8868a09ea012396ddf93a3d559e6674c74cb8755b60"
+      }
+    ]
+  },
+  {
+    "id": "race-car",
+    "label": "Race-car toy",
+    "description": "Brief raspy toy-engine rev, rises then drops.",
+    "variants": [
+      {
+        "file": "ready/race-car-1.wav",
+        "seconds": 0.6,
+        "peakDb": -13.22,
+        "rmsDb": -24.73,
+        "sha256": "5476b4d82d2c88fa614d86c49ae109d3707e2f819aa32697d49551a9ba04abba"
+      },
+      {
+        "file": "ready/race-car-2.wav",
+        "seconds": 0.6,
+        "peakDb": -12.72,
+        "rmsDb": -24.82,
+        "sha256": "e4e88b0a62b8d913bc2b69301bb1cc2cd5911b0c242c804f70f08beb6e514a9c"
+      },
+      {
+        "file": "ready/race-car-3.wav",
+        "seconds": 0.6,
+        "peakDb": -13.08,
+        "rmsDb": -24.85,
+        "sha256": "d024c39abab6d34a0ff29be4478dc4ec75270cdb5f6e18b2239a4f3735dc7d3b"
+      }
+    ]
+  },
+  {
+    "id": "banana",
+    "label": "Banana toy",
+    "description": "Dull flexible rubber flap and thump, no spring boing.",
+    "variants": [
+      {
+        "file": "ready/banana-1.wav",
+        "seconds": 0.38,
+        "peakDb": -14.61,
+        "rmsDb": -34.65,
+        "sha256": "c05170c7a54e69819f8d769ebe1e9b7215139b7b66bcfc45d020e4a02aa70146"
+      },
+      {
+        "file": "ready/banana-2.wav",
+        "seconds": 0.38,
+        "peakDb": -15.46,
+        "rmsDb": -35.13,
+        "sha256": "f1607362d12f572c75e02790a47e96b762a5ed24599735179d1b1988234e96a4"
+      },
+      {
+        "file": "ready/banana-3.wav",
+        "seconds": 0.38,
+        "peakDb": -13.6,
+        "rmsDb": -34.68,
+        "sha256": "a75fb635efbfcfe59bee7e669376fb2fefcab5dd6a149e48f2422ec82ce5f679"
+      }
+    ]
+  },
+  {
+    "id": "space-shuttle",
+    "label": "Space shuttle toy",
+    "description": "Compact air/rocket burst with a hard plastic body tap.",
+    "variants": [
+      {
+        "file": "ready/space-shuttle-1.wav",
+        "seconds": 0.53,
+        "peakDb": -10.69,
+        "rmsDb": -30.04,
+        "sha256": "a605d679ce3cdf0378d928010fa1541f3725b66e4f2517b1cabcd98374b47927"
+      },
+      {
+        "file": "ready/space-shuttle-2.wav",
+        "seconds": 0.53,
+        "peakDb": -9.22,
+        "rmsDb": -29.97,
+        "sha256": "4587d8d46acb52f4d66c7d6a990e77a86d3f69c237bcc2bd4eaad32f6254b060"
+      },
+      {
+        "file": "ready/space-shuttle-3.wav",
+        "seconds": 0.53,
+        "peakDb": -7.0,
+        "rmsDb": -30.42,
+        "sha256": "c286098a1f98bd174b82b81788c6285ec78f81ee9ac0d7118560b5e336a09c0c"
+      }
+    ]
+  },
+  {
+    "id": "letter-block",
+    "label": "Wooden letter block",
+    "description": "Solid dry wood-on-wood clonk.",
+    "variants": [
+      {
+        "file": "ready/letter-block-1.wav",
+        "seconds": 0.33,
+        "peakDb": -17.38,
+        "rmsDb": -36.11,
+        "sha256": "3ed5f96a06e36791c74c0f002922a34d88561cb1d52cf03cb5f1cad218a782c2"
+      },
+      {
+        "file": "ready/letter-block-2.wav",
+        "seconds": 0.33,
+        "peakDb": -16.83,
+        "rmsDb": -35.97,
+        "sha256": "1a4c724558b57fe2f06795365776b2f66e2a7db3f5825b0b6982cd4b9877d97f"
+      },
+      {
+        "file": "ready/letter-block-3.wav",
+        "seconds": 0.33,
+        "peakDb": -17.25,
+        "rmsDb": -35.96,
+        "sha256": "8578966b213a6c2a07b6d1bd2e7ad7c7465d45c7faef292ae76c84b761f772ce"
+      }
+    ]
+  },
+  {
+    "id": "plastic-brick",
+    "label": "Plastic brick",
+    "description": "Hollow ABS clack with a brief higher tick.",
+    "variants": [
+      {
+        "file": "ready/plastic-brick-1.wav",
+        "seconds": 0.32,
+        "peakDb": -17.14,
+        "rmsDb": -35.95,
+        "sha256": "8bcaa042d931593402337bd1f23bb4ae82be28403f9aa08fe4a2c79c0b9b0feb"
+      },
+      {
+        "file": "ready/plastic-brick-2.wav",
+        "seconds": 0.32,
+        "peakDb": -15.74,
+        "rmsDb": -35.91,
+        "sha256": "f102142fdff519e6afb6c04ba39f3250e727aadcfbb723dae5c49e1cd02ecccd"
+      },
+      {
+        "file": "ready/plastic-brick-3.wav",
+        "seconds": 0.32,
+        "peakDb": -15.27,
+        "rmsDb": -35.73,
+        "sha256": "f0523c4853b5a793996b3e948eba62a78c2ff69d23610479d6422332e688c79a"
+      }
+    ]
+  },
+  {
+    "id": "gummy-bear",
+    "label": "Gummy bear toy",
+    "description": "Short tacky rubber squish and release, not a cartoon boing.",
+    "variants": [
+      {
+        "file": "ready/gummy-bear-1.wav",
+        "seconds": 0.41,
+        "peakDb": -17.15,
+        "rmsDb": -35.77,
+        "sha256": "9bee06bdcfd0d0e567616344a2fc79964c7dbc533bc473afe8dd58659f74fe27"
+      },
+      {
+        "file": "ready/gummy-bear-2.wav",
+        "seconds": 0.41,
+        "peakDb": -15.65,
+        "rmsDb": -35.24,
+        "sha256": "d4775b36d9f11d696ad5210d57732284569beb6269937e726272c59f666041ba"
+      },
+      {
+        "file": "ready/gummy-bear-3.wav",
+        "seconds": 0.41,
+        "peakDb": -14.09,
+        "rmsDb": -35.09,
+        "sha256": "4a4d0df1f60c346082ca6b1bdf45bc9c2b403b86196b0becf5649d0ae35e8efc"
+      }
+    ]
+  },
+  {
+    "id": "pop-out",
+    "label": "POP bubble outward",
+    "description": "Crisp silicone snap as a bubble pops outward.",
+    "variants": [
+      {
+        "file": "ready/pop-out-1.wav",
+        "seconds": 0.29,
+        "peakDb": -15.43,
+        "rmsDb": -32.62,
+        "sha256": "2e4c107f04b84ad307e33129f2989e1e68c98b2b5942cc73e02700c695d56b2e"
+      },
+      {
+        "file": "ready/pop-out-2.wav",
+        "seconds": 0.29,
+        "peakDb": -15.15,
+        "rmsDb": -32.61,
+        "sha256": "60a45fdb19ec351dd9cf05ca6d2bf10c06582e547932ffb1b6cce606f8090737"
+      },
+      {
+        "file": "ready/pop-out-3.wav",
+        "seconds": 0.29,
+        "peakDb": -14.79,
+        "rmsDb": -32.61,
+        "sha256": "4816a2633cad0fd954d003e486b14dde593642e14c540d528b9644c9bc1c4335"
+      }
+    ]
+  },
+  {
+    "id": "pop-in",
+    "label": "POP bubble inward",
+    "description": "Lower hollow silicone plop as a bubble pushes inward.",
+    "variants": [
+      {
+        "file": "ready/pop-in-1.wav",
+        "seconds": 0.31,
+        "peakDb": -15.46,
+        "rmsDb": -32.89,
+        "sha256": "6bfc9942ac6a5bdce9317fa43865dfe999229aaa94dc2f20e6f9364f0cd6a5b5"
+      },
+      {
+        "file": "ready/pop-in-2.wav",
+        "seconds": 0.31,
+        "peakDb": -15.66,
+        "rmsDb": -32.91,
+        "sha256": "7ada9b35aa1e81c3108918803cc880d031da0a6e9339573432ad6bf1189383b3"
+      },
+      {
+        "file": "ready/pop-in-3.wav",
+        "seconds": 0.31,
+        "peakDb": -14.91,
+        "rmsDb": -32.91,
+        "sha256": "0e3b8f03cfd201b3bfd160bdb090814c39452a76b4f5cbeffaef4033384927d2"
+      }
+    ]
+  },
+  {
+    "id": "fidget-spinner",
+    "label": "Fidget spinner",
+    "description": "Dry rolling ball bearings, fast irregular ticks and friction, slowing to a stop.",
+    "variants": [
+      {
+        "file": "ready/fidget-spinner-1.wav",
+        "seconds": 1.63,
+        "peakDb": -12.28,
+        "rmsDb": -30.9,
+        "sha256": "e5a87935e0d0c89840d993f86ac77a33cb258ae9cef5613e78e7017a428bbf3e"
+      },
+      {
+        "file": "ready/fidget-spinner-2.wav",
+        "seconds": 1.63,
+        "peakDb": -11.96,
+        "rmsDb": -30.84,
+        "sha256": "b1b1279a5e2cea5c342ea3a63f7d7b5373e24971d8d464b6221b58cddafb8521"
+      },
+      {
+        "file": "ready/fidget-spinner-3.wav",
+        "seconds": 1.63,
+        "peakDb": -11.41,
+        "rmsDb": -30.75,
+        "sha256": "48eb8c6f583ae221e3bb85a71e70a2ef5afe0c8dedd9ddbe2c6736e3be9e6889"
+      }
+    ]
+  },
+  {
+    "id": "pinwheel",
+    "label": "Paper pinwheel",
+    "description": "Light fluttering paper and air, slowing as it coasts.",
+    "variants": [
+      {
+        "file": "ready/pinwheel-1.wav",
+        "seconds": 0.84,
+        "peakDb": -12.55,
+        "rmsDb": -32.99,
+        "sha256": "62f74c2c2dec96b10e66154a14457726548f40d0ec0275f7936e151fe3eb8595"
+      },
+      {
+        "file": "ready/pinwheel-2.wav",
+        "seconds": 0.84,
+        "peakDb": -11.96,
+        "rmsDb": -32.71,
+        "sha256": "9167a4c0890cf4227ba9b07b6d10abcc7940676aaec8bb48523a4f9729b870eb"
+      },
+      {
+        "file": "ready/pinwheel-3.wav",
+        "seconds": 0.84,
+        "peakDb": -13.71,
+        "rmsDb": -33.05,
+        "sha256": "5665d20bea98c60a2909993ab4e03b60c01c4c5a0aa45880b2b3dcff426f83d7"
+      }
+    ]
+  },
+  {
+    "id": "alphabet-rotor",
+    "label": "Plastic alphabet magnets",
+    "description": "Short moulded-plastic click, no motor noise.",
+    "variants": [
+      {
+        "file": "ready/alphabet-rotor-1.wav",
+        "seconds": 0.32,
+        "peakDb": -16.77,
+        "rmsDb": -35.91,
+        "sha256": "9873e1fd577f9147018d6fe4ebc380cd9af0f70c7bc188fdb32d910b90b8088b"
+      },
+      {
+        "file": "ready/alphabet-rotor-2.wav",
+        "seconds": 0.32,
+        "peakDb": -17.37,
+        "rmsDb": -36.43,
+        "sha256": "c4ad6173d4eff6eb89fc2aa9ca01df9ec8d13e01dc75d88f092fc15106e081e9"
+      },
+      {
+        "file": "ready/alphabet-rotor-3.wav",
+        "seconds": 0.32,
+        "peakDb": -15.51,
+        "rmsDb": -35.91,
+        "sha256": "2a7eb464e02adc34ccf74a510e1a370df06c845624008ef18e16bb981328289c"
+      }
+    ]
+  },
+  {
+    "id": "clock",
+    "label": "Clock magnet",
+    "description": "Small rigid case rattle and glass-front tap, no alarm.",
+    "variants": [
+      {
+        "file": "ready/clock-1.wav",
+        "seconds": 0.36,
+        "peakDb": -12.09,
+        "rmsDb": -27.25,
+        "sha256": "a185e6d18be08b7e60ef43e6650c10e6a572561772d737ff1f51a8660bb327bb"
+      },
+      {
+        "file": "ready/clock-2.wav",
+        "seconds": 0.36,
+        "peakDb": -12.26,
+        "rmsDb": -27.26,
+        "sha256": "1a3c7fbed50952f9d72b417292c6572813c56a83fc60bce42a7e4c13a0b063a4"
+      },
+      {
+        "file": "ready/clock-3.wav",
+        "seconds": 0.36,
+        "peakDb": -11.03,
+        "rmsDb": -27.21,
+        "sha256": "c4acb232c45f43ec35462b992cd878950f2fdb11e5d0ead51844ac42aa91671b"
+      }
+    ]
+  },
+  {
+    "id": "thermometer",
+    "label": "Dial thermometer",
+    "description": "Tin casing tick with a little face-plate rattle.",
+    "variants": [
+      {
+        "file": "ready/thermometer-1.wav",
+        "seconds": 0.37,
+        "peakDb": -11.51,
+        "rmsDb": -27.25,
+        "sha256": "1d6d47b60e77f2095717eec671562b8d6eaf7a4e173f35543a9b7e2dd492e642"
+      },
+      {
+        "file": "ready/thermometer-2.wav",
+        "seconds": 0.37,
+        "peakDb": -11.77,
+        "rmsDb": -27.15,
+        "sha256": "58cfb42bcce69413486cec0a5c4277aa19da52a224befe7674e580b0123d2210"
+      },
+      {
+        "file": "ready/thermometer-3.wav",
+        "seconds": 0.37,
+        "peakDb": -10.67,
+        "rmsDb": -27.31,
+        "sha256": "9905196fed4326ef34912317c9d0b06c44518fdd1bc53c38db83ebf980d4f3bc"
+      }
+    ]
+  }
+]

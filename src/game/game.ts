@@ -1,6 +1,5 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
-import { sfx } from "./audio";
-import { TOY_VOICE } from "./music-score";
+import { sfx, playObjectSound, playBubbleSound, stopPullSound } from "./audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { gadgetZone } from "./gadgets";
@@ -275,7 +274,7 @@ export class Game {
       const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
       // rubber under tension: each notch of draw creaks a little higher than the last
       if (this.mode === "fling" && Math.floor(distance(p) / 16) > Math.floor(distance(this.drag.cur) / 16)) {
-        sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * 0.8);
+        sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * .8);
       }
       this.drag.cur = p; return;
     }
@@ -289,6 +288,7 @@ export class Game {
   }
 
   pointerUp() {
+    stopPullSound();
     if (!this.drag) return;
     const drag = this.drag;
     const c = this.byId(this.selectedId);
@@ -363,9 +363,8 @@ export class Game {
     c.launcherId = this.launcherFor(c)?.id ?? null;
     c.airTime = 0;
     c.squash = 1;
-    sfx.launch();
     // the band snapping back past its rest length, pitched by how hard it was pulled
-    sfx.twang(0.85 + pull * 0.5);
+    sfx.twang(.85 + pull * .5);
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
     return true;
@@ -794,14 +793,12 @@ export class Game {
       if (this.bridge && (this.bridge.frozen.has(c.id) || this.bridge.crawler?.id === c.id)) continue;
       if (c.state === "flying") {
         this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
-        const pop = this.world.popped; if (pop) { this.world.popped = null; (pop.inward ? sfx.popIn : [sfx.pop1, sfx.pop2, sfx.pop3][pop.index % 3])(); }
+        const pop = this.world.popped; if (pop) { this.world.popped = null; playBubbleSound(pop.inward, pop.index); }
         // a swung toy that has a voice uses it: the taxi honks, the keys jangle, the duck squeaks
         const hit = this.world.knocked;
         if (hit) {
           this.world.knocked = null;
-          const voice = TOY_VOICE[hit] ?? TOY_VOICE[hit.replace(/^swing-toy-/, "bumper-")];
-          const play = voice ? (sfx as Record<string, (rate?: number) => void>)[voice] : undefined;
-          play?.();
+          playObjectSound(hit, Math.min(1, Math.abs(c.vx) / 300));
         }
       }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);

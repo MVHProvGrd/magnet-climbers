@@ -1,0 +1,32 @@
+[
+  {
+    "file": "rubber-pull-1.wav",
+    "seconds": 0.18,
+    "peakDb": -12.367736968833409
+  },
+  {
+    "file": "rubber-pull-2.wav",
+    "seconds": 0.18,
+    "peakDb": -11.867106092934723
+  },
+  {
+    "file": "rubber-pull-3.wav",
+    "seconds": 0.18,
+    "peakDb": -11.421718104371685
+  },
+  {
+    "file": "rubber-release-1.wav",
+    "seconds": 0.25,
+    "peakDb": -7.523026598092778
+  },
+  {
+    "file": "rubber-release-2.wav",
+    "seconds": 0.25,
+    "peakDb": -7.793915815326601
+  },
+  {
+    "file": "rubber-release-3.wav",
+    "seconds": 0.25,
+    "peakDb": -8.601790582876756
+  }
+]
