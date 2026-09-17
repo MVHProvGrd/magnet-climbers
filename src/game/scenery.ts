@@ -18,7 +18,10 @@ export function artVariant(x: number, y: number, seed: number, count: number): n
   return ((hash ^ (hash >>> 16)) >>> 0) % count;
 }
 
-const cards = new WeakMap<NoStickZone, { seed: number; image: HTMLCanvasElement }>();
+/** A card is painted once into its own canvas and kept. `photo` is part of the key: a card
+ *  drawn before its photograph finished loading would otherwise keep the drawn fallback for
+ *  the rest of the run, which is what a fresh build does to every card on a slow phone. */
+const cards = new WeakMap<NoStickZone, { seed: number; photo: boolean; image: HTMLCanvasElement }>();
 const TAU = Math.PI * 2;
 
 function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
@@ -296,12 +299,13 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     ctx.restore();
     return;
   }
+  const hasPhoto = !!(z.kind === "sticker" && z.itemId && objectArtById(z.itemId));
   let cached = cards.get(z);
-  if (!cached || cached.seed !== seed) {
+  if (!cached || cached.seed !== seed || cached.photo !== hasPhoto) {
     const image = document.createElement("canvas");
     image.width = Math.ceil(z.w * 2); image.height = Math.ceil(z.h * 2);
     const g = image.getContext("2d")!; g.scale(2, 2); paintZone(g, z, seed);
-    cached = { seed, image }; cards.set(z, cached);
+    cached = { seed, photo: hasPhoto, image }; cards.set(z, cached);
   }
   ctx.save();
   if (z.kind === "sticker") {
