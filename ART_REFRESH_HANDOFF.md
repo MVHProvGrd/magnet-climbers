@@ -1,5 +1,11 @@
 # Art refresh handoff — 2026-09-14
 
+## NEW — pack33 object audio for owner audition
+
+Owner requested relevant bump sounds for ALL keychains and specifically rolling bearings for the fidget spinner. Compared latest origin/main 1b50df7 mappings read-only, no stale runtime edits. Delivered 33 original synthesized sound identities x3 variants =99 mono48k WAV files, explicit mapping for48 current item IDs plus directional POP events. These are REVIEW candidates, not recordings and not listening-approved. No live audio changes.
+
+Open C:\Users\micha\magnet-art-ready\art\archive\33-object-audio-v1\index.html. Integration notes: C:\Users\micha\magnet-art-ready\art\archive\33-object-audio-v1\HANDOFF.md. Spinner has dry friction/irregular bearing impacts and slows, not a musical sweep; one-shot only, not an infinite spin rig. Claude handles contact intensity, cooldown, voice limiting, sample loading on the existing FX bus and deployment after approval. All99 files pass numeric QA (distinct PCM, format, peak, fade, DC, non-silence); audibility/realism still need human review.
+
 ## CURRENT — v3 generation queue COMPLETE, packs31–32 ready (2026-09-16)
 
 Latest resume delivered eight business magnets (pack31, commit d3f6439) and eight destinations (pack32: four S/four N). 19 successful built-in image calls: 16 selected assets plus three retained background-repair takes. No new quota block. All supplied v3 A/B items now generated across prior packs and these final packs. No public/art or runtime writes; Claude still fits, wires and deploys.
