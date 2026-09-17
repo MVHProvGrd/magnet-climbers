@@ -76,6 +76,12 @@ export const PATTERNS: PatternDef[] = [
 ];
 
 export const PRIZE_COST = 100;
+/**
+ * Every spin costs double the last one: 100, 200, 400, 800... The machine is the long sink at
+ * the end of the economy, so it has to keep pace with a wallet that grows every run. Fourteen
+ * patterns cost about 1.6M coins to collect, and the first few are still pocket change.
+ */
+export const prizeCost = (spins: number) => PRIZE_COST * 2 ** Math.max(0, spins);
 /** Odds shown to the player; the draw uses the same numbers. */
 export const PRIZE_ODDS: Record<Rarity, number> = { common: 65, rare: 28, epic: 7 };
 

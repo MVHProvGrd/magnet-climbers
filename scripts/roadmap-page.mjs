@@ -18,40 +18,40 @@ const NOW = [
   {
     title: "Missions, three at a time",
     line: "Rotating goals paid in coins, written against counters that already exist.",
-    why: "Nothing new needs instrumenting. The run already counts chains, gadget rides, paints, hits, coins, height and cause of death. Missions turn those into a reason to play differently on a door you have climbed a hundred times, and they feed coins to a wallet that finally has a sink.",
+    why: "Nothing new needs instrumenting. The run already counts chains, gadget rides, paints, hits, coins, height and cause of death. Missions turn those into a reason to play differently on a door you have climbed a hundred times, and they feed coins to a machine whose price now doubles every spin.",
     touches: ["feats in game.ts", "save: three active + progress", "menu and game-over cards"],
     size: "medium",
   },
   {
-    title: "Instant restart and the near miss",
-    line: "One tap back onto the door, with your best height drawn on it.",
-    why: "A run ends and the session ends with it. The line on the door turns every climb into a rematch you can see, and the restart is already half built — CLIMB AGAIN goes through the kit sheet now.",
-    touches: ["game-over card", "world: the best-height line", "kit sheet"],
+    title: "Daily reward and streak",
+    line: "Open the app, claim a drop. Seven in a row pays a pattern.",
+    why: "Promoted after the audit, because the two things that were above it are already built. It pairs with the daily run — the streak is the reason to open, the run is the reason to stay — and it needs no server work beyond a claimed-on date.",
+    touches: ["save: last claim + streak", "menu badge", "a claim card"],
     size: "small",
   },
 ];
 
 const THEN = [
   {
-    title: "Prize machine",
-    line: "100 coins, spin, win a pattern; duplicates refund.",
-    why: "The kit made coins mean something for one climb. It cannot absorb a real balance — a wallet in testing this week held $48,568, and the whole shelf costs $360. A second sink that pays cosmetics is what keeps earning worth anything.",
-    touches: ["patterns in save", "a spin panel", "coin economy"],
+    title: "Weekly league",
+    line: "Buckets of about thirty by lifetime metres; top promote, bottom drop.",
+    why: "The global board is unwinnable for everyone except the top ten, so it stops motivating almost every player. Buckets give a climb that any player can be near the top of, and the metres are already banked per player.",
+    touches: ["worker: a bucketing job", "board tab", "tier badge"],
+    size: "large",
+  },
+  {
+    title: "Themed fridge of the month",
+    line: "A different kitchen, a different door, one limited pattern.",
+    why: "Every update needs something to show, and the art pipeline is the strongest part of this project. A monthly door is the cheapest way to turn that strength into a reason to post — and the surfaces, seams and palette are already data.",
+    touches: ["scenery palette", "an art pack", "one pattern behind a date"],
     size: "medium",
   },
   {
-    title: "Daily reward and streak",
-    line: "Open the app, claim a drop. Seven in a row pays a look.",
-    why: "Pairs with the daily run: the streak is the reason to open, the daily run is the reason to stay. Cheap, and it needs no server work beyond a claimed-on date.",
-    touches: ["save: last claim", "menu badge"],
-    size: "small",
-  },
-  {
-    title: "Weekly league",
-    line: "Buckets of about thirty by lifetime metres; top promote, bottom drop.",
-    why: "The global board is unwinnable for everyone except the top ten, so it stops motivating almost every player. Buckets give a climb that any player can be near the top of.",
-    touches: ["worker: bucketing job", "board tab", "tier badge"],
-    size: "large",
+    title: "Input recorder",
+    line: "Log every fling and climb as {tick, id, vector}.",
+    why: "The gate in front of ghosts, async races and any real score validation. On its own it is invisible to players, which is exactly why it should be built deliberately rather than as step one of a race feature.",
+    touches: ["game.ts input capture", "snapshot format", "worker: replay check"],
+    size: "medium",
   },
 ];
 
@@ -78,11 +78,12 @@ const DECIDE = [
 ];
 
 const SHIPPED = [
+  ["Prize machine", "Was next on the list; it was already built and is now a real sink — every spin costs double the last, 100 → 200 → 400, about 1.6M coins for all fourteen patterns."],
+  ["Instant restart and the near miss", "Was third on the list; already done. CLIMB AGAIN goes straight back to the door through the kit sheet, and your best height is drawn on the fridge as a line that turns green when you pass it."],
+  ["Creature roster and patterns", "Bodies, patterns, unlock rules and the collection panel all exist. The roadmap still listed this as work."],
   ["Kit, per run", "Coins buy a higher jump and a stickier floor for one climb, three clicks each, gone when the run ends."],
-  ["Landing rule", "A toy that comes down inside glass lands there and slides, instead of being pulled to the nearest rim."],
-  ["World 23", "Stuck-on toy magnets are back on the door, 1 → 26 per 240 doors; the compass is a compass; the grille is not stretched."],
-  ["Sound", "Every keychain toy has a voice; the POP! keyring pops again; the things you hit make a noise."],
-  ["Blue polarity", "The blue phase pulls. It had no field at all — red worked, blue was three seconds of painted rings."],
+  ["Chat, with moderation", "Global chat, scroll-back, block and report by avatar, and a three-strike censor flag into the admin panel."],
+  ["Owner tooling", "Art archive, element map, placement workbench, and now a scale bench that puts any object on the real door beside a real climber."],
 ];
 
 const item = (it, n) => `
@@ -141,12 +142,12 @@ const BODY = `
 <div class="wrap">
   <p class="eyebrow">Magnet Climbers &middot; plan</p>
   <h1>What to build next</h1>
-  <p class="standfirst">The door is dense, the fling feels right, and nothing brings anyone back tomorrow. Everything below is ordered against that one gap.</p>
+  <p class="standfirst">Re-ordered after reading the code rather than the backlog. Two of the three things that were queued turned out to be built already; what is left is the gap that has not moved — nothing brings anyone back tomorrow.</p>
 
   <div class="lede-wrap">
     <div class="thesis">
-      <p>Stop adding objects to the door. The next three releases should be the reason to open the app again: a daily run everyone shares, missions written against counters we already keep, and a restart that puts your last height on the fridge.</p>
-      <p>Then the second coin sink, then the league. Everything else — ghosts, races, accounts, store wrappers — is real work that does not change whether anyone plays tomorrow.</p>
+      <p>Stop adding objects to the door. The next three releases should be the reason to open the app again: a daily run everyone shares, missions written against counters we already keep, and a streak worth protecting.</p>
+      <p>Then the league and a themed door each month. Everything else — ghosts, races, accounts, store wrappers — is real work that does not change whether anyone plays tomorrow.</p>
     </div>
     <div class="state">
       <h4>Where it stands</h4>
@@ -154,9 +155,9 @@ const BODY = `
         <dt>Mode</dt><dd>solo only</dd>
         <dt>World version</dt><dd>23</dd>
         <dt>Items on the door</dt><dd>152</dd>
-        <dt>Coin sinks</dt><dd>1 (run kit)</dd>
+        <dt>Coin sinks</dt><dd>2, one doubling</dd>
         <dt>Reasons to return</dt><dd>0</dd>
-        <dt>Tests</dt><dd>64 passing</dd>
+        <dt>Tests</dt><dd>65 passing</dd>
       </dl>
     </div>
   </div>
@@ -169,7 +170,7 @@ const BODY = `
 
   <section class="next">
     <h2>Then <span class="count">once the loop closes</span></h2>
-    <p class="note">These pay off only after there is a reason to come back. In order, but the order is softer.</p>
+    <p class="note">These pay off once there is a reason to come back. In order, but the order is softer.</p>
     <div class="steps">${THEN.map((it, i) => item(it, i + 4)).join("")}</div>
   </section>
 
@@ -184,7 +185,8 @@ const BODY = `
   </section>
 
   <section>
-    <h2>Shipped recently <span class="count">for context</span></h2>
+    <h2>Struck off <span class="count">already built when checked</span></h2>
+    <p class="note">The backlog had these as work to come. They are in the code today — the first two were the items sitting above everything else.</p>
     <div class="ledger">${SHIPPED.map(([t, b]) => `<div><b>${esc(t)}</b><span>${esc(b)}</span></div>`).join("")}</div>
   </section>
 

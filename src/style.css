@@ -243,6 +243,16 @@ select.buy option { background: #1e2229; color: #fff; }
 .guide-card .chip { padding: 6px 10px; font-size: 12px; width: 100%; }
 .r { font-size: 10px; font-style: normal; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; margin-left: 4px; vertical-align: middle; }
 .r.common { background: #4a505b; } .r.rare { background: #2f6fd6; } .r.epic { background: #8e44ad; }
+.prize .reel { height: calc(96 * var(--px)); overflow: hidden; border-radius: 12px;
+  background: #0e1218; border: 1px solid rgba(255,255,255,0.08); position: relative; }
+.prize .reel::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(#0e1218, transparent 34%, transparent 66%, #0e1218); }
+.prize .reel-strip { display: flex; flex-direction: column; }
+.prize .reel-strip.spinning { animation: reel 0.9s cubic-bezier(.16,.9,.3,1) both; }
+.prize .reel-row { display: flex; align-items: center; justify-content: center; gap: calc(8 * var(--px));
+  height: calc(32 * var(--px)); font-size: calc(13 * var(--px)); }
+.prize .reel-row .swatches i { width: calc(11 * var(--px)); height: calc(11 * var(--px)); }
+@keyframes reel { from { transform: translateY(0); } to { transform: translateY(calc(-32 * 13 * var(--px))); } }
 .prize .reveal { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: pop 0.35s ease-out; }
 .prize .reveal canvas { width: 140px; height: 140px; }
 .panel button.unlock { display: flex; flex-direction: column; gap: 2px; background: linear-gradient(90deg, #9be15d, #7ef0c8); color: #1a1d24; text-align: center; }

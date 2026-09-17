@@ -7,6 +7,13 @@ moving bumpers, kid hand swipes, tricks, gadgets, field guide, cloud save with
 device linking and merge, global and lifetime boards, challenge links with
 verified share cards, PWA auto-update, generated music loops.
 
+## Done since this list was written
+Checked against the code, not this file: the **creature roster** (#4), the
+**prize machine** (#5, now doubling in price every spin) and **instant restart
+with the near-miss line** (#7) are all in the game. Also since: per-run kit
+(coins buy a higher jump and a stickier floor for one climb), chat with
+moderation, and the owner's scale bench.
+
 ## Now — retention (the "why did I open this again" layer)
 1. **Missions, three at a time.** Rotating goals written against things we
    already track (tricks, stickers stuck, coins in a run, height without a
@@ -17,20 +24,20 @@ verified share cards, PWA auto-update, generated music loops.
 3. **Daily seeded run.** Same fridge for everyone for 24 h (resets midnight
    Central), one board per day in D1, one attempt scored. Sim is already
    deterministic; needs a seed-of-the-day and a `daily` board.
-4. **Creature roster (#17).** Bodies on the four-magnet rig: gecko, frog,
+4. ~~**Creature roster (#17).**~~ *Done.* Bodies on the four-magnet rig: gecko, frog,
    octopus, robot first; patterns (colours, effects) within each creature.
    Creatures unlock from moments (tutorial, height, crew chain, gadget
    challenge); patterns from the prize machine, streak and missions. Codex
    draws, Claude wires unlocks, shop and save.
-5. **Prize machine.** Spend 100 coins, spin, win a random pattern; duplicates
-   refund. The coin sink the economy is missing.
+5. ~~**Prize machine.**~~ *Done, and the price doubles every spin: 100, 200,
+   400... about 1.6M coins for all fourteen patterns.*
 6. **Crew staged rollout (#18, `CREW_DESIGN.md`).** One crew verb per release:
    Stack → Catch → Octopus wide hold → Gecko wall kick → Pair fling → Robot
    bumper feet → Tether. Each ships with a section only it solves and an
    intro card. Stage 1 first; CLIMB and chains already exist.
-7. **Instant restart and "so close".** One tap from game over to a new run;
-   best height and any challenge line drawn on the fridge so every run ends
-   with a near miss.
+7. ~~**Instant restart and "so close".**~~ *Done: CLIMB AGAIN returns through
+   the kit sheet, and your best height is a line on the fridge that turns green
+   when you pass it.*
 
 ## Next — social and progression
 8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10

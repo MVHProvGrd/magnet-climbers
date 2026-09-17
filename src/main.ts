@@ -8,7 +8,7 @@ import { Ui } from "./game/ui";
 import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
-import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
+import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
@@ -228,10 +228,11 @@ const ui = new Ui(uiRoot, () => save, {
     save.creature = creature; save.picked = true; persist();
   },
   onSpin: () => {
-    if (save.coins < PRIZE_COST) return null;
+    const cost = prizeCost(save.spins);
+    if (save.coins < cost) return null;
     const prize = drawPrize(save.patterns);
     if (!prize) return null;
-    save.coins -= PRIZE_COST; save.spins += 1;
+    save.coins -= cost; save.spins += 1;
     save.patterns.push(prize.id); save.skins = save.patterns;
     save.pattern = prize.id; save.skin = prize.id; persist();
     return prize;

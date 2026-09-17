@@ -1,5 +1,6 @@
 import { EXPEDITIONS_ENABLED, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
-import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
+import { sfx } from "./audio";
+import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
 import { resetRagdoll } from "./ragdoll";
@@ -429,7 +430,7 @@ export class Ui {
           <b>${esc(k.name)} <em class="r ${k.rarity}">${k.rarity}</em></b>
           <span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span>${on ? "<i class=\"tick\">WEARING</i>" : has ? "" : "<span>🔒 prize machine</span>"}
         </button>`; }).join("")}</div>
-        <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${PRIZE_COST}</button>`;
+        <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${groupNum(prizeCost(s.spins))}</button>`;
     } else {
       const slots = Array.from({ length: teamSize }, (_, i) => s.crew[i] ?? { creature: s.creature, pattern: s.pattern });
       body = `<p class="tag">Tap a toy to change its creature, tap the swatch for its pattern. ${teamSize} climbers start a crew run.</p>
@@ -463,22 +464,37 @@ export class Ui {
     this.startPreviews(p);
   }
 
-  /** The coin prize machine: visible odds, no duplicates, one pattern per spin. */
+  /** The coin prize machine: visible odds, no duplicates, and a price that doubles every spin. */
   showPrize(result: PatternDef | null = null) {
     const s = this.save();
     const left = PATTERNS.filter((k) => !s.patterns.includes(k.id));
+    const cost = prizeCost(s.spins);
     const p = el("div", "panel small prize");
-    const can = s.coins >= PRIZE_COST && left.length > 0;
+    const can = s.coins >= cost && left.length > 0;
+    const swatch = (k: PatternDef) => `<span class="reel-row"><span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span><b>${esc(k.name)}</b></span>`;
     p.innerHTML = `<h2>Prize machine</h2>
       ${result ? `<div class="reveal"><canvas width="200" height="200" data-look="${s.creature}|${result.id}"></canvas><b>${esc(result.name)}</b><em class="r ${result.rarity}">${result.rarity}</em><p class="tag">Now wearing it. Change any time in the collection.</p></div>`
-        : `<div class="story-icon">🎰</div><p class="tag">One spin, one new pattern. Never a duplicate.<br/>${left.length} left to find.</p>`}
+        : `<div class="reel" aria-hidden="true"><div class="reel-strip">${[...PATTERNS, ...PATTERNS].map(swatch).join("")}</div></div>
+           <p class="tag">One spin, one new pattern. Never a duplicate.<br/>${left.length} left to find.</p>`}
       <p class="fine">Odds: common ${PRIZE_ODDS.common}% · rare ${PRIZE_ODDS.rare}% · epic ${PRIZE_ODDS.epic}%</p>
-      <button class="primary ${can ? "" : "disabled"}" data-a="spin" ${can ? "" : "disabled"}>${left.length ? `SPIN · $${PRIZE_COST}` : "COLLECTION COMPLETE"}</button>
-      <p class="fine">You have <span class="coin">$${s.coins}</span></p>
+      <button class="primary ${can ? "" : "disabled"}" data-a="spin" ${can ? "" : "disabled"}>${left.length ? `SPIN · $${groupNum(cost)}` : "COLLECTION COMPLETE"}</button>
+      <p class="fine">You have <span class="coin">$${groupNum(s.coins)}</span>${left.length ? ` · next spin $${groupNum(prizeCost(s.spins + 1))}` : ""}</p>
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
-      if (a === "spin") { const won = this.h.onSpin(); if (won) this.showPrize(won); }
+      if (a === "spin") {
+        const won = this.h.onSpin();
+        if (!won) return;
+        // the reel runs, then the prize lands: the machine should feel like a machine
+        const strip = p.querySelector<HTMLElement>(".reel-strip");
+        const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!strip || still) { this.showPrize(won); return; }
+        p.querySelector<HTMLButtonElement>("[data-a=spin]")!.disabled = true;
+        strip.classList.add("spinning");
+        sfx.tick();
+        setTimeout(() => { sfx.power(); this.showPrize(won); }, 900);
+        return;
+      }
       if (a === "back") this.showCollection("patterns");
     });
     this.show(p);

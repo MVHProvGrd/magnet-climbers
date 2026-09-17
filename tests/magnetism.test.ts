@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
+import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -858,6 +859,18 @@ test("the compass needle follows a climber and settles back to north", () => {
   // out of its range it swings back to north, and it never turns as a gadget
   assert.ok(Math.abs(settle(900, 900)) < 0.1, "back to north when nobody is near");
   assert.equal(gadgetPose(compass, 0).angle, gadgetPose(compass, 4).angle, "a compass hangs still");
+});
+
+test("the prize machine doubles its price every spin", () => {
+  assert.equal(prizeCost(0), 100);
+  assert.equal(prizeCost(1), 200);
+  assert.equal(prizeCost(4), 1600);
+  // fourteen patterns, so a complete collection is a genuine long sink rather than a rounding error
+  const all = PATTERNS.length;
+  const total = Array.from({ length: all }, (_, i) => prizeCost(i)).reduce((a, b) => a + b, 0);
+  assert.ok(total > 1_000_000, `collecting everything should cost real coins: ${total}`);
+  // and a spin is never free, however the counter arrives
+  assert.equal(prizeCost(-3), 100);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {
