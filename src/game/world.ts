@@ -5,7 +5,7 @@ const PICKUP_GAP = 96;
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
 import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS, toyHook } from "./items";
 import { rule } from "./placement";
-import { populateSetPiece, SET_PIECES } from "./world-patterns";
+import { populateSetPiece, SET_PIECES, type SetPiece } from "./world-patterns";
 import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, NEVER_TURNS, PAPER_THEMES, THEMES, toyFace } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
@@ -60,6 +60,20 @@ export class World {
   private recentToys: string[] = [];
   private recentGadgets: string[] = [];
   private remember(list: string[], id: string, keep: number) { list.push(id); while (list.length > keep) list.shift(); }
+  /** v24: next segment index each door type is due, rolled from the world RNG in place of a fixed modulo. */
+  private nextGadgetAt = 4;
+  private nextSetPieceAt = 5;
+  /** v24: gadget kinds and set pieces draw from a shuffle bag (no repeat until every option has come up)
+   * instead of a plain round-robin, which on a long climb was six or seven identical laps of the same list. */
+  private gadgetBag: Gadget["kind"][] = [];
+  private setPieceBag: SetPiece[] = [];
+  /** Draw without replacement from pool, reshuffling once the bag runs dry. Off the world's seeded RNG. */
+  private drawBag<T>(bag: T[], pool: readonly T[]): T {
+    if (!bag.length) bag.push(...pool);
+    const idx = Math.floor(this.rng() * bag.length);
+    const [val] = bag.splice(idx, 1);
+    return val;
+  }
   /**
    * v17: a hanging gadget is one of the photographed variants, not just its theme. Polarity
    * keeps its three themed toys - the compass, crayon and candy pole are drawn, not photographed.
@@ -183,7 +197,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 23) {
+  constructor(seed: number, startY: number, readonly version = 24) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -222,7 +236,9 @@ export class World {
     const r = this.rng;
     const y = this.topY - CFG.segmentH;
     const h = CFG.segmentH;
-    const difficulty = Math.min(1, i / 40);
+    // v24: 40 segments capped difficulty at ~1360cm, so hazard density flatlined for the rest of
+    // any run that went the distance. Stretch the horizon 10x so a long climb keeps escalating.
+    const difficulty = Math.min(1, i / (this.version >= 24 ? 400 : 40));
     const zones: NoStickZone[] = [];
     const bumpers: Bumper[] = [];
     const powerUps: PowerUp[] = [];
@@ -332,8 +348,20 @@ export class World {
     // v13: toy keychains hang on the steel: no grip (a weak N push nudges you off), swing only when brushed
     // v22: a gadget door and a set piece both throw this segment's zones away and build their own,
     // which is where most stuck-on toys were going. Do not spend one on a door about to be cleared.
-    const setPieceDoor = this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0;
-    const gadgetDoor = this.version >= 4 && i >= 4 && i % 4 === 0;
+    // v24: gadget doors and set pieces used to land on i % 4 and i % 5 - the same columns in every
+    // seed, with only the contents varying. Cooldowns rolled from the world RNG make the pacing
+    // itself part of the seed. A gadget wins a same-segment clash; the set piece's cooldown still
+    // rerolls so it does not get stuck retrying the same occupied index every segment after.
+    let gadgetDoor: boolean, setPieceDoor: boolean;
+    if (this.version >= 24) {
+      gadgetDoor = i === this.nextGadgetAt;
+      if (gadgetDoor) this.nextGadgetAt = i + 3 + Math.floor(r() * 4); // 3..6 segments
+      setPieceDoor = i === this.nextSetPieceAt && !gadgetDoor;
+      if (i === this.nextSetPieceAt) this.nextSetPieceAt = i + 4 + Math.floor(r() * 4); // 4..7 segments
+    } else {
+      setPieceDoor = this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0;
+      gadgetDoor = this.version >= 4 && i >= 4 && i % 4 === 0;
+    }
     const cleared = this.version >= 22 && (setPieceDoor || gadgetDoor);
     if (this.version >= 13 && i > 3 && !cleared && r() < (this.version >= 22 ? 0.6 : 0.3)) {
       const tw = rangeOf(r, 60, 76), th = rangeOf(r, 40, 52);
@@ -517,10 +545,13 @@ export class World {
         usedBumpers.add(item.id); this.remember(this.recentBumpers, item.id, 8);
         bumper.itemId = item.id; bumper.label = item.label!; bumper.hue = item.hue!;
       }
-      // set pieces: every third door before v7, every fifth since (they filled the doors and sat on the seams)
-      if (this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0) populateSetPiece(segment, pick(art, [...SET_PIECES]), art() < 0.5, this.version);
-      if (this.version >= 4 && i >= 4 && i % 4 === 0) {
-        const kind = GADGET_KINDS[(i / 4 - 1) % 4];
+      // set pieces: every third door before v7, every fifth since v7, off the world RNG's cooldown since v24
+      // (they filled the doors and sat on the seams); v24 draws the pattern from a shuffle bag, not a fixed pick
+      if (setPieceDoor) populateSetPiece(segment, this.version >= 24 ? this.drawBag(this.setPieceBag, SET_PIECES) : pick(art, [...SET_PIECES]), art() < 0.5, this.version);
+      if (gadgetDoor) {
+        // v24: a shuffle bag instead of a straight round-robin, so a long climb does not read as
+        // swing, rotor, clip, polarity on endless repeat.
+        const kind = this.version >= 24 ? this.drawBag(this.gadgetBag, GADGET_KINDS) : GADGET_KINDS[(i / 4 - 1) % 4];
         // v15: a letter board on the door, not a plastic wall across it. The steel
         // lanes either side are what you climb; the board is what the gadget hangs on.
         segment.zones = this.version >= 15
