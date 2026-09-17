@@ -394,12 +394,17 @@ test("a resumed run finds the door where it left it, not back at rest", () => {
 });
 
 test("gadget clocks, carrier offsets, trick counters and near-misses deep-copy on save", () => {
-  // pinned to v23: this is about the save/restore round trip, not about which gadget kind a
-  // seed lands on, and the +21/+20 offset below is tuned to a swing gadget's own hitbox.
-  const g = new Game(levels, events, { seed: 12345, rules: "solo", worldVersion: 23 }); g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
-  const gadget = g.world.gadgets[0], hold = gadgetPose(gadget, g.world.gadgetTime).hold, c = g.climbers[0];
+  const g = new Game(levels, events, { seed: 12345, rules: "solo" }); g.phase = "running"; g.world.generateTo(20); g.world.gadgetTime = 1.2;
+  // A swing specifically, not simply the first gadget on the door: this is about a carrier
+  // that MOVES, and the +21/+20 reach below is a swing's hitbox. Aimed at a polarity plate it
+  // finds no contact at all, and the test then poses a climber stuck to nothing -- which
+  // restore quite rightly repairs, so the round trip "fails" over a fixture that never held.
+  const gadget = g.world.gadgets.find((x) => x.kind === "swing")!;
+  assert.ok(gadget, "the seed needs to put a swing on the door for this test to mean anything");
+  const hold = gadgetPose(gadget, g.world.gadgetTime).hold, c = g.climbers[0];
   Object.assign(c, { x: hold.x + 21, y: hold.y + 20, angle: 0, grip: undefined, ragdoll: undefined, state: "flying" });
   attachGrip(c, findContacts(c, g.world, 0).filter((p) => p.limb === 0)); c.state = "stuck";
+  assert.ok(c.grip, "and the climber has to actually take hold of it");
   g.camY = c.y - 240; g.highestY = c.y; g.floorY = c.y + 800;
   g.hand = { side: -1, y: 500, x: 0, phase: "warn", t: .2, hit: new Set(), near: [99] };
   registerTrick(g.tricks, "HANDSTAND", 35, g.time);
