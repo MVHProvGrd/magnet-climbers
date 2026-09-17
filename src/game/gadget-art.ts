@@ -1,6 +1,6 @@
 import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
-import { drawFieldMagnet, drawHardwareGrip, BUSINESS_MAGNETS } from "./fridge-art";
+import { drawFieldMagnet, drawHardwareGrip, drawPops, BUSINESS_MAGNETS } from "./fridge-art";
 import { GADGET_PIVOTS } from "./gadget-pivots";
 import { toyHook } from "./items";
 
@@ -135,7 +135,10 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     if (toyImg) {
       const t = imageSize(toyImg), f = Math.min(68 / t.w, 68 / t.h), dw = t.w * f, dh = t.h * f;
       const [hu, hv] = toyHook(`bumper-${toyN}`);
-      ctx.drawImage(toyImg, -hu * dw, chain - 2 - hv * dh, dw, dh);
+      const tx = -hu * dw, ty = chain - 2 - hv * dh;
+      ctx.drawImage(toyImg, tx, ty, dw, dh);
+      // a POP! toy on a keyring keeps its own bubbles: they push in where a climber goes through
+      if (g.pops != null) { const sh = ctx.shadowColor; ctx.shadowColor = "transparent"; drawPops(ctx, tx, ty, dw, dh, g.pops); ctx.shadowColor = sh; }
     } else ctx.drawImage(charm2, -31, chain - 4, 62, 62);
     ctx.restore();
   } else if (assembly && g.kind === "swing") {

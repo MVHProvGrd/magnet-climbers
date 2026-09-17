@@ -12,7 +12,7 @@ import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play"
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
 import { pawPose, PAW_WARN } from "../src/game/cat-paw";
-import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
+import { gadgetPose, gadgetZone, toyFace, GADGET_KINDS } from "../src/game/gadgets";
 import { cloneTricks, freshTricks, registerTrick } from "../src/game/tricks";
 import { EFFECTS, MUSIC_STEP, TOY_VOICE, musicStep } from "../src/game/music-score";
 import { setSound } from "../src/game/audio";
@@ -745,6 +745,34 @@ test("v21 never stretches the grille, and bolts no handle onto a surface", () =>
     assert.equal(seg(21, pattern).zones.filter((z) => z.itemId === "handle").length, 0, `${pattern} still has a handle`);
   // older worlds keep the layout they were generated with
   assert.ok(seg(20, "water-station").zones.some((z) => z.itemId === "handle"));
+});
+
+test("the POP! toy pops on a keyring, not just stuck to the door", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  const toy = { id: "pop-1", itemId: "swing-toy-4", kind: "swing" as const, phase: 0, x: 200, y: -300,
+    swing: { angle: 0, vel: 0, cool: 0 }, pops: 0b0101010101, popCool: 0 };
+  seg.gadgets = [toy];
+  const before = toy.pops;
+  const face = toyFace(toy, 0);
+  g.world.knockSwings({ x: face.x, y: face.y }, 300);
+  assert.ok(g.world.popped, "a climber through the toy flips a bubble");
+  assert.notEqual(toy.pops, before);
+  // debounced: brushing it again while it is still cooling flips nothing
+  g.world.popped = null;
+  const after = toy.pops;
+  g.world.knockSwings({ x: face.x, y: face.y }, 300);
+  assert.equal(g.world.popped, null);
+  assert.equal(toy.pops, after);
+  // and the cooldown runs down with the world
+  g.world.stepGadgets(0.2);
+  assert.equal(toy.popCool, 0);
+  // a keyring toy that is not the pop-it carries no bubbles
+  const taxi = { id: "pop-2", itemId: "swing-toy-6", kind: "swing" as const, phase: 0, x: 200, y: -300, swing: { angle: 0, vel: 0, cool: 0 } };
+  seg.gadgets = [taxi];
+  g.world.popped = null;
+  g.world.knockSwings({ x: 200, y: -300 }, 300);
+  assert.equal(g.world.popped, null);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

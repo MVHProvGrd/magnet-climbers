@@ -3,11 +3,11 @@ import { CFG, W } from "./config";
 /** Closest two pickups in one segment may sit, centre to centre. */
 const PICKUP_GAP = 96;
 import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Vec } from "./types";
-import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS } from "./items";
+import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS, toyHook } from "./items";
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
-import { FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES } from "./gadgets";
+import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES, toyFace } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -84,6 +84,7 @@ export class World {
   }
   stepGadgets(dt: number) {
     for (const seg of this.segments) for (const z of seg.zones) if (z.popCool) z.popCool = Math.max(0, z.popCool - dt);
+    for (const g of this.gadgets) if (g.popCool) g.popCool = Math.max(0, g.popCool - dt);
     for (const g of this.hanging) {
       const s = g.swing; if (!s) continue;
       s.cool = Math.max(0, s.cool - dt);
@@ -123,6 +124,17 @@ export class World {
         // a rotor is a disc, so anywhere on the face counts, not just the arm a climber can hold
         if (Math.hypot(p.x - pose.x, p.y - pose.y) < 38 && this.spinGadget(g.id, Math.sign(vx), strength)) this.knocked = g.itemId;
         continue;
+      }
+      // a keyring POP! toy: the bubble nearest the hit flips, same as one stuck on the door
+      if (g.pops != null && (g.popCool ?? 0) <= 0) {
+        const face = toyFace(g, this.gadgetTime, toyHook(g.itemId.replace(/^swing-toy-/, "bumper-")));
+        if (Math.hypot(p.x - face.x, p.y - face.y) < face.size * 0.6) {
+          const { u, v } = faceUV(face, p);
+          let best = 0, bd = 9;
+          POP_BUBBLES.forEach(([bx, by], i) => { const d = Math.hypot((u - bx) * 2.3, v - by); if (d < bd) { bd = d; best = i; } });
+          g.pops ^= 1 << best; g.popCool = 0.16;
+          this.popped = { index: best, inward: !!(g.pops & (1 << best)) };
+        }
       }
       const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);
@@ -546,6 +558,8 @@ export class World {
           if (kind === "clip" && this.version >= 16) g.fixed = true;
           // a spinner or a pinwheel is on a free bearing: it winds up when a climber clips it
           if (kind === "rotor" && FREE_SPIN.has(g.itemId)) g.spin = { extra: 0, vel: 0, cool: 0 };
+          // the POP! toy pops on a keyring exactly as it does stuck to the door
+          if (g.itemId === "swing-toy-4") { g.pops = 0b0101010101; g.popCool = 0; }
           return g;
         });
         if (powerUps[0]) {

@@ -1,5 +1,6 @@
 /** Canvas-native fridge objects. Art stays inside the existing collision boxes. */
 import type { NoStickZone, PowerKind } from "./types";
+import { POP_BUBBLES, POP_RADIUS } from "./world";
 const TAU = Math.PI * 2;
 function oval(c: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, color: string | CanvasGradient | CanvasPattern) {
   c.fillStyle = color; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill();
@@ -268,4 +269,16 @@ export function drawHardwareGrip(c: CanvasRenderingContext2D, z: { x: number; y:
     line(c,[3,3,97,3],"#fff",1.5);
   }
   c.restore();
+}
+
+/** POP! bubbles pushed in: a concave shadow over each bubble whose bit is set, drawn over the toy image rect. */
+export function drawPops(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pops: number) {
+  const r = POP_RADIUS * w;
+  POP_BUBBLES.forEach(([u, v], i) => {
+    if (!(pops & (1 << i))) return;
+    const cx = x + u * w, cy = y + v * h;
+    const g = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.25, r * 0.1, cx, cy, r);
+    g.addColorStop(0, "rgba(20,25,35,0.55)"); g.addColorStop(0.75, "rgba(20,25,35,0.28)"); g.addColorStop(1, "rgba(255,255,255,0.25)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  });
 }

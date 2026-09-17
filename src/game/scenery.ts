@@ -2,12 +2,12 @@ import type { Bumper, NoStickZone, PowerUp, PowerKind } from "./types";
 import { fridgeItem, toyHook, type FridgeItem } from "./items";
 import { drawObject } from "./item-art";
 import { drawObstacleImage, drawObstaclePreview, obstacleImage } from "./obstacle-art";
-import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject } from "./fridge-art";
+import { drawPaperPrint, drawBusinessMagnet, drawFieldMagnet, drawPickupObject, drawHardwareGrip, drawObstacleObject, drawPops } from "./fridge-art";
 import { drawGadget } from "./gadget-art";
 import { destinationArtFor, destinationArtById, drawDestination, objectArtById, KEYCHAIN } from "./gadget-art";
 import { drawPickupImage, pickupImage } from "./pickup-art";
 import { drawKidHand, handPose } from "./kid-hand";
-import { DOOR_SEAM, POP_BUBBLES, POP_RADIUS } from "./world";
+import { DOOR_SEAM } from "./world";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
 export { drawPanelJoint } from "./scenery-materials";
 
@@ -319,17 +319,6 @@ const keychainSwing = new WeakMap<Bumper, { angle: number; vel: number; time: nu
 /** Hook and chain rows of the lemon keychain image (fractions of its height); the pivot is the hook's ring. */
 // the keychain hardware is measured once, in gadget-art, so both composites agree
 const CHAIN = { pivotX: KEYCHAIN.x, pivotY: KEYCHAIN.y, chainEnd: KEYCHAIN.chainEnd };
-/** POP! bubbles pushed in: a concave shadow over each bubble whose bit is set, drawn over the toy image rect. */
-function drawPops(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pops: number) {
-  const r = POP_RADIUS * w;
-  POP_BUBBLES.forEach(([u, v], i) => {
-    if (!(pops & (1 << i))) return;
-    const cx = x + u * w, cy = y + v * h;
-    const g = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.25, r * 0.1, cx, cy, r);
-    g.addColorStop(0, "rgba(20,25,35,0.55)"); g.addColorStop(0.75, "rgba(20,25,35,0.28)"); g.addColorStop(1, "rgba(255,255,255,0.25)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-  });
-}
 /** A toy on the lemon's hook and chain: hook fixed above the rect, chain + toy rotated by `angle` about the ring. */
 export function drawKeychain(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, toy: CanvasImageSource, hardware: CanvasImageSource, angle: number, pops?: number, hook: readonly [number, number] = [0.5, 0.02]) {
   const hw = (hardware as HTMLImageElement).naturalWidth || (hardware as HTMLCanvasElement).width || 1;

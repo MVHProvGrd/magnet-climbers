@@ -21,6 +21,26 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
 export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel", "rotor-snack", "rotor-travel", "rotor-doodle"]);
 /** Nothing turns these on its own: a spinner and an alphabet letter sit dead still until they are hit. */
 export const STILL_UNTIL_HIT = new Set(["rotor-fidget-spinner", "rotor-snack", "rotor-travel", "rotor-doodle"]);
+/** The keyring toy as gadget-art draws it: 68px down a 44px chain from a pivot 62px above the anchor. */
+export const KEYRING = { pivotUp: 62, chain: 44, toy: 68 } as const;
+/** Where the hanging toy's face is right now, so a hit can be mapped onto the art a player sees. */
+export function toyFace(g: Gadget, time: number, hook: readonly [number, number] = [0.5, 0.02]) {
+  const p = gadgetPose(g, time);
+  const px = g.x, py = g.y - KEYRING.pivotUp;
+  // gadget-art rotates the chain and toy together by -lean about that pivot
+  const lean = -Math.atan2(p.hold.x - g.x, p.hold.y - py);
+  const size = KEYRING.toy;
+  const tx = -hook[0] * size, ty = KEYRING.chain - 2 - hook[1] * size;
+  const lx = tx + size / 2, ly = ty + size / 2;
+  const cos = Math.cos(lean), sin = Math.sin(lean);
+  return { x: px + lx * cos - ly * sin, y: py + lx * sin + ly * cos, size, lean };
+}
+/** Local coordinates (0..1 across the toy) of a world point on that face. */
+export function faceUV(face: ReturnType<typeof toyFace>, p: Vec) {
+  const cos = Math.cos(-face.lean), sin = Math.sin(-face.lean);
+  const dx = p.x - face.x, dy = p.y - face.y;
+  return { u: (dx * cos - dy * sin) / face.size + 0.5, v: (dx * sin + dy * cos) / face.size + 0.5 };
+}
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
   const still = !!g.spin && STILL_UNTIL_HIT.has(g.itemId);
