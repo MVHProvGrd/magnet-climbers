@@ -371,6 +371,29 @@ test("moving contacts carry climbers and polarity releases them without phantom 
   }
 });
 
+test("a revive does not wipe what the run has already picked up", () => {
+  // main.ts banks game.coins into the wallet on every death and clears them, so after a
+  // revive that field is legitimately zero -- but the HUD reads from the run-long tally, and
+  // that one has to remember, or a revive looks like it confiscated the lot.
+  const g = new Game(levels, events, { seed: 5150, rules: "solo" });
+  g.phase = "running";
+  g.coins = 40; g.gems = 2; g.runCoins = 40; g.runGems = 2;
+
+  // exactly what a death does: pay into the wallet, then clear the unbanked part
+  g.coins = 0; g.gems = 0;
+  g.revive(true);
+  assert.equal(g.runCoins, 40, "the run remembers the coins it found before the revive");
+  assert.equal(g.runGems, 2, "and the gems");
+  assert.equal(g.revivesLeft, 0, "and the free go is spent");
+
+  // and a resumed run does not forget them either
+  const snap = g.snapshot();
+  assert.ok(snap, "a running game snapshots");
+  const back = Game.restore(levels, events, JSON.parse(JSON.stringify(snap)));
+  assert.equal(back.runCoins, 40);
+  assert.equal(back.runGems, 2);
+});
+
 test("a resumed run finds the door where it left it, not back at rest", () => {
   // stepGadgets moves things the world generator cannot rebuild: a toy still swinging, a
   // spinner coasting down from a knock, a cooldown part way through. None of it is derivable

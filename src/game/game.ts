@@ -26,6 +26,9 @@ export interface RunSnapshot {
   seed: number;
   worldVersion?: number;
   gadgetTime?: number;
+  /** the run-long pickup tally, so a resumed climb does not forget what it has found */
+  runCoins?: number;
+  runGems?: number;
   /**
    * What the door was doing, per gadget, at the moment it was put down. The world itself
    * rebuilds from the seed, but stepGadgets mutates each gadget as the run goes -- a toy
@@ -149,6 +152,14 @@ export class Game {
    * finds it. Structural, not the Ghost class, so the sim does not import its own replayer.
    */
   ghost: { climber: Climber | null; heightCm: number; done: boolean } | null = null;
+  /**
+   * What this climb has picked up in total, across every revive. `coins` and `gems` are the
+   * part not yet paid into the wallet, and a death pays them in and clears them -- which left
+   * the HUD reading "+0" for the rest of the run, as though a revive had confiscated the lot.
+   * It never did: these are what the player actually earned, and what the HUD shows.
+   */
+  runCoins = 0;
+  runGems = 0;
   /** where sound goes: the real module, or nothing at all for a ghost or a server replay */
   private readonly a: GameAudio;
 
@@ -663,6 +674,7 @@ export class Game {
       paw: this.paw ? { ...this.paw, hit: [...this.paw.hit] } : undefined,
       handCount: this.handCount, nextHandAt: this.nextHandAt,
       gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks), feats: { ...this.feats },
+      runCoins: this.runCoins, runGems: this.runGems,
       // only gadgets actually away from rest, so a quiet door costs a snapshot nothing
       gadgetState: this.world.gadgets.flatMap((g) => {
         const moved = g.hitCool || g.popCool || g.needle
@@ -683,6 +695,7 @@ export class Game {
     g.tape.invalidate();
     g.world.generateTo(snap.generated);
     g.world.gadgetTime = snap.gadgetTime ?? 0; g.runTime = snap.runTime ?? 0;
+    g.runCoins = snap.runCoins ?? 0; g.runGems = snap.runGems ?? 0;
     // put the door back the way it was left, before any climber tries to take hold of it
     if (snap.gadgetState?.length) {
       const by = new Map(snap.gadgetState.map((s) => [s.id, s]));
@@ -1329,8 +1342,8 @@ export class Game {
       this.effects[k] = Math.min(CFG.effectCaps[k], this.effects[k] + d[k]);
     };
     switch (p.kind) {
-      case "coin": this.coins += CFG.coinValue; this.a.sfx.coin(); this.events.onCoins(CFG.coinValue); this.floats.push({ x: p.x, y: p.y, text: `+${CFG.coinValue}`, life: 0.9, color: "#ffd23f" }); break;
-      case "gem": this.gems += 1; this.a.sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
+      case "coin": this.coins += CFG.coinValue; this.runCoins += CFG.coinValue; this.a.sfx.coin(); this.events.onCoins(CFG.coinValue); this.floats.push({ x: p.x, y: p.y, text: `+${CFG.coinValue}`, life: 0.9, color: "#ffd23f" }); break;
+      case "gem": this.gems += 1; this.runGems += 1; this.a.sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
       case "magnet": add("superMagnet"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
       case "slowmo": add("slowmo"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
       case "candy": add("candy"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });

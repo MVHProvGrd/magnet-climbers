@@ -324,7 +324,7 @@ function drawTopBar(ctx: CanvasRenderingContext2D, g: Game) {
   // this run's earnings, not the wallet
   const c3 = cells[2];
   ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.fillRect(c3.x, d.y + 9, 1, d.h - 18);
-  const runCoins = g.chill ? 0 : g.coins, runGems = g.chill ? 0 : g.gems;
+  const runCoins = g.chill ? 0 : g.runCoins, runGems = g.chill ? 0 : g.runGems;
   const icon = (kind: "coin" | "gem", x: number, y: number) => {
     ctx.save(); ctx.translate(x + 7, y);
     if (!drawPickupImage(ctx, kind, 14)) { ctx.fillStyle = kind === "coin" ? COIN : GEM; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill(); }
