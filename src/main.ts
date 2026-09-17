@@ -9,11 +9,12 @@ import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from "./game/creatures";
-import { refill, settle, streakReward, type RunTally } from "./game/missions";
+import { dailyBoard, liveProgress, missionById, missionText, settle, streakReward, type RunTally } from "./game/missions";
 import { monthKey, themeFor } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
+import { groupNum } from "./game/hud";
 import { Ghost, loadBestTape, saveBestTape } from "./game/ghost";
 import type { Tape } from "./game/recorder";
 
@@ -392,7 +393,6 @@ function runEvents() {
       if (settled.finished.length) {
         save.coins += settled.paid;
         save.missionsDone += settled.finished.length;
-        save.missions = refill(save.missions, save.missionsDone);
         ui.toast(settled.finished.length === 1 ? `Mission done · $${settled.paid}` : `${settled.finished.length} missions done · $${settled.paid}`);
       }
       if (dailyRun) {
@@ -500,8 +500,52 @@ let ghost: Ghost | null = null;
  * A ghost is only meaningful on the door it was recorded on, so racing one and generating a
  * fresh fridge are the same decision: the tape hands over its seed, or there is no ghost.
  */
+/**
+ * Three missions for the day, rolled once and then left alone. They used to be replaced the
+ * instant one was finished, so the board a player looked at after a run was rarely the board
+ * they had been climbing for: the thing they had just earned disappeared and a stranger stood
+ * in its place. Now the day's three stay up, finished ones included, until tomorrow.
+ */
+/**
+ * The mission nearest to finishing, refreshed a few times a second rather than every frame:
+ * the numbers it reads only move when something is collected, and a DOM write per frame is a
+ * cost the run does not need to pay to tell a player they are two gadgets short.
+ */
+let missionTick = 0;
+function updateMissionStrip(dt: number): void {
+  if (!game) return;
+  // the game-over card covers the door and carries the same three rows itself
+  if (game.phase === "dead") { ui.setMissionStrip(null); return; }
+  missionTick -= dt;
+  if (missionTick > 0) return;
+  missionTick = 0.25;
+  const run: RunTally = { cm: game.heightCm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
+    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.round(game.runTime), daily: dailyRun ? 1 : 0 };
+  let best: { text: string; pct: number; done: boolean } | null = null;
+  for (const m of save.missions) {
+    const at = liveProgress(m, run);
+    const pct = (at / m.n) * 100;
+    // A mission finished earlier today has nothing left to chase, and one this run cannot
+    // touch -- "take today's daily climb", on a solo run -- would sit there at nought for
+    // the whole climb pretending to be the thing to go for.
+    if (m.done) continue;
+    if (missionById(m.id)?.stat === "daily" && !dailyRun) continue;
+    const text = at >= m.n ? `${missionText(m)} \u00b7 DONE` : `${missionText(m)} \u00b7 ${groupNum(Math.floor(at))}/${groupNum(m.n)}`;
+    if (!best || pct > best.pct) best = { text, pct, done: at >= m.n };
+  }
+  ui.setMissionStrip(best?.text ?? null, best?.pct ?? 0, best?.done ?? false);
+}
+
+function ensureDailyMissions(): void {
+  const today = todayKey();
+  if (save.missionsDay === today && save.missions.length === 3) return;
+  save.missions = dailyBoard(save.missionsDone);
+  save.missionsDay = today;
+  persist();
+}
+
 function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null) {
-  if (save.missions.length < 3) { save.missions = refill(save.missions, save.missionsDone); persist(); }
+  ensureDailyMissions();
   void cloudPull(true);
   rulesNow = rules;
   ui.clear();
@@ -585,6 +629,7 @@ function submitScore(cm: number, panel: HTMLElement) {
 function endRun() {
   clearSnapshot();
   ghost = null;
+  ui.setMissionStrip(null);
   // the kit was for that climb: it is used up whether it carried you far or not
   for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
   persist();
@@ -740,6 +785,7 @@ function frame(now: number) {
       }
       simMs = performance.now() - simT0;
       tickTutorial(dt);
+      updateMissionStrip(dt);
       if (game.phase === "idle") tickHint(dt); else cancelHint();
     }
     const drawT0 = performance.now();
@@ -799,6 +845,8 @@ async function cloudPull(quiet = false) {
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
 void resubmitBests();
+// before anything draws a menu, so the board is today's rather than yesterday's
+ensureDailyMissions();
 pendingChallenge = parseChallenge();
 clearChallengeParam();
 if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

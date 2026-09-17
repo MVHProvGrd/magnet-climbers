@@ -165,13 +165,18 @@ const el = (tag: string, cls: string, html = "") => {
 };
 
 /** All non-canvas UI: menus, shop, pause, game over. Plain DOM so it ports to a WebView untouched. */
-/** One mission as a row: what to do, how far along, what it pays. */
-function missionRow(m: Mission): string {
-  const pct = Math.max(0, Math.min(100, Math.round((m.at / m.n) * 100)));
+/**
+ * One mission as a row. The bar on its own was a mystery -- a blue stripe of no stated
+ * length -- so the row now says the count beside it, and a finished one says it is finished
+ * and what it paid, rather than quietly turning green and being replaced by a stranger.
+ */
+function missionRow(m: Mission, live = m.at): string {
+  const at = Math.max(m.at, Math.min(m.n, live));
+  const pct = Math.max(0, Math.min(100, Math.round((at / m.n) * 100)));
   return `<div class="mission ${m.done ? "done" : ""}">
     <span class="mission-txt">${esc(missionText(m))}</span>
-    <span class="mission-bar"><i style="width:${pct}%"></i></span>
-    <span class="mission-pay">$${m.pay}</span>
+    <span class="mission-bar"><i style="width:${m.done ? 100 : pct}%"></i></span>
+    <span class="mission-pay">${m.done ? `<em>EARNED</em>$${m.pay}` : `<em>${groupNum(at)}/${groupNum(m.n)}</em>$${m.pay}`}</span>
   </div>`;
 }
 
@@ -400,8 +405,8 @@ export class Ui {
       // one door for both errands: what you are wearing, and what you are taking up with you
       if (a === "kit") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
-      if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"), { asked: true });
-      if (a === "collection") this.showCollection();
+      // the wallet chip is still a way in, and lands on what the coins are for
+      if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "board") this.showBoard("solo");
       if (a === "settings") this.showSettings();
       if (a === "tutorial") this.showHowToPlay();
@@ -769,8 +774,6 @@ export class Ui {
         <p class="sec-label">Profile</p>
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
-        ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
-        ${SHOP_ENABLED ? row("Kit up", "Spend coins on gear for your next climb", chip("shop", "OPEN")) : ""}
         <p class="sec-label">Play on another device</p>
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
@@ -813,7 +816,6 @@ export class Ui {
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const a = t.dataset.a;
-      if (a === "collection") { this.showCollection(); return; }
       if (a === "update") { this.h.onUpdate(); return; }
       if (a === "perf") {
         const out = p.querySelector<HTMLElement>(".perf-out");
@@ -831,7 +833,6 @@ export class Ui {
         syncToggles();
         return;
       }
-      if (a === "shop") { this.showQuickKit(() => this.h.onPlay("solo"), { asked: true }); return; }
       if (a === "install") {
         markInstallAsked();
         void promptInstall().then((out) => {
@@ -1180,6 +1181,27 @@ export class Ui {
   hideTip() {
     this.tip?.remove();
     this.tip = null;
+  }
+
+  /**
+   * The mission you are closest to finishing, on screen while you climb. Missions were only
+   * ever visible on the menus either side of a run, so the one thing that would actually make
+   * a player go for one -- knowing they are two gadgets short with the line still far below --
+   * was the one thing never shown. Nearest to done rather than all three: the point is a
+   * nudge, not a second HUD.
+   */
+  private missionStrip: HTMLElement | null = null;
+  setMissionStrip(text: string | null, pct = 0, done = false) {
+    if (!text) { this.missionStrip?.remove(); this.missionStrip = null; return; }
+    if (!this.missionStrip) {
+      this.missionStrip = el("div", "run-mission", `<span></span><i><b></b></i>`);
+      this.root.appendChild(this.missionStrip);
+      requestAnimationFrame(() => this.missionStrip?.classList.add("show"));
+    }
+    const label = this.missionStrip.querySelector("span")!;
+    if (label.textContent !== text) label.textContent = text;
+    this.missionStrip.classList.toggle("done", done);
+    (this.missionStrip.querySelector("i > b") as HTMLElement).style.width = `${Math.max(0, Math.min(100, pct))}%`;
   }
 
   /** This week's standing, held while the league tab is open. */

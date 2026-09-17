@@ -30,6 +30,13 @@ export interface Mission {
   done: boolean;
 }
 
+/** How far along a mission is right now, mid-run, without settling anything. */
+export function liveProgress(m: Mission, run: RunTally): number {
+  const def = missionById(m.id);
+  if (!def || m.done) return m.at;
+  return Math.min(m.n, progressFor(def, m, run));
+}
+
 /** What one finished run contributes to every stat a mission can watch. */
 export interface RunTally {
   cm: number;
@@ -75,7 +82,19 @@ export function rollMission(taken: readonly string[], done: number, roll: () => 
   return { id: def.id, n: def.targets[tier], pay: def.pays[tier], at: 0, done: false };
 }
 
-/** Fill the board back up to three. */
+/**
+ * Three for the day, and the same three all day.
+ *
+ * They used to be replaced the moment one was finished, which meant the board a player
+ * looked at after a run was rarely the board they had been climbing for -- the thing they
+ * had just earned vanished and a stranger took its place. A day's three stay put, finished
+ * ones included, so you can see what you did as well as what is left.
+ */
+export function dailyBoard(done: number, roll: () => number = Math.random): Mission[] {
+  return refill([], done, roll);
+}
+
+/** Fill a board up to three. Used to build a day's set; finished ones are never replaced. */
 export function refill(current: Mission[], done: number, roll: () => number = Math.random): Mission[] {
   const out = current.filter((m) => !m.done);
   for (let guard = 0; out.length < 3 && guard < 20; guard++) {

@@ -55,6 +55,8 @@ export interface SaveData {
   /** three at a time, and a count of every one ever finished (it sets how hard the next roll is) */
   missions: Mission[];
   missionsDone: number;
+  /** the UTC day the current three were rolled for; a new day rolls a new three */
+  missionsDay: string;
   /** the daily climb already taken: its UTC day, what it scored, and the streak it continued */
   daily: { day: string; cm: number } | null;
   /** consecutive days with a daily climb, and the last day counted */
@@ -90,6 +92,7 @@ function defaults(): SaveData {
     themeMonth: "",
     missions: [],
     missionsDone: 0,
+    missionsDay: "",
     daily: null,
     streak: { days: 0, last: "" },
     sound: true,

@@ -220,6 +220,22 @@ select.buy option { background: #1e2229; color: #fff; }
   display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
 }
 .tip.show { opacity: 1; transform: translate(-50%, 0); }
+/* Sits under the run's top slab, narrow enough never to reach the pause and mute buttons. */
+.run-mission {
+  position: absolute; left: 50%; transform: translate(-50%, calc(-6 * var(--px)));
+  top: calc(env(safe-area-inset-top, 0px) + 64 * var(--px));
+  width: min(calc(232 * var(--px)), 62vw); padding: calc(6 * var(--px)) calc(10 * var(--px));
+  border-radius: calc(10 * var(--px)); background: var(--slab); box-shadow: var(--slab-shadow);
+  display: flex; flex-direction: column; gap: calc(4 * var(--px)); pointer-events: none;
+  opacity: 0; transition: opacity .25s ease, transform .25s ease;
+}
+.run-mission.show { opacity: .93; transform: translate(-50%, 0); }
+.run-mission span { font: 800 calc(10.5 * var(--px)) var(--display); letter-spacing: calc(.4 * var(--px));
+  color: rgba(255,255,255,.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.run-mission i { display: block; height: calc(3 * var(--px)); border-radius: calc(2 * var(--px)); background: rgba(255,255,255,.14); }
+.run-mission i > b { display: block; height: 100%; border-radius: inherit; background: #6fd6ff; transition: width .3s ease; }
+.run-mission.done i > b { background: #9be15d; }
+.run-mission.done span { color: #9be15d; }
 .tip button { border: 0; border-radius: 10px; padding: 8px; background: var(--accent); color: #1a1d24; font-weight: 800; }
 .panel button.chip { padding: 10px 14px; font-size: 14px; background: #2b2f38; color: rgba(255,255,255,0.8); }
 .panel button.chip.on { background: #9be15d; color: #1a1d24; }
@@ -537,7 +553,12 @@ select.buy option { background: #1e2229; color: #fff; }
   color: rgba(255,255,255,0.45); }
 .mission { display: grid; grid-template-columns: 1fr auto; gap: calc(2 * var(--px)) calc(10 * var(--px)); align-items: center; }
 .mission-txt { grid-column: 1; grid-row: 1; text-align: left; font: 700 calc(12.5 * var(--px)) var(--display); color: #e8eef5; line-height: 1.2; }
-.mission-pay { grid-column: 2; grid-row: 1 / span 2; font: 900 calc(13 * var(--px)) var(--display); color: var(--coin); text-align: right; }
+.mission-pay { grid-column: 2; grid-row: 1 / span 2; font: 900 calc(13 * var(--px)) var(--display); color: var(--coin); text-align: right;
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: calc(1 * var(--px)); }
+/* the count, or EARNED once it is done: the pay figure alone never said how close you were */
+.mission-pay em { font: 800 calc(10 * var(--px)) var(--display); font-style: normal; letter-spacing: calc(.6 * var(--px)); color: rgba(255,255,255,.55); }
+.mission.done .mission-pay em { color: #9be15d; }
+.mission.done .mission-txt { opacity: .62; text-decoration: line-through; }
 .mission-bar { grid-column: 1; grid-row: 2; height: calc(4 * var(--px)); border-radius: calc(3 * var(--px));
   background: rgba(255,255,255,0.12); overflow: hidden; }
 .mission-bar i { display: block; height: 100%; background: #6fd6ff; }
