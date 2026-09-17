@@ -15,7 +15,7 @@
  */
 import { CFG, W } from "./game/config";
 import { FRIDGE_ITEMS, PAPER_ASPECT, type FridgeItem } from "./game/items";
-import { drawSurface, drawZone, drawPower } from "./game/scenery";
+import { drawSurface, drawZone, drawPower, drawBumper } from "./game/scenery";
 import { drawClimber } from "./game/climber-render";
 import { drawGadget, gadgetArtReady, destinationArtById, drawDestination } from "./game/gadget-art";
 import { obstacleArtReady } from "./game/obstacle-art";
@@ -98,6 +98,8 @@ const GROUPS: { label: string; of: (i: FridgeItem) => boolean }[] = [
 ];
 /** A gadget draws itself at a size baked into gadget-art, so the sliders cannot move it. */
 const isGadget = (i: FridgeItem) => i.family === "gadget";
+/** The advertising magnets: family "bumper", but not one of the photographed toys. */
+const isAdvert = (i: FridgeItem) => i.family === "bumper" && !i.id.startsWith("bumper-");
 /** Where the size a thing is drawn at actually lives, so the number has somewhere to go. */
 const source = (i: FridgeItem) =>
   isGadget(i) ? "gadget-art.ts (the draw size in its branch)"
@@ -109,6 +111,9 @@ const source = (i: FridgeItem) =>
 /** The natural shape of a thing's art, when we know it. */
 function aspectOf(item: FridgeItem): number | undefined {
   if (item.family === "paper") return PAPER_ASPECT[item.id];
+  // an advertising magnet is drawn into a 100x60 box by drawBusinessMagnet, so that is its
+  // real shape; the bench used to open it as a square, which is a shape it never has
+  if (isAdvert(item)) return 100 / 60;
   return undefined;
 }
 
@@ -132,6 +137,15 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
     drawPower(ctx, { x: 0, y: 0, kind: item.power as PowerKind, taken: false, bob: 0 }, 0); ctx.restore(); return;
   }
   if (item.family === "paper") { drawZone(ctx, zone("sticker"), 0, 42); return; }
+  if (isAdvert(item)) {
+    // The game draws these through drawBumper, because that is what they are: a magnet
+    // sliding across the door. The bench had no branch for them at all, so they fell to the
+    // catch-all below and came out as a sheet of dark plastic trim -- every advertising
+    // magnet in the list was being sized against a picture of the wrong object.
+    drawBumper(ctx, { x, y, w, h, vx: 0, minX: x, maxX: x, vy: 0, minY: y, maxY: y,
+      label: item.label ?? item.name, hue: item.hue ?? 0, itemId: item.id, motion: "slide" }, 0);
+    return;
+  }
   if (item.id.startsWith("bumper-")) {
     // a toy is either stuck flat on the door or hung from a keyring; both are real
     drawZone(ctx, hang ? zone("trim", { swing: { angle: 0, vel: 0, cool: 0 } }) : zone("repel", { power: 0.2 }), 0, 42);
@@ -143,7 +157,13 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
 /* ------------------------------------------------------------------ the bench */
 /** Everything the bench can walk, in the order the groups are listed. */
 const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of));
-const SIZES = "mc-scale-sizes";
+/**
+ * v2: every number recorded before this was taken against whatever the bench happened to
+ * draw, and for the sixteen advertising magnets that was a sheet of dark plastic trim rather
+ * than the magnet. Rather than leave a list of sizes measured from the wrong object, the key
+ * moves and the walk starts clean.
+ */
+const SIZES = "mc-scale-sizes:v2";
 type Audit = Record<string, { w: number; h: number; at: string }>;
 const readAudit = (): Audit => { try { return JSON.parse(localStorage.getItem(SIZES) ?? "{}") as Audit; } catch { return {}; } };
 const writeAudit = (a: Audit) => { try { localStorage.setItem(SIZES, JSON.stringify(a)); } catch { /* private window */ } };
@@ -232,8 +252,10 @@ function boot() {
       <p class="fine" id="progress"></p>
       <div class="bar">
         <button id="prev">‹ Back</button>
-        <button class="primary" id="keep">Keep this size →</button>
-        <button id="skip">Skip</button>
+        <button id="skip">Next ›</button>
+      </div>
+      <div class="bar">
+        <button class="primary" id="keep">Keep this size</button>
       </div>
       <div class="bar">
         <button id="export">Show the file</button>
@@ -279,9 +301,11 @@ function boot() {
   hangBox.addEventListener("change", () => { hang = hangBox.checked; sync(); });
   picker.addEventListener("change", (e) => {
     item = FRIDGE_ITEMS.find((i) => i.id === (e.target as HTMLSelectElement).value)!;
-    const a = aspectOf(item);
-    if (a) { boxW = 150; boxH = Math.round(150 / a); }
-    sync();
+    // Jumping to a thing you already sized used to throw that size away and show a fresh 150,
+    // which is why a kept size looked as though it had never been kept: step to it with the
+    // arrows and it was there, pick it from the list and it was gone.
+    load();
+    sync(); tell();
   });
   root.querySelector("#fit")!.addEventListener("click", () => {
     const a = aspectOf(item) ?? 1; boxW = 150; boxH = Math.round(150 / a); sync();
@@ -315,12 +339,16 @@ function boot() {
       (mine ? ` · this one is <b>${mine.w}×${mine.h}</b>` : " · not recorded yet");
     if (!file.hidden) file.value = fileText();
   };
+  /** The box to show this item in: the size already recorded, or its own natural shape. */
+  const load = () => {
+    const mine = audit[item.id];
+    if (mine) { boxW = mine.w; boxH = mine.h; return; }
+    const a = aspectOf(item); boxW = 150; boxH = a ? Math.round(150 / a) : 150;
+  };
   const go = (step: number) => {
     const at = (WALK.indexOf(item) + step + WALK.length) % WALK.length;
     item = WALK[at];
-    const mine = audit[item.id];
-    if (mine) { boxW = mine.w; boxH = mine.h; }
-    else { const a = aspectOf(item); boxW = 150; boxH = a ? Math.round(150 / a) : 150; }
+    load();
     picker.value = item.id;
     sync(); tell();
   };
