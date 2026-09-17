@@ -161,8 +161,10 @@ export class World {
         continue;
       }
       const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
-      const pose = gadgetPose(g, this.gadgetTime);
-      if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) {
+      // a keyring toy is tested where it is drawn: the pose point is a simplified pendulum that
+      // sits a couple of centimetres off the art at rest and clear of it once the swing widens
+      const at = g.kind === "swing" ? toyFace(g, this.gadgetTime, toyHook(g.itemId.replace(/^swing-toy-/, "bumper-"))) : gadgetPose(g, this.gadgetTime);
+      if (Math.hypot(p.x - at.x, p.y - at.y) < (g.kind === "swing" ? 36 : 30)) {
         this.bumpGadget(g.id, Math.sign(vx), strength);
         this.knocked = g.itemId;
       }

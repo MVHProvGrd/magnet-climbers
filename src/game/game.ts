@@ -382,6 +382,7 @@ export class Game {
     // a fresh fling is a fresh landing: the last panel it slid on is forgotten, so coming
     // back down on the same board sounds again instead of counting as one long slide
     this.slideMaterial.delete(c.id);
+    c.noStick = 0;
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -430,6 +431,7 @@ export class Game {
     o.leftLauncher = true;
     o.launcherId = null;
     o.airTime = 0;
+    o.z = 0; o.vz = 0;
   }
 
   private nearestAnchor(c: Climber, excludeId: number | null): Climber | null {
@@ -911,6 +913,7 @@ export class Game {
           c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
           c.x += c.vx * 0.03;
           c.noStick = 0.25;
+          c.fell = true; // knocked out of the air is a fall, catchable like every other knock
           this.damage(c, false, "bumper", impact);
           if (c.state === "lost") return;
         }
