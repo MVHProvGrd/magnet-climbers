@@ -7,7 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
-import { MISSIONS, refill, settle } from "../src/game/missions";
+import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -885,6 +885,19 @@ test("missions read the run, pay once, and the board tops itself up", () => {
   assert.ok(!after.some((m) => m.done));
   // every mission says something a player can picture
   for (const m of MISSIONS) assert.ok(m.text(m.targets[0]).length > 12, m.id);
+});
+
+test("a streak pays more each day and a pattern on the seventh", () => {
+  const pays = [1, 2, 3, 4, 5, 6].map((d) => streakReward(d).coins);
+  for (let i = 1; i < pays.length; i++) assert.ok(pays[i] > pays[i - 1], `day ${i + 1} should beat day ${i}`);
+  assert.equal(streakReward(7).pattern, true, "the seventh day pays a look, not coins");
+  assert.equal(streakReward(7).coins, 0);
+  // and it keeps going: day 14 is another pattern, the days between pay coins again
+  assert.equal(streakReward(14).pattern, true);
+  assert.ok(streakReward(8).coins > 0);
+  // nothing for a streak that does not exist
+  assert.equal(streakReward(0).coins, 0);
+  assert.equal(streakReward(0).pattern, false);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

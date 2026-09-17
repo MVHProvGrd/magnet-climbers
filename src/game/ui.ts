@@ -1,6 +1,6 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
-import { missionText, type Mission } from "./missions";
+import { missionText, streakReward, type Mission } from "./missions";
 import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
@@ -330,6 +330,8 @@ export class Ui {
     const today = todayKey();
     const done = s.daily?.day === today;
     const streak = s.streak.last === today || s.streak.last === todayKey(Date.now() - 86_400_000) ? s.streak.days : 0;
+    // what taking it right now would pay, so the tile makes the case for itself
+    const next = streakReward(done ? streak : streak + 1);
     p.innerHTML = `
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
@@ -352,7 +354,7 @@ export class Ui {
           </button>
           <button class="mode-tile daily ${done ? "spent" : ""}" data-a="daily">
             <b>DAILY CLIMB</b><small>${done ? "New one tomorrow." : "One shared fridge, one go."}</small>
-            <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : "TAKE TODAY'S"}${streak ? ` · ${streak}🔥` : ""}</i>
+            <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : next.pattern ? "PAYS A PATTERN" : `PAYS $${next.coins}`}${streak ? ` · ${streak}🔥` : ""}</i>
           </button>
         </div>
         ${s.missions.length ? `<div class="home-missions">

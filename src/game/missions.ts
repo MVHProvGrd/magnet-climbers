@@ -100,3 +100,16 @@ export function settle(board: Mission[], run: RunTally): { board: Mission[]; fin
   });
   return { board: next, finished, paid: finished.reduce((n, m) => n + m.pay, 0) };
 }
+
+/**
+ * The streak reward. Taking the daily climb pays a coin drop that grows with the streak, and
+ * the seventh day in a row pays a pattern instead of coins. A missed day starts again at one:
+ * the point is the habit, so the reward has to be worth protecting rather than worth grinding.
+ */
+export const STREAK_PAY = [40, 60, 80, 110, 150, 200, 0] as const;
+export const STREAK_PATTERN_DAY = 7;
+export function streakReward(days: number): { coins: number; pattern: boolean } {
+  if (days <= 0) return { coins: 0, pattern: false };
+  if (days % STREAK_PATTERN_DAY === 0) return { coins: 0, pattern: true };
+  return { coins: STREAK_PAY[Math.min(STREAK_PAY.length - 2, (days - 1) % STREAK_PATTERN_DAY)], pattern: false };
+}

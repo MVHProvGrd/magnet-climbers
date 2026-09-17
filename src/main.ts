@@ -9,7 +9,7 @@ import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
-import { refill, settle, type RunTally } from "./game/missions";
+import { refill, settle, streakReward, type RunTally } from "./game/missions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -376,8 +376,21 @@ function runEvents() {
         save.daily = { day, cm };
         // yesterday's climb keeps the streak; a missed day starts it again at one
         const yesterday = todayKey(Date.now() - 86_400_000);
-        save.streak = save.streak.last === day ? save.streak
-          : { days: save.streak.last === yesterday ? save.streak.days + 1 : 1, last: day };
+        if (save.streak.last !== day) {
+          save.streak = { days: save.streak.last === yesterday ? save.streak.days + 1 : 1, last: day };
+          // the climb itself pays: coins that grow with the streak, a pattern on the seventh day
+          const reward = streakReward(save.streak.days);
+          if (reward.pattern) {
+            const prize = drawPrize(save.patterns);
+            if (prize) {
+              save.patterns.push(prize.id); save.skins = save.patterns;
+              ui.toast(`${save.streak.days} days running · ${prize.name} unlocked`);
+            } else { save.coins += 200; ui.toast(`${save.streak.days} days running · $200`); }
+          } else if (reward.coins) {
+            save.coins += reward.coins;
+            ui.toast(`Day ${save.streak.days} · $${reward.coins}`);
+          }
+        }
       }
       const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
