@@ -736,6 +736,8 @@ export class Ui {
   }
 
   /** Profile, preferences and appearance in one place. */
+  /** where the settings list was left, so a rebuild does not throw the player back to the top */
+  private settingsScroll = 0;
   showSettings() {
     const s = this.save();
     const p = el("div", "panel shell settings");
@@ -781,6 +783,15 @@ export class Ui {
         <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced after every run</p>
         <p class="fine"><a href="${base}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${base}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${base}contact/" target="_blank" rel="noopener">Contact</a></p>
       </div>`;
+    const syncToggles = () => {
+      const now = this.save();
+      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["chill", now.chill]] as const) {
+        const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
+        if (!input) continue;
+        input.checked = on;
+        input.parentElement?.classList.toggle("on", on);
+      }
+    };
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const a = t.dataset.a;
@@ -795,9 +806,13 @@ export class Ui {
       if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
-      if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
-      if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
-      if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
+      // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
+      // list back to the top and flashed, which is a lot of screen for one checkbox.
+      if (a === "sound" || a === "music" || a === "chill") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), chill: () => this.h.onToggleChill() })[a]();
+        syncToggles();
+        return;
+      }
       if (a === "shop") { this.showShop(); return; }
       if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
       if (a === "back") this.showMenu();
@@ -817,7 +832,11 @@ export class Ui {
     p.querySelector<HTMLSelectElement>('select[data-a="lang"]')!.addEventListener("change", (e) => {
       this.h.onSetLang((e.target as HTMLSelectElement).value as Lang); this.refreshLang(); this.showSettings();
     });
+    // a rebuild (a new language, a new name, owner tools appearing) reopens where you were
+    const body = p.querySelector<HTMLElement>(".shell-body")!;
+    body.addEventListener("scroll", () => { this.settingsScroll = body.scrollTop; }, { passive: true });
     this.show(p);
+    body.scrollTop = this.settingsScroll;
   }
 
   showShop() {

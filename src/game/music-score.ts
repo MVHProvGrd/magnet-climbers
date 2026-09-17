@@ -45,6 +45,14 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
   hitPaper: [{ frequency: 2600, endFrequency: 1500, duration: 0.07, gain: 0.05, type: "noise" }, { frequency: 1500, endFrequency: 900, duration: 0.05, delay: 0.04, gain: 0.035, type: "noise" }],
   /** ice tray: a cold tick and a little skid, since ice is what you slide on */
   hitIce: [{ frequency: 3300, duration: 0.05, gain: 0.05, type: "sine" }, { frequency: 2200, endFrequency: 3600, duration: 0.16, delay: 0.02, gain: 0.03, type: "noise" }],
+  // A knocked taxi keychain honks: two short beeps a fourth apart, each with its harmonic
+  // above it so it reads as a little brass horn rather than a sine tone.
+  taxi: [
+    { frequency: 622, duration: 0.11, gain: 0.09, type: "triangle" },
+    { frequency: 1244, duration: 0.09, gain: 0.035, type: "sine" },
+    { frequency: 830, duration: 0.15, delay: 0.14, gain: 0.09, type: "triangle" },
+    { frequency: 1660, duration: 0.12, delay: 0.14, gain: 0.03, type: "sine" },
+  ],
   link: [{ frequency: 660, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 990, duration: 0.13, delay: 0.07, gain: 0.06, type: "sine" }],
   coin: [{ frequency: 1050, duration: 0.07, gain: 0.07, type: "sine" }, { frequency: 1575, duration: 0.16, delay: 0.055, gain: 0.055, type: "sine" }],
   power: [{ frequency: 523, duration: 0.15, gain: 0.08, type: "triangle" }, { frequency: 659, duration: 0.17, delay: 0.07, gain: 0.07, type: "sine" }, { frequency: 784, duration: 0.25, delay: 0.14, gain: 0.06, type: "sine" }],

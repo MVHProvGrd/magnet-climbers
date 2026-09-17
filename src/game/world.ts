@@ -117,11 +117,14 @@ export class World {
       const s = z.swing; if (!s || s.cool > 0) continue;
       if (inside) {
         s.vel = Math.max(-3, Math.min(3, s.vel + 1.5 * (Math.sign(vx) || 1) * Math.max(0.25, Math.min(1, Math.abs(vx) / 300)))); s.cool = 0.3;
+        if (z.itemId) this.knocked = z.itemId;
       }
     }
   }
   /** last bubble flipped this frame (the game turns it into a sound), cleared by the game */
   popped: { index: number; inward: boolean } | null = null;
+  /** last hanging toy set swinging this frame, by item id: some of them make a noise */
+  knocked: string | null = null;
   rng: Rng;
   /** y of the top-most generated segment */
   private topY: number;

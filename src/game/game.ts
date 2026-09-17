@@ -794,6 +794,8 @@ export class Game {
       if (c.state === "flying") {
         this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
         const pop = this.world.popped; if (pop) { this.world.popped = null; (pop.inward ? sfx.popIn : [sfx.pop1, sfx.pop2, sfx.pop3][pop.index % 3])(); }
+        // a swung toy that has a voice uses it: the taxi gets its horn
+        const hit = this.world.knocked; if (hit) { this.world.knocked = null; if (hit === "bumper-6") sfx.taxi(); }
       }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);

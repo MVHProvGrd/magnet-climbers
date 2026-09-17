@@ -664,3 +664,16 @@ test("every photographed paper card is cut to the shape of its own art", () => {
     assert.ok(a > 0.3 && a < 3, `${item.id} has a daft shape: ${a}`);
   }
 });
+
+test("knocking the taxi keychain reports it, so it can honk", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  seg.zones.push({ x: 150, y: -200, w: 60, h: 40, kind: "void", hue: -1, itemId: "bumper-6", swing: { angle: 0, vel: 0, cool: 0 } });
+  g.world.knockSwings({ x: 180, y: -180 }, 300);
+  assert.equal(g.world.knocked, "bumper-6");
+  assert.ok(EFFECTS.taxi?.length, "and the horn exists to play");
+  // the debounce holds: brushing it again while it is still cooling says nothing new
+  g.world.knocked = null;
+  g.world.knockSwings({ x: 180, y: -180 }, 300);
+  assert.equal(g.world.knocked, null);
+});
