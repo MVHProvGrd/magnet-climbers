@@ -1329,8 +1329,10 @@ export class Ui {
     };
     const cause = !o.ended && o.cause ? causes[o.cause] : "";
     const revives = [
-      o.tokens > 0 ? { a: "token", top: "TOKEN", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
-      !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "FREE", cls: "accent" } : null,
+      // Cheapest first, and only one of them may say FREE. The ad costs no coins but it does
+      // cost half a minute, so labelling both of them free hid the one that is actually free.
+      o.tokens > 0 ? { a: "token", top: "FREE GO", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
+      !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "ONCE A RUN", cls: "accent" } : null,
       { a: "gems", top: "◆ 5", sub: "GEMS", cls: o.gems >= 5 ? "gem" : "gem disabled" },
     ].filter(Boolean) as { a: string; top: string; sub: string; cls: string }[];
     p.innerHTML = `

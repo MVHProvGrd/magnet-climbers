@@ -683,9 +683,13 @@ test("the shop only sells upgrades a lone climber can feel", () => {
     // three clicks each: a short ladder the player finishes, not a grind
     assert.equal(u.max, 3, `${u.key} should cap at three`);
   }
-  // spare lives are not for sale: a free second chance is the ad or gems, nothing else
+  // Every run is given one free second chance, and no amount of money buys another: the
+  // offers after it are the ad and then gems. The tier that sold three is gone, so a maxed
+  // kit has to leave the count exactly where an empty one does.
   assert.equal(UPGRADES.some((u) => u.key === "revive"), false);
-  assert.equal(statsFor(zero).revives, 0);
+  assert.equal(statsFor(zero).revives, 1);
+  const maxedKit = Object.fromEntries(UPGRADES.map((u) => [u.key, u.max])) as Record<UpgradeKey, number>;
+  assert.equal(statsFor(maxedKit).revives, 1, "no purchase may buy a second life");
   assert.ok(UPGRADES.filter((u) => u.solo).length >= 2, "something is still on the shelf");
 });
 

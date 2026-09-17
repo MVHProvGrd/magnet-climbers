@@ -159,7 +159,13 @@ export function statsFor(levels: Record<UpgradeKey, number>) {
     maxLinks: 1,
     launchMult: 1 + levels.power * 0.09,
     floorMult: 1 - levels.floor * 0.09,
-    revives: 0,
+    /**
+     * One second chance in every run, given rather than sold. The game-over card offers them
+     * in the order they cost: this first and free, then the ad, then gems. It is deliberately
+     * not read from `levels` -- the tier you could buy three of is gone, and a kit that lasts
+     * one climb has no business changing how many lives that climb gets.
+     */
+    revives: 1,
   };
 }
 
