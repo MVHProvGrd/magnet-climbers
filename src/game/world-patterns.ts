@@ -5,6 +5,8 @@ import { rule } from "./placement";
 export const SET_PIECES = ["water-station", "busy-month", "ice-alley", "handle-hop"] as const;
 /** obstacles/vent.png is 320x82: a wide grille. Stretched tall it turns to mush, so it is laid in bands. */
 const VENT_ASPECT = 320 / 82;
+/** the door is 400 logical px wide; a full-width grille spans it */
+const W_FULL = 400;
 export type SetPiece = typeof SET_PIECES[number];
 
 /** Each set piece leaves an uninterrupted 64px steel lane at one door edge.
@@ -39,6 +41,20 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
     const d = fit(36, 264);
     for (let i = 0; i < 2; i++) s.zones.push(itemZone("ice-tray", x + i * trayGap, d.y, trayW, d.h));
     s.zones.push(itemZone("handle", x + 18, y + 153, 72, 24));
+  } else if (version >= 25) {
+    // One grille, all the way across, at the photo's own proportions.
+    //
+    // A cold air vent on a real fridge spans the door; three of them stacked down one half
+    // read as ductwork, and reading the photo three times in a column is the surest way to
+    // make a photograph look like a tile. v21 stacked three because a single band stretched
+    // to a door's width looked smeared -- but at the FULL width the grille is 320x82 drawn
+    // near its own proportions, so it does not need stretching at all.
+    //
+    // Full width also makes it an obstacle rather than scenery: there is no lane beside it,
+    // so it has to be jumped, and a band this tall sits well inside a solo jump's reach.
+    const band = Math.round(W_FULL / VENT_ASPECT);
+    const d = fit(120, band);
+    if (d.h > 14) s.zones.push(itemZone("vent", 0, d.y, W_FULL, d.h));
   } else if (version >= 21) {
     // v21: three grille bands at the photo's own proportions, steel between them to land on.
     // The old single panel stretched one 320x82 grille over 300px of door and smeared it.

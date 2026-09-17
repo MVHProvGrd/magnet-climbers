@@ -387,7 +387,7 @@ function runEvents() {
       }
       // missions read the run that just ended, pay out, and the board tops itself back up
       const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.round(game.runTime), daily: dailyRun ? 1 : 0 };
+        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
       const settled = settle(save.missions, tally);
       save.missions = settled.board;
       if (settled.finished.length) {
@@ -512,28 +512,51 @@ let ghost: Ghost | null = null;
  * cost the run does not need to pay to tell a player they are two gadgets short.
  */
 let missionTick = 0;
+/** Missions already at their target this run, and how long the banner has left on one. */
+const missionHit = new Set<string>();
+let missionCheer = 0;
+let missionCheerId = "";
+export function resetMissionStrip(): void { missionHit.clear(); missionCheer = 0; missionCheerId = ""; }
+
 function updateMissionStrip(dt: number): void {
   if (!game) return;
   // the game-over card covers the door and carries the same three rows itself
   if (game.phase === "dead") { ui.setMissionStrip(null); return; }
+  missionCheer = Math.max(0, missionCheer - dt);
   missionTick -= dt;
   if (missionTick > 0) return;
   missionTick = 0.25;
+  // seconds comes off game.time, the same clock the HUD's TIME shows. runTime does not start
+  // until the first fling, so a mission counting that always ran a few seconds behind the
+  // number on screen -- 80/120 under a clock reading 1:23.
   const run: RunTally = { cm: game.heightCm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.round(game.runTime), daily: dailyRun ? 1 : 0 };
-  let best: { text: string; pct: number; done: boolean } | null = null;
+    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
+
+  // A mission that hits its target has to say so and then get out of the way. Holding the
+  // strip on a finished one, as it first did, meant the next mission was never mentioned --
+  // you could complete two in a run and only ever be told about the first.
+  let next: { text: string; pct: number; done: boolean } | null = null;
   for (const m of save.missions) {
-    const at = liveProgress(m, run);
-    const pct = (at / m.n) * 100;
-    // A mission finished earlier today has nothing left to chase, and one this run cannot
-    // touch -- "take today's daily climb", on a solo run -- would sit there at nought for
-    // the whole climb pretending to be the thing to go for.
     if (m.done) continue;
     if (missionById(m.id)?.stat === "daily" && !dailyRun) continue;
-    const text = at >= m.n ? `${missionText(m)} \u00b7 DONE` : `${missionText(m)} \u00b7 ${groupNum(Math.floor(at))}/${groupNum(m.n)}`;
-    if (!best || pct > best.pct) best = { text, pct, done: at >= m.n };
+    const at = liveProgress(m, run);
+    if (at >= m.n) {
+      if (!missionHit.has(m.id)) { missionHit.add(m.id); missionCheer = 3; missionCheerId = m.id; }
+      continue;
+    }
+    const pct = (at / m.n) * 100;
+    const text = `${missionText(m)} \u00b7 ${groupNum(Math.floor(at))}/${groupNum(m.n)}`;
+    if (!next || pct > next.pct) next = { text, pct, done: false };
   }
-  ui.setMissionStrip(best?.text ?? null, best?.pct ?? 0, best?.done ?? false);
+
+  // the cheer wins the slot while it lasts, then the next unfinished mission takes over
+  if (missionCheer > 0 && missionCheerId) {
+    const m = save.missions.find((x) => x.id === missionCheerId);
+    if (m) { ui.setMissionStrip(`${missionText(m)} \u00b7 DONE`, 100, true); return; }
+  }
+  // nothing left to chase: say what the run has banked rather than sitting on a stale bar
+  if (!next && missionHit.size) { ui.setMissionStrip(`${missionHit.size} missions done this run`, 100, true); return; }
+  ui.setMissionStrip(next?.text ?? null, next?.pct ?? 0, false);
 }
 
 function ensureDailyMissions(): void {
@@ -637,6 +660,7 @@ function endRun() {
   clearSnapshot();
   ghost = null;
   ui.setMissionStrip(null);
+  resetMissionStrip();
   // the kit was for that climb: it is used up whether it carried you far or not
   for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
   persist();

@@ -197,7 +197,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 24) {
+  constructor(seed: number, startY: number, readonly version = 25) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;

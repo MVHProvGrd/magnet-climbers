@@ -203,7 +203,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 24);
+  assert.equal(modern.snapshot()!.worldVersion, 25);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -984,6 +984,31 @@ test("missions read the run, pay once, and the board tops itself up", () => {
     if (m.stat !== "daily") continue;
     for (const n of m.targets) assert.equal(n, 1, `${m.id} asks for ${n} days on a board that lasts one`);
   }
+});
+
+test("the cold air vent is one grille across the whole door", () => {
+  // A vent on a real fridge spans the door. Three stacked down one half read as ductwork,
+  // and the same photograph three times in a column reads as tiling rather than as a thing.
+  for (let seed = 1; seed <= 12; seed++) {
+    const w = new World(seed, 0);
+    w.generateTo(60);
+    for (const seg of w.segments) {
+      const vents = seg.zones.filter((z) => z.itemId === "vent");
+      assert.ok(vents.length <= 1, `seed ${seed} stacked ${vents.length} grilles in one segment`);
+      for (const v of vents) {
+        assert.equal(v.x, 0, `seed ${seed} put a grille on one door instead of across`);
+        assert.equal(v.w, 400, `seed ${seed} drew a grille ${v.w} wide`);
+      }
+    }
+  }
+  // and the version before it keeps its three, so old runs and saved tapes are untouched
+  let sawStack = false;
+  for (let seed = 1; seed <= 12 && !sawStack; seed++) {
+    const old = new World(seed, 0, 21);
+    old.generateTo(80);
+    sawStack = old.segments.some((seg) => seg.zones.filter((z) => z.itemId === "vent").length === 3);
+  }
+  assert.ok(sawStack, "world 21 still stacks three");
 });
 
 test("a day's board is three, rolled once, and finished ones stay put", () => {
