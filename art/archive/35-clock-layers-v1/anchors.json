@@ -1,0 +1,66 @@
+{
+  "face": {
+    "file": "ready/rotor-clock-faceless-v1.webp",
+    "size": [
+      380,
+      384
+    ],
+    "pivot": [
+      190.38,
+      190.34879999999998
+    ],
+    "pivotNormalized": [
+      0.501,
+      0.4957
+    ],
+    "sourcePivot": [
+      622.5,
+      635.5
+    ],
+    "sourceScale": 0.3471105407882676,
+    "bbox": [
+      4,
+      1,
+      377,
+      377
+    ]
+  },
+  "hands": {
+    "clock-hour-hand-v1": {
+      "file": "ready/clock-hour-hand-v1.webp",
+      "size": [
+        128,
+        256
+      ],
+      "pivot": [
+        64,
+        240
+      ],
+      "tipLength": 160,
+      "sourcePivot": [
+        512.0,
+        1200.0
+      ],
+      "clockScale": 0.55,
+      "clockTipLength": 88.0
+    },
+    "clock-minute-hand-v1": {
+      "file": "ready/clock-minute-hand-v1.webp",
+      "size": [
+        128,
+        256
+      ],
+      "pivot": [
+        64,
+        240
+      ],
+      "tipLength": 216,
+      "sourcePivot": [
+        512.0,
+        1252.0
+      ],
+      "clockScale": 0.55,
+      "clockTipLength": 118.80000000000001
+    }
+  }
+}
