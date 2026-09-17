@@ -94,6 +94,10 @@ export const CFG = {
     superMagnet: 3,
   },
   magnetism: {
+    /** How far inside a glass, plastic or paper panel counts as "on the panel": a toy that comes
+     *  down this far past its rim lands there and slides, instead of being pulled to an edge
+     *  its magnets cannot feel through the panel. */
+    panelInset: 12,
     attractionRange: 13,
     attractionAccel: 260,
     snapDistance: 4,

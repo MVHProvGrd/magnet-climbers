@@ -798,6 +798,24 @@ test("a polarity toy pulls on blue as hard as it pushes on red", () => {
   assert.equal(none.repel, null);
 });
 
+test("a toy aimed into a glass panel rides it down instead of grabbing a rim", () => {
+  // a bottle-door band is the case that went wrong: it is short enough that a limb reaching out
+  // of the middle finds the frame, so the toy used to catch a third of the way down the glass
+  for (const vx of [0, 120, -120]) {
+    const g = game(); g.phase = "running";
+    const panel = { x: 30, y: -700, w: 340, h: 110, kind: "glass" as const, hue: 0 };
+    g.world.segments = [{ y: -1400, h: 2400, zones: [panel], bumpers: [], powerUps: [] }];
+    const c = g.climbers[0];
+    const aimX = panel.x + panel.w / 2, aimY = panel.y + panel.h / 2;
+    Object.assign(c, { x: aimX, y: aimY, vx, vy: -20, z: 0, vz: 0, state: "flying", grip: undefined,
+      airTime: 0.5, angle: 0, spin: 0, noStick: 0, launchY: -300 });
+    for (let i = 0; i < 400 && c.state === "flying"; i++) g.update(1 / 60);
+    assert.equal(c.state, "stuck");
+    // it left the glass at the bottom, not partway down it
+    assert.ok(c.y >= panel.y + panel.h - 20, `caught on the glass at ${(c.y - aimY).toFixed(0)} into the slide`);
+  }
+});
+
 test("knocking the taxi keychain reports it, so it can honk", () => {
   const g = game(); g.phase = "running";
   const seg = g.world.segments[0];

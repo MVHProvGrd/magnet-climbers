@@ -938,13 +938,18 @@ export class Game {
     // low over a teammate: land on its shoulders even before touching the door
     if ((c.z ?? 0) <= 15 && c.airTime > 0.15 && canStack && !(c.noStick && c.noStick > 0) && this.landOnTeammate(c)) return;
     if ((c.z ?? 0) <= 0 && c.airTime > 0.08 && !(c.noStick && c.noStick > 0)) {
-      if (this.stick(c)) {
+      // A toy that came down well inside a glass, plastic or paper panel is ON the panel: nothing
+      // magnetic is under it and its magnets cannot feel a rim through the sheet. It lands where it
+      // hit and slides from there. Without this it was tugged to whichever edge was nearest and
+      // stuck to it, which is not what anyone aimed at and not what the panel looks like.
+      const onPanel = !this.world.isMetal(c.x, c.y, CFG.magnetism.panelInset);
+      if (!onPanel && this.stick(c)) {
         // caught steel right next to a teammate: that is a stack, not two climbers sharing a spot
         if (canStack) this.landOnTeammate(c);
         return;
       }
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
-      const candidates = findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
+      const candidates = onPanel ? [] : findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
       const closest = candidates.map((p) => {
         const tip = limbTip(c, p.limb);
         return { dx: p.x - tip.x, dy: p.y - tip.y };
