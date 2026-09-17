@@ -196,6 +196,9 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onRevive: (method) => {
     if (!game) return;
+    // One fridge, one go. A bought or watched-for second life on the daily is a longer run
+    // than everyone else got on the same door, which is the whole point of a shared board.
+    if (dailyRun) return;
     if (method === "gems") {
       if (save.gems < 5) return;
       save.gems -= 5; persist();
