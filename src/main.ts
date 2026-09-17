@@ -10,7 +10,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, PRIZE_COST, type Look } from "./game/creatures";
 import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
-import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, sfx } from "./game/audio";
+import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 
@@ -628,13 +628,13 @@ window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase(); keys.delete(k);
   if (k === " " && game && !paused && game.drag && keyDrag) { keyDrag = false; game.pointerUp(); charge = 0; }
 });
-window.addEventListener("blur", () => { keys.clear(); if (game && keyDrag) { game.drag = null; keyDrag = false; } });
+window.addEventListener("blur", () => { stopPullSound(); keys.clear(); if (game && keyDrag) { game.drag = null; keyDrag = false; } });
 let keyDrag = false;
 let aimAngle = 0; // radians from straight up, positive = right
 /** Per frame: build the drag vector from the held keys so the usual aim dots and launch code apply. */
 function tickKeys(dt: number) {
   if (!game || paused) return;
-  if (!keys.has(" ")) { if (keyDrag) { game.drag = null; keyDrag = false; } return; }
+  if (!keys.has(" ")) { if (keyDrag) { stopPullSound(); game.drag = null; keyDrag = false; } return; }
   const c = game.byId(game.selectedId);
   if (!c || (c.state !== "stuck" && c.state !== "linked")) return;
   const wasCharge = charge;
@@ -656,7 +656,7 @@ function tickKeys(dt: number) {
   keyDrag = true;
 }
 canvas.addEventListener("pointerup", () => { if (game && !paused) game.pointerUp(); });
-canvas.addEventListener("pointercancel", () => { if (game) game.drag = null; });
+canvas.addEventListener("pointercancel", () => { stopPullSound(); if (game) game.drag = null; });
 // Android back gesture / browser back: open the pause menu instead of leaving the run
 history.replaceState({ mc: "root" }, "");
 history.pushState({ mc: "trap" }, "");

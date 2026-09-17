@@ -1,5 +1,11 @@
 # Pack33 — object-matched audio REVIEW candidates
 
+## UPDATE: owner listened and approved; runtime wiring implemented
+
+Owner explicitly requested wiring these sounds. The implementation is now on codex/art-ready-pack, built over origin/main 1b50df7. This supersedes the review-only/integration-to-do status below. New src/game/sample-player.ts and object-sound-map.ts drive existing contact/bubble events via the existing FX bus. All99 approved samples plus six pack34 rubber gestures copied to public/audio/objects-v1. Bounded two-bank preload after unlock, no immediate-repeat takes, four object voices max, six total, cooldown, muted/paused cleanup, offline old-SFX fallback, no late collisions after decode. WAVs included in service-worker cache. Spinner remains the approved short bearing-roll one-shot, not a sustained speed-controlled loop.
+
+59 automated tests and production build pass. Gameplay/audio listening on a real phone remains a useful final subjective check. Not deployed merely by being committed to this branch.
+
 Owner request: every keychain should make an object-relevant sound; specifically fidget spinner must have rolling bearings. Original synthesized/physically inspired effects, NOT field recordings. No external samples or AI audio service used. Listening approval is still needed; numerical QA cannot establish perceived realism.
 
 ## Review
