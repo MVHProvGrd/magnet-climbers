@@ -849,7 +849,8 @@ export class Ui {
   showQuickKit(start: () => void) {
     const s = this.save();
     const st = statsFor(s.kit);
-    const sellable = UPGRADES.filter((u) => u.solo);
+    // chill runs have no red line, so a stickier floor would be money for nothing
+    const sellable = UPGRADES.filter((u) => u.solo && !(u.key === "floor" && s.chill));
     const cheapest = Math.min(...sellable.map((u) => upgradeCost(u, s.kit[u.key])));
     if (!SHOP_ENABLED || s.coins < cheapest) { start(); return; }
     const p = el("div", "panel kit-quick");
@@ -865,7 +866,7 @@ export class Ui {
     }).join("");
     p.innerHTML = `
       <h2>Kit up</h2>
-      <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power || s.kit.floor ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}% \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>
+      <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}%` : ""}${s.kit.floor ? ` \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>
       <div class="kit-list">${chips}</div>
       <button class="go" data-a="play">\u25b6 CLIMB</button>
       <button class="ghost" data-a="back">BACK</button>
