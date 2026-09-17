@@ -40,7 +40,14 @@ export default defineConfig({
         // Icon revisions trigger manifest refreshes; serve the same cached PNG offline.
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^icon-v$/],
         globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2,mp3}"],
+          // Owner reference pages, not the game. Everything under public/ is install weight
+          // for every player, and neither of these is reachable from inside the game.
+          globIgnores: ["elements/**", "art-archive/**"],
         navigateFallback: "index.html",
+        // ...but the fallback must not swallow them. Excluding a page from the precache means
+        // its navigation falls through to index.html, and the game's index is built with a
+        // relative base, so its asset paths resolve under /elements/ and 404: a white page.
+        navigateFallbackDenylist: [/^\/elements\//, /^\/art-archive\//],
       },
     }),
   ],

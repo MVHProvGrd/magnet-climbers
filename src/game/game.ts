@@ -1,7 +1,9 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
+import { TOY_VOICE } from "./music-score";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
+import { gadgetZone } from "./gadgets";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
@@ -11,6 +13,10 @@ import { patternColors, type Look } from "./creatures";
 import type { LevelDef } from "./expeditions";
 
 export type Phase = "idle" | "running" | "dead";
+/** How far a clip tips when a climber hangs off one end of its bar. */
+const TIP_ANGLE = 0.22;
+/** How a climber was lost. The lost card turns this into a line of prose. */
+export type DeathCause = "redline" | "fell" | "paw" | "hand" | "bumper" | "flings";
 
 /** Everything needed to resume a run after the page is closed or reloaded. */
 export interface RunSnapshot {
@@ -83,6 +89,12 @@ export class Game {
 
   /** SYNC: one drag flings every free climber with the same vector */
   sync = true;
+  /**
+   * What took the last climber, so the lost card can say it. Set wherever a climber is
+   * lost; the final one to go is the one the card reports, which is the one the player
+   * just watched. "flings" is the expedition case: the budget ran out, nothing killed you.
+   */
+  lastCause: DeathCause | null = null;
   /** the cat's paw tapping down from the top of the screen (v13); null when idle */
   paw: CatPaw | null = null;
   /** claw marks left on the door by the paw; cosmetic, short-lived, bounded */
@@ -262,7 +274,7 @@ export class Game {
     if (this.drag) {
       const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
       // rubber under tension: each notch of draw creaks a little higher than the last
-      if (this.mode === "fling" && Math.floor(distance(p) / 22) > Math.floor(distance(this.drag.cur) / 22)) {
+      if (this.mode === "fling" && Math.floor(distance(p) / 16) > Math.floor(distance(this.drag.cur) / 16)) {
         sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * 0.8);
       }
       this.drag.cur = p; return;
@@ -740,6 +752,7 @@ export class Game {
     const slow = this.effects.slowmo > 0 ? 0.45 : 1;
     const sdt = dt * slow;
     if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
+    this.tipClips(sdt);
     this.world.superGrip = this.effects.superMagnet > 0;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
@@ -782,6 +795,14 @@ export class Game {
       if (c.state === "flying") {
         this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
         const pop = this.world.popped; if (pop) { this.world.popped = null; (pop.inward ? sfx.popIn : [sfx.pop1, sfx.pop2, sfx.pop3][pop.index % 3])(); }
+        // a swung toy that has a voice uses it: the taxi honks, the keys jangle, the duck squeaks
+        const hit = this.world.knocked;
+        if (hit) {
+          this.world.knocked = null;
+          const voice = TOY_VOICE[hit] ?? TOY_VOICE[hit.replace(/^swing-toy-/, "bumper-")];
+          const play = voice ? (sfx as Record<string, (rate?: number) => void>)[voice] : undefined;
+          play?.();
+        }
       }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
       c.squash = Math.max(0, c.squash - dt * 3);
@@ -797,8 +818,8 @@ export class Game {
 
     // floor claims
     for (const c of this.climbers) {
-      if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c);
-      if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c);
+      if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c, "redline");
+      if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c, "fell");
       // chill has no wall, so a long fall below the high point is the only way to lose one
       if (this.chill && c.state === "flying" && c.y > this.highestY + this.viewH * 1.6 + 300) this.lose(c);
     }
@@ -850,7 +871,7 @@ export class Game {
       } else if (this.flings >= this.level.flings && !this.climbers.some((c) => c.state === "flying") && this.pendingLaunches.length === 0) {
         // budget spent and everyone has settled short of the goal
         this.outOfFlings += 1 / 120;
-        if (this.outOfFlings > 1.2) { this.phase = "dead"; sfx.over(); this.events.onGameOver(); }
+        if (this.outOfFlings > 1.2) { this.phase = "dead"; this.lastCause = "flings"; sfx.over(); this.events.onGameOver(); }
       }
     }
   }
@@ -892,7 +913,7 @@ export class Game {
           c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
           c.x += c.vx * 0.03;
           c.noStick = 0.25;
-          this.damage(c);
+          this.damage(c, false, "bumper");
           if (c.state === "lost") return;
         }
       }
@@ -1024,7 +1045,7 @@ export class Game {
             c.leftLauncher = true; c.fell = true;
             c.airTime = 0;
             c.noStick = 0.35;
-            this.damage(c);
+            this.damage(c, false, "bumper");
           }
         }
       }
@@ -1099,8 +1120,9 @@ export class Game {
     this.awardTrick(c, name, points);
   }
 
-  private lose(c: Climber) {
+  private lose(c: Climber, cause: DeathCause = "fell") {
     if (c.state === "lost") return;
+    this.lastCause = cause;
     c.state = "lost";
     c.grip = undefined;
     c.parent = null;
@@ -1109,6 +1131,32 @@ export class Game {
   }
 
   /** Warn on a fixed curved route, reach across the door, then recoil to the same edge. */
+  /**
+   * A clip hangs level until someone hooks it near one end, and then their weight tips it.
+   * Catch the bar near the middle and nothing moves, which is most of the time: only the
+   * outer third of a 36 px bar counts, so this is a reward for a precise landing rather
+   * than something that happens on every grab. Cosmetic: the hold does not move with it.
+   */
+  private tipClips(dt: number) {
+    for (const g of this.world.gadgets) {
+      if (g.kind !== "clip") continue;
+      const z = gadgetZone(g, this.world.gadgetTime), mid = z.x + z.w / 2, half = z.w / 2;
+      let sum = 0, held = 0;
+      for (const c of this.climbers) {
+        if (c.state !== "stuck" && c.state !== "linked") continue;
+        for (const p of c.grip?.contacts ?? []) {
+          if (p.x < z.x - 2 || p.x > z.x + z.w + 2 || p.y < z.y - 8 || p.y > z.y + z.h + 8) continue;
+          sum += (p.x - mid) / half; held++;
+        }
+      }
+      // gripped right of centre, the right side drops: the sheet's foot swings left
+      const off = held ? sum / held : 0;
+      const target = Math.abs(off) > 0.62 ? Math.sign(off) * TIP_ANGLE : 0;
+      g.lean = (g.lean ?? 0) + (target - (g.lean ?? 0)) * Math.min(1, dt * 7);
+      if (Math.abs(g.lean) < 0.001) g.lean = 0;
+    }
+  }
+
   /** Cat paw: warn, three taps (the second deepest), retreat. Only the pad and toes hit; the foreleg is decorative. */
   private stepPaw(dt: number) {
     const paw = this.paw; if (!paw) return;
@@ -1126,15 +1174,22 @@ export class Game {
       while (this.scratches.length > 24) this.scratches.shift();
     }
     this.scratches = this.scratches.filter((m) => this.time - m.born <= SCRATCH_LIFE);
-    if (pose.contact) for (const c of this.climbers) {
+    // The pad hurts whenever it is on the door, not only at the bottom of a tap: flying up
+    // into a paw on its way down is a collision, and it used to pass straight through.
+    // One hit per paw either way, so a climber caught between taps is not hit twice.
+    const live = paw.t > PAW_WARN && pose.y > this.camY - 10;
+    if (live) for (const c of this.climbers) {
       if (c.state === "lost" || paw.hit.has(c.id) || c.iframes > 0) continue;
       const dx = (c.x - pose.x) / 46, dy = (c.y - pose.y) / 36;
       if (dx * dx + dy * dy > 1) continue;
       paw.hit.add(c.id); sfx.paw();
       if (this.effects.superMagnet > 0 && c.state !== "flying") { c.squash = 1; this.floats.push({ x: c.x, y: c.y - 50, text: "HELD ON!", life: 1, color: "#ff4d4d" }); continue; }
       c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; c.fell = true;
-      c.vx = (c.x < pose.x ? -1 : 1) * 180; c.vy = CFG.handShove * 0.8; c.spin = 6; c.noStick = 0.3; resetRagdoll(c);
-      this.damage(c, true);
+      // A paw comes straight down, so it drives you down the door rather than sideways,
+      // and holds you off the steel long enough to actually lose ground: at 0.3s a climber
+      // could catch the very next panel and the swat cost nothing but a heart.
+      c.vx = (c.x < pose.x ? -1 : 1) * 90; c.vy = CFG.handShove; c.spin = 6; c.noStick = CFG.attackNoStick; resetRagdoll(c);
+      this.damage(c, true, "paw");
       if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "PAWED  -1 ♥", life: 1, color: "#ffd23f" });
     }
     if (paw.t >= PAW_DURATION + PAW_WARN) {
@@ -1225,9 +1280,9 @@ export class Game {
         c.state = "flying"; c.grip = undefined; c.parent = null;
         c.leftLauncher = true; c.airTime = 0; c.fell = true;
         c.vx = -h.side * 260; c.vy = CFG.handShove; c.spin = -h.side * 7;
-        c.noStick = 0.3;
+        c.noStick = CFG.attackNoStick;
         resetRagdoll(c);
-        this.damage(c, true);
+        this.damage(c, true, "hand");
         if (c.hp > 0) this.floats.push({ x: c.x, y: c.y - 50, text: "SWATTED  -1 ♥", life: 1, color: "#ffd23f" });
       }
       if (h.t >= SWIPE_DURATION) {
@@ -1249,7 +1304,7 @@ export class Game {
   }
 
   /** One hit point off, a grace window, and a loss at zero. */
-  private damage(c: Climber, quiet = false) {
+  private damage(c: Climber, quiet = false, cause: DeathCause = "fell") {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
     this.feats.hits++;
@@ -1257,7 +1312,7 @@ export class Game {
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);
     if (!quiet || c.hp <= 0) this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
-    if (c.hp <= 0) this.lose(c);
+    if (c.hp <= 0) this.lose(c, cause);
   }
 
   private collect(p: PowerUp, c: Climber) {

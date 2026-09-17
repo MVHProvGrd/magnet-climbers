@@ -3,7 +3,7 @@
  * Locked with the ADMIN_KEY secret:  npx wrangler secret put ADMIN_KEY
  * The page keeps the key in localStorage and sends it as a Bearer token.
  */
-import type { Env } from "./index";
+import { ensureCensors, ensureReports, ensureScoreResets, type Env } from "./index";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
@@ -20,26 +20,43 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   const str = (k: string, max = 64) => String(body[k] ?? "").slice(0, max);
   const path = url.pathname.replace(/^\/admin\/api/, "");
 
+  /** A board row carries how long the run took; `seconds` arrived after launch, so an
+   *  older database that has not gained the column yet still answers without it. */
+  const board = (mode: "crew" | "solo") => env.DB
+    .prepare("SELECT player_id, name, cm, created_at, seconds FROM scores WHERE mode = ? ORDER BY cm DESC LIMIT 30").bind(mode).all()
+    .catch(() => env.DB.prepare("SELECT player_id, name, cm, created_at FROM scores WHERE mode = ? ORDER BY cm DESC LIMIT 30").bind(mode).all());
+
   if (path === "/overview") {
-    const [chatRows, mutes, stats, players, crew, solo] = await Promise.all([
+    // both tables are created on demand, so make sure they exist before a join reads them
+    await Promise.all([ensureReports(env), ensureCensors(env)]);
+    const [chatRows, mutes, stats, players, crew, solo, coins, reports] = await Promise.all([
       env.DB.prepare("SELECT id, player_id, name, text, created_at FROM chat ORDER BY id DESC LIMIT 80").all(),
       env.DB.prepare("SELECT player_id, until FROM chat_mutes").all(),
       env.DB.prepare("SELECT total_cm, runs FROM stats WHERE id = 1").first(),
       env.DB.prepare("SELECT COUNT(*) AS n FROM lifetime WHERE player_id NOT LIKE 'smoke-%'").first<{ n: number }>(),
-      env.DB.prepare("SELECT player_id, name, cm, created_at FROM scores WHERE mode = 'crew' ORDER BY cm DESC LIMIT 30").all(),
-      env.DB.prepare("SELECT player_id, name, cm, created_at FROM scores WHERE mode = 'solo' ORDER BY cm DESC LIMIT 30").all(),
+      board("crew"),
+      board("solo"),
+      // coins on hand, refreshed from every cloud save — the same board the game shows
+      env.DB.prepare("SELECT player_id, name, coins, updated_at FROM wallet WHERE player_id NOT LIKE 'smoke-%' AND coins > 0 ORDER BY coins DESC LIMIT 30").all().catch(() => ({ results: [] })),
+      // what players have flagged: newest first, with how many times each target has been flagged
+      env.DB.prepare(`SELECT r.id, r.kind, r.target_id, r.target_name, r.reporter_id, r.message_id, r.text, r.created_at,
+        (SELECT COUNT(*) FROM chat_reports o WHERE o.target_id = r.target_id) AS tally,
+        (SELECT n FROM chat_censors c WHERE c.player_id = r.target_id) AS strikes
+        FROM chat_reports r ORDER BY r.id DESC LIMIT 60`).all().catch(() => ({ results: [] })),
     ]);
-    return json({ chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results });
+    return json({ chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results, coins: coins.results, reports: reports.results });
   }
   if (path === "/player") {
     const id = url.searchParams.get("id") ?? "";
-    const [scores, life, save, msgs] = await Promise.all([
-      env.DB.prepare("SELECT mode, cm, name, created_at FROM scores WHERE player_id = ?").bind(id).all(),
+    const [scores, life, save, msgs, wallet] = await Promise.all([
+      env.DB.prepare("SELECT mode, cm, name, created_at, seconds FROM scores WHERE player_id = ?").bind(id).all()
+        .catch(() => env.DB.prepare("SELECT mode, cm, name, created_at FROM scores WHERE player_id = ?").bind(id).all()),
       env.DB.prepare("SELECT name, cm, runs, updated_at FROM lifetime WHERE player_id = ?").bind(id).first(),
       env.DB.prepare("SELECT rev, updated_at, length(blob) AS bytes FROM saves WHERE player_id = ?").bind(id).first(),
       env.DB.prepare("SELECT id, text, created_at FROM chat WHERE player_id = ? ORDER BY id DESC LIMIT 20").bind(id).all(),
+      env.DB.prepare("SELECT coins, updated_at FROM wallet WHERE player_id = ?").bind(id).first().catch(() => null),
     ]);
-    return json({ scores: scores.results, lifetime: life, save, chat: msgs.results });
+    return json({ scores: scores.results, lifetime: life, save, chat: msgs.results, wallet });
   }
   if (req.method !== "POST") return json({ error: "not found" }, 404);
   if (path === "/chat/delete") { await env.DB.prepare("DELETE FROM chat WHERE id = ?").bind(Number(body.id)).run(); return json({ ok: true }); }
@@ -53,7 +70,21 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   if (path === "/unmute") { await env.DB.prepare("DELETE FROM chat_mutes WHERE player_id = ?").bind(str("playerId")).run(); return json({ ok: true }); }
   if (path === "/score/delete") {
     const mode = str("mode", 8);
-    await env.DB.prepare(mode ? "DELETE FROM scores WHERE player_id = ? AND mode = ?" : "DELETE FROM scores WHERE player_id = ?").bind(...(mode ? [str("playerId"), mode] : [str("playerId")])).run();
+    const player = str("playerId");
+    // what is being cleared, so a stale client cannot post the same climb back
+    const going = await env.DB.prepare(mode
+      ? "SELECT mode, cm FROM scores WHERE player_id = ? AND mode = ?"
+      : "SELECT mode, cm FROM scores WHERE player_id = ?").bind(...(mode ? [player, mode] : [player])).all<{ mode: string; cm: number }>();
+    const clearedCm = new Map((going.results ?? []).map((r) => [r.mode, r.cm]));
+    await env.DB.prepare(mode ? "DELETE FROM scores WHERE player_id = ? AND mode = ?" : "DELETE FROM scores WHERE player_id = ?").bind(...(mode ? [player, mode] : [player])).run();
+    // remember the clear, or the device that set the score posts it straight back on its
+    // next boot: the board heals itself from each player's local best
+    await ensureScoreResets(env);
+    const now = Date.now();
+    for (const m of mode ? [mode] : ["crew", "solo"]) {
+      await env.DB.prepare("INSERT OR REPLACE INTO score_resets (player_id, mode, at, cm) VALUES (?, ?, ?, ?)")
+        .bind(player, m, now, clearedCm.get(m) ?? 0).run().catch(() => {});
+    }
     return json({ ok: true });
   }
   if (path === "/rename") {
@@ -64,6 +95,21 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
       env.DB.prepare("UPDATE chat SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
     ]);
     return json({ ok: true, name });
+  }
+  if (path === "/report/clear") {
+    // clearing a flag is housekeeping, not a verdict: muting is a separate button
+    const id = Number(body.id ?? 0), player = str("playerId");
+    // marking a filter flag handled forgives the strikes too, so a player who cleans up
+    // their language gets the same three before the owner hears about them again
+    const row = id
+      ? await env.DB.prepare("SELECT kind, target_id FROM chat_reports WHERE id = ?").bind(id).first<{ kind: string; target_id: string }>().catch(() => null)
+      : { kind: "", target_id: player };
+    await env.DB.prepare(id ? "DELETE FROM chat_reports WHERE id = ?" : "DELETE FROM chat_reports WHERE target_id = ?")
+      .bind(id ? id : player).run().catch(() => {});
+    if (row?.target_id && (!id || row.kind === "censor")) {
+      await env.DB.prepare("DELETE FROM chat_censors WHERE player_id = ?").bind(row.target_id).run().catch(() => {});
+    }
+    return json({ ok: true });
   }
   if (path === "/lifetime/set") {
     await env.DB.prepare("UPDATE lifetime SET cm = ? WHERE player_id = ?").bind(Math.max(0, Math.floor(Number(body.cm ?? 0))), str("playerId")).run();
@@ -79,19 +125,21 @@ body{margin:0;background:#14171c;color:#eee;font:14px system-ui,sans-serif}heade
 main{padding:16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}section{background:#1b1f26;border-radius:12px;padding:14px}
 h2{margin:0 0 8px;font-size:15px;color:#ffb74d}table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px 6px;border-bottom:1px solid #2b3038;text-align:left;vertical-align:top}
 button{border:0;border-radius:8px;padding:5px 9px;background:#2b2f38;color:#fff;cursor:pointer;font-weight:700;font-size:12px}button.bad{background:#a33}button.ok{background:#2f6fd6}
-input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;background:#0f1216;color:#fff}.muted{opacity:.6}.id{font-family:ui-monospace,monospace;font-size:11px;opacity:.7}
+input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;background:#0f1216;color:#fff}.muted{opacity:.6}.n{white-space:nowrap}.id{font-family:ui-monospace,monospace;font-size:11px;opacity:.7}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}#out{white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;max-height:40vh;overflow:auto}
 </style></head><body>
-<header><b>Magnet Climbers admin</b><input id="key" type="password" placeholder="ADMIN_KEY" style="flex:1;max-width:320px"><button class="ok" onclick="saveKey()">Use key</button><button onclick="load()">Refresh</button><a href="https://magnetclimbers.com/art-archive/" target="_blank" style="color:#7cc">Art archive</a><span id="status"></span></header>
+<header><b>Magnet Climbers admin</b><input id="key" type="password" placeholder="ADMIN_KEY" style="flex:1;max-width:320px"><button class="ok" onclick="saveKey()">Use key</button><button onclick="load()">Refresh</button><a href="https://magnetclimbers.com/art-archive/" target="_blank" style="color:#7cc">Art archive</a><a href="https://magnetclimbers.com/elements/" target="_blank" style="color:#7cc">Element map</a><a href="https://magnetclimbers.com/placement.html" target="_blank" style="color:#7cc">Placement</a><span id="status"></span></header>
 <main>
 <section><h2>Stats</h2><div id="stats"></div></section>
 <section><h2>Player lookup</h2><div class="row"><input id="pid" placeholder="p-xxxxxxxx" style="flex:1"><button onclick="lookup()">Look up</button></div>
 <div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('crew')">Delete crew</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
 <div class="row"><input id="lifecm" placeholder="lifetime cm" type="number"><button onclick="setLife()">Set lifetime</button><button class="bad" onclick="mute(0,true)">Mute forever + wipe chat</button><button onclick="mute(24,false)">Mute 24h</button><button onclick="unmute()">Unmute</button></div>
 <div id="out"></div></section>
+<section style="grid-column:1/-1;max-width:1200px"><h2>Flagged</h2><table id="reports"></table></section>
 <section style="grid-column:1/-1;max-width:1200px"><h2 style="display:flex;gap:10px;align-items:center">Chat (newest first) <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><table id="chat"></table></section>
 <section><h2>Crew board</h2><table id="crew"></table></section>
 <section><h2>Solo board</h2><table id="solo"></table></section>
+<section><h2>Coins board</h2><table id="coins"></table></section>
 </main>
 <script>
 const $=(s)=>document.querySelector(s);const key=()=>localStorage.getItem("mc-admin-key")||"";
@@ -99,12 +147,16 @@ function saveKey(){localStorage.setItem("mc-admin-key",$("#key").value.trim());l
 async function api(path,body){const r=await fetch("/admin/api"+path,{method:body?"POST":"GET",headers:{"Authorization":"Bearer "+key(),"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});const j=await r.json().catch(()=>({}));if(!r.ok){$("#status").textContent=j.error||r.status;throw new Error(j.error||r.status);}return j;}
 const when=(t)=>new Date(t).toLocaleString("en-US",{timeZone:"America/Chicago",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
 const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+// how long the run took, next to when it happened; older rows predate the column
+const took=(s)=>s?\`\${Math.floor(s/60)}m \${String(s%60).padStart(2,"0")}s\`:'<span class="muted">—</span>';
 const pick=(id)=>{$("#pid").value=id;lookup();};
 async function load(){$("#status").textContent="…";const d=await api("/overview");$("#status").textContent="ok";
 $("#stats").innerHTML=\`<b>\${(d.stats.total_cm/100).toFixed(1)} m</b> over <b>\${d.stats.runs}</b> runs by <b>\${d.players}</b> climbers\`;
 $("#mutes").innerHTML=d.mutes.length?"Muted: "+d.mutes.map(m=>\`<span class="id">\${esc(m.player_id)}</span> (\${m.until?"until "+when(m.until):"forever"}) <button onclick="unmute('\${esc(m.player_id)}')">unmute</button>\`).join(" · "):"No mutes.";
 $("#chat").innerHTML=d.chat.map(m=>\`<tr><td class="id">\${when(m.created_at)}</td><td><b>\${esc(m.name)}</b> <span class="id" onclick="pick('\${esc(m.player_id)}')" style="cursor:pointer">\${esc(m.player_id)}</span></td><td>\${esc(m.text)}</td><td><button class="bad" onclick="delChat(\${m.id})">del</button> <button onclick="mute(24,false,'\${esc(m.player_id)}')">mute 24h</button></td></tr>\`).join("")||"<tr><td>Empty</td></tr>";
-for(const mode of ["crew","solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td>\${r.cm} cm</td><td>\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");}
+for(const mode of ["crew","solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
+$("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":r.kind==="censor"?"CENSORED":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br><span class="id" onclick="pick('\${esc(r.target_id)}')" style="cursor:pointer">\${esc(r.target_id)}</span></td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">\${r.kind==="censor"?"filter · "+(r.strikes||0)+" starred":"by "+esc(r.reporter_id)}</td><td class="n"><button onclick="mute(24,false,'\${esc(r.target_id)}')">mute 24h</button> <button class="bad" onclick="mute(0,true,'\${esc(r.target_id)}')">mute + wipe</button> \${r.message_id?\`<button class="bad" onclick="delChat(\${r.message_id})">del msg</button> \`:""}<button onclick="clearReport(\${r.id})">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
+$("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";}
 async function lookup(){const id=$("#pid").value.trim();if(!id)return;$("#out").textContent=JSON.stringify(await api("/player?id="+encodeURIComponent(id)),null,1);}
 async function rename(){await api("/rename",{playerId:$("#pid").value.trim(),name:$("#newname").value});load();lookup();}
 async function delScore(mode){if(!confirm("Delete scores?"))return;await api("/score/delete",{playerId:$("#pid").value.trim(),mode});load();}
@@ -113,6 +165,12 @@ async function setLife(){await api("/lifetime/set",{playerId:$("#pid").value.tri
 async function mute(hours,wipe,id){await api("/mute",{playerId:id||$("#pid").value.trim(),hours,wipe});load();}
 async function unmute(id){await api("/unmute",{playerId:id||$("#pid").value.trim()});load();}
 async function delChat(id){await api("/chat/delete",{id});load();}
+async function clearReport(id){await api("/report/clear",{id});load();}
 async function clearChat(){if(!confirm("Delete every chat message?"))return;await api("/chat/clear",{});load();}
+// The game hands the key over in the link's fragment (never sent to a server), so the
+// owner types it once, in the game, rather than again here on a phone keyboard.
+(function(){const m=/[#&]key=([^&]+)/.exec(location.hash);if(!m)return;
+try{localStorage.setItem("mc-admin-key",decodeURIComponent(m[1]));}catch(e){}
+history.replaceState(null,"",location.pathname);})();
 $("#key").value=key();if(key())load();
 </script></body></html>`;

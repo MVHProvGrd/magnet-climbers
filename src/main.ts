@@ -187,11 +187,11 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onBuy: (key: UpgradeKey) => {
     const def = UPGRADES.find((u) => u.key === key)!;
-    const lvl = save.upgrades[key];
+    const lvl = save.kit[key];
     const cost = upgradeCost(def, lvl);
     if (lvl >= def.max || save.coins < cost) return;
     save.coins -= cost;
-    save.upgrades[key] = lvl + 1;
+    save.kit[key] = lvl + 1;
     persist();
   },
   onRevive: (method) => {
@@ -244,7 +244,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.sound = on; save.music = on; setSound(on); setMusic(on); persist();
   },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
-  onOpenBoard: () => resubmitBests(),
+  onOpenBoard: () => { void resubmitBests(); },
   onLinkDevice: () => {
     void (async () => {
       await cloudSync("link");
@@ -307,7 +307,8 @@ const ui = new Ui(uiRoot, () => save, {
     if (save.cloudRev === 0) await cloudSync("chat");
     const r = await chat.send(save.playerId, save.token, save.name, text, save.avatar);
     if (!r) return "Could not reach the chat";
-    return "error" in r ? r.error : null;
+    // hand the stored row back: the panel shows that instead of its own optimistic copy
+    return "error" in r ? r.error : r.message;
   },
 });
 uiReady = true;
@@ -345,6 +346,9 @@ function runEvents() {
       if (!game) return;
       paused = true;
       clearSnapshot();
+      // the kit was bought for this climb and this climb is over. The run keeps the stats it
+      // started with (they were read once, at the top), so a revive still climbs with the gear.
+      for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
       if (game.level) { finishLevel(game.level); return; }
       const cm = game.heightCm;
       const chill = game.chill;
@@ -357,7 +361,11 @@ function runEvents() {
       if (!chill) {
         save.coins += earned;
         save.gems += game.gems;
-        save[bestKey] = Math.max(save[bestKey], cm);
+        if (cm > save[bestKey]) {
+          save[bestKey] = cm;
+          save[rulesNow === "solo" ? "bestSoloAt" : "bestCmAt"] = Date.now();
+          save[rulesNow === "solo" ? "bestSoloSeconds" : "bestCmSeconds"] = Math.round(game.runTime);
+        }
         if (!runCounted) { save.runs += 1; runCounted = true; }
       }
       bankedCm = cm;
@@ -369,7 +377,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      const panel = ui.showGameOver({ cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -379,7 +387,7 @@ function runEvents() {
 function lineupFor(rules: "solo" | "crew"): Look[] {
   const me: Look = { creature: save.creature, pattern: save.pattern };
   if (rules === "solo") return [me];
-  const n = statsFor(save.upgrades).teamSize;
+  const n = statsFor(save.kit).teamSize;
   return Array.from({ length: n }, (_, i) => save.crew[i] ?? me);
 }
 
@@ -390,7 +398,7 @@ function resumeRun() {
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
-  game = Game.restore(save.upgrades, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
+  game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
   if (!game.chill) {
     const best = game.rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: game.heightCm > best };
@@ -495,7 +503,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   runCoinsTotal = 0;
   paused = false;
   const lineup = lineupFor(rules);
-  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
+  game = new Game(save.kit, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
@@ -516,11 +524,26 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   backdropDrawn = false; appEl.classList.add("in-run");
 }
 
-/** Re-post local bests; the server keeps the max, so a lost post heals itself. */
-function resubmitBests() {
+/**
+ * Re-post local bests; the server keeps the max, so a post lost to a dead connection heals
+ * itself. It asks first: when the owner clears a score from the admin panel the Worker
+ * remembers that, and a device whose best predates the clear drops it instead of putting
+ * it straight back. Without that a deleted row simply reappeared, timeless, on the next boot.
+ */
+async function resubmitBests() {
   if (!leaderboardEnabled) return;
-  if (save.bestCm > 0) void leaderboard.submit(save.playerId, save.name, "crew", save.bestCm);
-  if (save.bestSolo > 0) void leaderboard.submit(save.playerId, save.name, "solo", save.bestSolo);
+  for (const mode of ["crew", "solo"] as const) {
+    const bestKey = mode === "solo" ? "bestSolo" : "bestCm";
+    const atKey = mode === "solo" ? "bestSoloAt" : "bestCmAt";
+    const secKey = mode === "solo" ? "bestSoloSeconds" : "bestCmSeconds";
+    if (save[bestKey] <= 0) continue;
+    const r = await leaderboard.rank(mode, save.playerId);
+    if (r?.resetAt && r.resetAt >= (save[atKey] ?? 0)) {
+      save[bestKey] = 0; save[atKey] = 0; save[secKey] = 0; persist();
+      continue;
+    }
+    void leaderboard.submit(save.playerId, save.name, mode, save[bestKey], save[secKey] || undefined, save[atKey] || undefined);
+  }
 }
 
 /** Push the run to the global board (best per player is kept server-side). */
@@ -529,7 +552,7 @@ function submitScore(cm: number, panel: HTMLElement) {
   const seconds = game ? Math.round(game.runTime) : 0;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.name, rulesNow, cm, seconds, Date.now()).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       const rank = await leaderboard.rank(rulesNow, save.playerId);
       ui.setGameOverRank(panel, rank?.rank ? `Global rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
@@ -541,6 +564,9 @@ function submitScore(cm: number, panel: HTMLElement) {
 
 function endRun() {
   clearSnapshot();
+  // the kit was for that climb: it is used up whether it carried you far or not
+  for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
+  persist();
   if (updateReady) setTimeout(applyUpdate, 400);
   tutorial = null;
   ui.hideTip();
@@ -752,7 +778,7 @@ async function cloudPull(quiet = false) {
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
-resubmitBests();
+void resubmitBests();
 pendingChallenge = parseChallenge();
 clearChallengeParam();
 if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

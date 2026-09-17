@@ -336,9 +336,19 @@ function drawRedLine(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time
     const dStr = groupNum(dist);
     ctx.fillText(dStr, d.x + 92, mid);
     ctx.font = font(700, 11); ctx.fillStyle = danger ? DANGER : "rgba(255,255,255,.65)";
-    ctx.fillText(tr("cm"), d.x + 92 + measure(ctx, dStr, 900, 19) + 3, mid);
+    const cmX = d.x + 92 + measure(ctx, dStr, 900, 19) + 3;
+    ctx.fillText(tr("cm"), cmX, mid);
+    // How fast the line is climbing right now, as a multiple of its starting pace: it
+    // steps up with height and run time, doubles when it is catching you up, and a candy
+    // drops it below 1. Without it the wall speeds up with nothing on screen saying so.
+    const speed = g.wallSpeed() / CFG.floorBase;
+    const sStr = `${speed < 10 ? speed.toFixed(1) : Math.round(speed)}x`;
+    const sx = cmX + measure(ctx, tr("cm"), 700, 11) + 11;
+    ctx.font = font(900, 14);
+    ctx.fillStyle = speed >= 3 ? DANGER : speed < 1 ? CHILL : COIN;
+    ctx.fillText(sStr, sx, mid);
     // the gauge fills the rest of the strip: full when the wall is on your heels
-    const gx = d.x + 150, gw = d.x + d.w - 14 - gx, gy = mid - 2;
+    const gx = sx + measure(ctx, sStr, 900, 14) + 12, gw = d.x + d.w - 14 - gx, gy = mid - 2;
     ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(gx, gy, gw, 4);
     const frac = Math.max(0, Math.min(1, 1 - dist / 100));
     if (frac > 0) {

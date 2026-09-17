@@ -4,16 +4,17 @@ import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { DOOR_SEAM, World } from "../src/game/world";
-import { CFG, UPGRADES, type UpgradeKey } from "../src/game/config";
+import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
-import { FRIDGE_ITEMS, BUMPER_ITEMS, itemZone } from "../src/game/items";
+import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
 import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
+import { pawPose, PAW_WARN } from "../src/game/cat-paw";
 import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
 import { cloneTricks, freshTricks, registerTrick } from "../src/game/tricks";
-import { EFFECTS, MUSIC_STEP, musicStep } from "../src/game/music-score";
+import { EFFECTS, MUSIC_STEP, TOY_VOICE, musicStep } from "../src/game/music-score";
 import { setSound } from "../src/game/audio";
 import type { Climber, NoStickZone } from "../src/game/types";
 
@@ -179,7 +180,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 99);
+  assert.equal(FRIDGE_ITEMS.length, 151);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -207,7 +208,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 16);
+  assert.equal(modern.snapshot()!.worldVersion, 21);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -322,8 +323,12 @@ test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", 
       }
     }
   }
-  // every kind x theme except swing-doodle: paper is clipped, never hung off a keyring chain (v16)
-  assert.equal(ids.size, 11);
+  // v18: the pool is every gadget variant less swing-doodle - paper is clipped, never hung off a chain (v16).
+  // Pin the pool, not the sample: which variants a handful of seeds happens to deal is not the contract.
+  const pool = FRIDGE_ITEMS.filter((i) => i.family === "gadget" && i.id !== "swing-doodle");
+  assert.equal(pool.length, 47, "gadget pool changed size");
+  for (const id of ids) assert.ok(pool.some((i) => i.id === id), `${id} was dealt but is not a gadget item`);
+  assert.ok(ids.size >= pool.length - 8, `only ${ids.size} of ${pool.length} gadget variants ever appeared`);
   assert.ok(!ids.has("swing-doodle"), "paper never dangles from a chain");
   const legacy = new World(4, 0, 15); legacy.generateTo(60);
   assert.ok(legacy.gadgets.some((g) => g.itemId === "swing-doodle"), "saved v15 runs keep their layout");
@@ -559,4 +564,193 @@ test("a second pickup stacks its timer up to the cap, it does not restart it", (
   assert.equal(g.effects.candy, CFG.effectCaps.candy, "stacking stops at the cap");
   take("slowmo"); take("slowmo");
   assert.equal(g.effects.slowmo, Math.min(CFG.effectCaps.slowmo, CFG.effectDurations.slowmo * 2));
+});
+
+test("every toy keychain knows where its chain meets it", () => {
+  const toys = BUMPER_ITEMS.filter((item) => item.id.startsWith("bumper-"));
+  assert.ok(toys.length >= 13);
+  for (const toy of toys) {
+    assert.ok(TOY_HOOKS[toy.id], `${toy.name} has no measured hook point, so its chain would stop in mid-air`);
+    const [u, v] = toyHook(toy.id);
+    assert.ok(u > 0 && u < 1 && v >= 0 && v < 0.3, `${toy.name} hook ${u},${v} is not on the toy`);
+  }
+  assert.deepEqual(toyHook("not-a-toy"), [0.5, 0.02], "anything unmeasured hangs from the top of its centre");
+});
+
+test("the cat's paw hurts wherever it is on the door, not only at the bottom of a tap", () => {
+  const g = game(); g.phase = "running";
+  const c = g.climbers[0];
+  // mid-swing, between the first and second taps: the pad is deep on the door but not striking
+  g.paw = { x: c.x, t: PAW_WARN + 0.7, hit: new Set() };
+  const pose = pawPose(g.paw, g.camY, g.viewH);
+  assert.equal(pose.contact, false, "this instant is between taps");
+  assert.ok(pose.y > g.camY, "and the pad is on screen");
+  c.x = pose.x; c.y = pose.y; c.state = "flying"; c.iframes = 0; c.grip = undefined;
+  const hp = c.hp;
+  g.update(1 / 120);
+  assert.equal(c.hp, hp - 1, "flying into the paw costs a heart");
+  // and it drives you down the door: a swat that costs a heart but no ground is no swat
+  assert.ok(c.vy > 0, "knocked downward, not up");
+  const from = c.y;
+  for (let i = 0; i < 48; i++) g.update(1 / 120);
+  assert.equal(c.state, "flying", "still falling 0.4s later, not stuck to the next panel up");
+  for (let i = 0; i < 12; i++) g.update(1 / 120);
+  assert.ok(c.y - from > 150, `dropped ${Math.round(c.y - from)}px in half a second`);
+  // and only once per paw, however long it stays on top of them
+  const after = c.hp; c.iframes = 0;
+  for (let i = 0; i < 30; i++) g.update(1 / 120);
+  assert.equal(c.hp, after, "one hit per paw");
+});
+
+test("the run remembers what ended it", () => {
+  // the red line catching the last climber
+  const g = game(); g.phase = "running";
+  const c = g.climbers[0];
+  c.state = "flying"; c.grip = undefined; c.y = g.floorY + 40;
+  g.update(1 / 120);
+  assert.equal(c.state, "lost");
+  assert.equal(g.lastCause, "redline");
+
+  // the cat, through the damage that empties the last heart
+  const p2 = game(); p2.phase = "running";
+  const c2 = p2.climbers[0];
+  c2.hp = 1;
+  p2.paw = { x: c2.x, t: PAW_WARN + 0.7, hit: new Set() };
+  const pose = pawPose(p2.paw, p2.camY, p2.viewH);
+  c2.x = pose.x; c2.y = pose.y; c2.state = "flying"; c2.iframes = 0; c2.grip = undefined;
+  p2.update(1 / 120);
+  assert.equal(c2.state, "lost");
+  assert.equal(p2.lastCause, "paw");
+});
+
+test("a clip only tips when it is caught near one end of its bar", () => {
+  const g = game(); g.phase = "running";
+  // as the world builds one since v16: held still by its own clip, so its bar does not drift
+  const clip = { id: "c1", itemId: "clip-report-card", kind: "clip" as const, x: 200, y: -300, phase: 0, fixed: true, swing: { angle: 0, vel: 0, cool: 0 } };
+  g.world.segments[0].gadgets = [clip];
+  const z = gadgetZone(clip, 0);
+  const c = g.climbers[0];
+  c.state = "stuck"; c.x = z.x + z.w; c.y = z.y;
+  const hold = (x: number) => { c.grip = { contacts: [{ x, y: z.y + z.h / 2, limb: 0 }], pose: "single", lift: 0, age: 0, angularVelocity: 0 }; };
+
+  // caught in the middle: nothing moves, however long they hang there
+  hold(z.x + z.w / 2);
+  for (let i = 0; i < 60; i++) g.update(1 / 120);
+  assert.equal(clip.lean ?? 0, 0, "a centred grab leaves it level");
+
+  // caught at the right end: the right side drops, so the sheet swings the other way
+  hold(z.x + z.w - 2);
+  for (let i = 0; i < 60; i++) g.update(1 / 120);
+  assert.ok((clip.lean ?? 0) > 0.1, `tips to ${clip.lean}`);
+
+  // and the mirror, then back to level once they let go
+  hold(z.x + 2);
+  for (let i = 0; i < 120; i++) g.update(1 / 120);
+  assert.ok((clip.lean ?? 0) < -0.1);
+  c.grip = undefined;
+  for (let i = 0; i < 240; i++) g.update(1 / 120);
+  assert.equal(clip.lean, 0, "and hangs level again once nobody is on it");
+});
+
+test("every photographed paper card is cut to the shape of its own art", () => {
+  const papers = FRIDGE_ITEMS.filter((i) => i.family === "paper");
+  assert.ok(papers.length >= 32);
+  // a card left at 1 is square; a wide photo cut into a square slot draws small, which is
+  // how the avocado card ended up two thirds the size of its neighbours
+  const square = papers.filter((i) => PAPER_ASPECT[i.id] === 1).map((i) => i.id);
+  assert.ok(square.length <= 3, `too many square cards: ${square.join(", ")}`);
+  for (const item of papers) {
+    const a = PAPER_ASPECT[item.id];
+    assert.ok(a > 0.3 && a < 3, `${item.id} has a daft shape: ${a}`);
+  }
+});
+
+test("every keychain with a voice has a sound to play, and no two dangle silently alike", () => {
+  const ids = new Set(FRIDGE_ITEMS.map((i) => i.id));
+  for (const [id, voice] of Object.entries(TOY_VOICE)) {
+    assert.ok(ids.has(id) || id.startsWith("swing-"), `${id} is not an item`);
+    assert.ok(EFFECTS[voice]?.length, `${id} asks for ${voice}, which does not exist`);
+  }
+  // the bumper toys are what hang off the keyrings, so they all need a noise
+  const bumpers = FRIDGE_ITEMS.filter((i) => i.id.startsWith("bumper-") && i.id !== "bumper-4");
+  for (const b of bumpers) assert.ok(TOY_VOICE[b.id], `${b.id} is mute`);
+});
+
+test("the shop only sells upgrades a lone climber can feel", () => {
+  assert.ok(SHOP_ENABLED, "the shop is open");
+  const zero = Object.fromEntries(UPGRADES.map((u) => [u.key, 0])) as Record<UpgradeKey, number>;
+  const base = statsFor(zero);
+  // a solo run reads magnetRadius, magnetCatch, launchMult, floorMult and revives; teamSize,
+  // reach and maxLinks all need teammates, so selling them would take coins for nothing
+  const solo = ["magnetRadius", "magnetCatch", "launchMult", "floorMult", "revives"] as const;
+  for (const u of UPGRADES) {
+    const maxed = statsFor({ ...zero, [u.key]: u.max });
+    const moved = solo.some((k) => maxed[k] !== base[k]);
+    assert.equal(moved, u.solo, `${u.key} is marked solo: ${u.solo} but ${moved ? "does" : "does not"} change a solo stat`);
+  }
+  assert.ok(UPGRADES.filter((u) => u.solo).length >= 4, "something is still on the shelf");
+});
+
+test("hitting a fidget spinner winds it up, and it coasts back down", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  const spinner = { id: "spin-1", itemId: "rotor-fidget-spinner", kind: "rotor" as const, phase: 0, x: 200, y: -300, spin: { extra: 0, vel: 0, cool: 0 } };
+  seg.gadgets = [spinner];
+  const idle = gadgetPose(spinner, 0).angle;
+  g.world.knockSwings({ x: 205, y: -295 }, 300);
+  assert.equal(g.world.knocked, "rotor-fidget-spinner");
+  assert.ok(spinner.spin.vel > 5, `a solid hit should spin it: ${spinner.spin.vel}`);
+  // it turns much further than the idle drift over the same tenth of a second
+  for (let i = 0; i < 6; i++) g.world.stepGadgets(1 / 60);
+  const spun = gadgetPose(spinner, 0).angle - idle;
+  assert.ok(spun > 1, `the spinner should have whirled round: ${spun}`);
+  // and the bearings give out: a spinner coasts a good while, but it does come back to its lazy turn
+  for (let i = 0; i < 600; i++) g.world.stepGadgets(1 / 60);
+  assert.equal(spinner.spin.vel, 0);
+  // it sat dead still before it was touched: no idle drift on a spinner or an alphabet letter
+  const still = { id: "spin-2", itemId: "rotor-fidget-spinner", kind: "rotor" as const, phase: 1.2, x: 200, y: -300, spin: { extra: 0, vel: 0, cool: 0 } };
+  assert.equal(gadgetPose(still, 0).angle, gadgetPose(still, 4).angle, "a spinner turns on its own");
+  const letter = { ...still, id: "spin-3", itemId: "rotor-travel", spin: { extra: 0, vel: 0, cool: 0 } };
+  assert.equal(gadgetPose(letter, 0).angle, gadgetPose(letter, 4).angle, "a letter turns on its own");
+  // the clock keeps its sweep
+  const ticking = { id: "clock-0", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  assert.notEqual(gadgetPose(ticking, 0).angle, gadgetPose(ticking, 4).angle);
+  // a wall clock is not on a free bearing, so nothing to wind up
+  const clock = { id: "clock-1", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  seg.gadgets = [clock];
+  g.world.knocked = null;
+  g.world.knockSwings({ x: 205, y: -295 }, 300);
+  assert.equal(g.world.knocked, null);
+});
+
+test("v21 never stretches the grille, and bolts no handle onto a surface", () => {
+  const seg = (version: number, pattern: "handle-hop" | "water-station") => {
+    const world = surface(), s = world.segments[0]; s.y = -340; s.h = 340;
+    populateSetPiece(s, pattern, false, version);
+    return s;
+  };
+  const vents = seg(21, "handle-hop").zones.filter((z) => z.itemId === "vent");
+  assert.ok(vents.length >= 2, "the grille comes in bands now");
+  for (const v of vents) {
+    const a = v.w / v.h;
+    // the photo is 320x82; anything near square is the old smeared panel
+    assert.ok(a > 2.6 && a < 5.2, `a band is the wrong shape: ${v.w}x${v.h}`);
+  }
+  for (const pattern of ["handle-hop", "water-station"] as const)
+    assert.equal(seg(21, pattern).zones.filter((z) => z.itemId === "handle").length, 0, `${pattern} still has a handle`);
+  // older worlds keep the layout they were generated with
+  assert.ok(seg(20, "water-station").zones.some((z) => z.itemId === "handle"));
+});
+
+test("knocking the taxi keychain reports it, so it can honk", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  seg.zones.push({ x: 150, y: -200, w: 60, h: 40, kind: "void", hue: -1, itemId: "bumper-6", swing: { angle: 0, vel: 0, cool: 0 } });
+  g.world.knockSwings({ x: 180, y: -180 }, 300);
+  assert.equal(g.world.knocked, "bumper-6");
+  assert.ok(EFFECTS.taxi?.length, "and the horn exists to play");
+  // the debounce holds: brushing it again while it is still cooling says nothing new
+  g.world.knocked = null;
+  g.world.knockSwings({ x: 180, y: -180 }, 300);
+  assert.equal(g.world.knocked, null);
 });

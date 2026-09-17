@@ -1,8 +1,12 @@
 /** Logical canvas width. Height scales with the device aspect ratio. */
 export const W = 400;
 
-/** Upgrades and reserve climbers are hidden until the mechanics settle; the code stays for the revamp. */
-export const SHOP_ENABLED = false;
+/**
+ * The upgrade shop. Only the upgrades marked `solo` are offered, because the game is the
+ * single climber for now -- team size, chain links, arm reach and reserve climbers all need
+ * teammates to mean anything. They stay in the table, unsold, for the crew revamp.
+ */
+export const SHOP_ENABLED = true;
 /**
  * Expeditions are hidden while the crew-puzzle concept gets more work; the game is the
  * single climber for now. Everything behind this still builds and still has its tests --
@@ -54,6 +58,9 @@ export const CFG = {
   /** rare double attack: Cooper and the cat come at the same climber at once (world v13+) */
   comboChance: 0.07,
   handShove: 560,
+  /** How long an attack holds you off the steel. Shared, so the cat and the kid cost the
+   *  same ground: the paw drives you down, the hand sideways, but neither is the harder hit. */
+  attackNoStick: 0.45,
   effectDurations: { superMagnet: 8, slowmo: 6, reach: 14, candy: 9 },
   /** Picking one up while it is already running adds its time instead of replacing
    *  it, up to this ceiling — so a lucky double is worth having without parking
@@ -119,6 +126,8 @@ export interface UpgradeDef {
   max: number;
   baseCost: number;
   costGrowth: number;
+  /** does this change anything for a lone climber? Crew-only upgrades are not sold today. */
+  solo: boolean;
 }
 
 export type UpgradeKey =
@@ -131,13 +140,13 @@ export type UpgradeKey =
   | "revive";
 
 export const UPGRADES: UpgradeDef[] = [
-  { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9 },
-  { key: "magnet", name: "Magnet strength", desc: "Pulls you back onto the door sooner, so you land nearer the top of your arc", max: 6, baseCost: 40, costGrowth: 1.7 },
-  { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7 },
-  { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0 },
-  { key: "power", name: "Slingshot power", desc: "Launch further", max: 5, baseCost: 50, costGrowth: 1.8 },
-  { key: "floor", name: "Sticky floor", desc: "The danger line rises slower", max: 5, baseCost: 70, costGrowth: 1.9 },
-  { key: "revive", name: "Spare tokens", desc: "+1 free revive per run", max: 3, baseCost: 150, costGrowth: 2.5 },
+  { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9, solo: false },
+  { key: "magnet", name: "Magnet strength", desc: "Grabs steel from further out, so you stick where you would have slipped", max: 6, baseCost: 40, costGrowth: 1.7, solo: true },
+  { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7, solo: false },
+  { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0, solo: false },
+  { key: "power", name: "Slingshot power", desc: "Every pull launches you further", max: 5, baseCost: 50, costGrowth: 1.8, solo: true },
+  { key: "floor", name: "Sticky floor", desc: "The red line climbs slower behind you", max: 5, baseCost: 70, costGrowth: 1.9, solo: true },
+  { key: "revive", name: "Spare tokens", desc: "+1 free second chance per run", max: 3, baseCost: 150, costGrowth: 2.5, solo: true },
 ];
 
 export function upgradeCost(def: UpgradeDef, level: number): number {

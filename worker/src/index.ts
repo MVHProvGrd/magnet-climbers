@@ -13,7 +13,9 @@
  *   GET  /stats                                → { total_cm, runs, players }
  *   GET  /admin                                → owner panel (ADMIN_KEY secret); JSON API under /admin/api/*
  *   GET  /chat?after=<id>                      → { messages: [{ id, name, text, player_id, created_at, avatar }], online }
+ *   GET  /chat?before=<id>&limit=<n>           → { messages, more }   older page, for scrolling back through the log
  *   POST /chat   { playerId, token, name, text, avatar? } → { ok, message } | 429 (3 s per player) | 403 (muted)
+ *   POST /chat/report { playerId, token, kind: "block"|"report", targetId, messageId? } → { ok }   shown on the admin panel
  *   GET  /c/<mode>.<cm>.<name>[/<playerId>][.png] → challenge share page (Open Graph) / score card PNG; the
  *        height is checked against that player's scoreboard best, else the card says "unverified"
  *
@@ -56,6 +58,8 @@ export interface Env {
 
 const MAX_CM = 200_000;
 const NAME_RE = /[^\p{L}\p{N} _.\-!?]/gu;
+/** Chat rows kept before the oldest are pruned. Deep enough that scrolling back has somewhere to go. */
+const CHAT_HISTORY = 5000;
 
 function cors(req: Request, env: Env): Record<string, string> {
   const origin = req.headers.get("Origin") ?? "";
@@ -69,6 +73,58 @@ function cors(req: Request, env: Env): Record<string, string> {
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
   };
+}
+
+/** How many times each player has had a word starred out of their chat. Created on demand. */
+let censorsReady = false;
+export async function ensureCensors(env: Env): Promise<void> {
+  if (censorsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_censors (
+    player_id TEXT PRIMARY KEY,
+    n INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`).run().catch(() => {});
+  censorsReady = true;
+}
+/** Words starred out of this message. A stripped link is not a swear, so it does not count. */
+const wasCensored = (text: string) => text.split(/(\s+)/).some((tok) => !/\s/.test(tok) && nameIsProfane(tok));
+/** Strikes before a player's own words start going to the owner for review. */
+const CENSOR_REVIEW_AT = 3;
+
+/** Board rows the owner has cleared, so a device does not put its old best straight back.
+ *  Created on demand, like the reports table, so nothing has to be migrated by hand. */
+let resetsReady = false;
+export async function ensureScoreResets(env: Env): Promise<void> {
+  if (resetsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS score_resets (
+    player_id TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    at INTEGER NOT NULL,
+    cm INTEGER,
+    PRIMARY KEY (player_id, mode)
+  )`).run().catch(() => {});
+  // the column arrived after the table; D1 tolerates the failed ALTER when it is already there
+  await env.DB.prepare("ALTER TABLE score_resets ADD COLUMN cm INTEGER").run().catch(() => {});
+  resetsReady = true;
+}
+
+/** Blocks and reports from players. Created on demand so no migration has to be run by hand. */
+let reportsReady = false;
+export async function ensureReports(env: Env): Promise<void> {
+  if (reportsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    reporter_id TEXT NOT NULL,
+    message_id INTEGER,
+    text TEXT,
+    created_at INTEGER NOT NULL
+  )`).run().catch(() => {});
+  // one row per reporter, target and message: tapping report twice is not two reports
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))").run().catch(() => {});
+  reportsReady = true;
 }
 
 const json = (data: unknown, headers: Record<string, string>, status = 200) =>
@@ -126,6 +182,15 @@ export default {
         const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM lifetime WHERE cm > ? AND player_id NOT LIKE 'smoke-%'").bind(me.cm).first<{ n: number }>();
         return json({ rank: (above?.n ?? 0) + 1, cm: me.cm }, h);
       }
+      if (validMode(mode) && player) {
+        await ensureScoreResets(env);
+        const cleared = await env.DB.prepare("SELECT at FROM score_resets WHERE player_id = ? AND mode = ?")
+          .bind(player, mode).first<{ at: number }>().catch(() => null);
+        if (cleared?.at) {
+          const mine = await env.DB.prepare("SELECT cm FROM scores WHERE player_id = ? AND mode = ?").bind(player, mode).first<{ cm: number }>();
+          if (!mine) return json({ rank: null, resetAt: cleared.at }, h);
+        }
+      }
       if (mode === "coins" && player) {
         const me = await env.DB.prepare("SELECT coins FROM wallet WHERE player_id = ?").bind(player).first<{ coins: number }>();
         if (!me) return json({ rank: null }, h);
@@ -140,7 +205,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/score") {
-      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown };
+      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown; at?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
@@ -151,6 +216,20 @@ export default {
         return json({ error: "bad score" }, h, 400);
       }
       const now = Date.now();
+      // A score the owner cleared does not come back. An updated client knows this already -
+      // it drops the best when /rank reports the clear - but a phone still running the old
+      // bundle keeps re-posting, so the Worker refuses it here too: same climb or smaller,
+      // and nothing to show it was climbed after the clear.
+      await ensureScoreResets(env);
+      const wiped = await env.DB.prepare("SELECT at, cm FROM score_resets WHERE player_id = ? AND mode = ?")
+        .bind(playerId, body.mode).first<{ at: number; cm: number | null }>().catch(() => null);
+      const when = Math.floor(Number(body.at));
+      const climbedSince = Number.isFinite(when) && when > (wiped?.at ?? 0);
+      if (wiped && !climbedSince && cm <= (wiped.cm ?? 0)) return json({ ok: true, best: 0, ignored: "cleared" }, h);
+      // A device re-posting a best it set earlier says when it set it, so a healed row keeps
+      // the day the climb happened instead of claiming it was set the moment the app opened.
+      const claimed = Math.floor(Number(body.at));
+      const at = Number.isFinite(claimed) && claimed > 1700000000000 && claimed <= now ? claimed : now;
       // keep only the player's best per mode; the name updates every submit
       const upsert = (withSeconds: boolean) => env.DB.prepare(withSeconds
         ? `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
@@ -165,9 +244,9 @@ export default {
              cm = MAX(scores.cm, excluded.cm),
              created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`);
       // add the column on the fly if it is missing (D1 tolerates a failed ALTER), then write
-      await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(async () => {
+      await upsert(true).bind(playerId, name, body.mode, cm, at, secs).run().catch(async () => {
         await env.DB.prepare("ALTER TABLE scores ADD COLUMN seconds INTEGER").run().catch(() => {});
-        await upsert(true).bind(playerId, name, body.mode, cm, now, secs).run().catch(() => upsert(false).bind(playerId, name, body.mode, cm, now).run());
+        await upsert(true).bind(playerId, name, body.mode, cm, at, secs).run().catch(() => upsert(false).bind(playerId, name, body.mode, cm, at).run());
       });
       const best = await env.DB.prepare("SELECT cm FROM scores WHERE mode = ? AND player_id = ?").bind(body.mode, playerId).first<{ cm: number }>();
       return json({ ok: true, best: best?.cm ?? cm }, h);
@@ -319,14 +398,55 @@ export default {
 
     if (req.method === "GET" && url.pathname === "/chat") {
       const after = Math.max(0, Math.floor(Number(url.searchParams.get("after") ?? 0)));
+      // `before` walks backwards through the history for a panel scrolled to its top;
+      // `after` is the live poll. They never combine: one asks for newer, one for older.
+      const before = Math.max(0, Math.floor(Number(url.searchParams.get("before") ?? 0)));
+      const limit = Math.min(100, Math.max(1, Math.floor(Number(url.searchParams.get("limit") ?? 40)) || 40));
+      const cols = "id, name, text, player_id, created_at";
+      const where = before ? "id < ?" : "id > ?";
+      const arg = before || after;
       const rows = await env.DB.prepare(
-        "SELECT id, name, text, player_id, created_at, avatar FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40",
-      ).bind(after).all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>().catch(() =>
+        `SELECT ${cols}, avatar FROM chat WHERE ${where} ORDER BY id DESC LIMIT ?`,
+      ).bind(arg, limit).all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>().catch(() =>
         // `avatar` arrived after launch; until the column exists the room still answers
-        env.DB.prepare("SELECT id, name, text, player_id, created_at, NULL AS avatar FROM chat WHERE id > ? ORDER BY id DESC LIMIT 40").bind(after)
+        env.DB.prepare(`SELECT ${cols}, NULL AS avatar FROM chat WHERE ${where} ORDER BY id DESC LIMIT ?`).bind(arg, limit)
           .all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>());
+      const messages = (rows.results ?? []).reverse();
+      // a short page is the end of the history, which is how the panel knows to stop asking
+      if (before) return json({ messages, online: 0, more: messages.length === limit }, h);
       const online = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM chat WHERE created_at > ?").bind(Date.now() - 10 * 60_000).first<{ n: number }>();
-      return json({ messages: (rows.results ?? []).reverse(), online: online?.n ?? 0 }, h);
+      return json({ messages, online: online?.n ?? 0 }, h);
+    }
+
+    // A player blocking or reporting someone. Blocking is enforced on the device that
+    // did it; both land here so the owner can see who is being complained about.
+    if (req.method === "POST" && url.pathname === "/chat/report") {
+      let body: { playerId?: unknown; token?: unknown; kind?: unknown; targetId?: unknown; messageId?: unknown; text?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      const targetId = String(body.targetId ?? "").slice(0, 64);
+      const kind = body.kind === "block" ? "block" : "report";
+      const messageId = Math.max(0, Math.floor(Number(body.messageId ?? 0))) || null;
+      if (!playerId || token.length < 16 || !targetId || targetId === playerId) return json({ error: "bad report" }, h, 400);
+      const owner = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!owner || owner.token !== token) return json({ error: "forbidden" }, h, 403);
+      await ensureReports(env);
+      // the message as it read when it was reported, so deleting it later does not erase the evidence
+      const msg = messageId
+        ? await env.DB.prepare("SELECT name, text FROM chat WHERE id = ?").bind(messageId).first<{ name: string; text: string }>()
+        : null;
+      const name = msg?.name
+        ?? (await env.DB.prepare("SELECT name FROM lifetime WHERE player_id = ?").bind(targetId).first<{ name: string }>())?.name
+        ?? "climber";
+      // the message as the reporter read it; the chat row is gone once it is deleted or pruned,
+      // so fall back to what the client sent rather than filing a flag with nothing on it
+      const sent = cleanChat(String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 160));
+      const reported = msg?.text ?? (sent || null);
+      await env.DB.prepare(
+        "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      ).bind(kind, targetId, name, playerId, messageId, reported, Date.now()).run();
+      return json({ ok: true }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/chat") {
@@ -357,7 +477,22 @@ export default {
         return insert();
       });
       const id = Number(ins.meta.last_row_id ?? 0);
-      if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - 500).run();
+      if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - CHAT_HISTORY).run();
+      // Three strikes and the owner sees what they actually typed. The room only ever shows
+      // the starred version; the raw text is kept on the flag, not in the chat log.
+      if (wasCensored(text)) {
+        await ensureCensors(env);
+        await env.DB.prepare(
+          "INSERT INTO chat_censors (player_id, n, updated_at) VALUES (?, 1, ?) ON CONFLICT(player_id) DO UPDATE SET n = chat_censors.n + 1, updated_at = excluded.updated_at",
+        ).bind(playerId, now).run().catch(() => {});
+        const strikes = (await env.DB.prepare("SELECT n FROM chat_censors WHERE player_id = ?").bind(playerId).first<{ n: number }>().catch(() => null))?.n ?? 0;
+        if (strikes >= CENSOR_REVIEW_AT) {
+          await ensureReports(env);
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES ('censor', ?, ?, 'filter', ?, ?, ?)",
+          ).bind(playerId, name, id, text, now).run().catch(() => {});
+        }
+      }
       return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now, avatar } }, h);
     }
 

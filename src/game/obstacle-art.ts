@@ -3,7 +3,28 @@ import { DOOR_SEAM } from './world';
 import { W } from './config';
 import { rule } from './placement';
 
-export const OBSTACLE_IDS = ['attract', 'repel', 'glass', 'plastic', 'gap', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
+// 'attract'/'repel' were replaced by the souvenir plates and 'gap' is drawn on canvas:
+// all three were still being precached, downloaded and decoded without ever being painted.
+/** The pair of clear cups a door bin hangs from: squashed discs with a lit rim and a
+ *  darker ring where the rubber grips the steel, sized to the bin rather than fixed. */
+function suctionCups(c: CanvasRenderingContext2D, x: number, y: number, w: number) {
+  const r = Math.max(9, Math.min(17, w * 0.062));
+  for (const cx of [x + w * 0.16, x + w * 0.84]) {
+    // at the rim, so the top of each cup shows above the bin it is holding up
+    const cy = y + r * 0.22;
+    c.save();
+    c.fillStyle = "rgba(226,240,250,0.5)"; c.beginPath(); c.ellipse(cx, cy, r, r * 0.86, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "rgba(120,150,175,0.55)"; c.lineWidth = 1.4; c.stroke();
+    // the suction ring, and a highlight where the light catches the dome
+    c.strokeStyle = "rgba(90,120,145,0.4)"; c.lineWidth = 1; c.beginPath();
+    c.ellipse(cx, cy, r * 0.58, r * 0.5, 0, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.55)"; c.beginPath();
+    c.ellipse(cx - r * 0.3, cy - r * 0.32, r * 0.28, r * 0.2, -0.5, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+}
+
+export const OBSTACLE_IDS = ['glass', 'plastic', 'vent', 'dispenser', 'calendar', 'ice-tray', 'handle'] as const;
 const images = new Map<string, HTMLImageElement>();
 const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
 export function setObstacleArt(id: string, image: HTMLImageElement) { images.set(id, image); }
@@ -74,7 +95,12 @@ export function drawObstacleImage(c: CanvasRenderingContext2D, z: NoStickZone): 
     // Clipped to the panel that carries it: drawing a door-wide bin out of a narrow
     // zone let it run under the panel next door, which then painted over half of it.
     c.beginPath(); c.rect(z.x, z.y - dh, z.w, z.h + dh * 2); c.clip();
-    c.drawImage(img, doorX + (doorW - dw) / 2, z.y + (z.h - dh) / 2, dw, dh);
+    const bx = doorX + (doorW - dw) / 2, by = z.y + (z.h - dh) / 2;
+    // A bin this size is held on by suction cups, so they are drawn behind it: two at the
+    // back wall's shoulders, where a real one takes the weight. Without them the bin reads
+    // as floating an inch off a door it is not attached to.
+    suctionCups(c, bx, by, dw);
+    c.drawImage(img, bx, by, dw, dh);
   } else if (['glass', 'gap', 'vent'].includes(id!)) {
     const sx = [0, img.width * .14, img.width * .86, img.width];
     const sy = [0, img.height * .14, img.height * .86, img.height];

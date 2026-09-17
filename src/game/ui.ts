@@ -1,11 +1,12 @@
-import { EXPEDITIONS_ENABLED, RESERVE_COST, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { EXPEDITIONS_ENABLED, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
+import type { DeathCause } from "./game";
 import type { SaveData } from "./save";
-import { leaderboard, leaderboardEnabled, chat, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
+import { leaderboard, leaderboardEnabled, chat, apiBase, checkAdminKey, type BoardMode, type ScoreRow, type ChatMessage } from "./leaderboard";
 import { AVATARS, avatarHtml, avatarById } from "./avatars";
 import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
@@ -50,8 +51,8 @@ export interface UiHandlers {
   onPerf(): unknown;
   onShare(c: { mode: "solo" | "crew"; cm: number }): void;
   onAcceptChallenge(mode: "solo" | "crew"): void;
-  /** Global chat send; resolves to an error string or null on success. */
-  onChat(text: string): Promise<string | null>;
+  /** Global chat send: the stored message on success, an error string, or null if unreachable. */
+  onChat(text: string): Promise<ChatMessage | string | null>;
 }
 
 /** newest chat id the player has looked at (per device) */
@@ -62,7 +63,33 @@ export interface UiHandlers {
  * read-mostly list, so paint the last known messages immediately and let the poll correct
  * them. A reopen is then instant, and a cold start still shows the previous session.
  */
+/** Kept on the device for an instant reopen. The open panel holds more than this:
+ *  scrolling to the top pulls older pages from the Worker, which are not cached. */
 const CHAT_CACHE_KEY = "mc-chat-cache", CHAT_CACHE_MAX = 60;
+/** Rows the open panel will render at once, live plus whatever has been scrolled back to. */
+const CHAT_VIEW_MAX = 400;
+/**
+ * Players this device has blocked. Blocking is local and immediate: their messages
+ * stop rendering here whatever the Worker sends. The flag is also posted so the
+ * owner can see who is being complained about, but nothing waits on that.
+ */
+/**
+ * The owner's ADMIN_KEY, typed once on this device. It is never in the bundle: the door in
+ * Settings asks for it, the Worker says whether it is right, and only then is it kept here.
+ * The same storage key the placement workbench reads, so both open without asking twice.
+ */
+const ADMIN_KEY = "mc-admin-key";
+const adminKey = () => { try { return localStorage.getItem(ADMIN_KEY) ?? ""; } catch { return ""; } };
+const setAdminKey = (key: string) => { try { key ? localStorage.setItem(ADMIN_KEY, key) : localStorage.removeItem(ADMIN_KEY); } catch { /* private mode */ } };
+const BLOCK_KEY = "mc-blocked";
+let blockedIds: Set<string> = (() => {
+  try { return new Set(JSON.parse(localStorage.getItem(BLOCK_KEY) ?? "[]") as string[]); } catch { return new Set(); }
+})();
+export const isBlocked = (playerId: string) => blockedIds.has(playerId);
+function setBlocked(playerId: string, on: boolean) {
+  if (on) blockedIds.add(playerId); else blockedIds.delete(playerId);
+  try { localStorage.setItem(BLOCK_KEY, JSON.stringify([...blockedIds])); } catch { /* private mode */ }
+}
 let chatCache: ChatMessage[] = (() => {
   try { const raw = localStorage.getItem(CHAT_CACHE_KEY); return raw ? (JSON.parse(raw) as ChatMessage[]) : []; } catch { return []; }
 })();
@@ -274,7 +301,7 @@ export class Ui {
     void chat.list(0).then((r) => {
       if (!r || el !== this.chatStrip || !el.isConnected) return;
       const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
-      const last = r.messages.slice(-2);
+      const last = r.messages.filter((m) => !isBlocked(m.player_id)).slice(-2);
       if (lines) lines.innerHTML = last.length
         ? last.map((m) => { const face = m.player_id === this.save().playerId ? this.save().avatar : m.avatar ?? undefined;
             // always a tile, portrait or initial, so the two lines start at the same x
@@ -301,7 +328,6 @@ export class Ui {
         </button>
       </div>
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
-      <p class="home-tag">Fling rubbery magnet toys up an endless fridge. Stick to steel. Outrun Cooper.</p>
       <div class="home-bottom">
       <div class="home-icons">
         ${icon("story", "story", "STORY")}
@@ -323,6 +349,10 @@ export class Ui {
           <b class="chill">CHILL</b><small>no red line</small>
           <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
         </label>
+        ${SHOP_ENABLED ? `<button class="home-row" data-a="shop">
+          <b>KIT UP</b><small>gear for one climb</small>
+          <span class="coin">$${groupNum(s.coins)}</span>
+        </button>` : ""}
         <button class="home-row" data-a="collection">
           <b>CREATURES</b>
           <canvas class="home-creature" width="34" height="34" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>
@@ -334,6 +364,7 @@ export class Ui {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "expeditions" && EXPEDITIONS_ENABLED) this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
+      if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard(EXPEDITIONS_ENABLED ? "crew" : "solo");
       if (a === "settings") this.showSettings();
@@ -488,7 +519,7 @@ export class Ui {
       </div>`;
     const log = p.querySelector<HTMLElement>(".chat-log")!, online = p.querySelector<HTMLElement>(".online")!, err = p.querySelector<HTMLElement>(".err")!;
     const input = p.querySelector<HTMLInputElement>("input")!;
-    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0;
+    let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0, pendingSeq = 0;
     const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
 
     const row = (m: ChatMessage) => {
@@ -499,8 +530,12 @@ export class Ui {
       const colour = nameColor(m.name);
       // no portrait picked yet still gets a filled tile of the same size, so a
       // row without one does not read as a hole in the column of faces
-      return `<div class="cmsg ${mine ? "me" : ""}">
-        ${avatarHtml(face, m.name, "calc(44 * var(--px))").replace('class="avi', 'class="cav avi')}
+      // The portrait is the handle on a message: tap someone's face to block or report them.
+      const face_ = avatarHtml(face, m.name, "calc(44 * var(--px))")
+        .replace('class="avi', 'class="cav avi')
+        .replace("<span ", mine ? "<span " : `<span tabindex="0" title="Block or report ${esc(m.name)}" `);
+      return `<div class="cmsg ${mine ? "me" : ""}"${mine ? "" : ` data-flag="${esc(m.player_id)}" data-msg="${m.id}" data-name="${esc(m.name)}"`}>
+        ${face_}
         <span class="cbody">
           <span class="chead"><b style="color:${colour}">${esc(m.name)}</b><i>${chatTime(m.created_at)}</i></span>
           <span class="cbubble">${esc(m.text)}</span>
@@ -509,12 +544,76 @@ export class Ui {
     };
     // a few grey rows beat the word "Loading" on a first ever open
     const skeleton = `<div class="cskel">${"<span></span>".repeat(5)}</div>`;
-    const render = () => {
-      const rows = [...seen.values()].sort((a, b) => a.id - b.id).slice(-CHAT_CACHE_MAX);
+    const render = (keepScroll = false) => {
+      // A message sent from here is shown at once under a fractional id, before the server
+      // has given it a real one. Nothing used to clear that copy, so once the poll brought
+      // the real message back you saw your own line twice - and only your own, which is why
+      // it looked fine to everybody else. Drop the pending copy once its real one lands.
+      const all = [...seen.values()];
+      const settled = all.filter((m) => Number.isInteger(m.id));
+      for (const m of all) {
+        if (Number.isInteger(m.id)) continue;
+        // must be the server's copy of THIS send, not an identical line from earlier in the
+        // log, or saying the same thing twice would make the second one vanish until the poll
+        if (settled.some((o) => o.player_id === m.player_id && o.text === m.text && o.created_at >= m.created_at - 30000))
+          seen.delete(m.id);
+      }
+      const rows = [...seen.values()].filter((m) => !isBlocked(m.player_id)).sort((a, b) => a.id - b.id).slice(-CHAT_VIEW_MAX);
+      // loading older messages grows the log upwards: hold the reading position by
+      // restoring the distance from the bottom, which is what does not move
+      const fromBottom = log.scrollHeight - log.scrollTop;
       log.innerHTML = rows.length ? rows.map(row).join("") : skeleton;
-      log.scrollTop = log.scrollHeight;
+      log.scrollTop = keepScroll ? log.scrollHeight - fromBottom : log.scrollHeight;
     };
     render();
+
+    // Older history, a page at a time, when the log is scrolled near its top.
+    let more = true, loading = false;
+    // read the oldest id at call time: the first poll is usually what fills the panel,
+    // so a value captured when it opened would be 0 and nothing would ever load
+    const oldestId = () => (seen.size ? Math.min(...seen.keys()) : 0);
+    const loadOlder = async () => {
+      if (loading || !more || !oldestId()) return;
+      loading = true;
+      const r = await chat.older(oldestId());
+      loading = false;
+      if (!r || !p.isConnected) return;
+      more = r.more;
+      if (!r.messages.length) return;
+      for (const m of r.messages) seen.set(m.id, m);
+      render(true);
+    };
+    log.addEventListener("scroll", () => { if (log.scrollTop < 120) void loadOlder(); }, { passive: true });
+
+    // Block or report whoever sent a message. Blocking hides them on this device at
+    // once; both tell the Worker, so the owner sees what players are flagging.
+    const flag = async (kind: "block" | "report", targetId: string, messageId: number, name: string) => {
+      if (kind === "block") { setBlocked(targetId, true); render(); this.toast(`Blocked ${name}`); }
+      else this.toast(`Reported ${name}`);
+      // send the words as they were read here: by the time the owner looks, the message
+      // itself may have been deleted, and a flag with no message is no use to anyone
+      await chat.report(s.playerId, s.token ?? "", kind, targetId, messageId, seen.get(messageId)?.text ?? "");
+    };
+    log.addEventListener("click", (e) => {
+      const row = (e.target as HTMLElement).closest<HTMLElement>(".cav")?.closest<HTMLElement>(".cmsg");
+      if (!row?.dataset.flag) return;
+      const targetId = row.dataset.flag, messageId = Number(row.dataset.msg ?? 0), name = row.dataset.name ?? "them";
+      const menu = el("div", "cmenu");
+      menu.innerHTML = `<p class="fine">${esc(name)}</p>
+        <button data-k="block">Block ${esc(name)}</button>
+        <button data-k="report">Report this message</button>
+        <button data-k="cancel" class="ghost">Cancel</button>`;
+      const close = () => menu.remove();
+      menu.addEventListener("click", (ev) => {
+        const kind = (ev.target as HTMLElement).closest<HTMLElement>("button")?.dataset.k;
+        if (!kind) return;
+        close();
+        if (kind === "block" || kind === "report") void flag(kind, targetId, messageId, name);
+      });
+      // tapping anywhere else dismisses it, same as the rest of the sheets
+      menu.addEventListener("pointerdown", (ev) => { if (ev.target === menu) close(); });
+      p.appendChild(menu);
+    });
 
     const poll = async () => {
       if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }
@@ -535,11 +634,25 @@ export class Ui {
       const text = input.value.trim(); if (!text) return;
       input.value = ""; err.hidden = true;
       // show it straight away; the poll replaces it with the server's copy
-      const pending: ChatMessage = { id: lastId + 0.5, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
+      // a unique fraction per send: two quick messages both used lastId + 0.5 and the
+      // second overwrote the first in the map
+      pendingSeq = (pendingSeq + 1) % 1000;
+      const pending: ChatMessage = { id: lastId + (pendingSeq + 1) / 1001, name: s.name, text, player_id: s.playerId, created_at: Date.now() };
       seen.set(pending.id, pending); render();
-      const problem = await this.h.onChat(text);
-      if (problem) { seen.delete(pending.id); render(); err.textContent = problem; err.hidden = false; input.value = text; }
-      else void poll();
+      // The send returns the row the server actually stored, so swap the pending copy for that
+      // rather than trying to recognise it later: the worker rewrites links and masks words, so
+      // the text it keeps is not always the text that was typed. Matching on text would then
+      // never fire, and the line would stay doubled for good.
+      let sent: ChatMessage | string | null = null;
+      try { sent = await this.h.onChat(text); } catch { sent = "Could not send"; }
+      seen.delete(pending.id);
+      if (typeof sent === "string") {
+        render(); err.textContent = sent; err.hidden = false; input.value = text;
+      } else {
+        if (sent) { seen.set(sent.id, sent); lastId = Math.max(lastId, sent.id); }
+        render();
+        void poll();
+      }
     });
     p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "back") this.showMenu(); });
     this.show(p);
@@ -628,6 +741,8 @@ export class Ui {
   }
 
   /** Profile, preferences and appearance in one place. */
+  /** where the settings list was left, so a rebuild does not throw the player back to the top */
+  private settingsScroll = 0;
   showSettings() {
     const s = this.save();
     const p = el("div", "panel shell settings");
@@ -644,7 +759,7 @@ export class Ui {
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
-        ${SHOP_ENABLED ? row("Upgrades &amp; reserves", "Spend coins on the team", chip("shop", "OPEN")) : ""}
+        ${SHOP_ENABLED ? row("Kit up", "Spend coins on gear for your next climb", chip("shop", "OPEN")) : ""}
         <p class="sec-label">Play on another device</p>
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
@@ -656,6 +771,14 @@ export class Ui {
         ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
         <p class="sec-label">App</p>
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
+        ${adminKey() ? `
+        <p class="sec-label">Owner</p>
+        ${row("Admin panel", "Boards, chat, flags and players", `<a class="shell-chip" href="${apiBase}/admin#key=${encodeURIComponent(adminKey())}" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Placement workbench", "How often each thing spawns, and how big it is drawn", `<a class="shell-chip" href="${base}placement.html" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Element map", "Every element in the game and what it does to you", `<a class="shell-chip" href="${base}elements/" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Art archive", "Every art pack delivered so far", `<a class="shell-chip" href="${base}art-archive/" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Forget the key", "Removes owner access from this device", chip("owner-out", "SIGN OUT"))}
+        ` : ""}
         <p class="sec-label">Performance</p>
         ${row("Frame times", "Last 600 frames of the most recent run, split into simulation and drawing.", chip("perf", "SHOW"))}
         <pre class="perf-out" hidden></pre>
@@ -665,6 +788,15 @@ export class Ui {
         <p class="fine">Profile ${esc(s.playerId.slice(0, 10))}… · synced after every run</p>
         <p class="fine"><a href="${base}privacy/" target="_blank" rel="noopener">Privacy</a> · <a href="${base}terms/" target="_blank" rel="noopener">Terms</a> · <a href="${base}contact/" target="_blank" rel="noopener">Contact</a></p>
       </div>`;
+    const syncToggles = () => {
+      const now = this.save();
+      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["chill", now.chill]] as const) {
+        const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
+        if (!input) continue;
+        input.checked = on;
+        input.parentElement?.classList.toggle("on", on);
+      }
+    };
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const a = t.dataset.a;
@@ -679,31 +811,54 @@ export class Ui {
       if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
-      if (a === "sound") { this.h.onToggleSound(); this.showSettings(); return; }
-      if (a === "music") { this.h.onToggleMusic(); this.showSettings(); return; }
-      if (a === "chill") { this.h.onToggleChill(); this.showSettings(); return; }
+      // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
+      // list back to the top and flashed, which is a lot of screen for one checkbox.
+      if (a === "sound" || a === "music" || a === "chill") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), chill: () => this.h.onToggleChill() })[a]();
+        syncToggles();
+        return;
+      }
       if (a === "shop") { this.showShop(); return; }
+      if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
       if (a === "back") this.showMenu();
     });
+    // The owner's door: seven taps on the build line, then the key, which the Worker checks.
+    // Nothing here grants anything - every admin call is authorised by the Worker itself.
+    const build = [...p.querySelectorAll<HTMLElement>(".shell-row")].find((r) => r.textContent?.includes("Build"));
+    if (build && !adminKey()) {
+      let taps = 0, since = 0;
+      build.addEventListener("click", () => {
+        const now = Date.now();
+        taps = now - since > 2000 ? 1 : taps + 1;
+        since = now;
+        if (taps >= 7) { taps = 0; this.showAdminPrompt(); }
+      });
+    }
     p.querySelector<HTMLSelectElement>('select[data-a="lang"]')!.addEventListener("change", (e) => {
       this.h.onSetLang((e.target as HTMLSelectElement).value as Lang); this.refreshLang(); this.showSettings();
     });
+    // a rebuild (a new language, a new name, owner tools appearing) reopens where you were
+    const body = p.querySelector<HTMLElement>(".shell-body")!;
+    body.addEventListener("scroll", () => { this.settingsScroll = body.scrollTop; }, { passive: true });
     this.show(p);
+    body.scrollTop = this.settingsScroll;
   }
 
   showShop() {
     const s = this.save();
-    const st = statsFor(s.upgrades);
+    const st = statsFor(s.kit);
     const p = el("div", "panel shop");
-    const rows = UPGRADES.map((u) => {
-      const lvl = s.upgrades[u.key];
+    const loaded = UPGRADES.reduce((n, u) => n + s.kit[u.key], 0);
+    // crew-only upgrades are not sold while the game is one climber: nothing to grab, nothing to stack
+    const rows = UPGRADES.filter((u) => u.solo).map((u) => {
+      const lvl = s.kit[u.key];
       const maxed = lvl >= u.max;
       const cost = upgradeCost(u, lvl);
       const can = !maxed && s.coins >= cost;
       return `
         <div class="row">
           <div class="info">
-            <b>${u.name} <small>${"●".repeat(lvl)}${"○".repeat(u.max - lvl)}</small></b>
+            <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
             <span>${u.desc}</span>
           </div>
           <button class="buy ${can ? "" : "disabled"}" data-k="${u.key}" ${can ? "" : "disabled"}>
@@ -711,26 +866,19 @@ export class Ui {
           </button>
         </div>`;
     }).join("");
+    const slower = Math.round((1 - st.floorMult) * 100);
     p.innerHTML = `
-      <h2>Upgrades</h2>
-      <p class="tag"><span class="coin">$${s.coins}</span> · team ${st.teamSize} · reach ${st.reach}px · ${st.maxLinks} links</p>
+      <h2>Kit up</h2>
+      <p class="tag"><span class="coin">$${s.coins}</span> \u00b7 one climb only${loaded ? ` \u00b7 magnet ${st.magnetRadius}px \u00b7 sling \u00d7${st.launchMult.toFixed(2)}${slower ? ` \u00b7 line ${slower}% slower` : ""}${st.revives ? ` \u00b7 ${st.revives} token${st.revives > 1 ? "s" : ""}` : ""}` : ""}</p>
       <div class="rows">${rows}</div>
-      <h3>Reserves</h3>
-      <div class="rows">
-        <div class="row">
-          <div class="info"><b>Reserve climber <small>${s.reserves}/5 carried</small></b><span>Drop a fresh climber onto the crew mid-run</span></div>
-          <button class="buy ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}" data-r="1" ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}>$${RESERVE_COST}</button>
-        </div>
-      </div>
-      <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
+      <button data-a="play">\u25b6 CLIMB</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
       if (k) { this.h.onBuy(k); this.showShop(); return; }
-      if (t.closest<HTMLElement>("[data-r]")) { this.h.onBuyReserve(); this.showShop(); return; }
-      if (t.dataset.a === "collection") { this.showCollection(); return; }
+      if (t.dataset.a === "play") { this.clear(); this.h.onPlay("solo"); return; }
       if (t.dataset.a === "back") this.showMenu();
     });
     this.show(p);
@@ -783,6 +931,35 @@ export class Ui {
       if (a === "back") this.showSettings();
     });
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") this.h.onEnterCode(input.value); });
+    this.show(p);
+    setTimeout(() => input.focus(), 50);
+  }
+
+  /** Type the ADMIN_KEY once per device. It is checked against the Worker before it is kept. */
+  showAdminPrompt() {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Owner tools</h2>
+      <p class="tag">The Worker's ADMIN_KEY. Checked before it is kept, and stored only on this device.</p>
+      <input id="admin-in" type="password" placeholder="ADMIN_KEY" autocomplete="off" />
+      <p class="fine err" hidden></p>
+      <button class="primary" data-a="ok">UNLOCK</button>
+      <button class="ghost" data-a="back">CANCEL</button>`;
+    const input = p.querySelector<HTMLInputElement>("#admin-in")!;
+    const err = p.querySelector<HTMLElement>(".err")!;
+    const submit = async () => {
+      const key = input.value.trim();
+      if (!key) return;
+      err.hidden = false; err.textContent = "Checking...";
+      if (await checkAdminKey(key)) { setAdminKey(key); this.toast("Owner tools unlocked"); this.showSettings(); return; }
+      err.textContent = "That key was refused.";
+    };
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "ok") void submit();
+      if (a === "back") this.showSettings();
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") void submit(); });
     this.show(p);
     setTimeout(() => input.focus(), 50);
   }
@@ -981,14 +1158,11 @@ export class Ui {
       <h2>Paused</h2>
       <button class="primary" data-a="resume">RESUME</button>
       <button data-a="end">END RUN &amp; BANK SCORE</button>
-      <p class="fine">Counts this height for your best and the scoreboard.</p>
-      <button class="ghost" data-a="quit">HOME SCREEN (discard run)</button>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       if (a === "resume") { this.clear(); this.h.onResume(); }
       if (a === "end") { this.clear(); this.h.onEndRun(); }
-      if (a === "quit") { this.clear(); this.h.onQuitRun(); }
     });
     this.show(p);
   }
@@ -998,11 +1172,25 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
-    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED" : "ALL CLIMBERS LOST";
+    // Solo is one climber, so nothing on this card talks about a crew in solo.
+    const crew = o.mode === "crew";
+    const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED"
+      : crew ? "ALL CLIMBERS LOST" : "RUN OVER";
+    // what actually ended it, in the run's own words. A banked or won run has no cause.
+    const who = crew ? "the last climber" : "you";
+    const causes: Record<DeathCause, string> = {
+      redline: `The red line caught ${who}.`,
+      fell: crew ? "The last climber fell off the fridge." : "You fell off the fridge.",
+      paw: `The cat got ${who}.`,
+      hand: crew ? "Cooper swatted the last climber off." : "Cooper swatted you off.",
+      bumper: crew ? "A moving magnet knocked the last climber loose." : "A moving magnet knocked you loose.",
+      flings: "Out of flings, short of the goal.",
+    };
+    const cause = !o.ended && o.cause ? causes[o.cause] : "";
     const revives = [
       o.tokens > 0 ? { a: "token", top: "TOKEN", sub: `${o.tokens} LEFT`, cls: "accent" } : null,
       !o.adUsed ? { a: "ad", top: "WATCH AD", sub: "FREE", cls: "accent" } : null,
@@ -1013,6 +1201,7 @@ export class Ui {
         <div>
           <span class="lost-label">${title}</span>
           <div class="lost-cm"><b>${groupNum(o.cm)}</b><i>cm</i></div>
+          ${cause ? `<p class="lost-cause">${esc(t(cause))}</p>` : ""}
         </div>
         <div class="lost-meta">
           <span>BEST <b>${groupNum(o.best)}</b></span>
@@ -1026,12 +1215,13 @@ export class Ui {
       </div>`}
       ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
       ${o.ended ? "" : `
-      <span class="lost-label dim">REVIVE THE CREW</span>
+      <span class="lost-label dim">${crew ? "REVIVE THE CREW" : "BACK ON THE DOOR"}</span>
       <div class="revive-row">
         ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
       </div>`}
       <button class="go" data-a="again">CLIMB AGAIN</button>
       <div class="lost-ghosts">
+        ${SHOP_ENABLED && !o.chill ? `<button class="ghost" data-a="shop">KIT UP FIRST</button>` : ""}
         ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
       </div>
@@ -1041,6 +1231,8 @@ export class Ui {
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
       if (a === "again") { this.clear(); this.h.onPlay(o.mode); }
+      // the last kit went with the last run, so the way back into a climb passes the shop
+      if (a === "shop") { this.h.onQuitRun(); this.showShop(); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }

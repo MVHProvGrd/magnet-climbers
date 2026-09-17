@@ -256,6 +256,19 @@ select.buy option { background: #1e2229; color: #fff; }
   background: rgba(255,255,255,.07); color: #eef3f7;
   font: 600 calc(14 * var(--px)) / 1.3 var(--display); word-break: break-word;
 }
+/* the quiet "..." that opens block / report on someone else's message */
+/* .panel button styles every button in the sheet, so this one names the panel too */
+.panel .cflag { margin-left: auto; width: auto; border: 0; border-radius: calc(6 * var(--px));
+  background: none; box-shadow: none; color: var(--text-3); cursor: pointer;
+  font: 800 calc(15 * var(--px)) / 1 var(--display); padding: calc(2 * var(--px)) calc(6 * var(--px)); }
+.panel .cflag:hover, .panel .cflag:focus-visible { color: #fff; background: rgba(255,255,255,.1); }
+.cmenu { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center;
+  gap: calc(8 * var(--px)); padding: calc(20 * var(--px)); background: rgba(12,14,18,.82); backdrop-filter: blur(2px);
+  border-radius: inherit; }
+.cmenu .fine { text-align: center; margin: 0 0 calc(2 * var(--px)); }
+.cmenu button { padding: calc(11 * var(--px)); border: 0; border-radius: calc(12 * var(--px));
+  background: var(--danger); color: #fff; font: 800 calc(14 * var(--px)) var(--display); cursor: pointer; }
+.cmenu button.ghost { background: rgba(255,255,255,.12); }
 .cmsg.me .cbubble { background: rgba(255,138,61,.18); box-shadow: inset 0 0 0 1px rgba(255,138,61,.35); }
 /* first ever open has nothing cached: grey rows read better than the word "Loading" */
 .cskel { display: flex; flex-direction: column; gap: calc(12 * var(--px)); padding: calc(4 * var(--px)) 0; }
@@ -320,7 +333,9 @@ select.buy option { background: #1e2229; color: #fff; }
 /* the portrait is exactly as tall as the name line plus a one-line bubble */
 .avi.cav { border-radius: calc(12 * var(--px)); }
 .cav.avi.blank { background-color: transparent; }
-.chat-strip .lines span { display: flex; align-items: center; gap: 5px; }
+/* only the line itself is the flex row; the portrait inside it stays an inline-block,
+   or a blank avatar's initial becomes a flex item and lands in the corner */
+.chat-strip .lines > span { display: flex; align-items: center; gap: 5px; }
 .chat-strip .lines .avi { border-radius: 5px; }
 .panel .shell-body.avatar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: calc(8 * var(--px)); align-content: start; }
 .panel .avatar-grid button.pick { width: auto; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.06); border: 2px solid transparent; line-height: 0; display: flex; justify-content: center; }
@@ -346,7 +361,7 @@ select.buy option { background: #1e2229; color: #fff; }
   font: 800 calc(11 * var(--px)) / calc(18 * var(--px)) var(--display); font-style: normal; text-align: center;
 }
 .chat-strip .lines { display: flex; flex-direction: column; gap: calc(2 * var(--px)); min-width: 0; font: 600 calc(13 * var(--px)) / 1.3 var(--display); color: #ccd6df; }
-.chat-strip .lines span, .chat-strip .lines i { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
+.chat-strip .lines > span, .chat-strip .lines > i { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
 .chat-strip .lines b { font-weight: 800; }
 
 /* Lost card: the dock grown upward in place, not a centred dialog (handoff 1h). */
@@ -367,6 +382,8 @@ select.buy option { background: #1e2229; color: #fff; }
 .lost-head { display: flex; align-items: flex-start; justify-content: space-between; gap: calc(12 * var(--px)); }
 .lost-label { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(1.6 * var(--px)); text-transform: uppercase; color: var(--danger-light); }
 .lost-label.dim { color: var(--text-3); }
+/* one line under the height saying what actually ended the run */
+.lost-cause { margin: calc(2 * var(--px)) 0 0; font: 600 calc(12 * var(--px)) / 1.35 var(--display); color: var(--text-2); max-width: calc(190 * var(--px)); }
 .lost-cm { display: flex; align-items: baseline; gap: calc(4 * var(--px)); margin-top: calc(2 * var(--px)); }
 .lost-cm b { font: 900 calc(64 * var(--px)) / .9 var(--display); letter-spacing: calc(-1.5 * var(--px)); color: #fff; }
 .lost-cm i { font: 700 calc(16 * var(--px)) var(--display); font-style: normal; color: rgba(255,255,255,.7); }
@@ -433,11 +450,6 @@ select.buy option { background: #1e2229; color: #fff; }
 .home-wordmark {
   position: absolute; top: calc(74 * var(--px)); width: calc(340 * var(--px)); height: auto;
   filter: drop-shadow(0 calc(6 * var(--px)) calc(10 * var(--px)) rgba(0,0,0,.55));
-}
-.home-tag {
-  position: absolute; top: calc(232 * var(--px)); left: calc(20 * var(--px)); right: calc(20 * var(--px));
-  margin: 0; text-align: center; color: #fff;
-  font: 700 calc(16 * var(--px)) / 1.3 var(--display); text-shadow: 0 calc(2 * var(--px)) calc(6 * var(--px)) rgba(0,0,0,.7);
 }
 /* icon row sits just above the dock */
 .home-bottom {
@@ -531,6 +543,8 @@ select.buy option { background: #1e2229; color: #fff; }
   background: var(--control-fill); color: var(--coin);
   font: 800 calc(13 * var(--px)) var(--display); letter-spacing: calc(1.2 * var(--px)); cursor: pointer; white-space: nowrap;
 }
+/* the owner rows open a page rather than running code, so their chip is a link */
+.panel a.shell-chip { display: inline-flex; align-items: center; text-decoration: none; }
 .shell-toggle { position: relative; width: calc(44 * var(--px)); height: calc(26 * var(--px)); flex: 0 0 auto; }
 .shell-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .shell-toggle i { position: absolute; inset: 0; border-radius: calc(13 * var(--px)); background: rgba(255,255,255,.18); transition: background .15s; }

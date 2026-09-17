@@ -3,6 +3,8 @@ import type { Segment } from "./types";
 import { rule } from "./placement";
 
 export const SET_PIECES = ["water-station", "busy-month", "ice-alley", "handle-hop"] as const;
+/** obstacles/vent.png is 320x82: a wide grille. Stretched tall it turns to mush, so it is laid in bands. */
+const VENT_ASPECT = 320 / 82;
 export type SetPiece = typeof SET_PIECES[number];
 
 /** Each set piece leaves an uninterrupted 64px steel lane at one door edge.
@@ -20,7 +22,9 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
   s.zones = []; s.bumpers = [];
   if (pattern === "water-station") {
     const d = fit(25, 280); s.zones.push(itemZone("dispenser", x, d.y, w, d.h));
-    s.zones.push(itemZone("handle", x + 28, y + 173, 70, 24));
+    // v21: no silver handle bolted across the dispenser. Real water stations have no grab bar,
+    // and the steel lane beside the panel is the route anyway.
+    if (version < 21) s.zones.push(itemZone("handle", x + 28, y + 173, 70, 24));
   } else if (pattern === "busy-month") {
     const d = fit(34, 264); s.zones.push(itemZone("calendar", x, d.y, w, d.h));
   } else if (pattern === "ice-alley" && version >= 13) {
@@ -35,10 +39,25 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
     const d = fit(36, 264);
     for (let i = 0; i < 2; i++) s.zones.push(itemZone("ice-tray", x + i * trayGap, d.y, trayW, d.h));
     s.zones.push(itemZone("handle", x + 18, y + 153, 72, 24));
+  } else if (version >= 21) {
+    // v21: three grille bands at the photo's own proportions, steel between them to land on.
+    // The old single panel stretched one 320x82 grille over 300px of door and smeared it.
+    const band = Math.round(w / VENT_ASPECT);
+    for (let i = 0; i < 3; i++) {
+      const d = fit(34 + i * 94, band);
+      if (d.h > 14) s.zones.push(itemZone("vent", x, d.y, w, d.h));
+    }
   } else {
     const d = fit(20, 300); s.zones.push(itemZone("vent", x, d.y, w, d.h));
     for (let i = 0; i < 3; i++) s.zones.push(itemZone("handle", x + (i % 2 ? w - 90 : 20), y + 55 + i * 95, 70, 24));
   }
   // Guarantee a reachable pickup in the clear lane, not buried inside the art.
-  if (s.powerUps[0]) { s.powerUps[0].x = rightLane ? 367 : 32; s.powerUps[0].y = y + 170; }
+  if (s.powerUps[0]) {
+    s.powerUps[0].x = rightLane ? 367 : 32; s.powerUps[0].y = y + 170;
+    // v19: pinning it to the lane can drop it straight onto the segment's other pickup, which
+    // is how two magnets ended up sitting on top of each other. Send that one across instead.
+    const other = s.powerUps[1];
+    if (version >= 19 && other && Math.hypot(other.x - s.powerUps[0].x, other.y - s.powerUps[0].y) < 96)
+      other.x = rightLane ? 32 : 367;
+  }
 }

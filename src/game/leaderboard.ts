@@ -18,6 +18,16 @@ const raw = envUrl || DEFAULT_API;
 const API = raw === "off" ? "" : raw.replace(/\/$/, "");
 
 export const leaderboardEnabled = API.length > 0;
+/** Where the Worker lives, for the owner's admin panel. Empty when the board is off. */
+export const apiBase = API;
+/** Check an ADMIN_KEY against the Worker. Nothing is stored unless it answers. */
+export async function checkAdminKey(key: string): Promise<boolean> {
+  if (!API || !key) return false;
+  try {
+    const r = await fetch(`${API}/admin/api/overview`, { headers: { Authorization: `Bearer ${key}` } });
+    return r.ok;
+  } catch { return false; }
+}
 
 async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
   if (!leaderboardEnabled) return null;
@@ -61,15 +71,28 @@ export const leaderboard = {
   run: (playerId: string, name: string, mode: Mode, cm: number) =>
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
-  rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
-  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number) =>
-    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}) }) }),
+  rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
+  /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
+  submit: (playerId: string, name: string, mode: Mode, cm: number, seconds?: number, at?: number) =>
+    call<{ ok: boolean; best: number }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
 };
 
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }
 /** Global chat: polled while the panel is open. */
 export const chat = {
   list: (after = 0) => call<{ messages: ChatMessage[]; online: number }>(`/chat?after=${after}`),
+  /** One page of older messages, for a log scrolled back to its top. `more` is false at the start of history. */
+  older: (before: number, limit = 40) => call<{ messages: ChatMessage[]; more: boolean }>(`/chat?before=${before}&limit=${limit}`),
+  /** Block or report someone. Fire and forget: blocking already took effect on the device. */
+  report: async (playerId: string, token: string, kind: "block" | "report", targetId: string, messageId = 0, text = ""): Promise<void> => {
+    if (!leaderboardEnabled || !token) return;
+    try {
+      await fetch(API + "/chat/report", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId, token, kind, targetId, ...(messageId ? { messageId } : {}), ...(text ? { text } : {}) }),
+      });
+    } catch { /* a flag that does not reach the Worker still hides them here */ }
+  },
   send: async (playerId: string, token: string, name: string, text: string, avatar = ""): Promise<{ ok: true; message: ChatMessage } | { error: string } | null> => {
     if (!leaderboardEnabled) return null;
     try {

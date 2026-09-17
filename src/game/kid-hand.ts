@@ -40,9 +40,11 @@ export function handPose(h: KidHand) {
   const sweep = clamp(h.t / SWIPE_DURATION);
   let point: Vec;
   const bottom = h.entry === "bottom";
-  // the waiting hand has to be visible above the HUD, or the warning warns nobody
+  // A hand coming up from below waits off the bottom edge, the same way a side hand waits off
+  // the left: the warning is the lit route and the banner. Parked at +210 the whole hand sat
+  // in plain sight above the dock, which gave the swipe away and looked like a bug.
   if (h.phase === "warn") point = bottom
-    ? { x: 70, y: h.y + 210 - Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 10 }
+    ? { x: 70, y: h.y + 368 - Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 10 }
     : { x: -77 + Math.sin(clamp(h.t / CFG.handWarn) * Math.PI) * 8, y: h.y + 105 };
   else if (h.phase === "sweep") point = pathPoint(h, ease(sweep));
   else point = bottom

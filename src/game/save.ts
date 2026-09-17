@@ -8,9 +8,18 @@ export interface SaveData {
   gems: number;
   bestCm: number;
   bestSolo: number;
+  /** When each best was set and how long that run took. The board heals itself from these,
+   *  so it needs to know the run's duration, and whether the owner cleared the board since. */
+  bestCmAt?: number;
+  bestSoloAt?: number;
+  bestCmSeconds?: number;
+  bestSoloSeconds?: number;
   runs: number;
   totalCm: number;
   upgrades: Record<UpgradeKey, number>;
+  /** Kit bought for one run. Spent coins buy a single climb, not a permanent stat, and this
+   *  is wiped the moment that run ends. `upgrades` is the old permanent table, kept for crew. */
+  kit: Record<UpgradeKey, number>;
   sound: boolean;
   music: boolean;
   /** "" = follow the browser language */
@@ -57,6 +66,7 @@ const KEY = "magnet-climbers:save:v1";
 function defaults(): SaveData {
   const upgrades = {} as Record<UpgradeKey, number>;
   for (const u of UPGRADES) upgrades[u.key] = 0;
+  const kit = { ...upgrades };
   return {
     version: 1,
     coins: 0,
@@ -66,6 +76,7 @@ function defaults(): SaveData {
     runs: 0,
     totalCm: 0,
     upgrades,
+    kit,
     sound: true,
     music: true,
     lang: "",
@@ -118,6 +129,7 @@ export function loadSave(): SaveData {
       // saves from before creatures wore a "skin"; keep that palette on
       pattern: parsed.pattern ?? parsed.skin ?? d.pattern,
       upgrades: { ...d.upgrades, ...(parsed.upgrades ?? {}) },
+      kit: { ...d.kit, ...(parsed.kit ?? {}) },
       version: 1 as const,
     };
     // players who already chose a name never see the one-time offer

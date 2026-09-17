@@ -4,8 +4,12 @@ export const THEMES = ["snack", "travel", "doodle"] as const;
 /** Themes whose art is a bit of paper: they get clipped, never hung off a chain. */
 export const PAPER_THEMES = new Set<typeof THEMES[number]>(["doodle"]);
 /** Souvenir art is cosmetic; polarity, timing, and collision remain the same for every destination. */
-export const ATTRACT_DESTINATIONS = ["attract-fiji", "attract-hawaii", "attract-bali", "attract-tahiti", "attract-seychelles", "attract-cape-town", "attract-rio"] as const;
-export const REPEL_DESTINATIONS = ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala", "repel-kyiv", "repel-edinburgh", "repel-lapland"] as const;
+export const ATTRACT_DESTINATIONS = ["attract-fiji", "attract-hawaii", "attract-bali", "attract-tahiti",
+  "attract-seychelles", "attract-cape-town", "attract-rio",
+  "attract-cancun", "attract-maldives", "attract-phuket", "attract-zanzibar"] as const;
+export const REPEL_DESTINATIONS = ["repel-norway", "repel-alaska", "repel-iceland", "repel-jurmala",
+  "repel-kyiv", "repel-edinburgh", "repel-lapland",
+  "repel-banff", "repel-hokkaido", "repel-svalbard", "repel-tromso"] as const;
 export const POLARITY_DESTINATIONS = [...ATTRACT_DESTINATIONS, ...REPEL_DESTINATIONS] as const;
 export function polarityDestination(id: string, repel = false): typeof POLARITY_DESTINATIONS[number] {
   let hash = 2166136261;
@@ -13,9 +17,15 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
   const pool = repel ? REPEL_DESTINATIONS : ATTRACT_DESTINATIONS;
   return pool[(hash >>> 0) % pool.length];
 }
+/** Rotors on a free bearing: knock one and it whirls. A wall clock and a dial thermometer do not. */
+export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel", "rotor-snack", "rotor-travel", "rotor-doodle"]);
+/** Nothing turns these on its own: a spinner and an alphabet letter sit dead still until they are hit. */
+export const STILL_UNTIL_HIT = new Set(["rotor-fidget-spinner", "rotor-snack", "rotor-travel", "rotor-doodle"]);
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
-  const angle = g.kind === "rotor" ? t * 0.95 : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
+  const still = !!g.spin && STILL_UNTIL_HIT.has(g.itemId);
+  // a still rotor keeps its phase as the resting angle, so they do not all sit the same way up
+  const angle = g.kind === "rotor" ? (still ? g.phase : t * 0.95) + (g.spin?.extra ?? 0) : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
   const x = g.x + (g.kind === "swing" || g.kind === "clip" ? Math.sin(angle) * 45 : 0);
   const y = g.y + (g.kind === "swing" || g.kind === "clip" ? (1 - Math.cos(angle)) * 45 : 0);
   const active = g.kind === "polarity" && t % 6 >= 3;
