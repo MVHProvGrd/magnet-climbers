@@ -1,0 +1,88 @@
+# Art requests for Codex
+
+A running queue. Each entry says what is needed, where it lands in the code, and what is
+rendering in its place today so the request can be judged against the real screen. Newest
+requests go at the bottom of their section; finished ones move to **Delivered** with the
+commit that wired them in.
+
+The house rules from `ART_REFRESH_HANDOFF.md` still hold: photographic, lit from the upper
+left like the door, transparent PNG/WebP, square canvas with the object centred unless a
+pivot is called out, and a `-v1` suffix on the id so a re-cut can land beside the old one.
+
+---
+
+## Queued
+
+### 1. A hands-free clock face — `rotor-clock-faceless-v1`
+**Status:** described in full in `ART_REFRESH_HANDOFF.md` (§ "Requested next: a hands-free
+clock face"). Not yet delivered.
+
+The kitchen clock magnet now shows the player's real phone time, drawn as live hands over
+the photo — which gives it two sets of hands. The same clock with **no hands and no centre
+cap**, same rim, dial, lighting and numerals, replaces it. Dial centre must stay at
+`[0.501, 0.4957]` of the canvas so `gadget-pivots.ts` needs no change.
+
+### 2. League tier badges — Paper, Plastic, Steel, Chrome, Gold
+Five badges, one per tier in `worker/src/index.ts` `TIERS`. Shown on the board's LEAGUE tab
+(`src/game/ui.ts` `showBoard`) and, once it exists, on a home-dock rank chip.
+
+- Square, ~192×192, transparent.
+- Read as fridge-magnet materials, not as generic game ranks: a paper luggage tag, a moulded
+  plastic letter magnet, brushed steel, polished chrome, a gold foil star sticker. The tier
+  names are already the material — lean on that rather than inventing heraldry.
+- They sit at ~28px on the board row, so silhouette has to carry at thumbnail size.
+
+Today: the tier name is plain text.
+
+### 3. A streak flame — `streak-flame-v1`
+The daily streak counter uses the 🔥 emoji, which renders differently on every platform and
+breaks the kitchen-photo look. Wanted: one small object, ~128×128 transparent, that reads as
+"days in a row" on a fridge door — a magnetic day counter, a wax seal, a tally sticker. It
+sits next to a number, so leave the number out of the art.
+
+Today: `🔥` in `src/game/ui.ts`.
+
+### 4. Board empty state — `board-empty-v1`
+~240×240 transparent. The LEAGUE and TODAY tabs open on a blank body with one line of text
+before any score lands, which is the first thing a new player sees on that screen. Wanted:
+a bare fridge door with a single blank magnetic notepad on it — an invitation, not an error.
+
+### 5. Daily share card background — `card-base-daily.jpg`
+1200×630 JPEG for `worker/src/assets/`, a sibling of the existing `card-base.jpg`. Used when
+the shared run was the daily climb, so it wants a "today" motif — a magnetic date tile or a
+torn calendar day on the door — with the same cover framing and the same clear band across
+the middle-left where `cardSvg` writes the name and the height.
+
+### 6. Set-piece doors, three or four more
+`world-patterns.ts` `SET_PIECES` has four: `water-station`, `busy-month`, `ice-alley`,
+`handle-hop`. A long climb cycles them six or seven times. Same on-door treatment as the
+existing four (340 wide × ~280 tall, sitting on the steel, not replacing it):
+
+- a spice rack strip,
+- a magnetic whiteboard with a shopping list,
+- a row of bottle openers,
+- a takeaway-menu fan.
+
+These are the biggest single lever on how varied a run looks, so they are the most valuable
+art on this list after the clock.
+
+### 7. iOS home-screen set
+`index.html` carries one 192×192 `apple-touch-icon` and no splash screens, so launching from
+an iOS home screen shows white until the bundle loads. Needed, all derivable from the
+existing `toy-icon-512.png` master rather than drawn fresh:
+
+- `apple-touch-icon` at 180×180,
+- `apple-touch-startup-image` at the common iPhone/iPad viewport sizes, on the manifest's
+  `theme_color` ground with the toy centred.
+
+### 8. Store listing art — *not yet, hold*
+Icon and screenshots for a store listing, plus fridge-door skin variants if paid cosmetic
+packs are ever built. Listed so it is not forgotten; nothing should be drawn for it until
+that call is actually made.
+
+---
+
+## Delivered
+
+Nothing from this list yet. The gadget, obstacle, pickup, creature and set-piece art already
+in `public/art/` predates this file; `ART_REFRESH_HANDOFF.md` is its record.
