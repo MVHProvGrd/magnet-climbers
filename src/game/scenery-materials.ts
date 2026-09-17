@@ -263,8 +263,6 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, t: numbe
     case "trim": return drawTrim(ctx, z);
     case "void": return drawGap(ctx, z);
     case "sticker": return drawSticker(ctx, z);
-    case "repel": return drawRepel(ctx, z, t);
-    case "attract": return drawAttract(ctx, z, t);
   }
 }
 
@@ -586,96 +584,11 @@ function paintSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   }
   ctx.restore();
 }
-
-/** Shared shape for the field plates: only the accent colours (enamel body, bevel, glow,
- *  glowing letter, gloss and its glass-window tint) differ between attract and repel. */
-interface PlateColors { body: [string, string, string]; bevel: string; window: string; glow: string; letter: (pulse: number) => string; glowShadow: string; caption: string; label: string }
-
-function paintPlateUnder(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors) {
-  castShadow(ctx, z.x, z.y, z.w, z.h, 8, 1.4);
-  const g = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-  g.addColorStop(0, p.body[0]);
-  g.addColorStop(0.5, p.body[1]);
-  g.addColorStop(1, p.body[2]);
-  ctx.fillStyle = g;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  ctx.strokeStyle = p.bevel;
-  ctx.lineWidth = 2;
-  roundRectPath(ctx, z.x + 2, z.y + 2, z.w - 4, z.h - 4, 6);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,0.5)";
-  ctx.lineWidth = 1.2;
-  roundRectPath(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 8);
-  ctx.stroke();
-  const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
-  ctx.fillStyle = p.window;
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-}
-
-/** The gloss streak and bottom caption paint over the live glow and letter in the original
- *  order, so (like glass's edge highlight) they bake into a separate "over" layer. */
-function paintPlateOver(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors) {
-  const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
-  gl.addColorStop(0, "rgba(255,255,255,0.28)");
-  gl.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gl;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  ctx.fillStyle = p.caption;
-  ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(p.label, z.x + z.w / 2, z.y + z.h - 6);
-}
-
-/** The pulsing glow and glowing letter: the only part of a field plate that reads `t`. */
-function drawPlateLive(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors, pulse: number, letter: string) {
-  const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
-  const glow = ctx.createRadialGradient(z.x + z.w / 2, iy + ih / 2, 2, z.x + z.w / 2, iy + ih / 2, Math.max(iw, ih) * 0.6);
-  glow.addColorStop(0, p.glow.replace("{a}", String(0.45 + pulse * 0.35)));
-  glow.addColorStop(1, p.glow.replace("{a}", "0"));
-  ctx.fillStyle = glow;
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  ctx.font = `900 ${Math.min(30, ih * 0.8)}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = p.letter(pulse);
-  ctx.shadowColor = p.glowShadow;
-  ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText(letter, z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
-  ctx.shadowBlur = 0;
-}
-
-/** Right-polarity plate: glossy blue enamel with a glowing S. It pulls, and it is steel. */
-const ATTRACT_COLORS: PlateColors = {
-  body: ["#2f6fd6", "#1c4aa0", "#102c66"], bevel: "rgba(140,190,255,0.85)", window: "rgba(0,8,30,0.75)",
-  glow: "rgba(90,160,255,{a})", glowShadow: "rgba(90,160,255,0.9)",
-  letter: (pulse) => `rgba(${150 + pulse * 60},${200 + pulse * 40},255,1)`,
-  caption: "rgba(200,225,255,0.9)", label: "ATTRACTS",
-};
-function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
-  const layers = zoneLayersFor(z, (g) => paintPlateUnder(g, z, ATTRACT_COLORS), (g) => paintPlateOver(g, z, ATTRACT_COLORS));
-  drawZoneLayer(ctx, z, layers.under);
-  drawPlateLive(ctx, z, ATTRACT_COLORS, pulse, "S");
-  drawZoneLayer(ctx, z, layers.over);
-}
-
-/** Reversed-polarity plate: a glossy red enamel tile with a glowing N, matching the title art. */
-const REPEL_COLORS: PlateColors = {
-  body: ["#c8232f", "#8f1620", "#5c0d15"], bevel: "rgba(255,120,120,0.8)", window: "rgba(30,0,4,0.75)",
-  glow: "rgba(255,80,80,{a})", glowShadow: "rgba(255,60,60,0.9)",
-  letter: (pulse) => `rgba(255,${150 + pulse * 60},${150 + pulse * 60},1)`,
-  caption: "rgba(255,200,200,0.85)", label: "REPELS",
-};
-function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
-  const layers = zoneLayersFor(z, (g) => paintPlateUnder(g, z, REPEL_COLORS), (g) => paintPlateOver(g, z, REPEL_COLORS));
-  drawZoneLayer(ctx, z, layers.under);
-  drawPlateLive(ctx, z, REPEL_COLORS, pulse, "N");
-  drawZoneLayer(ctx, z, layers.over);
-}
+// The reversed- and same-polarity plates used to be drawn here, as glossy enamel tiles with a
+// glowing N or S. Nothing has called them for a long time: scenery.ts answers every plate
+// itself, with a photographed souvenir magnet where it has one and drawFieldMagnet where it
+// does not, and returns before it could ever reach this file. Two renderers for one thing is
+// a trap -- the next person to change how a plate looks would have found the dead pair first.
 
 // ---------------------------------------------------------------------------
 // bumpers: souvenir / letter magnets sliding across the door
