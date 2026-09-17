@@ -5,6 +5,8 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `34-rubber-launch-v1/` | Textured rubber pull and release thwack, three variants each; source and listening page | Original deterministic synthesis | Wired on codex/art-ready-pack; deployment pending merge |
+| `33-object-audio-v1/` | 33 object-specific synthesized foley/toy sounds, 99 WAV takes; open its index.html to audition | Original deterministic synthesis; no recordings | Review candidates for owner/Claude, NOT live; bearing roll for spinner |
 | `32-balanced-destinations-v1/` | Four S + four N resin souvenirs; all sources, three rejected alpha takes and selected cutouts retained | Codex built-in imagegen | Ready for Claude; use selected ready files, Maldives colour-QC exception inspected |
 | `31-business-variety-v1/` | Eight realistic local-business magnets; native sources, cutouts and light/dark review | Codex built-in imagegen | Ready for Claude; burgundy tax-card QC exception inspected |
 | `30-bumper-variety-v1/` | Seven photo toy bumpers without hardware,1024square; native/source/QC preserved | Codex built-in imagegen | Ready for Claude; red car QC exception inspected |

@@ -1,4 +1,8 @@
 import { EFFECTS, MUSIC_STEP, musicStep, type Voice } from "./music-score";
+import { TOY_VOICE } from "./music-score";
+import { OBJECT_SAMPLES } from "./object-sound-map";
+import { SamplePlayer } from "./sample-player";
+let samples: SamplePlayer | null = null;
 let ctx: AudioContext | null = null;
 let fxBus: GainNode, musicBus: GainNode, master: GainNode, noise: AudioBuffer;
 let enabled = true, musicEnabled = true, unlocked = false, active = true;
@@ -17,6 +21,8 @@ function context(): AudioContext | null {
     const limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -12; limiter.ratio.value = 8;
     fxBus.connect(master); musicBus.connect(master); master.connect(limiter).connect(ctx.destination);
     fxBus.gain.value = enabled ? 0.7 : 0; musicBus.gain.value = musicTarget; master.gain.value = masterTarget;
+    const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
+    samples = new SamplePlayer(ctx, fxBus, base);
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     let seed = 1847; const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) { seed = Math.imul(seed, 1664525) + 1013904223 | 0; data[i] = (seed >>> 0) / 2147483648 - 1; }
@@ -28,10 +34,14 @@ export function unlockAudio() {
   unlocked = true;
   if (!enabled && !musicEnabled) return;
   const c = context(); if (c?.state === "suspended") void c.resume().catch(() => {});
+  if (c && enabled) {
+    // Gestures first, then warm object sounds in bounded batches, not 99 parallel fetches.
+    for (const key of ['rubber-pull', 'rubber-release', ...new Set(Object.values(OBJECT_SAMPLES)), 'pop-in', 'pop-out']) samples?.preload(key);
+  }
 }
-export function setSound(on: boolean) { enabled = on; if (ctx) fxBus.gain.setTargetAtTime(on ? 0.7 : 0, ctx.currentTime, 0.015); }
+export function setSound(on: boolean) { enabled = on; if (!on) samples?.stopGroup(); if (ctx) fxBus.gain.setTargetAtTime(on ? 0.7 : 0, ctx.currentTime, 0.015); }
 export function setMusic(on: boolean) { musicEnabled = on; if (ctx && !on) { musicTarget = 0; target(musicBus, 0, ctx.currentTime, .02); } }
-export function silenceAudio() { active = false; masterTarget = 0; if (ctx) { target(master, 0, ctx.currentTime, .01); nextNote = ctx.currentTime; } }
+export function silenceAudio() { active = false; samples?.stopGroup(); masterTarget = 0; if (ctx) { target(master, 0, ctx.currentTime, .01); nextNote = ctx.currentTime; } }
 function playVoice(c: AudioContext, voice: Voice, at: number, bus: GainNode) {
   if (voices >= 64) return;
   const t = at + (voice.delay ?? 0), gain = c.createGain();
@@ -63,6 +73,35 @@ function effect(name: string, rate = 1) {
     const v = rate === 1 ? voice : { ...voice, frequency: voice.frequency * rate, ...(voice.endFrequency ? { endFrequency: voice.endFrequency * rate } : {}) };
     playVoice(c, v, c.currentTime, fxBus);
   }
+}
+
+function sample(key: string, gain: number, rate = 1, group = 'object', cooldown = .18) {
+  if (!enabled || !active) return 'limited';
+  const c = context(); if (!c || c.state !== 'running') return 'limited';
+  return samples?.play(key, gain, rate, group, cooldown) ?? 'pending';
+}
+/** Called only on the world's debounced contact event. Pending loads use the old sound,
+ * but never replay the collision later when decoding completes. */
+export function playObjectSound(itemId: string, strength = 1) {
+  const key = OBJECT_SAMPLES[itemId]; if (!key) return;
+  const power = Number.isFinite(strength) ? Math.max(0, Math.min(1, strength)) : .5;
+  if (sample(key, .25 + .35 * power) === 'pending') {
+    const fallback = TOY_VOICE[itemId] ?? TOY_VOICE[itemId.replace(/^swing-toy-/, 'bumper-')];
+    if (fallback) effect(fallback);
+  }
+}
+export function playBubbleSound(inward: boolean, index = 0) {
+  if (sample(inward ? 'pop-in' : 'pop-out', .65, 1, 'bubble', .08) === 'pending') effect(inward ? 'popIn' : ['pop1', 'pop2', 'pop3'][index % 3]);
+}
+export function pullSound(tension: number) {
+  const pull = Number.isFinite(tension) ? Math.max(0, Math.min(1, tension)) : 0;
+  if (sample('rubber-pull', .45 + pull * .25, .85 + pull * .55, 'pull', .075) === 'pending') effect('stretch', 1 + pull * .8);
+}
+export function stopPullSound() { samples?.stopGroup('pull'); }
+export function releaseSound(tension: number) {
+  stopPullSound();
+  const pull = Number.isFinite(tension) ? Math.max(0, Math.min(1, tension)) : 0;
+  if (sample('rubber-release', .5 + pull * .35, .9 + pull * .2, 'release', .06) === 'pending') effect('twang', .85 + pull * .5);
 }
 /**
  * Looped music tracks (public/audio/*.mp3): "theme" under runs and the menu, "chill" in Chill mode.
@@ -121,6 +160,7 @@ function loadTracks(c: AudioContext) {
 }
 /** Existing render loop supplies a short scheduling horizon; no hidden timers. */
 export function updateAudio(playing: boolean, danger = 0, chill = false) {
+  if (!playing) samples?.stopGroup();
   active = playing; const c = context(); if (!c || c.state !== "running") return;
   const m = playing ? .8 : 0, music = playing && musicEnabled ? .6 : 0;
   if (m !== masterTarget) { target(master, m, c.currentTime, .025); masterTarget = m; }
@@ -142,3 +182,6 @@ export function updateAudio(playing: boolean, danger = 0, chill = false) {
   }
 }
 export const sfx = Object.fromEntries(Object.keys(EFFECTS).map((name) => [name, (rate?: number) => effect(name, rate)])) as Record<keyof typeof EFFECTS, (rate?: number) => void>;
+// Preserve the existing gesture API (and pitch parameters) while replacing its timbre.
+sfx.stretch = (rate = 1) => pullSound((rate - 1) / .8);
+sfx.twang = (rate = 1) => releaseSound((rate - .85) / .5);
