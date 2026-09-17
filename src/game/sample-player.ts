@@ -31,12 +31,13 @@ export class SamplePlayer {
   play(key: string, gain = .5, rate = 1, group = 'object', cooldown = .18): 'played' | 'pending' | 'limited' {
     const now = this.c.currentTime, hitKey = `${group}:${key}`;
     if (now - (this.lastHit.get(hitKey) ?? -10) < cooldown) return 'limited';
-    this.lastHit.set(hitKey, now);
     const buffers = this.buffers.get(key);
     if (!buffers) { this.preload(key); return 'pending'; }
     if (group === 'object' && [...this.live].filter(v => v.group === 'object').length >= 4) return 'limited';
     if (group === 'pull') this.stopGroup('pull');
     if (this.live.size >= 6) return 'limited';
+    // stamped only once it really plays: a hit dropped for want of a channel must not silence the next
+    this.lastHit.set(hitKey, now);
     const previous = this.lastTake.get(key) ?? -1;
     const candidates = [0, 1, 2].filter(i => i !== previous);
     const take = candidates[Math.floor(Math.random() * candidates.length)];

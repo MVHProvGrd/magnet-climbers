@@ -256,6 +256,14 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
     // toy keychain: plain resin on a chain, no field; it just swings when brushed
     const toy = objectArtById(z.itemId), hardware = objectArtById("swing-snack");
     if (toy && hardware) { drawKeychain(ctx, z, toy, hardware, z.swing.angle, z.pops, toyHook(z.itemId)); return; }
+    // the toy without its hook: until the hardware photo lands it sits on the door as itself,
+    // never falling through to the plain-plastic paint below, which erased hook and toy together
+    if (toy) {
+      const iw = (toy as HTMLImageElement).naturalWidth || 1, ih = (toy as HTMLImageElement).naturalHeight || 1;
+      const s = Math.min(z.w / iw, z.h / ih), dw = iw * s, dh = ih * s;
+      ctx.save(); ctx.translate(z.x + z.w / 2, z.y + z.h / 2); ctx.rotate(z.swing.angle);
+      ctx.drawImage(toy, -dw / 2, -dh / 2, dw, dh); ctx.restore(); return;
+    }
     if (hardware) {
       // no photo yet (COOL penguin): the drawn toy card hangs from the chain until Codex's art lands
       const card = document.createElement("canvas"); card.width = Math.ceil(z.w * 2); card.height = Math.ceil(z.h * 2);
@@ -264,6 +272,7 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
       drawBumper(g, { x: 0, y: 0, w: z.w, h: z.h, vx: 0, minX: 0, maxX: 0, label: item?.label ?? "", hue: item?.hue ?? 0, itemId: undefined, motion: "slide", vy: 0, minY: 0, maxY: 0 });
       drawKeychain(ctx, z, card, hardware, z.swing.angle); return;
     }
+    return;
   }
   if (z.kind === "attract" || z.kind === "repel") {
     const repel = z.kind === "repel";

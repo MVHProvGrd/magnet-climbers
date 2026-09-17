@@ -31,14 +31,16 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   const sy = g.shake > 0 ? (Math.random() - 0.5) * 8 * g.shake : 0;
   ctx.translate(sx, sy - g.camY);
 
-  const top = g.camY - 50;
-  const bottom = g.camY + viewH + 50;
+  // wider than the tallest overdraw beyond a segment: a keychain's hook sits 45 px above its zone
+  const top = g.camY - 80;
+  const bottom = g.camY + viewH + 80;
 
   drawSurface(ctx, top, bottom);
 
   for (const s of g.world.segments) {
     if (s.y + s.h < top || s.y > bottom) continue;
-    for (const z of s.zones) drawZone(ctx, z, g.time, g.world.seed);
+    // a throw from one zone's art must not end the frame, and with it the animation loop
+    for (const z of s.zones) { try { drawZone(ctx, z, g.time, g.world.seed); } catch (e) { console.error("drawZone", z.itemId, e); } }
     for (const gadget of s.gadgets ?? []) drawGadget(ctx, gadget, g.world.gadgetTime);
     for (const b of s.bumpers) drawBumper(ctx, b, g.time);
     for (const p of s.powerUps) if (!p.taken) drawPower(ctx, p, g.time);

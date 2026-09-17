@@ -28,7 +28,7 @@ export const TOY_VOICE: Record<string, string> = {
   "bumper-9": "whoosh", "bumper-10": "clack", "bumper-11": "tick", "bumper-12": "boing",
   "rotor-fidget-spinner": "whirr", "rotor-pinwheel": "flutter",
   "rotor-snack": "clack", "rotor-travel": "clack", "rotor-doodle": "clack",
-  "rotor-compass": "compassTap",
+  "rotor-compass": "compassTap", "rotor-clock": "tick", "rotor-thermometer": "clack",
   "polarity-snack": "poleThud", "polarity-travel": "compassTap", "polarity-doodle": "poleThud",
   "swing-keys": "keys", "swing-bottle-opener": "clink", "swing-disco-ball": "chime",
   "swing-rubber-duck": "squeak", "swing-bead-lanyard": "rattle", "swing-carabiner-whistle": "whistleToot",
@@ -59,8 +59,8 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
   stick: [{ frequency: 1850, duration: 0.045, gain: 0.07, type: "sine" }, { frequency: 2700, duration: 0.065, gain: 0.025, type: "sine" }, { frequency: 130, endFrequency: 65, duration: 0.065, gain: 0.11, type: "triangle" }],
   /** glass: a bright ring with no magnet click under it, and a light tap so a phone speaker carries it */
   hitGlass: [{ frequency: 2950, duration: 0.19, gain: 0.08, type: "sine" }, { frequency: 4400, duration: 0.11, gain: 0.03, type: "sine" }, { frequency: 1200, endFrequency: 700, duration: 0.04, gain: 0.05, type: "noise" }, { frequency: 240, endFrequency: 150, duration: 0.05, gain: 0.06, type: "triangle" }],
-  /** plastic trim and bins: a dull hollow tock */
-  hitPlastic: [{ frequency: 360, endFrequency: 210, duration: 0.07, gain: 0.09, type: "triangle" }, { frequency: 900, endFrequency: 500, duration: 0.035, gain: 0.03, type: "noise" }],
+  /** plastic trim and bins: a dull hollow tock, with a click on top a phone speaker can carry */
+  hitPlastic: [{ frequency: 360, endFrequency: 210, duration: 0.07, gain: 0.09, type: "triangle" }, { frequency: 900, endFrequency: 500, duration: 0.035, gain: 0.03, type: "noise" }, { frequency: 1500, endFrequency: 1100, duration: 0.03, gain: 0.06, type: "triangle" }],
   /** paper: a soft rustle, barely pitched */
   hitPaper: [{ frequency: 2600, endFrequency: 1500, duration: 0.07, gain: 0.05, type: "noise" }, { frequency: 1500, endFrequency: 900, duration: 0.05, delay: 0.04, gain: 0.035, type: "noise" }],
   /** ice tray: a cold tick and a little skid, since ice is what you slide on */

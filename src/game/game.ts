@@ -36,7 +36,7 @@ export interface RunSnapshot {
    * of that is derivable. Left out, every gadget snapped back to rest on resume, which threw
    * a climber riding one straight off it.
    */
-  gadgetState?: { id: string; hitCool?: number; popCool?: number; needle?: number;
+  gadgetState?: { id: string; hitCool?: number; popCool?: number; needle?: number; pops?: number;
     swing?: { angle: number; vel: number; cool: number };
     spin?: { extra: number; vel: number; cool: number } }[];
   runTime?: number;
@@ -687,11 +687,11 @@ export class Game {
       runCoins: this.runCoins, runGems: this.runGems,
       // only gadgets actually away from rest, so a quiet door costs a snapshot nothing
       gadgetState: this.world.gadgets.flatMap((g) => {
-        const moved = g.hitCool || g.popCool || g.needle
+        const moved = g.hitCool || g.popCool || g.needle || g.pops != null
           || (g.swing && (g.swing.angle || g.swing.vel || g.swing.cool))
           || (g.spin && (g.spin.extra || g.spin.vel || g.spin.cool));
         return moved ? [{ id: g.id, ...(g.hitCool ? { hitCool: g.hitCool } : {}), ...(g.popCool ? { popCool: g.popCool } : {}),
-          ...(g.needle ? { needle: g.needle } : {}), ...(g.swing ? { swing: { ...g.swing } } : {}),
+          ...(g.needle ? { needle: g.needle } : {}), ...(g.pops != null ? { pops: g.pops } : {}), ...(g.swing ? { swing: { ...g.swing } } : {}),
           ...(g.spin ? { spin: { ...g.spin } } : {}) }] : [];
       }),
     };
@@ -714,6 +714,7 @@ export class Game {
         if (was.hitCool != null) gd.hitCool = was.hitCool;
         if (was.popCool != null) gd.popCool = was.popCool;
         if (was.needle != null) gd.needle = was.needle;
+        if (was.pops != null) gd.pops = was.pops;
         if (was.swing && gd.swing) gd.swing = { ...was.swing };
         if (was.spin && gd.spin) gd.spin = { ...was.spin };
       }
@@ -796,6 +797,10 @@ export class Game {
     this.stepHand(sdt);
 
     for (const c of this.climbers) c.handsAt = undefined;
+    // a toy that is holding on, or gone, is not sliding: forget the panel it last slid on, so
+    // however it next takes to the air (a fling, a swat, a bumper knocking it loose, a lost
+    // grip) coming down on that same panel sounds again
+    for (const c of this.climbers) if (c.state !== "flying") this.slideMaterial.delete(c.id);
     for (const c of this.climbers) {
       if (c.state === "flying") {
         this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
@@ -964,7 +969,9 @@ export class Game {
       // is moving across the door: the hit is the drop, and a fling that lands at its apex
       // in the middle of a window arrives with almost no pace at all. Only a change from one
       // material to the next mid-slide needs some speed behind it to be worth a sound.
-      const material = k == null ? undefined : this.world.materialAt(c.x, c.y);
+      // asked on its own, not through the friction value: paper stopped dragging in v15 (a
+      // sticker is not something to slide on) and its rustle went silent with it
+      const material = this.world.version >= 13 ? this.world.materialAt(c.x, c.y) : undefined;
       const before = this.slideMaterial.get(c.id);
       if (material !== before) {
         if (material && (before === undefined || Math.hypot(c.vx, c.vy) > 120)) {
@@ -1440,5 +1447,6 @@ export class Game {
     this.phase = "running";
     this.pickDefaultSelection();
     this.effects.slowmo = 2;
+    this.a.sfx.chime();
   }
 }
