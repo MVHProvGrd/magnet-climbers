@@ -76,12 +76,15 @@ export const PATTERNS: PatternDef[] = [
 ];
 
 export const PRIZE_COST = 100;
+/** Where the doubling stops. Nine spins in, a spin costs this and keeps costing it. */
+export const PRIZE_CAP = 25_600;
 /**
- * Every spin costs double the last one: 100, 200, 400, 800... The machine is the long sink at
- * the end of the economy, so it has to keep pace with a wallet that grows every run. Fourteen
- * patterns cost about 1.6M coins to collect, and the first few are still pocket change.
+ * Every spin costs double the last one -- 100, 200, 400, 800 -- until it reaches the ceiling.
+ * The doubling is what makes coins keep mattering as a wallet grows; the ceiling is what keeps
+ * the last few patterns reachable, because uncapped the fourteenth spin wanted 819,200 coins
+ * and the collection was effectively closed. Capped, a complete set costs about 179k.
  */
-export const prizeCost = (spins: number) => PRIZE_COST * 2 ** Math.max(0, spins);
+export const prizeCost = (spins: number) => Math.min(PRIZE_CAP, PRIZE_COST * 2 ** Math.max(0, spins));
 /** Odds shown to the player; the draw uses the same numbers. */
 export const PRIZE_ODDS: Record<Rarity, number> = { common: 65, rare: 28, epic: 7 };
 

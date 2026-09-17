@@ -18,7 +18,7 @@ const NOW = [
   {
     title: "Missions, three at a time",
     line: "Rotating goals paid in coins, written against counters that already exist.",
-    why: "Nothing new needs instrumenting. The run already counts chains, gadget rides, paints, hits, coins, height and cause of death. Missions turn those into a reason to play differently on a door you have climbed a hundred times, and they feed coins to a machine whose price now doubles every spin.",
+    why: "Nothing new needs instrumenting. The run already counts chains, gadget rides, paints, hits, coins, height and cause of death. Missions turn those into a reason to play differently on a door you have climbed a hundred times, and they feed coins to a machine whose price doubles with every spin you take.",
     touches: ["feats in game.ts", "save: three active + progress", "menu and game-over cards"],
     size: "medium",
   },
@@ -78,7 +78,7 @@ const DECIDE = [
 ];
 
 const SHIPPED = [
-  ["Prize machine", "Was next on the list; it was already built and is now a real sink — every spin costs double the last, 100 → 200 → 400, about 1.6M coins for all fourteen patterns."],
+  ["Prize machine", "Was next on the list; it was already built and is now a real sink — every spin costs double the last, 100 → 200 → 400, up to a 25,600 ceiling. A complete set of fourteen patterns costs about 179,000 coins."],
   ["Instant restart and the near miss", "Was third on the list; already done. CLIMB AGAIN goes straight back to the door through the kit sheet, and your best height is drawn on the fridge as a line that turns green when you pass it."],
   ["Creature roster and patterns", "Bodies, patterns, unlock rules and the collection panel all exist. The roadmap still listed this as work."],
   ["Kit, per run", "Coins buy a higher jump and a stickier floor for one climb, three clicks each, gone when the run ends."],

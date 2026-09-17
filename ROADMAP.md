@@ -9,7 +9,7 @@ verified share cards, PWA auto-update, generated music loops.
 
 ## Done since this list was written
 Checked against the code, not this file: the **creature roster** (#4), the
-**prize machine** (#5, now doubling in price every spin) and **instant restart
+**prize machine** (#5, now doubling in price up to a ceiling) and **instant restart
 with the near-miss line** (#7) are all in the game. Also since: per-run kit
 (coins buy a higher jump and a stickier floor for one climb), chat with
 moderation, and the owner's scale bench.
@@ -29,8 +29,8 @@ moderation, and the owner's scale bench.
    Creatures unlock from moments (tutorial, height, crew chain, gadget
    challenge); patterns from the prize machine, streak and missions. Codex
    draws, Claude wires unlocks, shop and save.
-5. ~~**Prize machine.**~~ *Done, and the price doubles every spin: 100, 200,
-   400... about 1.6M coins for all fourteen patterns.*
+5. ~~**Prize machine.**~~ *Done. Each spin costs double the last -- 100, 200,
+   400 -- up to a 25,600 ceiling; a full set of fourteen is about 179k coins.*
 6. **Crew staged rollout (#18, `CREW_DESIGN.md`).** One crew verb per release:
    Stack → Catch → Octopus wide hold → Gecko wall kick → Pair fling → Robot
    bumper feet → Tether. Each ships with a section only it solves and an

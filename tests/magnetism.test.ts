@@ -865,10 +865,13 @@ test("the prize machine doubles its price every spin", () => {
   assert.equal(prizeCost(0), 100);
   assert.equal(prizeCost(1), 200);
   assert.equal(prizeCost(4), 1600);
-  // fourteen patterns, so a complete collection is a genuine long sink rather than a rounding error
-  const all = PATTERNS.length;
-  const total = Array.from({ length: all }, (_, i) => prizeCost(i)).reduce((a, b) => a + b, 0);
-  assert.ok(total > 1_000_000, `collecting everything should cost real coins: ${total}`);
+  // the doubling stops at the ceiling, or the last patterns would be out of anyone's reach
+  assert.equal(prizeCost(8), 25_600);
+  assert.equal(prizeCost(9), 25_600);
+  assert.equal(prizeCost(40), 25_600);
+  // a complete collection is still a long sink: real coins, but a reachable number
+  const total = Array.from({ length: PATTERNS.length }, (_, i) => prizeCost(i)).reduce((a, b) => a + b, 0);
+  assert.ok(total > 100_000 && total < 250_000, `collecting everything should cost about 179k: ${total}`);
   // and a spin is never free, however the counter arrives
   assert.equal(prizeCost(-3), 100);
 });
