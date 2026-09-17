@@ -9,7 +9,6 @@ import { drawPickupImage, pickupImage } from "./pickup-art";
 import { drawKidHand, handPose } from "./kid-hand";
 import { DOOR_SEAM } from "./world";
 import { drawSteel, drawSeam, drawZone as drawMaterialZone, drawBumper as drawMaterialBumper } from "./scenery-materials";
-export { drawPanelJoint } from "./scenery-materials";
 
 // This RNG is art-only. Never consume World.rng while rendering.
 export function artVariant(x: number, y: number, seed: number, count: number): number {

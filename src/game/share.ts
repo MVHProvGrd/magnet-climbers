@@ -1,6 +1,7 @@
 /** Challenge links: ?c=<mode>.<cm>.<name>. Opening one shows the friend's height as a target line in your run. */
 export interface Challenge {
-  mode: "solo" | "crew";
+  /** Kept in the link for the older links already out in the world; every run is solo now. */
+  mode: "solo";
   cm: number;
   name: string;
   /** Sharer's scoreboard id; the share card checks the number against their recorded best. */
@@ -27,7 +28,8 @@ export function parseChallenge(): Challenge | null {
   const [mode, cmS, ...rest] = raw.split(".");
   const cm = Math.floor(Number(cmS));
   if ((mode !== "solo" && mode !== "crew") || !Number.isFinite(cm) || cm <= 0) return null;
-  return { mode, cm, name: (rest.join(".") || "a friend").slice(0, 12) };
+  // a link shared from the crew days still opens: its height becomes a solo target
+  return { mode: "solo", cm, name: (rest.join(".") || "a friend").slice(0, 12) };
 }
 
 /** Drop the ?c= param so a reload does not re-trigger the challenge. */

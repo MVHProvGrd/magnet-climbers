@@ -117,18 +117,6 @@ test("legacy v1 snapshots gain legal contacts without erasing the run", () => {
   assert.ok(restored.climbers[0].grip?.contacts.length);
 });
 
-test("snapshot retains staggered crew flings", () => {
-  const g = game("crew"), c = g.climbers[0];
-  g.selectedId = c.id;
-  g.drag = { start: { x: c.x, y: c.y }, cur: { x: c.x, y: c.y + 115 } };
-  g.pointerUp();
-  const snap = g.snapshot()!;
-  assert.equal(snap.pendingLaunches?.length, 2);
-  const restored = Game.restore(levels, events, snap);
-  for (let i = 0; i < 150; i++) { g.update(1 / 120); restored.update(1 / 120); }
-  assert.deepEqual(g.climbers, restored.climbers);
-});
-
 test("bumpers release the physical grip", () => {
   const g = game(), c = g.climbers[0];
   g.world.segments[0].bumpers.push({ x: c.x - 10, y: c.y - 10, w: 20, h: 20, vx: 10, minX: 0, maxX: 400, label: "test", hue: 0, motion: "slide", vy: 0, minY: c.y - 10, maxY: c.y - 10 });
@@ -403,23 +391,6 @@ test("original music is deterministic, bounded and layers percussion only outsid
   for (const v of voices) { assert.ok(v.frequency > 0 && v.frequency < 20000); assert.ok(v.duration > .006 && v.duration < 1); assert.ok(v.gain > 0 && v.gain <= .25); }
 });
 
-test("moving grips carry an entire linked crew without stretching the chain", () => {
-  const g = game("crew"); g.phase = "running"; g.nextHandAt = 999;
-  const [root, child, grandchild] = g.climbers;
-  const gadget = { id: "chain", itemId: "swing-snack", kind: "swing" as const, x: 100, y: -100, phase: 0 };
-  g.world.segments[0].gadgets = [gadget];
-  const hold = gadgetPose(gadget, 0).hold;
-  Object.assign(root, { x: hold.x + 21, y: hold.y + 20, angle: 0, grip: undefined, ragdoll: undefined, state: "flying" });
-  attachGrip(root, findContacts(root, g.world, 0).filter((p) => p.limb === 0)); root.state = "stuck";
-  Object.assign(child, { x: root.x, y: root.y + 50, parent: root.id, state: "linked", grip: undefined });
-  Object.assign(grandchild, { x: root.x, y: root.y + 100, parent: child.id, state: "linked", grip: undefined });
-  for (let i = 0; i < 120; i++) {
-    g.update(1 / 120);
-    assert.ok(Math.abs(child.x - root.x) < 1e-7); assert.ok(Math.abs(child.y - root.y - 50) < 1e-7);
-    assert.ok(Math.abs(grandchild.x - root.x) < 1e-7); assert.ok(Math.abs(grandchild.y - root.y - 100) < 1e-7);
-  }
-});
-
 test("Claude's super magnet protection survives the articulated swipe integration", () => {
   const g = game(), c = g.climbers[0]; g.phase = "running"; g.effects.superMagnet = 10;
   g.hand = { side: -1, y: -100, x: 0, phase: "sweep", t: .35, hit: new Set() };
@@ -523,20 +494,6 @@ test("how to play covers every surface and family, with counts derived from the 
   // The guide used to guarantee this; it is the item list's own invariant, so it outlives that screen.
   const ids = FRIDGE_ITEMS.map((i) => i.id);
   assert.equal(new Set(ids).size, ids.length, "duplicate item id");
-});
-
-test("a refused launch (ladder rung, unlocked hanger) never spends a fling", () => {
-  const g = game("crew"); g.phase = "running";
-  const [a, b, c] = g.climbers;
-  // a three-high stack: a and b are ladder rungs, c on top is linked but not locked
-  a.state = "stuck"; b.state = "linked"; b.parent = a.id; b.locked = true; c.state = "linked"; c.parent = b.id; c.locked = false;
-  const before = g.flings;
-  assert.equal(g.launch(a, { x: 0, y: -400 }), false);
-  assert.equal(g.launch(b, { x: 0, y: -400 }), false);
-  g.selectedId = a.id; g.drag = { start: { x: a.x, y: a.y }, cur: { x: a.x, y: a.y + 120 } }; g.pointerUp();
-  assert.equal(g.flings, before, "a fling that never happened must not count");
-  c.parent = null; c.state = "flying"; b.parent = null; b.state = "flying";
-  assert.equal(g.launch(a, { x: 0, y: -400 }), true);
 });
 
 test("style points are gone: tricks and near misses pay nothing", () => {
@@ -683,7 +640,7 @@ test("the shop only sells upgrades a lone climber can feel", () => {
   const base = statsFor(zero);
   // a solo run reads magnetRadius, magnetCatch, launchMult, floorMult and revives; teamSize,
   // reach and maxLinks all need teammates, so selling them would take coins for nothing
-  const solo = ["magnetRadius", "magnetCatch", "launchMult", "floorMult", "revives"] as const;
+  const solo = ["magnetRadius", "magnetCatch", "launchMult", "floorMult"] as const;
   for (const u of UPGRADES.filter((u) => u.solo)) {
     const maxed = statsFor({ ...zero, [u.key]: u.max });
     assert.ok(solo.some((k) => maxed[k] !== base[k]), `${u.key} is sold but changes nothing for a lone climber`);
@@ -692,7 +649,7 @@ test("the shop only sells upgrades a lone climber can feel", () => {
     assert.equal(u.max, 3, `${u.key} should cap at three`);
   }
   // spare lives are not for sale: a free second chance is the ad or gems, nothing else
-  assert.equal(UPGRADES.find((u) => u.key === "revive")!.solo, false);
+  assert.equal(UPGRADES.some((u) => u.key === "revive"), false);
   assert.equal(statsFor(zero).revives, 0);
   assert.ok(UPGRADES.filter((u) => u.solo).length >= 2, "something is still on the shelf");
 });

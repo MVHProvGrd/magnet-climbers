@@ -1,6 +1,6 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
-import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
+import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
@@ -22,10 +22,8 @@ export interface UiHandlers {
   onQuitRun(): void;
   onEndRun(): void;
   onBuy(key: UpgradeKey): void;
-  /** Wear a creature + pattern for solo runs (and as the crew default). */
+  /** Wear a creature and a pattern. */
   onWear(look: Look): void;
-  /** Dress one crew slot. */
-  onWearCrew(slot: number, look: Look): void;
   /** The one-time free creature choice. */
   onPickFirst(creature: string): void;
   /** Spend coins on the prize machine; null when unaffordable or the collection is complete. */
@@ -46,8 +44,8 @@ export interface UiHandlers {
   onTutorial(): void;
   /** Frame-time report for on-device performance QA (see main.ts perfReport). */
   onPerf(): unknown;
-  onShare(c: { mode: "solo" | "crew"; cm: number }): void;
-  onAcceptChallenge(mode: "solo" | "crew"): void;
+  onShare(c: { mode: "solo"; cm: number }): void;
+  onAcceptChallenge(mode: "solo"): void;
   /** Global chat send: the stored message on success, an error string, or null if unreachable. */
   onChat(text: string): Promise<ChatMessage | string | null>;
 }
@@ -399,10 +397,9 @@ export class Ui {
   }
 
   /** Creatures and patterns: what you own, what you wear, how to earn the rest. */
-  showCollection(tab: "creatures" | "patterns" | "crew" = "creatures") {
+  showCollection(tab: "creatures" | "patterns" = "creatures") {
     const s = this.save();
     const p = el("div", "panel collection");
-    const teamSize = statsFor(s.upgrades).teamSize;
     const owned = (c: CreatureDef) => s.creatures.includes(c.id);
     let body = "";
     if (tab === "creatures") {
@@ -421,32 +418,17 @@ export class Ui {
           <span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span>${on ? "<i class=\"tick\">WEARING</i>" : has ? "" : "<span>🔒 prize machine</span>"}
         </button>`; }).join("")}</div>
         <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${groupNum(prizeCost(s.spins))}</button>`;
-    } else {
-      const slots = Array.from({ length: teamSize }, (_, i) => s.crew[i] ?? { creature: s.creature, pattern: s.pattern });
-      body = `<p class="tag">Tap a toy to change its creature, tap the swatch for its pattern. ${teamSize} climbers start a crew run.</p>
-        <div class="guide-grid">${slots.map((l, i) => `<div class="guide-card look">
-          <canvas width="200" height="200" data-look="${l.creature}|${l.pattern}"></canvas>
-          <button class="chip" data-slot="${i}" data-cycle="c">${esc(creatureById(l.creature).name)} ›</button>
-          <button class="chip" data-slot="${i}" data-cycle="p"><span class="swatches">${patternColors(l.pattern).slice(0, 3).map((c) => `<i style="background:${c}"></i>`).join("")}</span>${esc(patternById(l.pattern).name)} ›</button>
-        </div>`).join("")}</div>`;
     }
     p.innerHTML = `<h2>Collection</h2>
-      <div class="tabs"><button class="${tab === "creatures" ? "on" : ""}" data-tab="creatures">CREATURES ${s.creatures.length}/${CREATURES.length}</button><button class="${tab === "patterns" ? "on" : ""}" data-tab="patterns">PATTERNS ${s.patterns.length}/${PATTERNS.length}</button><button class="${tab === "crew" ? "on" : ""}" data-tab="crew">CREW</button></div>
+      <div class="tabs"><button class="${tab === "creatures" ? "on" : ""}" data-tab="creatures">CREATURES ${s.creatures.length}/${CREATURES.length}</button><button class="${tab === "patterns" ? "on" : ""}" data-tab="patterns">PATTERNS ${s.patterns.length}/${PATTERNS.length}</button></div>
       ${body}
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-c],[data-p],[data-slot],[data-a]");
+      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-c],[data-p],[data-a]");
       if (!t) return;
       if (t.dataset.tab) { this.showCollection(t.dataset.tab as "creatures"); return; }
       if (t.dataset.c) { this.h.onWear({ creature: t.dataset.c as CreatureId, pattern: this.save().pattern }); this.showCollection("creatures"); return; }
       if (t.dataset.p) { this.h.onWear({ creature: this.save().creature, pattern: t.dataset.p }); this.showCollection("patterns"); return; }
-      if (t.dataset.slot) {
-        const sv = this.save(); const i = Number(t.dataset.slot);
-        const cur = sv.crew[i] ?? { creature: sv.creature, pattern: sv.pattern };
-        const next = (list: string[], id: string) => list[(list.indexOf(id) + 1) % list.length];
-        this.h.onWearCrew(i, t.dataset.cycle === "c" ? { creature: next(sv.creatures, cur.creature) as CreatureId, pattern: cur.pattern } : { creature: cur.creature, pattern: next(sv.patterns, cur.pattern) });
-        this.showCollection("crew"); return;
-      }
       if (t.dataset.a === "prize") this.showPrize();
       if (t.dataset.a === "back") this.showMenu();
     });
@@ -831,13 +813,13 @@ export class Ui {
   }
 
   /** Landing panel when the app is opened from a challenge link. */
-  showChallenge(c: { mode: "solo" | "crew"; cm: number; name: string }) {
+  showChallenge(c: { mode: "solo"; cm: number; name: string }) {
     const p = el("div", "panel small");
     p.innerHTML = `
       <div class="story-icon">📣</div>
       <h2>${esc(c.name)} challenged you</h2>
       <div class="big">${c.cm} cm</div>
-      <p class="tag">${c.mode === "crew" ? "Crew climb" : "Solo climb"}. Their height shows as a line on your fridge. Get above it.</p>
+      <p class="tag">Solo climb. Their height shows as a line on your fridge. Get above it.</p>
       <button class="primary" data-a="go">ACCEPT</button>
       <button class="ghost" data-a="menu">LATER</button>`;
     p.addEventListener("click", (e) => {
@@ -1011,7 +993,7 @@ export class Ui {
       const list = rows && rows.length
         ? rows.map((r, i) => `<div class="srow ${r.player_id === s.playerId ? "me" : ""}"><span class="n">${i + 1}</span><span class="who">${esc(r.name)}</span><span class="cm">${mode === "lifetime" ? fmtDistance(r.cm) : mode === "coins" ? `$${r.cm.toLocaleString()}` : `${r.cm} cm`}</span>${r.seconds ? `<span class="t" title="run time">${fmtTime(r.seconds)}</span>` : ""}</div>`).join("")
         : `<p class="tag">${leaderboardEnabled ? (rows ? "No climbs yet. Be first." : "Could not reach the scoreboard.") : "Global scoreboard not configured yet. Local best shown."}</p>`;
-      const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : mode === "crew" ? s.bestCm : s.bestSolo;
+      const localMine = mode === "lifetime" ? s.totalCm : mode === "coins" ? s.coins : s.bestSolo;
       const fmt = (n: number) => mode === "coins" ? `$${n.toLocaleString()}` : fmtDistance(n);
       const mine = leaderboardEnabled
         ? rank?.rank ? `You: #${rank.rank} · ${fmt(rank.cm ?? 0)}` : "You: not on the board yet"
@@ -1031,7 +1013,7 @@ export class Ui {
         <span class="shell-fade"></span>
         <div class="shell-foot">
           <p class="fine">${mine} · as <b>${esc(s.name || "anonymous")}</b> <button class="link" data-a="name">change</button></p>
-          ${(mode === "crew" || mode === "solo") && (mode === "crew" ? s.bestCm : s.bestSolo) > 0 ? `<button class="shell-primary" data-a="share">CHALLENGE FRIENDS TO BEAT ${groupNum(mode === "crew" ? s.bestCm : s.bestSolo)} CM</button>` : ""}
+          ${mode === "solo" && s.bestSolo > 0 ? `<button class="shell-primary" data-a="share">CHALLENGE FRIENDS TO BEAT ${groupNum(s.bestSolo)} CM</button>` : ""}
           <p class="fine world" hidden></p>
           <p class="fine">${s.runs} runs · ${(s.totalCm / 100).toFixed(1)} m climbed lifetime</p>
         </div>`;
@@ -1051,7 +1033,7 @@ export class Ui {
       const m = t.dataset.m as BoardMode | undefined;
       if (m) { this.showBoard(m); return; }
       if (t.dataset.a === "back") this.showMenu();
-      if (t.dataset.a === "share" && (mode === "crew" || mode === "solo")) this.h.onShare({ mode, cm: mode === "crew" ? s.bestCm : s.bestSolo });
+      if (t.dataset.a === "share" && mode === "solo") this.h.onShare({ mode, cm: s.bestSolo });
       if (t.dataset.a === "name") this.showNamePrompt(() => this.showBoard(mode));
     });
     this.show(p);
@@ -1117,12 +1099,12 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo" | "crew"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
-    // Solo is one climber, so nothing on this card talks about a crew in solo.
-    const crew = o.mode === "crew";
+    // One climber, so the card speaks to a person, never to a crew.
+    const crew = false;
     const title = o.isRecord ? "NEW RECORD" : o.chill ? "CHILL RUN DONE" : o.ended ? "RUN BANKED"
       : crew ? "ALL CLIMBERS LOST" : "RUN OVER";
     // what actually ended it, in the run's own words. A banked or won run has no cause.

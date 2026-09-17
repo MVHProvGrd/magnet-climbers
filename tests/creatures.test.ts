@@ -42,20 +42,18 @@ test("prize machine never repeats, respects tier odds, and stops when complete",
 });
 
 test("old skin saves migrate into patterns and everyone owns the toy", () => {
-  const d = { skin: "glow", skins: ["classic", "glow"], creature: "", pattern: "", creatures: [], patterns: [], crew: [{ creature: "frog", pattern: "classic" }] } as unknown as SaveData;
+  const d = { skin: "glow", skins: ["classic", "glow"], creature: "", pattern: "", creatures: [], patterns: [] } as unknown as SaveData;
   migrateLooks(d);
   assert.deepEqual(d.patterns.sort(), ["classic", "glow"]);
   assert.equal(d.pattern, "glow");
   assert.deepEqual(d.creatures, ["toy"]);
   assert.equal(d.creature, "toy");
-  assert.deepEqual(d.crew, [], "crew slots wearing unowned creatures are dropped");
 });
 
-test("lineup dresses climbers and colours come from the pattern; snapshots keep feats", () => {
-  const g = new Game(levels(), events, { rules: "crew", seed: 3, lineup: [{ creature: "gecko", pattern: "lemon" }, { creature: "robot", pattern: "ocean" }] });
+test("the lineup dresses the climber, colours come from the pattern, snapshots keep feats", () => {
+  const g = new Game(levels(), events, { seed: 3, lineup: [{ creature: "gecko", pattern: "lemon" }] });
+  assert.equal(g.climbers.length, 1, "one climber: crew left with the crew code");
   assert.equal(g.climbers[0].creature, "gecko"); assert.equal(g.climbers[0].color, patternColors("lemon")[0]);
-  assert.equal(g.climbers[1].creature, "robot"); assert.equal(g.climbers[1].color, patternColors("ocean")[1]);
-  assert.equal(g.climbers[2].creature, "gecko", "lineup wraps");
   g.phase = "running"; g.feats.gadgetRides = 2; g.feats.hits = 1;
   const snap = g.snapshot()!;
   const back = Game.restore(levels(), events, snap, undefined, [{ creature: "dino", pattern: "classic" }]);

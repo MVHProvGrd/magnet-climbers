@@ -192,12 +192,8 @@ export function drawSeam(ctx: CanvasRenderingContext2D, top: number, bottom: num
 }
 
 /** Faint horizontal panel joint between generated segments. */
-export function drawPanelJoint(ctx: CanvasRenderingContext2D, y: number) {
-  ctx.fillStyle = "rgba(0,0,0,0.07)";
-  ctx.fillRect(0, y - 1, W, 1.5);
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  ctx.fillRect(0, y + 0.5, W, 1);
-}
+// A door is one sheet of steel. The old panel joint drew a line across it at every segment
+// boundary, which put a 34cm grid on the art to mark an implementation detail.
 
 // ---------------------------------------------------------------------------
 // zones

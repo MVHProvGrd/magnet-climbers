@@ -7,7 +7,7 @@ import { drawKidHand } from "./kid-hand";
 import { drawCatPaw, drawScratches } from "./cat-paw";
 import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
-import { drawSurface, drawPanelJoint, drawZone, drawBumper, drawPower } from "./scenery";
+import { drawSurface, drawZone, drawBumper, drawPower } from "./scenery";
 import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
 
 
@@ -38,7 +38,6 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   for (const s of g.world.segments) {
     if (s.y + s.h < top || s.y > bottom) continue;
-    drawPanelJoint(ctx, s.y + s.h);
     for (const z of s.zones) drawZone(ctx, z, g.time, g.world.seed);
     for (const gadget of s.gadgets ?? []) drawGadget(ctx, gadget, g.world.gadgetTime);
     for (const b of s.bumpers) drawBumper(ctx, b, g.time);

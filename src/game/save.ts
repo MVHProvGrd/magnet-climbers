@@ -1,6 +1,5 @@
 import type { Lang } from "./i18n";
 import { UPGRADES, type UpgradeKey } from "./config";
-import type { Look } from "./creatures";
 
 export interface SaveData {
   version: 1;
@@ -24,17 +23,14 @@ export interface SaveData {
   music: boolean;
   /** "" = follow the browser language */
   lang: "" | Lang;
-  reserves: number;
   /** legacy skin fields; migrated into `pattern`/`patterns` on load and kept for older clients */
   skin: string;
   skins: string[];
-  /** what the solo climber (and crew slot defaults) wear */
+  /** what the climber wears */
   creature: string;
   pattern: string;
   creatures: string[];
   patterns: string[];
-  /** per-slot looks for crew runs; missing slots fall back to creature/pattern */
-  crew: Look[];
   /** the one-time "pick your first creature" offer has been taken */
   picked: boolean;
   /** lifetime bumper hits, for the crab unlock */
@@ -78,14 +74,12 @@ function defaults(): SaveData {
     sound: true,
     music: true,
     lang: "",
-    reserves: 0,
     skin: "classic",
     skins: ["classic"],
     creature: "toy",
     pattern: "classic",
     creatures: ["toy"],
     patterns: ["classic"],
-    crew: [],
     picked: false,
     hitsTotal: 0,
     intros: [],
@@ -147,7 +141,6 @@ export function migrateLooks(d: SaveData): void {
   if (!d.pattern || !d.patterns.includes(d.pattern)) d.pattern = d.patterns.includes(d.skin) ? d.skin : "classic";
   if (!d.creature || !d.creatures.includes(d.creature)) d.creature = "toy";
   d.intros = d.intros ?? [];
-  d.crew = (d.crew ?? []).filter((l) => l && d.creatures.includes(l.creature) && d.patterns.includes(l.pattern));
   d.skin = d.pattern; d.skins = d.patterns;
 }
 

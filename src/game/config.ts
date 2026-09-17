@@ -2,9 +2,8 @@
 export const W = 400;
 
 /**
- * The upgrade shop. Only the upgrades marked `solo` are offered, because the game is the
- * single climber for now -- team size, chain links, arm reach and reserve climbers all need
- * teammates to mean anything. They stay in the table, unsold, for the crew revamp.
+ * The upgrade shop. The crew-only upgrades (team size, arm reach, chain length, spare tokens)
+ * left with the crew code; what a lone climber can feel is what is on the shelf.
  */
 export const SHOP_ENABLED = true;
 export const CFG = {
@@ -130,22 +129,14 @@ export interface UpgradeDef {
 }
 
 export type UpgradeKey =
-  | "team"
   | "magnet"
-  | "reach"
-  | "links"
   | "power"
-  | "floor"
-  | "revive";
+  | "floor";
 
 export const UPGRADES: UpgradeDef[] = [
-  { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9, solo: false },
   { key: "magnet", name: "Magnet strength", desc: "Grabs steel from further out", max: 6, baseCost: 40, costGrowth: 1.7, solo: false },
-  { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7, solo: false },
-  { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0, solo: false },
   { key: "power", name: "Higher jump", desc: "Pull back and every sling throws you further up the door.", max: 3, baseCost: 50, costGrowth: 1.8, solo: true, gain: "+9% jump" },
   { key: "floor", name: "Sticky floor", desc: "The red line creeping up behind you climbs slower.", max: 3, baseCost: 70, costGrowth: 1.9, solo: true, gain: "-9% line" },
-  { key: "revive", name: "Spare tokens", desc: "+1 free second chance per run", max: 3, baseCost: 150, costGrowth: 2.5, solo: false },
 ];
 
 export function upgradeCost(def: UpgradeDef, level: number): number {
@@ -155,22 +146,19 @@ export function upgradeCost(def: UpgradeDef, level: number): number {
 /** Derived run stats from upgrade levels. */
 export function statsFor(levels: Record<UpgradeKey, number>) {
   return {
-    teamSize: 3 + levels.team,
     /** px the climber may be outside metal and still snap (4 → 16 at max; more grabbed across gaps) */
     magnetRadius: 4 + levels.magnet * 2,
     /** max upward velocity at which the magnet can still catch (px/s). Kept well under fling speed so
      *  a maxed magnet never kills a fling on the way up: 40 → 100 at max (was 370). */
     magnetCatch: 40 + levels.magnet * 10,
-    reach: 70 + levels.reach * 9,
-    maxLinks: 1 + levels.links,
+    reach: 70,
+    maxLinks: 1,
     launchMult: 1 + levels.power * 0.09,
     floorMult: 1 - levels.floor * 0.09,
-    revives: levels.revive,
+    revives: 0,
   };
 }
 
-/** A consumable extra climber, dropped in mid-run from the HUD. */
-export const RESERVE_COST = 35;
 
 export interface SkinDef { key: string; name: string; cost: number; colors: string[] }
 export const SKINS: SkinDef[] = [

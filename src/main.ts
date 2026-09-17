@@ -7,7 +7,7 @@ import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background"
 import { Ui } from "./game/ui";
 import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
-import { CFG, UPGRADES, W, upgradeCost, statsFor, type UpgradeKey } from "./game/config";
+import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
@@ -67,7 +67,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -89,7 +89,6 @@ function mergeCloudBlob(blob: string) {
     save.bestSolo = Math.max(save.bestSolo, c.bestSolo ?? 0);
     save.runs = Math.max(save.runs, c.runs ?? 0);
     save.totalCm = Math.max(save.totalCm, c.totalCm ?? 0);
-    save.reserves = Math.max(save.reserves, c.reserves ?? 0);
     for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], c.upgrades?.[k] ?? 0);
     save.skins = Array.from(new Set([...save.skins, ...(c.skins ?? [])]));
     save.creatures = Array.from(new Set([...save.creatures, ...(c.creatures ?? [])]));
@@ -209,11 +208,6 @@ const ui = new Ui(uiRoot, () => save, {
     if (!save.creatures.includes(look.creature) || !save.patterns.includes(look.pattern)) return;
     save.creature = look.creature; save.pattern = look.pattern; save.skin = look.pattern; persist();
   },
-  onWearCrew: (slot, look) => {
-    if (!save.creatures.includes(look.creature) || !save.patterns.includes(look.pattern)) return;
-    while (save.crew.length <= slot) save.crew.push({ creature: save.creature, pattern: save.pattern });
-    save.crew[slot] = look; persist();
-  },
   onPickFirst: (creature) => {
     if (save.picked) return;
     if (!save.creatures.includes(creature)) save.creatures.push(creature);
@@ -294,7 +288,7 @@ const ui = new Ui(uiRoot, () => save, {
     });
     if (!save.name) ui.showNamePrompt(go); else go();
   },
-  onAcceptChallenge: (mode) => startRun(mode),
+  onAcceptChallenge: () => startRun("solo"),
   onChat: async (text) => {
     if (!leaderboardEnabled) return "Chat is offline";
     if (save.cloudRev === 0) await cloudSync("chat");
@@ -329,7 +323,7 @@ function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: 
 setInterval(saveSnapshot, 2000);
 window.addEventListener("pagehide", saveSnapshot);
 
-let rulesNow: "solo" | "crew" = "solo";
+let rulesNow: "solo" = "solo";
 function runEvents() {
   return {
     onPower: () => {},
@@ -363,7 +357,6 @@ function runEvents() {
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
-      save.reserves = game.reserves;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
       const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
@@ -375,22 +368,18 @@ function runEvents() {
   };
 }
 
-/** Looks for a run: solo wears the chosen creature; crew slots come from the lineup, defaulting to it. */
-function lineupFor(rules: "solo" | "crew"): Look[] {
-  const me: Look = { creature: save.creature, pattern: save.pattern };
-  if (rules === "solo") return [me];
-  const n = statsFor(save.kit).teamSize;
-  return Array.from({ length: n }, (_, i) => save.crew[i] ?? me);
+/** The climber's look for a run. */
+function lineupFor(_rules: "solo"): Look[] {
+  return [{ creature: save.creature, pattern: save.pattern }];
 }
 
 function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
-  rulesNow = r.snap.rules;
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
-  game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
+  game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor("solo"));
   if (!game.chill) {
     const best = game.rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: game.heightCm > best };
@@ -445,7 +434,7 @@ function tickTutorial(dt: number) {
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 /** coins picked up this run, across revives; feeds the dino unlock */
 let runCoinsTotal = 0;
-function startRun(rules: "solo" | "crew", withTutorial = false) {
+function startRun(rules: "solo", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
   ui.clear();
