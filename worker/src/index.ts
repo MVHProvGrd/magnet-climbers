@@ -285,14 +285,16 @@ async function placeInLeague(env: Env, playerId: string, name: string): Promise<
     if (rank <= PROMOTE) tier = Math.min(TIERS.length - 1, tier + 1);
     else if (members >= PROMOTE + RELEGATE && rank > members - RELEGATE) tier = Math.max(0, tier - 1);
   }
-  // the newest bucket of that tier, or a fresh one when it is full
-  const open = await env.DB.prepare(
-    "SELECT bucket, COUNT(*) AS n FROM league WHERE week = ? AND tier = ? GROUP BY bucket ORDER BY bucket DESC LIMIT 1",
-  ).bind(week, tier).first<{ bucket: number; n: number }>();
-  const bucket = !open ? 1 : open.n >= BUCKET_SIZE ? open.bucket + 1 : open.bucket;
-  await env.DB.prepare("INSERT OR IGNORE INTO league (player_id, week, tier, bucket, name, cm, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?)")
-    .bind(playerId, week, tier, bucket, name, Date.now()).run();
-  return { week, tier, bucket };
+  // The newest bucket of that tier with a seat free, or a fresh one. Chosen and taken in the
+  // one statement, so two players placed at the same moment cannot both count the same open
+  // seat: SQLite runs the statement whole, and the second sees the first already sitting.
+  await env.DB.prepare(`INSERT OR IGNORE INTO league (player_id, week, tier, bucket, name, cm, updated_at)
+    SELECT ?1, ?2, ?3,
+      COALESCE((SELECT bucket FROM league WHERE week = ?2 AND tier = ?3 GROUP BY bucket HAVING COUNT(*) < ?4 ORDER BY bucket DESC LIMIT 1),
+               (SELECT COALESCE(MAX(bucket), 0) + 1 FROM league WHERE week = ?2 AND tier = ?3)),
+      ?5, 0, ?6`).bind(playerId, week, tier, BUCKET_SIZE, name, Date.now()).run();
+  const seat = await env.DB.prepare("SELECT bucket FROM league WHERE player_id = ? AND week = ?").bind(playerId, week).first<{ bucket: number }>();
+  return { week, tier, bucket: seat?.bucket ?? 1 };
 }
 
 let dailyReady = false;

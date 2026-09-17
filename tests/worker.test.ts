@@ -312,3 +312,17 @@ test("a score or run posted about another player's profile is refused", async ()
   const again = await e.DB.prepare("SELECT name, cm FROM scores WHERE player_id = ? AND mode = 'solo'").bind(victim.playerId).first<{ name: string; cm: number }>();
   assert.deepEqual([again?.name, again?.cm], ["Me", 500]);
 });
+
+// League seating is one statement: the newest bucket with a seat free, else a fresh one.
+test("league buckets fill to thirty and then open the next", async () => {
+  const e = env();
+  const buckets = new Map<number, number>();
+  for (let i = 0; i < 31; i++) {
+    const p = await seedPlayer(e, "lg");
+    const r = await worker.fetch(post("/run", { playerId: p.playerId, token: p.token, name: "Kid", mode: "solo", cm: 100 + i }), e);
+    assert.equal(r.status, 200);
+  }
+  const rows = await e.DB.prepare("SELECT bucket, COUNT(*) AS n FROM league GROUP BY bucket").all<{ bucket: number; n: number }>();
+  for (const r of rows.results ?? []) buckets.set(r.bucket, r.n);
+  assert.deepEqual([...buckets.entries()].sort(), [[1, 30], [2, 1]]);
+});

@@ -6,6 +6,13 @@ export interface SaveData {
   version: 1;
   coins: number;
   gems: number;
+  /**
+   * Running totals of what the wallet has ever taken in and paid out, and the balance last
+   * seen when they were brought up to date. A balance goes up and down, so two devices
+   * cannot merge it without one of them resurrecting money the other spent; the totals only
+   * ever grow, so each side's high-water mark is the truth and the balance is in minus out.
+   */
+  ledger: { coinsIn: number; coinsOut: number; gemsIn: number; gemsOut: number; coinsSeen: number; gemsSeen: number };
   bestCm: number;
   bestSolo: number;
   /** When each best was set and how long that run took. The board heals itself from these,
@@ -83,6 +90,7 @@ function defaults(): SaveData {
     version: 1,
     coins: 0,
     gems: 10,
+    ledger: { coinsIn: 0, coinsOut: 0, gemsIn: 10, gemsOut: 0, coinsSeen: 0, gemsSeen: 10 },
     bestCm: 0,
     bestSolo: 0,
     runs: 0,
@@ -147,6 +155,8 @@ export function loadSave(): SaveData {
       upgrades: { ...d.upgrades, ...(parsed.upgrades ?? {}) },
       kit: { ...d.kit, ...(parsed.kit ?? {}) },
       streak: { ...d.streak, ...(parsed.streak ?? {}) },
+      // a save from before the ledger opens its books at today's balance
+      ledger: parsed.ledger ?? { coinsIn: parsed.coins ?? 0, coinsOut: 0, gemsIn: parsed.gems ?? d.gems, gemsOut: 0, coinsSeen: parsed.coins ?? 0, gemsSeen: parsed.gems ?? d.gems },
       version: 1 as const,
     };
     // players who already chose a name never see the one-time offer

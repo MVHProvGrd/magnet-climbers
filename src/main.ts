@@ -70,11 +70,20 @@ setSound(save.sound);
 setMusic(save.music);
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
 document.addEventListener("keydown", unlockAudio);
-const persist = () => writeSave(save);
+/** Bring the ledger up to the balance: whatever changed since it last looked is income or spend. */
+function settleLedger() {
+  const l = save.ledger;
+  const dc = save.coins - l.coinsSeen, dg = save.gems - l.gemsSeen;
+  if (dc > 0) l.coinsIn += dc; else l.coinsOut -= dc;
+  if (dg > 0) l.gemsIn += dg; else l.gemsOut -= dg;
+  l.coinsSeen = save.coins; l.gemsSeen = save.gems;
+}
+const persist = () => { settleLedger(); writeSave(save); };
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay", "ledger"] as const;
 function cloudBlob(): string {
+  settleLedger();
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
   return JSON.stringify(out);
@@ -89,8 +98,20 @@ function applyCloudBlob(blob: string) {
 function mergeCloudBlob(blob: string) {
   try {
     const c = JSON.parse(blob) as Partial<typeof save>;
-    save.coins = Math.max(save.coins, c.coins ?? 0);
-    save.gems = Math.max(save.gems, c.gems ?? 0);
+    settleLedger();
+    if (c.ledger) {
+      // both books only ever grow, so the higher figure on each side is what really happened
+      // and the balance is what came in minus what went out: money spent on one phone stays spent
+      const l = save.ledger;
+      l.coinsIn = Math.max(l.coinsIn, c.ledger.coinsIn); l.coinsOut = Math.max(l.coinsOut, c.ledger.coinsOut);
+      l.gemsIn = Math.max(l.gemsIn, c.ledger.gemsIn); l.gemsOut = Math.max(l.gemsOut, c.ledger.gemsOut);
+      save.coins = Math.max(0, l.coinsIn - l.coinsOut); save.gems = Math.max(0, l.gemsIn - l.gemsOut);
+      l.coinsSeen = save.coins; l.gemsSeen = save.gems;
+    } else {
+      // a copy from before the ledger: the higher balance, as before
+      save.coins = Math.max(save.coins, c.coins ?? 0);
+      save.gems = Math.max(save.gems, c.gems ?? 0);
+    }
     save.bestCm = Math.max(save.bestCm, c.bestCm ?? 0);
     save.bestSolo = Math.max(save.bestSolo, c.bestSolo ?? 0);
     save.runs = Math.max(save.runs, c.runs ?? 0);
@@ -203,9 +224,11 @@ const ui = new Ui(uiRoot, () => save, {
   onPause: () => { paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
-    void cloudSync("quit");
-    if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; persist(); }
+    // quitting is ending: the height, records, missions and coins bank exactly as they do
+    // when the run ends on its own, then the menu comes up over the summary
+    if (game && game.phase !== "dead") game.forceEnd();
     endRun(); ui.showMenu();
+    void cloudSync("quit");
   },
   onBuy: (key: UpgradeKey) => {
     const def = UPGRADES.find((u) => u.key === key)!;
