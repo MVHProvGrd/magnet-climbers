@@ -27,6 +27,7 @@ export const TOY_VOICE: Record<string, string> = {
   "bumper-5": "bell", "bumper-6": "taxi", "bumper-7": "revv", "bumper-8": "boing",
   "bumper-9": "whoosh", "bumper-10": "clack", "bumper-11": "tick", "bumper-12": "boing",
   "rotor-fidget-spinner": "whirr", "rotor-pinwheel": "flutter",
+  "rotor-snack": "clack", "rotor-travel": "clack", "rotor-doodle": "clack",
   "swing-keys": "keys", "swing-bottle-opener": "clink", "swing-disco-ball": "chime",
   "swing-rubber-duck": "squeak", "swing-bead-lanyard": "rattle", "swing-carabiner-whistle": "whistleToot",
   "swing-wind-chime": "chime", "swing-baby-shoe": "bell", "swing-scissors": "snip",

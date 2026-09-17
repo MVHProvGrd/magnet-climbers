@@ -18,10 +18,14 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
   return pool[(hash >>> 0) % pool.length];
 }
 /** Rotors on a free bearing: knock one and it whirls. A wall clock and a dial thermometer do not. */
-export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel"]);
+export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel", "rotor-snack", "rotor-travel", "rotor-doodle"]);
+/** Nothing turns these on its own: a spinner and an alphabet letter sit dead still until they are hit. */
+export const STILL_UNTIL_HIT = new Set(["rotor-fidget-spinner", "rotor-snack", "rotor-travel", "rotor-doodle"]);
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
-  const angle = g.kind === "rotor" ? t * 0.95 + (g.spin?.extra ?? 0) : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
+  const still = !!g.spin && STILL_UNTIL_HIT.has(g.itemId);
+  // a still rotor keeps its phase as the resting angle, so they do not all sit the same way up
+  const angle = g.kind === "rotor" ? (still ? g.phase : t * 0.95) + (g.spin?.extra ?? 0) : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
   const x = g.x + (g.kind === "swing" || g.kind === "clip" ? Math.sin(angle) * 45 : 0);
   const y = g.y + (g.kind === "swing" || g.kind === "clip" ? (1 - Math.cos(angle)) * 45 : 0);
   const active = g.kind === "polarity" && t % 6 >= 3;

@@ -707,6 +707,14 @@ test("hitting a fidget spinner winds it up, and it coasts back down", () => {
   // and the bearings give out: a spinner coasts a good while, but it does come back to its lazy turn
   for (let i = 0; i < 600; i++) g.world.stepGadgets(1 / 60);
   assert.equal(spinner.spin.vel, 0);
+  // it sat dead still before it was touched: no idle drift on a spinner or an alphabet letter
+  const still = { id: "spin-2", itemId: "rotor-fidget-spinner", kind: "rotor" as const, phase: 1.2, x: 200, y: -300, spin: { extra: 0, vel: 0, cool: 0 } };
+  assert.equal(gadgetPose(still, 0).angle, gadgetPose(still, 4).angle, "a spinner turns on its own");
+  const letter = { ...still, id: "spin-3", itemId: "rotor-travel", spin: { extra: 0, vel: 0, cool: 0 } };
+  assert.equal(gadgetPose(letter, 0).angle, gadgetPose(letter, 4).angle, "a letter turns on its own");
+  // the clock keeps its sweep
+  const ticking = { id: "clock-0", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  assert.notEqual(gadgetPose(ticking, 0).angle, gadgetPose(ticking, 4).angle);
   // a wall clock is not on a free bearing, so nothing to wind up
   const clock = { id: "clock-1", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
   seg.gadgets = [clock];
