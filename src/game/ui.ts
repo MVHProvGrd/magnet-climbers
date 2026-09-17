@@ -775,6 +775,7 @@ export class Ui {
         <p class="sec-label">Owner</p>
         ${row("Admin panel", "Boards, chat, flags and players", `<a class="shell-chip" href="${apiBase}/admin#key=${encodeURIComponent(adminKey())}" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Placement workbench", "How often each thing spawns, and how big it is drawn", `<a class="shell-chip" href="${base}placement.html" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Scale bench", "Any object on the real door, next to a climber, at any size", `<a class="shell-chip" href="${base}scale.html" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Element map", "Every element in the game and what it does to you", `<a class="shell-chip" href="${base}elements/" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Art archive", "Every art pack delivered so far", `<a class="shell-chip" href="${base}art-archive/" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Forget the key", "Removes owner access from this device", chip("owner-out", "SIGN OUT"))}
