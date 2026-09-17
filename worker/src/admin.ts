@@ -127,19 +127,26 @@ h2{margin:0 0 8px;font-size:15px;color:#ffb74d}table{width:100%;border-collapse:
 button{border:0;border-radius:8px;padding:5px 9px;background:#2b2f38;color:#fff;cursor:pointer;font-weight:700;font-size:12px}button.bad{background:#a33}button.ok{background:#2f6fd6}
 input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;background:#0f1216;color:#fff}.muted{opacity:.6}.n{white-space:nowrap}.id{font-family:ui-monospace,monospace;font-size:11px;opacity:.7}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}#out{white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;max-height:40vh;overflow:auto}
+/* a board row is rank, name, metres, time, date and a button: that needs more than one grid column, and the button must never be the thing that gets clipped */
+.wide{grid-column:1/-1;max-width:1200px}.board{grid-column:span 2;min-width:0}.board table{table-layout:auto}.board td:last-child{white-space:nowrap;text-align:right}
+@media(max-width:760px){.board{grid-column:1/-1}}
+/* chat as a list, one message per block, so a long line wraps under its own header instead of squeezing the text column */
+.chat{display:flex;flex-direction:column;gap:6px}.msg{padding:8px 10px;border-radius:8px;background:#151920;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
+.msg .who{grid-column:1;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.msg .text{grid-column:1;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.msg .acts{grid-column:2;grid-row:1/span 2;align-self:start;white-space:nowrap}.msg.new{outline:1px solid #ffb74d66}
+#live{font-size:12px;opacity:.7}#live.on::before{content:"● ";color:#7bd88f}
 </style></head><body>
-<header><b>Magnet Climbers admin</b><input id="key" type="password" placeholder="ADMIN_KEY" style="flex:1;max-width:320px"><button class="ok" onclick="saveKey()">Use key</button><button onclick="load()">Refresh</button><a href="https://magnetclimbers.com/art-archive/" target="_blank" style="color:#7cc">Art archive</a><a href="https://magnetclimbers.com/elements/" target="_blank" style="color:#7cc">Element map</a><a href="https://magnetclimbers.com/placement.html" target="_blank" style="color:#7cc">Placement</a><a href="https://magnetclimbers.com/scale.html" target="_blank" style="color:#7cc">Scale bench</a><a href="https://magnetclimbers.com/roadmap/" target="_blank" style="color:#7cc">Roadmap</a><span id="status"></span></header>
+<header><b>Magnet Climbers admin</b><input id="key" type="password" placeholder="ADMIN_KEY" style="flex:1;max-width:320px"><button class="ok" onclick="saveKey()">Use key</button><button onclick="load()">Refresh</button><a href="https://magnetclimbers.com/art-archive/" target="_blank" style="color:#7cc">Art archive</a><a href="https://magnetclimbers.com/elements/" target="_blank" style="color:#7cc">Element map</a><a href="https://magnetclimbers.com/placement.html" target="_blank" style="color:#7cc">Placement</a><a href="https://magnetclimbers.com/scale.html" target="_blank" style="color:#7cc">Scale bench</a><a href="https://magnetclimbers.com/roadmap/" target="_blank" style="color:#7cc">Roadmap</a><span id="status"></span><span id="live"></span></header>
 <main>
 <section><h2>Stats</h2><div id="stats"></div></section>
 <section><h2>Player lookup</h2><div class="row"><input id="pid" placeholder="p-xxxxxxxx" style="flex:1"><button onclick="lookup()">Look up</button></div>
-<div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('crew')">Delete crew</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
+<div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
 <div class="row"><input id="lifecm" placeholder="lifetime cm" type="number"><button onclick="setLife()">Set lifetime</button><button class="bad" onclick="mute(0,true)">Mute forever + wipe chat</button><button onclick="mute(24,false)">Mute 24h</button><button onclick="unmute()">Unmute</button></div>
 <div id="out"></div></section>
-<section style="grid-column:1/-1;max-width:1200px"><h2>Flagged</h2><table id="reports"></table></section>
-<section style="grid-column:1/-1;max-width:1200px"><h2 style="display:flex;gap:10px;align-items:center">Chat (newest first) <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><table id="chat"></table></section>
-<section><h2>Crew board</h2><table id="crew"></table></section>
-<section><h2>Solo board</h2><table id="solo"></table></section>
-<section><h2>Coins board</h2><table id="coins"></table></section>
+<section class="wide"><h2>Flagged</h2><table id="reports"></table></section>
+<section class="board"><h2>Solo board</h2><table id="solo"></table></section>
+<section class="board"><h2>Coins board</h2><table id="coins"></table></section>
+<section class="wide"><h2>Chat <span class="muted" id="chatmeta"></span> <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><div id="chat" class="chat"></div></section>
 </main>
 <script>
 const $=(s)=>document.querySelector(s);const key=()=>localStorage.getItem("mc-admin-key")||"";
@@ -150,11 +157,14 @@ const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 // how long the run took, next to when it happened; older rows predate the column
 const took=(s)=>s?\`\${Math.floor(s/60)}m \${String(s%60).padStart(2,"0")}s\`:'<span class="muted">—</span>';
 const pick=(id)=>{$("#pid").value=id;lookup();};
-async function load(){$("#status").textContent="…";const d=await api("/overview");$("#status").textContent="ok";
+let load=async function(){$("#status").textContent="…";const d=await api("/overview");$("#status").textContent="ok";
 $("#stats").innerHTML=\`<b>\${(d.stats.total_cm/100).toFixed(1)} m</b> over <b>\${d.stats.runs}</b> runs by <b>\${d.players}</b> climbers\`;
 $("#mutes").innerHTML=d.mutes.length?"Muted: "+d.mutes.map(m=>\`<span class="id">\${esc(m.player_id)}</span> (\${m.until?"until "+when(m.until):"forever"}) <button onclick="unmute('\${esc(m.player_id)}')">unmute</button>\`).join(" · "):"No mutes.";
-$("#chat").innerHTML=d.chat.map(m=>\`<tr><td class="id">\${when(m.created_at)}</td><td><b>\${esc(m.name)}</b> <span class="id" onclick="pick('\${esc(m.player_id)}')" style="cursor:pointer">\${esc(m.player_id)}</span></td><td>\${esc(m.text)}</td><td><button class="bad" onclick="delChat(\${m.id})">del</button> <button onclick="mute(24,false,'\${esc(m.player_id)}')">mute 24h</button></td></tr>\`).join("")||"<tr><td>Empty</td></tr>";
-for(const mode of ["crew","solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
+const newest=d.chat[0]?.id||0,fresh=lastSeen&&newest>lastSeen?d.chat.filter(m=>m.id>lastSeen).length:0;
+$("#chatmeta").textContent=\`newest first · \${d.chat.length} shown\${fresh?" · "+fresh+" new":""}\`;
+$("#chat").innerHTML=d.chat.map(m=>\`<div class="msg\${lastSeen&&m.id>lastSeen?" new":""}"><div class="who"><b>\${esc(m.name)}</b><span class="id" onclick="pick('\${esc(m.player_id)}')" style="cursor:pointer">\${esc(m.player_id)}</span><span class="id">\${when(m.created_at)}</span></div><div class="acts"><button class="bad" onclick="delChat(\${m.id})">del</button> <button onclick="mute(24,false,'\${esc(m.player_id)}')">mute 24h</button></div><div class="text">\${esc(m.text)}</div></div>\`).join("")||'<div class="muted">Empty</div>';
+lastSeen=newest;
+for(const mode of ["solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
 $("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":r.kind==="censor"?"CENSORED":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br><span class="id" onclick="pick('\${esc(r.target_id)}')" style="cursor:pointer">\${esc(r.target_id)}</span></td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">\${r.kind==="censor"?"filter · "+(r.strikes||0)+" starred":"by "+esc(r.reporter_id)}</td><td class="n"><button onclick="mute(24,false,'\${esc(r.target_id)}')">mute 24h</button> <button class="bad" onclick="mute(0,true,'\${esc(r.target_id)}')">mute + wipe</button> \${r.message_id?\`<button class="bad" onclick="delChat(\${r.message_id})">del msg</button> \`:""}<button onclick="clearReport(\${r.id})">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
 $("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";}
 async function lookup(){const id=$("#pid").value.trim();if(!id)return;$("#out").textContent=JSON.stringify(await api("/player?id="+encodeURIComponent(id)),null,1);}
@@ -172,5 +182,13 @@ async function clearChat(){if(!confirm("Delete every chat message?"))return;awai
 (function(){const m=/[#&]key=([^&]+)/.exec(location.hash);if(!m)return;
 try{localStorage.setItem("mc-admin-key",decodeURIComponent(m[1]));}catch(e){}
 history.replaceState(null,"",location.pathname);})();
+let lastSeen=0;
+// The queue moves without anyone pressing Refresh. Every thirty seconds while the tab is
+// visible, and straight away when it becomes visible again, with the moment it last looked
+// shown in the header so a stale page never passes for a live one.
+let lastLoad=0;const tick=()=>{if(!lastLoad)return;const s=Math.round((Date.now()-lastLoad)/1000);$("#live").textContent=s<5?"just now":s+"s ago";};
+const _load=load;load=async function(){await _load();lastLoad=Date.now();$("#live").classList.add("on");tick();};
+setInterval(()=>{if(document.visibilityState==="visible"&&key())load().catch(()=>{});},30000);setInterval(tick,1000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&key())load().catch(()=>{});});
 $("#key").value=key();if(key())load();
 </script></body></html>`;
