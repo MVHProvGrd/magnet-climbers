@@ -1,4 +1,4 @@
-import { EXPEDITIONS_ENABLED, RESERVE_COST, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { EXPEDITIONS_ENABLED, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { CREATURES, PATTERNS, PRIZE_COST, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
@@ -754,7 +754,7 @@ export class Ui {
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
-        ${SHOP_ENABLED ? row("Upgrades &amp; reserves", "Spend coins on the team", chip("shop", "OPEN")) : ""}
+        ${SHOP_ENABLED ? row("Upgrades", "Spend coins on a stronger magnet, a bigger sling and spare tokens", chip("shop", "OPEN")) : ""}
         <p class="sec-label">Play on another device</p>
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
@@ -843,7 +843,8 @@ export class Ui {
     const s = this.save();
     const st = statsFor(s.upgrades);
     const p = el("div", "panel shop");
-    const rows = UPGRADES.map((u) => {
+    // crew-only upgrades are not sold while the game is one climber: nothing to grab, nothing to stack
+    const rows = UPGRADES.filter((u) => u.solo).map((u) => {
       const lvl = s.upgrades[u.key];
       const maxed = lvl >= u.max;
       const cost = upgradeCost(u, lvl);
@@ -851,7 +852,7 @@ export class Ui {
       return `
         <div class="row">
           <div class="info">
-            <b>${u.name} <small>${"●".repeat(lvl)}${"○".repeat(u.max - lvl)}</small></b>
+            <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
             <span>${u.desc}</span>
           </div>
           <button class="buy ${can ? "" : "disabled"}" data-k="${u.key}" ${can ? "" : "disabled"}>
@@ -859,27 +860,20 @@ export class Ui {
           </button>
         </div>`;
     }).join("");
+    const slower = Math.round((1 - st.floorMult) * 100);
     p.innerHTML = `
       <h2>Upgrades</h2>
-      <p class="tag"><span class="coin">$${s.coins}</span> · team ${st.teamSize} · reach ${st.reach}px · ${st.maxLinks} links</p>
+      <p class="tag"><span class="coin">$${s.coins}</span> \u00b7 magnet ${st.magnetRadius}px \u00b7 sling \u00d7${st.launchMult.toFixed(2)}${slower ? ` \u00b7 line ${slower}% slower` : ""}${st.revives ? ` \u00b7 ${st.revives} token${st.revives > 1 ? "s" : ""}` : ""}</p>
       <div class="rows">${rows}</div>
-      <h3>Reserves</h3>
-      <div class="rows">
-        <div class="row">
-          <div class="info"><b>Reserve climber <small>${s.reserves}/5 carried</small></b><span>Drop a fresh climber onto the crew mid-run</span></div>
-          <button class="buy ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}" data-r="1" ${s.coins >= RESERVE_COST && s.reserves < 5 ? "" : "disabled"}>$${RESERVE_COST}</button>
-        </div>
-      </div>
-      <button data-a="collection">🎨 CREATURES &amp; PATTERNS</button>
+      <button data-a="collection">\ud83c\udfa8 CREATURES &amp; PATTERNS</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
       if (k) { this.h.onBuy(k); this.showShop(); return; }
-      if (t.closest<HTMLElement>("[data-r]")) { this.h.onBuyReserve(); this.showShop(); return; }
       if (t.dataset.a === "collection") { this.showCollection(); return; }
-      if (t.dataset.a === "back") this.showMenu();
+      if (t.dataset.a === "back") this.showSettings();
     });
     this.show(p);
   }

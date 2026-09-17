@@ -4,7 +4,7 @@ import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
 import { DOOR_SEAM, World } from "../src/game/world";
-import { CFG, UPGRADES, type UpgradeKey } from "../src/game/config";
+import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -208,7 +208,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 20);
+  assert.equal(modern.snapshot()!.worldVersion, 21);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -674,6 +674,64 @@ test("every keychain with a voice has a sound to play, and no two dangle silentl
   // the bumper toys are what hang off the keyrings, so they all need a noise
   const bumpers = FRIDGE_ITEMS.filter((i) => i.id.startsWith("bumper-") && i.id !== "bumper-4");
   for (const b of bumpers) assert.ok(TOY_VOICE[b.id], `${b.id} is mute`);
+});
+
+test("the shop only sells upgrades a lone climber can feel", () => {
+  assert.ok(SHOP_ENABLED, "the shop is open");
+  const zero = Object.fromEntries(UPGRADES.map((u) => [u.key, 0])) as Record<UpgradeKey, number>;
+  const base = statsFor(zero);
+  // a solo run reads magnetRadius, magnetCatch, launchMult, floorMult and revives; teamSize,
+  // reach and maxLinks all need teammates, so selling them would take coins for nothing
+  const solo = ["magnetRadius", "magnetCatch", "launchMult", "floorMult", "revives"] as const;
+  for (const u of UPGRADES) {
+    const maxed = statsFor({ ...zero, [u.key]: u.max });
+    const moved = solo.some((k) => maxed[k] !== base[k]);
+    assert.equal(moved, u.solo, `${u.key} is marked solo: ${u.solo} but ${moved ? "does" : "does not"} change a solo stat`);
+  }
+  assert.ok(UPGRADES.filter((u) => u.solo).length >= 4, "something is still on the shelf");
+});
+
+test("hitting a fidget spinner winds it up, and it coasts back down", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  const spinner = { id: "spin-1", itemId: "rotor-fidget-spinner", kind: "rotor" as const, phase: 0, x: 200, y: -300, spin: { extra: 0, vel: 0, cool: 0 } };
+  seg.gadgets = [spinner];
+  const idle = gadgetPose(spinner, 0).angle;
+  g.world.knockSwings({ x: 205, y: -295 }, 300);
+  assert.equal(g.world.knocked, "rotor-fidget-spinner");
+  assert.ok(spinner.spin.vel > 5, `a solid hit should spin it: ${spinner.spin.vel}`);
+  // it turns much further than the idle drift over the same tenth of a second
+  for (let i = 0; i < 6; i++) g.world.stepGadgets(1 / 60);
+  const spun = gadgetPose(spinner, 0).angle - idle;
+  assert.ok(spun > 1, `the spinner should have whirled round: ${spun}`);
+  // and the bearings give out: a spinner coasts a good while, but it does come back to its lazy turn
+  for (let i = 0; i < 600; i++) g.world.stepGadgets(1 / 60);
+  assert.equal(spinner.spin.vel, 0);
+  // a wall clock is not on a free bearing, so nothing to wind up
+  const clock = { id: "clock-1", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  seg.gadgets = [clock];
+  g.world.knocked = null;
+  g.world.knockSwings({ x: 205, y: -295 }, 300);
+  assert.equal(g.world.knocked, null);
+});
+
+test("v21 never stretches the grille, and bolts no handle onto a surface", () => {
+  const seg = (version: number, pattern: "handle-hop" | "water-station") => {
+    const world = surface(), s = world.segments[0]; s.y = -340; s.h = 340;
+    populateSetPiece(s, pattern, false, version);
+    return s;
+  };
+  const vents = seg(21, "handle-hop").zones.filter((z) => z.itemId === "vent");
+  assert.ok(vents.length >= 2, "the grille comes in bands now");
+  for (const v of vents) {
+    const a = v.w / v.h;
+    // the photo is 320x82; anything near square is the old smeared panel
+    assert.ok(a > 2.6 && a < 5.2, `a band is the wrong shape: ${v.w}x${v.h}`);
+  }
+  for (const pattern of ["handle-hop", "water-station"] as const)
+    assert.equal(seg(21, pattern).zones.filter((z) => z.itemId === "handle").length, 0, `${pattern} still has a handle`);
+  // older worlds keep the layout they were generated with
+  assert.ok(seg(20, "water-station").zones.some((z) => z.itemId === "handle"));
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {
