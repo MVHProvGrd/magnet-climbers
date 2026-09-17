@@ -88,16 +88,17 @@ export const leaderboard = {
    * gone for good, and nothing ever reconciled it, so the board drifted quietly below the
    * figure the player reads on their own screen and never caught up.
    */
-  run: (playerId: string, name: string, mode: Mode, cm: number, total: number) =>
-    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, total }) }),
+  run: (playerId: string, token: string, name: string, mode: Mode, cm: number, total: number) =>
+    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, token, name, mode, cm, total }) }),
   /** This week's bucket: about thirty players, the ten at the top going up and the ten at the bottom down. */
   league: (playerId: string) => call<LeagueStanding>(`/league?player=${encodeURIComponent(playerId)}`),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
   /** A daily post carries the run's tape: the Worker climbs it again and that height is the score. */
-  submit: (playerId: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number, tape?: unknown) =>
-    call<{ ok: boolean; best: number; taken?: boolean; day?: string; verified?: boolean; reason?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}), ...(tape ? { tape } : {}) }) }),
+  /** The token says the post is the player's own; the Worker refuses a post about someone else. */
+  submit: (playerId: string, token: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number, tape?: unknown) =>
+    call<{ ok: boolean; best: number; taken?: boolean; day?: string; verified?: boolean; reason?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, token, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}), ...(tape ? { tape } : {}) }) }),
 };
 
 export interface LeagueStanding {

@@ -86,8 +86,8 @@ test("profanity filter catches spaced-out, repeated and look-alike-Unicode evasi
 
 test("an evaded name is rejected the same as a plain one", async () => {
   const e = env();
-  const { playerId } = await seedPlayer(e);
-  const res = await worker.fetch(post("/score", { playerId, name: "fuuuck", mode: "solo", cm: 100 }), e);
+  const { playerId, token } = await seedPlayer(e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "fuuuck", mode: "solo", cm: 100 }), e);
   const row = await e.DB.prepare("SELECT name FROM scores WHERE player_id = ?").bind(playerId).first<{ name: string }>();
   assert.equal(res.status, 200);
   assert.equal(row?.name, "climber");
@@ -186,10 +186,10 @@ test("the Worker's daily seed is the client's daily seed", () => {
 
 test("a daily score with its tape is replayed and kept at the height the replay reaches", async () => {
   const e = env("enforce");
-  const { playerId } = await seedPlayer(e);
+  const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
   assert.ok(cm > 0);
-  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm, seconds: tape.seconds, tape }), e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm, seconds: tape.seconds, tape }), e);
   const j = await res.json() as { ok: boolean; best: number; verified: boolean };
   assert.equal(res.status, 200);
   assert.equal(j.verified, true);
@@ -202,9 +202,9 @@ test("a daily score with its tape is replayed and kept at the height the replay 
 
 test("a claim above what the tape climbs to is refused in enforce mode and never lands", async () => {
   const e = env("enforce");
-  const { playerId } = await seedPlayer(e);
+  const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
-  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
   assert.equal(res.status, 422);
   const j = await res.json() as { ok: boolean; verified: boolean; reason: string };
   assert.equal(j.ok, false);
@@ -218,9 +218,9 @@ test("a claim above what the tape climbs to is refused in enforce mode and never
 
 test("in shadow mode the same bad claim lands, but the verdict is on record for the owner", async () => {
   const e = env("shadow");
-  const { playerId } = await seedPlayer(e);
+  const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
-  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
   assert.equal(res.status, 200);
   const j = await res.json() as { verified: boolean; reason: string };
   assert.equal(j.verified, false);
@@ -231,8 +231,8 @@ test("in shadow mode the same bad claim lands, but the verdict is on record for 
 
 test("a console fetch with a number and no tape is refused in enforce mode", async () => {
   const e = env("enforce");
-  const { playerId } = await seedPlayer(e);
-  const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: 99999 }), e);
+  const { playerId, token } = await seedPlayer(e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: 99999 }), e);
   assert.equal(res.status, 422);
   assert.equal(((await res.json()) as { reason: string }).reason, "no tape");
 });
@@ -248,8 +248,8 @@ test("a tape from another day, with kit, or off the step grid is refused before 
     ["too many events", { ...tape, events: Array.from({ length: 4001 }, (_, i) => ({ t: i / 120, k: "fling", id: 0, v: { x: 1, y: -1 } })) }],
   ];
   for (const [reason, bad] of cases) {
-    const { playerId } = await seedPlayer(e);
-    const res = await worker.fetch(post("/score", { playerId, name: "Kid", mode: "daily", cm: 10, tape: bad }), e);
+    const { playerId, token } = await seedPlayer(e);
+    const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: 10, tape: bad }), e);
     assert.equal(res.status, 422, reason);
     assert.equal(((await res.json()) as { reason: string }).reason, reason);
   }
@@ -293,4 +293,22 @@ test("chat still leaves an age, a score, a plain platform mention and a handle-l
     const j = await res.json() as { message: { text: string } };
     assert.equal(j.message.text, text, text);
   }
+});
+
+// /score and /run are the player's own posts: a post about somebody else's profile is refused.
+test("a score or run posted about another player's profile is refused", async () => {
+  const e = env();
+  const victim = await seedPlayer(e);
+  for (const path of ["/score", "/run"]) {
+    const forged = await worker.fetch(post(path, { playerId: victim.playerId, token: "not-the-token", name: "Hacked", mode: "solo", cm: 500 }), e);
+    assert.equal(forged.status, 403, `${path} without the owner's token`);
+    const own = await worker.fetch(post(path, { playerId: victim.playerId, token: victim.token, name: "Me", mode: "solo", cm: 500 }), e);
+    assert.equal(own.status, 200, `${path} with the owner's token`);
+  }
+  const row = await e.DB.prepare("SELECT name FROM scores WHERE player_id = ? AND mode = 'solo'").bind(victim.playerId).first<{ name: string }>();
+  assert.equal(row?.name, "Me");
+  // a lower re-post cannot relabel a standing best either
+  await worker.fetch(post("/score", { playerId: victim.playerId, token: victim.token, name: "Later", mode: "solo", cm: 100 }), e);
+  const again = await e.DB.prepare("SELECT name, cm FROM scores WHERE player_id = ? AND mode = 'solo'").bind(victim.playerId).first<{ name: string; cm: number }>();
+  assert.deepEqual([again?.name, again?.cm], ["Me", 500]);
 });
