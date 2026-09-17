@@ -14,6 +14,8 @@ import { monthKey, themeFor } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
+import { Ghost, loadBestTape, saveBestTape } from "./game/ghost";
+import type { Tape } from "./game/recorder";
 
 /**
  * Update flow: the service worker checks for a new build every 5 minutes and whenever
@@ -235,6 +237,8 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
   onToggleAutoKit: (on: boolean) => { save.autoKit = on; persist(); },
+  onRaceBest: () => { const tape = loadBestTape(); if (tape) startRun("solo", false, false, tape); },
+  bestTapeCm: () => { const tape = loadBestTape(); return tape && !tape.chill ? tape.cm : null; },
   onOpenBoard: () => { void resubmitBests(); },
   onLinkDevice: () => {
     void (async () => {
@@ -305,8 +309,6 @@ const ui = new Ui(uiRoot, () => save, {
 uiReady = true;
 
 const SNAP_KEY = "magnet-climbers:run:v1";
-/** The tape of the best climb on this device: the ghost feature reads it, nothing else does yet. */
-const TAPE_KEY = "magnet-climbers:tape:v1";
 function saveSnapshot() {
   if (!game) return;
   const snap = game.snapshot();
@@ -367,7 +369,7 @@ function runEvents() {
       // the tape of your best climb is kept for the ghost that will draw it
       if (!chill && cm > 0 && cm >= save.bestSolo) {
         const tape = game.sealTape(dailyRun);
-        if (tape) { try { localStorage.setItem(TAPE_KEY, JSON.stringify(tape)); } catch { /* full or private */ } }
+        if (tape) saveBestTape(tape);
       }
       // the fridge of the month pays its pattern the first time you finish a climb on it
       const month = monthKey();
@@ -489,7 +491,13 @@ let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 let runCoinsTotal = 0;
 /** True while the current run is today's shared climb. */
 let dailyRun = false;
-function startRun(rules: "solo", withTutorial = false, daily = false) {
+/** The recorded climb running beside this one, when the player asked to race it. */
+let ghost: Ghost | null = null;
+/**
+ * A ghost is only meaningful on the door it was recorded on, so racing one and generating a
+ * fresh fridge are the same decision: the tape hands over its seed, or there is no ghost.
+ */
+function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null) {
   if (save.missions.length < 3) { save.missions = refill(save.missions, save.missionsDone); persist(); }
   void cloudPull(true);
   rulesNow = rules;
@@ -507,7 +515,11 @@ function startRun(rules: "solo", withTutorial = false, daily = false) {
   game = new Game(kit, runEvents(),
     withTutorial ? { rules, seed: TUTORIAL_SEED, lineup }
     : daily ? { rules, seed: dailySeed(), lineup }
+    : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
     : { rules, chill: save.chill, lineup });
+  // the ghost wears last time's colours so the two climbers are never mistaken for each other
+  ghost = raceTape ? new Ghost(raceTape, { creature: save.creature, pattern: save.pattern }) : null;
+  game.ghost = ghost;
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
@@ -569,6 +581,7 @@ function submitScore(cm: number, panel: HTMLElement) {
 
 function endRun() {
   clearSnapshot();
+  ghost = null;
   // the kit was for that climb: it is used up whether it carried you far or not
   for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
   persist();
@@ -716,7 +729,12 @@ function frame(now: number) {
       acc += dt;
       tickKeys(dt);
       const simT0 = performance.now();
-      while (acc >= STEP) { game.update(STEP); acc -= STEP; }
+      while (acc >= STEP) {
+        game.update(STEP);
+        // the ghost takes the same step, so a pause or a slow-motion pickup moves both
+        if (ghost && !ghost.done && game.phase === "running") ghost.step(STEP);
+        acc -= STEP;
+      }
       simMs = performance.now() - simT0;
       tickTutorial(dt);
       if (game.phase === "idle") tickHint(dt); else cancelHint();

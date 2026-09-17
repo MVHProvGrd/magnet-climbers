@@ -122,6 +122,18 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
     ctx.fillText(tr("LADDER"), c.x, c.y - 30);
   }
 
+  // The ghost draws under the live climbers: it is the run you are chasing, not the one you
+  // are steering, so it must never be the thing your eye lands on. Pale, no shadow, no hit
+  // pips, no selection ring -- a photograph of a climber rather than a climber.
+  const gh = g.ghost?.climber;
+  if (gh && gh.state !== "lost" && gh.y > top - 80 && gh.y < bottom + 80) {
+    ctx.save();
+    ctx.globalAlpha = 0.34;
+    drawClimber(ctx, gh, false, g.time, appearanceFor(gh));
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
   const visible = g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
   // one resolve per climber, shared by the shadow pass and the body pass

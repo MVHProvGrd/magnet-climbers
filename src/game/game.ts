@@ -1,5 +1,6 @@
 import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx, playObjectSound, playBubbleSound, stopPullSound } from "./audio";
+import { silentAudio, type GameAudio } from "./silent-audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { gadgetZone } from "./gadgets";
@@ -132,9 +133,20 @@ export class Game {
   drops: { x: number; y: number; vx: number; vy: number; spin: number }[] = [];
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
+  /**
+   * A recorded climb running beside this one. The loop that owns the run steps it, so it
+   * stays in lockstep through pauses and slow-motion; this field is only how the renderer
+   * finds it. Structural, not the Ghost class, so the sim does not import its own replayer.
+   */
+  ghost: { climber: Climber | null; heightCm: number; done: boolean } | null = null;
+  /** where sound goes: the real module, or nothing at all for a ghost or a server replay */
+  private readonly a: GameAudio;
 
-  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; silent?: boolean } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
+    // A ghost is a whole second run of the sim, stepped beside the real one. It must not be
+    // heard: every effect it would fire has already been heard, or is about to be.
+    this.a = opts.silent ? silentAudio : { sfx, playObjectSound, playBubbleSound, stopPullSound };
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
     this.palette = opts.palette ?? CLIMBER_COLORS;
@@ -265,7 +277,7 @@ export class Game {
       const distance = (v: Vec) => Math.hypot(v.x - this.drag!.start.x, v.y - this.drag!.start.y);
       // rubber under tension: each notch of draw creaks a little higher than the last
       if (this.mode === "fling" && Math.floor(distance(p) / 16) > Math.floor(distance(this.drag.cur) / 16)) {
-        sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * .8);
+        this.a.sfx.stretch(1 + Math.min(1, distance(p) / CFG.maxDrag) * .8);
       }
       this.drag.cur = p; return;
     }
@@ -279,7 +291,7 @@ export class Game {
   }
 
   pointerUp() {
-    stopPullSound();
+    this.a.stopPullSound();
     if (!this.drag) return;
     const drag = this.drag;
     const c = this.byId(this.selectedId);
@@ -356,7 +368,7 @@ export class Game {
     c.airTime = 0;
     c.squash = 1;
     // the band snapping back past its rest length, pitched by how hard it was pulled
-    sfx.twang(.85 + pull * .5);
+    this.a.sfx.twang(.85 + pull * .5);
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
     return true;
@@ -536,7 +548,7 @@ export class Game {
     if (top.id === c.id || this.stackDepth(top) >= CFG.stackMax) return false;
     c.state = "linked"; c.locked = true; c.parent = top.id; c.grip = undefined;
     c.x = top.x; c.y = top.y - CFG.stackHeight; c.angle = 0; c.vx = 0; c.vy = 0; c.spin = 0; c.squash = 1;
-    sfx.link();
+    this.a.sfx.link();
     this.burst(c.x, c.y, top.color, 5);
     this.floats.push({ x: c.x, y: c.y - 30, text: "STACKED", life: 0.9, color: "#fff" });
     this.feats.maxChain = Math.max(this.feats.maxChain, this.stackDepth(c));
@@ -576,7 +588,7 @@ export class Game {
       c.x = t.x; c.y = t.y; c.vx = 0; c.vy = 0; c.squash = 1; c.grip = undefined;
       c.state = "linked"; c.parent = a.id; c.locked = true;
       c.angle = 0;
-      sfx.link();
+      this.a.sfx.link();
       this.feats.maxChain = Math.max(this.feats.maxChain, this.chainDepthAbove(c) + this.chainDepthBelow(c) + 1);
       this.awardNewHeight(c, "CHAIN BUILDER", 25);
     }
@@ -720,12 +732,12 @@ export class Game {
     for (const c of this.climbers) {
       if (c.state === "flying") {
         this.stepFlying(c, sdt); this.world.knockSwings(c, c.vx);
-        const pop = this.world.popped; if (pop) { this.world.popped = null; playBubbleSound(pop.inward, pop.index); }
+        const pop = this.world.popped; if (pop) { this.world.popped = null; this.a.playBubbleSound(pop.inward, pop.index); }
         // a swung toy that has a voice uses it: the taxi honks, the keys jangle, the duck squeaks
         const hit = this.world.knocked;
         if (hit) {
           this.world.knocked = null;
-          playObjectSound(hit, Math.min(1, Math.abs(c.vx) / 300));
+          this.a.playObjectSound(hit, Math.min(1, Math.abs(c.vx) / 300));
         }
       }
       else if (c.state === "stuck" || c.state === "linked") this.stepAnchored(c, sdt);
@@ -774,7 +786,7 @@ export class Game {
       d.x += d.vx * dt; d.y += d.vy * dt; d.vy = Math.min(900, d.vy + 900 * dt); d.spin += (d.vx > 0 ? 6 : -6) * dt;
       if (d.x < 16 || d.x > W - 16) { d.vx = -d.vx * 0.7; d.x = Math.max(16, Math.min(W - 16, d.x)); }
     }
-    for (const d of this.drops) if (d.y >= this.floorY + 20) sfx.munch(); // the kid gets the sweet
+    for (const d of this.drops) if (d.y >= this.floorY + 20) this.a.sfx.munch(); // the kid gets the sweet
     this.drops = this.drops.filter((d) => d.y < this.floorY + 20 && d.y < this.camY + this.viewH + 200);
     this.particles = this.particles.filter((p) => p.life > 0);
     for (const f of this.floats) { f.y -= 40 * dt; f.life -= dt; }
@@ -783,7 +795,7 @@ export class Game {
 
     if (this.phase === "running" && this.alive.length === 0) {
       this.phase = "dead";
-      sfx.over();
+      this.a.sfx.over();
       this.events.onGameOver();
     }
   }
@@ -883,7 +895,7 @@ export class Game {
       const material = k == null ? undefined : this.world.materialAt(c.x, c.y);
       if (material !== this.slideMaterial.get(c.id)) {
         if (material && Math.hypot(c.vx, c.vy) > 120) {
-          const hit = { glass: sfx.hitGlass, plastic: sfx.hitPlastic, paper: sfx.hitPaper, ice: sfx.hitIce }[material];
+          const hit = { glass: this.a.sfx.hitGlass, plastic: this.a.sfx.hitPlastic, paper: this.a.sfx.hitPaper, ice: this.a.sfx.hitIce }[material];
           hit(0.94 + this.simNoise(c.id + Math.round(c.y)) * 0.12);
         }
         if (material) this.slideMaterial.set(c.id, material); else this.slideMaterial.delete(c.id);
@@ -918,7 +930,7 @@ export class Game {
         c.y = a.y + (dy / d) * r;
         c.angle = Math.atan2(dy, dx) + Math.PI / 2;
         c.squash = 1;
-        sfx.link();
+        this.a.sfx.link();
         this.awardNewHeight(c, "CHAIN CATCH", 40);
         this.burst(c.x, c.y, a.color, 5);
         this.markHeight(c);
@@ -995,7 +1007,7 @@ export class Game {
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;
     c.squash = 1;
-    sfx.stick();
+    this.a.sfx.stick();
     if (c.grip?.contacts.some((k) => k.carrierId)) this.feats.gadgetRides++;
     if (!flat && c.airTime > 0.18) {
       const pose = c.grip!.pose;
@@ -1011,13 +1023,13 @@ export class Game {
     if (c.y < this.highestY) this.highestY = c.y;
     if (this.best && !this.best.beaten && this.heightCm > this.best.cm) {
       this.best.beaten = true;
-      sfx.power();
+      this.a.sfx.power();
       this.floats.push({ x: c.x, y: c.y - 40, text: "NEW BEST!", life: 1.6, color: "#9be15d" });
       this.burst(c.x, c.y, "#9be15d", 14);
     }
     if (this.target && !this.target.beaten && this.heightCm > this.target.cm) {
       this.target.beaten = true;
-      sfx.power();
+      this.a.sfx.power();
       this.floats.push({ x: c.x, y: c.y - 40, text: `BEAT ${this.target.name.toUpperCase()}!`, life: 1.6, color: "#ffd23f" });
       this.burst(c.x, c.y, "#ffd23f", 14);
     }
@@ -1043,7 +1055,7 @@ export class Game {
     c.state = "lost";
     c.grip = undefined;
     c.parent = null;
-    sfx.lost();
+    this.a.sfx.lost();
     this.floats.push({ x: c.x, y: Math.min(c.y, this.camY + this.viewH - 40), text: "lost!", life: 1, color: "#ff6b6b" });
   }
 
@@ -1125,7 +1137,7 @@ export class Game {
       if (c.state === "lost" || paw.hit.has(c.id) || c.iframes > 0) continue;
       const dx = (c.x - pose.x) / 46, dy = (c.y - pose.y) / 36;
       if (dx * dx + dy * dy > 1) continue;
-      paw.hit.add(c.id); sfx.paw();
+      paw.hit.add(c.id); this.a.sfx.paw();
       if (this.effects.superMagnet > 0 && c.state !== "flying") { c.squash = 1; this.floats.push({ x: c.x, y: c.y - 50, text: "HELD ON!", life: 1, color: "#ff4d4d" }); continue; }
       c.state = "flying"; c.grip = undefined; c.parent = null; c.leftLauncher = true; c.airTime = 0; c.fell = true;
       // A paw comes straight down, so it drives you down the door rather than sideways,
@@ -1173,7 +1185,7 @@ export class Game {
       if (!focus) return;
       const random = makeRng(this.world.seed ^ Math.imul(++this.handCount, 0x9e3779b9));
       // v13: about a third of the attacks are the cat, tapping down from the top of the screen
-      if (this.world.version >= 13 && random() < 0.35) { this.paw = { x: 60 + random() * (W - 120), t: 0, hit: new Set() }; sfx.warning(); return; }
+      if (this.world.version >= 13 && random() < 0.35) { this.paw = { x: 60 + random() * (W - 120), t: 0, hit: new Set() }; this.a.sfx.warning(); return; }
       // Rare: Cooper and the cat go for the same climber together. No timing work needed --
       // the hand's 1.1 s warning and the paw's 0.75 s hold plus its 0.48 s first tap land
       // 0.13 s apart, so they converge on their own. The paw drops on the focus climber and
@@ -1182,20 +1194,20 @@ export class Game {
         const comboSide: -1 | 1 = random() < 0.5 ? -1 : 1;
         this.hand = { side: comboSide, y: focus.y + (random() - 0.5) * 40, x: comboSide < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
         this.paw = { x: Math.max(60, Math.min(W - 60, focus.x)), t: 0, hit: new Set() };
-        sfx.warning();
+        this.a.sfx.warning();
         return;
       }
       const side: -1 | 1 = random() < 0.5 ? -1 : 1;
       this.hand = { side, y: focus.y + (random() - 0.5) * 80, x: side < 0 ? -80 : W + 80, phase: "warn", t: 0, hit: new Set() };
       // v12 worlds: about two in five swipes come up from the bottom of the door instead of the side
       if (this.world.version >= 12 && random() < 0.4) this.hand.entry = "bottom";
-      sfx.warning();
+      this.a.sfx.warning();
       return;
     }
     const h = this.hand, previousT = h.t;
     h.t += dt;
     if (h.phase === "warn") {
-      if (h.t >= CFG.handWarn) { h.phase = "sweep"; h.t = 0; sfx.swipe(); }
+      if (h.t >= CFG.handWarn) { h.phase = "sweep"; h.t = 0; this.a.sfx.swipe(); }
       return;
     }
     if (h.phase === "sweep") {
@@ -1251,7 +1263,7 @@ export class Game {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
     this.feats.hits++;
-    sfx.bump();
+    this.a.sfx.bump();
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);
     if (!quiet || c.hp <= 0) this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });
@@ -1266,27 +1278,27 @@ export class Game {
       this.effects[k] = Math.min(CFG.effectCaps[k], this.effects[k] + d[k]);
     };
     switch (p.kind) {
-      case "coin": this.coins += CFG.coinValue; sfx.coin(); this.events.onCoins(CFG.coinValue); this.floats.push({ x: p.x, y: p.y, text: `+${CFG.coinValue}`, life: 0.9, color: "#ffd23f" }); break;
-      case "gem": this.gems += 1; sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
-      case "magnet": add("superMagnet"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
-      case "slowmo": add("slowmo"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
-      case "candy": add("candy"); sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });
+      case "coin": this.coins += CFG.coinValue; this.a.sfx.coin(); this.events.onCoins(CFG.coinValue); this.floats.push({ x: p.x, y: p.y, text: `+${CFG.coinValue}`, life: 0.9, color: "#ffd23f" }); break;
+      case "gem": this.gems += 1; this.a.sfx.coin(); this.events.onGems(1); this.floats.push({ x: p.x, y: p.y, text: "+1 gem", life: 1, color: "#7ef0ff" }); break;
+      case "magnet": add("superMagnet"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SUPER MAGNET", life: 1.2, color: "#ff4d4d" }); break;
+      case "slowmo": add("slowmo"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "SLOW-MO", life: 1.2, color: "#c77dff" }); break;
+      case "candy": add("candy"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y - 30, text: "CANDY DROP", life: 1.2, color: "#ff8fb0" });
         this.drops.push({ x: p.x, y: p.y, vx: (this.simNoise(p.x) - 0.5) * 120, vy: -120, spin: 0 }); break;
       case "heart": {
         const healed = c.hp < CFG.maxHp;
         c.hp = Math.min(CFG.maxHp, c.hp + 1);
-        sfx.power();
+        this.a.sfx.power();
         this.floats.push({ x: p.x, y: p.y, text: healed ? "+1 ♥" : "FULL ♥", life: 1, color: "#ff5c8a" });
         break;
       }
-      case "reach": add("reach"); sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
+      case "reach": add("reach"); this.a.sfx.power(); this.floats.push({ x: p.x, y: p.y, text: "LONG ARMS", life: 1.2, color: "#9be15d" }); break;
       case "paint": {
         this.feats.paints++;
         // cosmetic only, and off the sim RNG so a replay of the same seed repaints the same
         const palette = this.palette.filter((col) => col !== c.color);
         c.color = palette[Math.floor(this.simNoise(p.x + p.y) * palette.length) % palette.length] ?? c.color;
         c.pattern = undefined;
-        sfx.power();
+        this.a.sfx.power();
         this.burst(p.x, p.y, c.color, 14);
         this.floats.push({ x: p.x, y: p.y, text: "NEW COAT", life: 1.2, color: c.color });
         break;
@@ -1295,7 +1307,7 @@ export class Game {
         const n = this.makeClimber(p.x, p.y, "flying");
         n.vx = (this.simNoise(n.id) - 0.5) * 100; n.vy = -80; n.airTime = 0; n.leftLauncher = true;
         this.climbers.push(n);
-        sfx.power();
+        this.a.sfx.power();
         this.floats.push({ x: p.x, y: p.y, text: "+1 FRIEND", life: 1.2, color: n.color });
         break;
       }

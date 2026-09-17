@@ -542,6 +542,9 @@ select.buy option { background: #1e2229; color: #fff; }
 }
 .home-row b { font: 800 calc(13 * var(--px)) var(--display); }
 .home-row b.chill { color: var(--chill); }
+/* The ghost row wears the ghost's own washed-out look, so the row reads as what it starts. */
+.ghost-row { background: rgba(255,255,255,.045); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.ghost-cm { margin-left: auto; font: 800 calc(12 * var(--px)) var(--display); color: rgba(255,255,255,.62); letter-spacing: .5px; }
 .home-row small { font: 600 calc(11 * var(--px)) var(--display); color: rgba(255,255,255,.6); }
 .home-row input { position: absolute; opacity: 0; width: 0; height: 0; }
 .home-row .toggle {

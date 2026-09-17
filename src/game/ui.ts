@@ -41,6 +41,10 @@ export interface UiHandlers {
   onToggleChill(): void;
   /** Buy the kit without asking, every climb. */
   onToggleAutoKit(on: boolean): void;
+  /** Climb the door your best run was recorded on, with that run drawn beside you. */
+  onRaceBest(): void;
+  /** Whether there is a tape to race, and how far it got. */
+  bestTapeCm(): number | null;
   onSetLang(lang: Lang): void;
   onSetName(name: string): void;
   onSetAvatar(id: string): void;
@@ -338,6 +342,8 @@ export class Ui {
     const streak = s.streak.last === today || s.streak.last === todayKey(Date.now() - 86_400_000) ? s.streak.days : 0;
     // what taking it right now would pay, so the tile makes the case for itself
     const next = streakReward(done ? streak : streak + 1);
+    // only offered once there is a tape: a ghost means nothing on a door it never climbed
+    const ghostCm = this.h.bestTapeCm();
     p.innerHTML = `
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
@@ -363,6 +369,10 @@ export class Ui {
             <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : next.pattern ? "PAYS A PATTERN" : `PAYS $${next.coins}`}${streak ? ` · ${streak}🔥` : ""}</i>
           </button>
         </div>
+        ${ghostCm !== null ? `<button class="home-row ghost-row" data-a="ghost">
+          <b>RACE YOUR BEST</b><small>same door, you beside you</small>
+          <span class="ghost-cm">${groupNum(ghostCm)} CM</span>
+        </button>` : ""}
         <p class="home-month">${esc(themeFor().name)} fridge${s.patterns.includes(themeFor().pattern) ? "" : " · climb once this month to keep its pattern"}</p>
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS</span>
@@ -389,6 +399,7 @@ export class Ui {
       // the daily is the same climb for everyone, so no kit sheet stands in front of it
       if (a === "daily" && !done) { this.clear(); this.h.onPlayDaily(); }
       if (a === "daily" && done) this.showBoard("daily");
+      if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
       if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"), { asked: true });
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard("solo");

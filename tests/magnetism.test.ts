@@ -10,6 +10,7 @@ import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
 import { replay, tapeBytes } from "../src/game/recorder";
+import { Ghost } from "../src/game/ghost";
 import { weekKey } from "../worker/src/week";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
@@ -964,6 +965,35 @@ test("a tape replays into the same climb it recorded", () => {
   resumed.launch(resumed.climbers[0], { x: 40, y: -300 });
   assert.equal(resumed.sealTape(), null, "a resumed run must not pretend to be a full tape");
   assert.ok(tapeBytes(tape!) < 4000, `a short run should be a small tape: ${tapeBytes(tape!)} bytes`);
+});
+
+test("a ghost stepped beside a live run climbs the run it was recorded from", () => {
+  // The Ghost class differs from replay(): it is driven one live frame at a time, by the
+  // game loop, rather than run to completion. It has to land in the same place regardless.
+  const play = (g: Game) => {
+    g.phase = "running";
+    for (let i = 0; i < 6; i++) {
+      const c = g.climbers[0];
+      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90 : -90, y: -360 });
+      for (let k = 0; k < 90; k++) g.update(1 / 120);
+    }
+    return g;
+  };
+  const live = play(new Game(levels, events, { seed: 777, rules: "solo" }));
+  const tape = live.sealTape();
+  assert.ok(tape, "a run with flings in it has a tape");
+
+  const ghost = new Ghost(tape!);
+  // exactly as main.ts drives it: one fixed step per frame, for as long as the tape lasts
+  for (let i = 0; i < 6 * 90; i++) ghost.step(1 / 120);
+  assert.equal(ghost.heightCm, live.heightCm, "the ghost climbs exactly as high as the run did");
+  assert.deepEqual([Math.round(ghost.climber?.x ?? -1), Math.round(ghost.climber?.y ?? -1)],
+    [Math.round(live.climbers[0].x), Math.round(live.climbers[0].y)], "and ends in the same place");
+
+  // it must go quiet rather than loop or throw once the recorded run has played out
+  for (let i = 0; i < 2000; i++) ghost.step(1 / 120);
+  assert.equal(ghost.done, true, "a ghost stops when the tape does");
+  assert.equal(ghost.climber, null, "and stops offering a climber to draw");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {
