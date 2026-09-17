@@ -135,7 +135,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 19, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 20, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -420,16 +420,39 @@ export class World {
               ? { x: b.x, y: b.minY, w: b.w, h: b.maxY - b.minY + b.h }
               : b.motion === "slide" ? { x: 0, y: b.y, w: W, h: b.h }
               : { x: 0, y: b.minY, w: W, h: b.maxY - b.minY + b.h });
-            const fits = (w: number, h: number) => {
-              const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+            const fitsAt = (w: number, h: number, at: Vec) => {
+              const x = Math.round(at.x - w / 2), y = Math.round(at.y - h / 2);
               if (x < 6 || x + w > W - 6 || y < segment.y + 6 || y + h > segment.y + segment.h - 6) return false;
               if (blocked(others, { x, y, w, h }, 8, true)) return false;
               return !paths.some((t) => x < t.x + t.w + 8 && x + w + 8 > t.x && y < t.y + t.h + 8 && y + h + 8 > t.y);
             };
-            while (!fits(cw, ch) && cw > 40) { cw -= 6; ch = Math.round(cw / aspect); }
-            if (cw >= 40) { zone.w = cw; zone.h = ch; zone.x = Math.round(cx - cw / 2); zone.y = Math.round(cy - ch / 2); }
+            const fits = (w: number, h: number) => fitsAt(w, h, { x: cx, y: cy });
+            // v20: move it before shrinking it, and never shrink it into a stamp. A card
+            // that cannot be read is not worth placing, so a crowded slot loses the card
+            // rather than keeping a 40 px version of it.
+            let put = { x: cx, y: cy };
+            if (this.version >= 20) {
+              const nudges: Vec[] = [{ x: 0, y: 0 }, { x: -26, y: 0 }, { x: 26, y: 0 }, { x: 0, y: -22 }, { x: 0, y: 22 }, { x: -44, y: 0 }, { x: 44, y: 0 }];
+              let placed = false;
+              for (const n of nudges) {
+                const at = { x: cx + n.x, y: cy + n.y };
+                if (fitsAt(cw, ch, at)) { put = at; placed = true; break; }
+              }
+              while (!placed && cw > 104) {
+                cw -= 6; ch = Math.round(cw / aspect);
+                placed = nudges.some((n) => { const at = { x: cx + n.x, y: cy + n.y }; if (fitsAt(cw, ch, at)) { put = at; return true; } return false; });
+              }
+              // nothing fits: mark it for removal below rather than leave a stamp behind
+              if (!placed) { zone.w = 0; zone.h = 0; continue; }
+            } else {
+              while (!fits(cw, ch) && cw > 40) { cw -= 6; ch = Math.round(cw / aspect); }
+              if (cw < 40) continue;
+            }
+            zone.w = cw; zone.h = ch; zone.x = Math.round(put.x - cw / 2); zone.y = Math.round(put.y - ch / 2);
           }
         }
+        // cards that could not be placed at a readable size leave the segment entirely
+        for (let k = zones.length - 1; k >= 0; k--) if (zones[k].w <= 0) zones.splice(k, 1);
       } else {
         for (const zone of zones) if (zone.kind === "sticker") zone.itemId = pick(art, paperPool).id;
       }
