@@ -23,6 +23,8 @@ export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel", "rot
 export const STILL_UNTIL_HIT = new Set(["rotor-fidget-spinner", "rotor-snack", "rotor-travel", "rotor-doodle"]);
 /** A wall clock hangs on a nail and does not turn at all: it reads the time, so spinning it is nonsense. */
 export const NEVER_TURNS = new Set(["rotor-clock", "rotor-compass"]);
+/** Hung from the loop in its own photo: the hook above it is the hold, not a spot on its face. */
+export const HUNG_BY_LOOP = new Set(["rotor-compass"]);
 /** The keyring toy as gadget-art draws it: 68px down a 44px chain from a pivot 62px above the anchor. */
 export const KEYRING = { pivotUp: 62, chain: 44, toy: 68 } as const;
 /** Where the hanging toy's face is right now, so a hit can be mapped onto the art a player sees. */
@@ -54,7 +56,8 @@ export function gadgetPose(g: Gadget, time: number) {
   const y = g.y + (g.kind === "swing" || g.kind === "clip" ? (1 - Math.cos(angle)) * 45 : 0);
   const active = g.kind === "polarity" && t % 6 >= 3;
   const remaining = 3 - t % 3;
-  const hold = g.kind === "rotor" ? { x: x + Math.cos(angle) * 20, y: y + Math.sin(angle) * 20 }
+  const hold = HUNG_BY_LOOP.has(g.itemId) ? { x, y: y - 30 }
+    : g.kind === "rotor" ? { x: x + Math.cos(angle) * 20, y: y + Math.sin(angle) * 20 }
     : { x, y: y + (g.kind === "polarity" ? 0 : -27) };
   return { x, y, angle, active, remaining, hold };
 }

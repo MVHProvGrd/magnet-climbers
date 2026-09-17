@@ -118,14 +118,19 @@ function polarityField(ctx: CanvasRenderingContext2D, cx: number, cy: number, w:
  */
 const COMPASS = { dial: 0.6, drop: 0.0459, needle: 0.82 };
 function drawCompass(ctx: CanvasRenderingContext2D, base: CanvasImageSource, needle: CanvasImageSource | undefined, size: number, angle: number, spin = 0) {
+  // hang the DIAL on the spot, not the picture: the frame carries the hanging loop above the
+  // bezel, so centring the frame left the dial itself sitting low on its hook.
+  ctx.save();
+  ctx.translate(0, -COMPASS.drop * size);
   ctx.drawImage(base, -size / 2, -size / 2, size, size);
-  if (!needle) return;
-  const len = COMPASS.dial * COMPASS.needle * size;
-  const shadow = ctx.shadowColor;
-  ctx.save(); ctx.shadowColor = "transparent";
-  ctx.translate(0, COMPASS.drop * size); ctx.rotate(angle + spin);
-  ctx.drawImage(needle, -len / 12, -len / 2, len / 6, len);
-  ctx.restore(); ctx.shadowColor = shadow;
+  if (needle) {
+    const len = COMPASS.dial * COMPASS.needle * size;
+    ctx.shadowColor = "transparent";
+    // back down to the middle of the bezel, which is where a needle is riveted
+    ctx.translate(0, COMPASS.drop * size); ctx.rotate(angle + spin);
+    ctx.drawImage(needle, -len / 12, -len / 2, len / 6, len);
+  }
+  ctx.restore();
 }
 
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
@@ -185,6 +190,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const compassFace = g.itemId === "rotor-compass" ? objectArt.get("compass-base") : undefined;
   const rotorImg = g.kind === "rotor" ? objectArt.get(g.itemId) : undefined;
   if (g.kind === "rotor" && compassFace) {
+    // the loop in the photo hangs on a real hook: draw the bar first so the compass covers it
+    ctx.save(); ctx.translate(-p.x, -p.y);
+    plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
+    drawHardwareGrip(ctx, z, 2);
+    ctx.restore();
     drawCompass(ctx, compassFace, objectArt.get("compass-needle"), 76, g.needle ?? 0);
   } else if (rotorImg) {
     // spindle-centred by the install script, so the draw offset IS the pivot
