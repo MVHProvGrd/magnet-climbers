@@ -8,6 +8,7 @@ import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/g
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
+import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
 import { weekKey } from "../worker/src/week";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
@@ -830,7 +831,8 @@ test("the prize machine doubles its price every spin", () => {
   assert.equal(prizeCost(9), 25_600);
   assert.equal(prizeCost(40), 25_600);
   // a complete collection is still a long sink: real coins, but a reachable number
-  const total = Array.from({ length: PATTERNS.length }, (_, i) => prizeCost(i)).reduce((a, b) => a + b, 0);
+  const sellable = PATTERNS.filter((p) => !p.limited).length;
+  const total = Array.from({ length: sellable }, (_, i) => prizeCost(i)).reduce((a, b) => a + b, 0);
   assert.ok(total > 100_000 && total < 250_000, `collecting everything should cost about 179k: ${total}`);
   // and a spin is never free, however the counter arrives
   assert.equal(prizeCost(-3), 100);
@@ -908,6 +910,23 @@ test("the league week rolls on a Monday, UTC", () => {
   assert.equal(weekKey(Date.parse("2026-09-21T00:01:00Z")), "2026-W39", "Monday starts a new one");
   // and the turn of the year lands where ISO says, not where the calendar does
   assert.equal(weekKey(Date.parse("2027-01-01T12:00:00Z")), "2026-W53");
+});
+
+test("every month has a door and a pattern only that month gives out", () => {
+  const months = FRIDGE_THEMES.map((t) => t.month).sort((a, b) => a - b);
+  assert.deepEqual(months, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "twelve doors, one each");
+  for (const t of FRIDGE_THEMES) {
+    assert.equal(t.steel.length, 6, `${t.id} needs six stops`);
+    for (const c of t.steel) assert.match(c, /^#[0-9a-f]{6}$/i, `${t.id}: ${c}`);
+    const pattern = PATTERNS.find((p) => p.id === t.pattern);
+    assert.ok(pattern, `${t.id} has no pattern`);
+    assert.equal(pattern!.limited, t.id, `${t.pattern} should be limited to ${t.id}`);
+    assert.equal(pattern!.colors.length, 6);
+  }
+  // the door changes on the first, UTC, and September is the stainless the game shipped with
+  assert.equal(themeFor(Date.parse("2026-09-30T23:59:00Z")).id, "pencil");
+  assert.equal(themeFor(Date.parse("2026-10-01T00:01:00Z")).id, "harvest");
+  assert.equal(monthKey(Date.parse("2026-10-01T00:01:00Z")), "2026-10");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

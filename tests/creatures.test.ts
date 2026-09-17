@@ -32,13 +32,16 @@ test("creatures unlock from run facts; chill runs never unlock by height or coin
 });
 
 test("prize machine never repeats, respects tier odds, and stops when complete", () => {
+  // a month's limited pattern is earned by climbing that month, so the machine never offers one
+  const sellable = PATTERNS.filter((p) => !p.limited);
   const owned = ["classic"]; let seed = 7;
   const roll = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x80000000; };
-  for (let i = 0; i < PATTERNS.length - 1; i++) { const p = drawPrize(owned, roll)!; assert.ok(p && !owned.includes(p.id)); owned.push(p.id); }
-  assert.equal(owned.length, PATTERNS.length);
+  for (let i = 0; i < sellable.length - 1; i++) { const p = drawPrize(owned, roll)!; assert.ok(p && !owned.includes(p.id)); owned.push(p.id); }
+  assert.equal(owned.length, sellable.length);
   assert.equal(drawPrize(owned, roll), null);
+  assert.ok(!owned.some((id) => PATTERNS.find((p) => p.id === id)?.limited), "no limited pattern came out of the machine");
   // with only epics left, an epic must come out even on a "common" roll
-  assert.equal(drawPrize(PATTERNS.filter((p) => p.rarity !== "epic").map((p) => p.id), () => 0.01)!.rarity, "epic");
+  assert.equal(drawPrize(sellable.filter((p) => p.rarity !== "epic").map((p) => p.id), () => 0.01)!.rarity, "epic");
 });
 
 test("old skin saves migrate into patterns and everyone owns the toy", () => {

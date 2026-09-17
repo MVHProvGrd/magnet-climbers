@@ -1,6 +1,7 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
+import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
 import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
@@ -357,6 +358,7 @@ export class Ui {
             <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : next.pattern ? "PAYS A PATTERN" : `PAYS $${next.coins}`}${streak ? ` · ${streak}🔥` : ""}</i>
           </button>
         </div>
+        <p class="home-month">${esc(themeFor().name)} fridge${s.patterns.includes(themeFor().pattern) ? "" : " · climb once this month to keep its pattern"}</p>
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS</span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
@@ -444,7 +446,7 @@ export class Ui {
         return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-p="${k.id}" ${has ? "" : "disabled"}>
           <canvas width="200" height="200" data-look="${has ? s.creature : "toy"}|${k.id}"></canvas>
           <b>${esc(k.name)} <em class="r ${k.rarity}">${k.rarity}</em></b>
-          <span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span>${on ? "<i class=\"tick\">WEARING</i>" : has ? "" : "<span>🔒 prize machine</span>"}
+          <span class="swatches">${k.colors.map((c) => `<i style="background:${c}"></i>`).join("")}</span>${on ? "<i class=\"tick\">WEARING</i>" : has ? "" : k.limited ? `<span>🔒 ${esc(FRIDGE_THEMES.find((t) => t.id === k.limited)?.name ?? "limited")}</span>` : "<span>🔒 prize machine</span>"}
         </button>`; }).join("")}</div>
         <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${groupNum(prizeCost(s.spins))}</button>`;
     }

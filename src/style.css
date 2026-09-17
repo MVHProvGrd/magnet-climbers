@@ -521,6 +521,8 @@ select.buy option { background: #1e2229; color: #fff; }
 .mission.done .mission-bar i { background: #9be15d; }
 
 /* league: the ten going up and the ten going down are marked on the row itself */
+.home-month { margin: 0; text-align: center; font: 700 calc(11 * var(--px)) var(--display);
+  letter-spacing: calc(0.6 * var(--px)); color: rgba(255,255,255,0.5); }
 .srow.promote { box-shadow: inset calc(3 * var(--px)) 0 0 #9be15d; }
 .srow.relegate { box-shadow: inset calc(3 * var(--px)) 0 0 #ff6b6b; }
 .mode-tile i { margin-top: auto; font: 800 calc(10 * var(--px)) var(--display); font-style: normal; letter-spacing: calc(1.2 * var(--px)); }

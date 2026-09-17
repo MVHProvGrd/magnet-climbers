@@ -8,8 +8,9 @@ import { Ui } from "./game/ui";
 import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
-import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
+import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from "./game/creatures";
 import { refill, settle, streakReward, type RunTally } from "./game/missions";
+import { monthKey, themeFor } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -360,6 +361,16 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      // the fridge of the month pays its pattern the first time you finish a climb on it
+      const month = monthKey();
+      if (save.themeMonth !== month) {
+        const theme = themeFor();
+        save.themeMonth = month;
+        if (!save.patterns.includes(theme.pattern)) {
+          save.patterns.push(theme.pattern); save.skins = save.patterns;
+          ui.toast(`${theme.name} · ${patternById(theme.pattern).name} is yours`);
+        }
+      }
       // missions read the run that just ended, pay out, and the board tops itself back up
       const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
         hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.round(game.runTime), daily: dailyRun ? 1 : 0 };

@@ -34,8 +34,10 @@ export interface PatternDef {
   id: PatternId;
   name: string;
   rarity: Rarity;
-  /** six crew colours; solo uses the first */
+  /** six climber colours; the first is the one a solo climber wears */
   colors: string[];
+  /** only handed out by climbing in that month's fridge; never in the prize machine */
+  limited?: string;
   /** optional renderer effect hint; ignored by renderers that do not know it */
   effect?: "glow" | "sparkle" | "chrome";
   /** body marking the renderer draws in the accent colour */
@@ -72,6 +74,19 @@ export const PATTERNS: PatternDef[] = [
   { id: "galaxy", name: "Galaxy", rarity: "epic", colors: ["#7c4dff", "#536dfe", "#b388ff", "#3d5afe", "#9575ff", "#6a5cff"], effect: "sparkle", marking: "spots", accent: "#ffe9a8" },
   { id: "chrome", name: "Chrome", rarity: "epic", colors: ["#d8dde2", "#c0c8d0", "#eef1f4", "#aeb7c0", "#cfd6dc", "#e3e8ec"], effect: "chrome" },
   { id: "midnight", name: "Midnight", rarity: "epic", colors: ["#1b2340", "#22305a", "#2c3c70", "#17203a", "#253466", "#1f2b4f"], effect: "sparkle", marking: "spots", accent: "#8fb8ff" },
+  // one per fridge of the month: earned by climbing that month, never sold
+  { id: "frost", name: "Deep Freeze", rarity: "epic", limited: "frost", colors: ["#bfe9ff", "#8fd4f5", "#e2f6ff", "#6cc3ec", "#a9dff8", "#d4f0ff"] },
+  { id: "cocoa", name: "Hot Cocoa", rarity: "epic", limited: "cocoa", colors: ["#c08457", "#a3673f", "#dba97f", "#8d5533", "#cf9668", "#e8c3a1"] },
+  { id: "meadow", name: "First Thaw", rarity: "epic", limited: "meadow", colors: ["#9fd07f", "#7bbd5e", "#c0e3a6", "#5da845", "#aed891", "#d6efc6"] },
+  { id: "bloom", name: "Kitchen Bloom", rarity: "epic", limited: "bloom", colors: ["#ff9fc4", "#f57aa8", "#ffc2d8", "#e85d93", "#ffb0ce", "#ffd8e6"] },
+  { id: "lemonade", name: "Lemonade", rarity: "epic", limited: "lemonade", colors: ["#fff07a", "#ffe14d", "#fff7ad", "#ffd21f", "#ffea63", "#fffad1"] },
+  { id: "seaside", name: "Seaside Let", rarity: "epic", limited: "seaside", colors: ["#57c8e0", "#2fb2cd", "#8addf0", "#1b9bb5", "#72d3e7", "#b6ecf6"] },
+  { id: "picnic", name: "Back Garden", rarity: "epic", limited: "picnic", colors: ["#e06a5a", "#c74f40", "#ef9184", "#ad3a2d", "#e87d6d", "#f7b8ae"] },
+  { id: "sunblock", name: "Ice Lolly", rarity: "epic", limited: "sunblock", colors: ["#ff8a5c", "#ff6f3c", "#ffab85", "#f2551f", "#ff9a70", "#ffc8ae"] },
+  { id: "pencil", name: "Term Starts", rarity: "epic", limited: "pencil", colors: ["#ffc93f", "#f0b31f", "#ffd970", "#d99a10", "#ffd156", "#ffe9a8"] },
+  { id: "harvest", name: "Harvest", rarity: "epic", limited: "harvest", colors: ["#e08b2f", "#c4741f", "#efab5f", "#a85f14", "#e79a47", "#f5c78c"] },
+  { id: "spice", name: "Spice Rack", rarity: "epic", limited: "spice", colors: ["#b0503c", "#96402e", "#c9705c", "#7d3122", "#bd5f4a", "#d99381"] },
+  { id: "tinsel", name: "Tinsel", rarity: "epic", limited: "tinsel", colors: ["#d8e4ef", "#b9cbdc", "#eef4fa", "#9db4c9", "#c9d8e7", "#f4f8fc"] },
 ];
 
 export const PRIZE_COST = 100;
@@ -137,7 +152,7 @@ export function creaturesEarned(owned: string[], f: RunFacts): CreatureDef[] {
 
 /** Prize machine draw with duplicate protection: only unowned patterns are in the pool. */
 export function drawPrize(owned: string[], roll: () => number = Math.random): PatternDef | null {
-  const pool = PATTERNS.filter((p) => !owned.includes(p.id));
+  const pool = PATTERNS.filter((p) => !owned.includes(p.id) && !p.limited);
   if (!pool.length) return null;
   const tiers: Rarity[] = ["common", "rare", "epic"];
   const available = tiers.filter((t) => pool.some((p) => p.rarity === t));

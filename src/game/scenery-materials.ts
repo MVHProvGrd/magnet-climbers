@@ -9,6 +9,7 @@
  */
 import { W } from "./config";
 import type { Bumper, NoStickZone } from "./types";
+import { themeFor } from "./fridge-theme";
 import { DOOR_SEAM } from "./world";
 
 // ---------------------------------------------------------------------------
@@ -109,22 +110,21 @@ function grain(ctx: CanvasRenderingContext2D): CanvasPattern {
  * window in the room, not something painted on the door.
  */
 /** Base tone + grain baked into one world-locked tile, so a frame is a few blits instead of an overlay blend. */
-let steelTile: { key: number; canvas: HTMLCanvasElement } | null = null;
+let steelTile: { key: string; canvas: HTMLCanvasElement } | null = null;
 function steel(ctx: CanvasRenderingContext2D, scale: number): HTMLCanvasElement {
-  if (steelTile?.key === scale) return steelTile.canvas;
+  // the door is repainted on the first of the month, so the theme is part of the tile's identity
+  const theme = themeFor();
+  const key = `${scale}@${theme.id}`;
+  if (steelTile?.key === key) return steelTile.canvas;
   const c = document.createElement("canvas");
   c.width = Math.ceil(W * scale); c.height = Math.ceil(TILE * scale);
   const g = c.getContext("2d")!; g.scale(scale, scale);
   const base = g.createLinearGradient(0, 0, W, 0);
-  base.addColorStop(0, "#aab3bc");
-  base.addColorStop(0.18, "#c9d0d7");
-  base.addColorStop(0.47, "#b7bfc7");
-  base.addColorStop(0.53, "#bdc5cd");
-  base.addColorStop(0.8, "#d0d6dc");
-  base.addColorStop(1, "#a5aeb8");
+  const stops = [0, 0.18, 0.47, 0.53, 0.8, 1] as const;
+  stops.forEach((at, i) => base.addColorStop(at, theme.steel[i]));
   g.fillStyle = base; g.fillRect(0, 0, W, TILE);
   g.fillStyle = grain(ctx); g.globalCompositeOperation = "overlay"; g.fillRect(0, 0, W, TILE);
-  steelTile = { key: scale, canvas: c };
+  steelTile = { key, canvas: c };
   return c;
 }
 

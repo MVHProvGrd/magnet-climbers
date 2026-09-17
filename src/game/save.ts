@@ -50,6 +50,8 @@ export interface SaveData {
   /** chat and profile portrait id from `avatars.ts`; empty = coloured initial */
   avatar: string;
   introSeen: boolean;
+  /** the month whose limited pattern has already been handed over, as "2026-10" */
+  themeMonth: string;
   /** three at a time, and a count of every one ever finished (it sets how hard the next roll is) */
   missions: Mission[];
   missionsDone: number;
@@ -79,6 +81,7 @@ function defaults(): SaveData {
     totalCm: 0,
     upgrades,
     kit,
+    themeMonth: "",
     missions: [],
     missionsDone: 0,
     daily: null,
