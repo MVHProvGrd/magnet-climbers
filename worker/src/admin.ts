@@ -3,7 +3,8 @@
  * Locked with the ADMIN_KEY secret:  npx wrangler secret put ADMIN_KEY
  * The page keeps the key in localStorage and sends it as a Bearer token.
  */
-import { ensureCensors, ensureReports, ensureScoreResets, type Env } from "./index";
+import { ensureCensors, ensureReports, ensureScoreResets, TIERS, type Env } from "./index";
+import { weekKey } from "./week";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
@@ -29,7 +30,9 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   if (path === "/overview") {
     // both tables are created on demand, so make sure they exist before a join reads them
     await Promise.all([ensureReports(env), ensureCensors(env)]);
-    const [chatRows, mutes, stats, players, crew, solo, coins, reports] = await Promise.all([
+    // the same day and week the game's boards run on: UTC calendar day, weekKey() for the league
+    const today = new Date().toISOString().slice(0, 10), week = weekKey();
+    const [chatRows, mutes, stats, players, crew, solo, coins, reports, daily, league, lifetime] = await Promise.all([
       env.DB.prepare("SELECT id, player_id, name, text, created_at FROM chat ORDER BY id DESC LIMIT 80").all(),
       env.DB.prepare("SELECT player_id, until FROM chat_mutes").all(),
       env.DB.prepare("SELECT total_cm, runs FROM stats WHERE id = 1").first(),
@@ -43,8 +46,17 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
         (SELECT COUNT(*) FROM chat_reports o WHERE o.target_id = r.target_id) AS tally,
         (SELECT n FROM chat_censors c WHERE c.player_id = r.target_id) AS strikes
         FROM chat_reports r ORDER BY r.id DESC LIMIT 60`).all().catch(() => ({ results: [] })),
+      // the three boards the game added later; each table is created on its first write, so a
+      // fresh database answers with an empty board rather than an error
+      env.DB.prepare("SELECT player_id, name, cm, seconds, created_at FROM daily WHERE day = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC LIMIT 30").bind(today).all().catch(() => ({ results: [] })),
+      env.DB.prepare("SELECT player_id, name, tier, bucket, cm, updated_at FROM league WHERE week = ? AND player_id NOT LIKE 'smoke-%' ORDER BY tier DESC, bucket, cm DESC LIMIT 150").bind(week).all().catch(() => ({ results: [] })),
+      env.DB.prepare("SELECT player_id, name, cm, runs, updated_at FROM lifetime WHERE player_id NOT LIKE 'smoke-%' ORDER BY cm DESC LIMIT 30").all()
+        .catch(() => env.DB.prepare("SELECT player_id, name, cm, runs FROM lifetime WHERE player_id NOT LIKE 'smoke-%' ORDER BY cm DESC LIMIT 30").all()),
     ]);
-    return json({ chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results, coins: coins.results, reports: reports.results });
+    return json({
+      chat: chatRows.results, mutes: mutes.results, stats, players: players?.n ?? 0, crew: crew.results, solo: solo.results, coins: coins.results, reports: reports.results,
+      today, week, tiers: TIERS, daily: daily.results, league: league.results, lifetime: lifetime.results,
+    });
   }
   if (path === "/player") {
     const id = url.searchParams.get("id") ?? "";
@@ -135,6 +147,8 @@ input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;backg
 .msg .who{grid-column:1;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.msg .text{grid-column:1;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
 .msg .acts{grid-column:2;grid-row:1/span 2;align-self:start;white-space:nowrap}.msg.new{outline:1px solid #ffb74d66}
 #live{font-size:12px;opacity:.7}#live.on::before{content:"● ";color:#7bd88f}
+/* the league is one table per bucket, laid side by side: a bucket is a board of its own, so each gets its own rank column */
+.tiers{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}.tiers h3{margin:0 0 4px;font-size:13px;color:#7cc}
 </style></head><body>
 <header><b>Magnet Climbers admin</b><input id="key" type="password" placeholder="ADMIN_KEY" style="flex:1;max-width:320px"><button class="ok" onclick="saveKey()">Use key</button><button onclick="load()">Refresh</button><a href="https://magnetclimbers.com/art-archive/" target="_blank" style="color:#7cc">Art archive</a><a href="https://magnetclimbers.com/elements/" target="_blank" style="color:#7cc">Element map</a><a href="https://magnetclimbers.com/placement.html" target="_blank" style="color:#7cc">Placement</a><a href="https://magnetclimbers.com/scale.html" target="_blank" style="color:#7cc">Scale bench</a><a href="https://magnetclimbers.com/roadmap/" target="_blank" style="color:#7cc">Roadmap</a><span id="status"></span><span id="live"></span></header>
 <main>
@@ -146,6 +160,9 @@ input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;backg
 <section class="wide"><h2>Flagged</h2><table id="reports"></table></section>
 <section class="board"><h2>Solo board</h2><table id="solo"></table></section>
 <section class="board"><h2>Coins board</h2><table id="coins"></table></section>
+<section class="board"><h2>Today's board <span class="muted" id="dailymeta"></span></h2><table id="daily"></table></section>
+<section class="board"><h2>Lifetime board</h2><table id="lifetime"></table></section>
+<section class="wide"><h2>League <span class="muted" id="leaguemeta"></span></h2><div id="league" class="tiers"></div></section>
 <section class="wide"><h2>Chat <span class="muted" id="chatmeta"></span> <button class="bad" onclick="clearChat()">Clear all</button></h2><div id="mutes" class="muted"></div><div id="chat" class="chat"></div></section>
 </main>
 <script>
@@ -166,7 +183,15 @@ $("#chat").innerHTML=d.chat.map(m=>\`<div class="msg\${lastSeen&&m.id>lastSeen?"
 lastSeen=newest;
 for(const mode of ["solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
 $("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":r.kind==="censor"?"CENSORED":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br><span class="id" onclick="pick('\${esc(r.target_id)}')" style="cursor:pointer">\${esc(r.target_id)}</span></td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">\${r.kind==="censor"?"filter · "+(r.strikes||0)+" starred":"by "+esc(r.reporter_id)}</td><td class="n"><button onclick="mute(24,false,'\${esc(r.target_id)}')">mute 24h</button> <button class="bad" onclick="mute(0,true,'\${esc(r.target_id)}')">mute + wipe</button> \${r.message_id?\`<button class="bad" onclick="delChat(\${r.message_id})">del msg</button> \`:""}<button onclick="clearReport(\${r.id})">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
-$("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";}
+$("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";
+const who=(r)=>\`<td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td>\`;
+$("#dailymeta").textContent=d.today||"";
+$("#daily").innerHTML=(d.daily||[]).map((r,i)=>\`<tr><td>\${i+1}</td>\${who(r)}<td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td></tr>\`).join("")||"<tr><td class=\\"muted\\">Nobody has climbed today's door yet.</td></tr>";
+$("#lifetime").innerHTML=(d.lifetime||[]).map((r,i)=>\`<tr><td>\${i+1}</td>\${who(r)}<td class="n">\${(r.cm/100).toFixed(1)} m</td><td class="n">\${r.runs} runs</td><td class="n">\${r.updated_at?when(r.updated_at):'<span class="muted">—</span>'}</td></tr>\`).join("")||"<tr><td class=\\"muted\\">Empty</td></tr>";
+// one table per bucket, highest tier first; the top and bottom ten of each move at the week's end
+const tiers=d.tiers||[],groups=new Map();for(const r of d.league||[]){const k=r.tier+"/"+r.bucket;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
+$("#leaguemeta").textContent=\`week \${d.week||""} · \${(d.league||[]).length} placed · \${groups.size} buckets\`;
+$("#league").innerHTML=[...groups.entries()].map(([k,rows])=>{const [t,b]=k.split("/");return \`<div><h3>\${esc(tiers[t]||"Tier "+t)} · bucket \${b}</h3><table>\${rows.map((r,i)=>\`<tr><td>\${i+1}</td>\${who(r)}<td class="n">\${(r.cm/100).toFixed(1)} m</td></tr>\`).join("")}</table></div>\`;}).join("")||'<div class="muted">Nobody placed this week yet.</div>';}
 async function lookup(){const id=$("#pid").value.trim();if(!id)return;$("#out").textContent=JSON.stringify(await api("/player?id="+encodeURIComponent(id)),null,1);}
 async function rename(){await api("/rename",{playerId:$("#pid").value.trim(),name:$("#newname").value});load();lookup();}
 async function delScore(mode){if(!confirm("Delete scores?"))return;await api("/score/delete",{playerId:$("#pid").value.trim(),mode});load();}
