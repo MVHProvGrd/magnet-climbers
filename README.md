@@ -71,7 +71,7 @@ This is a frontal Canvas game with visual depth, not a full 3D ragdoll.
 The title screen uses the supplied wordmark and fridge illustration, with falling
 toys and reduced-motion support. The supplied orange toy is the new app icon.
 
-See `CLAUDE_HANDOFF.md` for the scoped environment-art task and remaining phone QA.
+See `docs/handoffs/2026-09-13-scenery-and-material-art.md` for the scoped environment-art task and remaining phone QA.
 
 ## Fridge art
 

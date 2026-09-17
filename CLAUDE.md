@@ -22,3 +22,12 @@ Scoreboard API: Cloudflare Worker + D1 in `worker/` (see `worker/README.md`).
 - Everything must work with no backend (`VITE_LEADERBOARD_URL` unset).
 - Portrait phone first. Logical width is 400; height scales.
 - Push straight to `main`; Pages deploys it. No PRs needed unless asked.
+
+## Docs and handoffs (keep the hot files small)
+- `ART_REFRESH_HANDOFF.md` is the Claude ↔ Codex mailbox: live sections only, newest on top, under ~8 KB. Retire superseded sections VERBATIM into `art/HANDOFF_LOG.md` in the same commit. Per-pack prompts/QC live in `art/archive/<pack>/HANDOFF.md`.
+- Dated feature-pass write-ups go in `docs/handoffs/YYYY-MM-DD-topic.md`, not the repo root. `DESIGN.md`, `ROADMAP.md`, `CREW_DESIGN.md` stay at root.
+- Don't paste file contents or long status into chat or into this file; point at the file. This file is auto-loaded every turn — keep it to commands, layout, rules.
+
+## Gates
+- A Stop hook (`.claude/hooks/quiet-gates.sh`) runs `npm run typecheck` and `npm test` whenever the tree is dirty or unpushed and says nothing when they pass. If it prints, fix that before anything else. You don't need to run them by hand.
+
