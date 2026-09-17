@@ -208,7 +208,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 21);
+  assert.equal(modern.snapshot()!.worldVersion, 22);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -717,9 +717,12 @@ test("hitting a fidget spinner winds it up, and it coasts back down", () => {
   assert.equal(gadgetPose(still, 0).angle, gadgetPose(still, 4).angle, "a spinner turns on its own");
   const letter = { ...still, id: "spin-3", itemId: "rotor-travel", spin: { extra: 0, vel: 0, cool: 0 } };
   assert.equal(gadgetPose(letter, 0).angle, gadgetPose(letter, 4).angle, "a letter turns on its own");
-  // the clock keeps its sweep
-  const ticking = { id: "clock-0", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
-  assert.notEqual(gadgetPose(ticking, 0).angle, gadgetPose(ticking, 4).angle);
+  // a wall clock hangs on its nail: it never turns, and nothing can wind it up
+  const ticking = { id: "clock-0", itemId: "rotor-clock", kind: "rotor" as const, phase: 0.4, x: 200, y: -300 };
+  assert.equal(gadgetPose(ticking, 0).angle, gadgetPose(ticking, 4).angle);
+  // the dial thermometer still turns on its own
+  const dial = { id: "dial-0", itemId: "rotor-thermometer", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  assert.notEqual(gadgetPose(dial, 0).angle, gadgetPose(dial, 4).angle);
   // a wall clock is not on a free bearing, so nothing to wind up
   const clock = { id: "clock-1", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
   seg.gadgets = [clock];
@@ -814,6 +817,26 @@ test("a toy aimed into a glass panel rides it down instead of grabbing a rim", (
     // it left the glass at the bottom, not partway down it
     assert.ok(c.y >= panel.y + panel.h - 20, `caught on the glass at ${(c.y - aimY).toFixed(0)} into the slide`);
   }
+});
+
+test("toys still go straight on the door, not only on keyrings", () => {
+  const count = (version: number) => {
+    let stuck = 0, keyrings = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const w = new World(seed, 0, version);
+      w.ensure(-8000);
+      for (const s of w.segments) {
+        keyrings += (s.gadgets ?? []).filter((g) => g.itemId.startsWith("swing-toy-")).length;
+        for (const z of s.zones) if (z.itemId?.startsWith("bumper-") && !z.swing) stuck++;
+      }
+    }
+    return { stuck, keyrings };
+  };
+  // v18 put all thirteen toys on keyrings and stuck-on toys all but disappeared: they were rolled on
+  // doors a gadget or a set piece was about to clear, and held to the headroom a chain needs
+  const now = count(22);
+  assert.ok(now.stuck >= now.keyrings / 2, `stuck toys ${now.stuck} against ${now.keyrings} keyrings`);
+  assert.ok(count(21).stuck < now.stuck, "v22 is the version that brought them back");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

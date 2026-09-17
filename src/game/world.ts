@@ -177,7 +177,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 21, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 22, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -356,19 +356,31 @@ export class World {
     }
 
     // v13: toy keychains hang on the steel: no grip (a weak N push nudges you off), swing only when brushed
-    if (this.version >= 13 && i > 3 && r() < 0.3) {
+    // v22: a gadget door and a set piece both throw this segment's zones away and build their own,
+    // which is where most stuck-on toys were going. Do not spend one on a door about to be cleared.
+    const setPieceDoor = this.version >= 7 ? i >= 5 && i % 5 === 0 && i % 4 !== 0 : i >= 3 && i % 3 === 0;
+    const gadgetDoor = this.version >= 4 && i >= 4 && i % 4 === 0;
+    const cleared = this.version >= 22 && (setPieceDoor || gadgetDoor);
+    if (this.version >= 13 && i > 3 && !cleared && r() < (this.version >= 22 ? 0.6 : 0.3)) {
       const tw = rangeOf(r, 60, 76), th = rangeOf(r, 40, 52);
       const m = SEAM_MARGIN + 60; // room for the hook and chain above
       let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
       // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
-      for (let k = 0; k < 3 && blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
+      const hangs = r() < 0.5;
+      // v22: only a toy on a chain needs headroom for its hook. A toy stuck flat on the door needs
+      // none, and holding it to the chain's clearance is why they had all but vanished from a
+      // crowded door: three tries against an inflated box, and almost every one was refused.
+      const head = this.version >= 22 && !hangs ? 0 : 56;
+      const tries = this.version >= 22 ? 8 : 3;
+      const box = (t: Rect) => ({ ...t, y: t.y - head, h: t.h + head });
+      for (let k = 0; k < tries && blocked(zones, box(toy), 16, true); k++) toy = { ...toy, y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)) };
       // half hang on a keychain (plain resin: no field, they just swing when brushed); half are stuck straight on
       // the door by their magnet backing. Those are magnets, so from v18 they are as likely to pull as to push:
       // a negative power flips the same field round, which keeps them ungrippable - an attract ZONE would read
       // as bare steel to isMetal and quietly turn every other toy into a hold.
-      const hanging = r() < 0.5;
+      const hanging = this.version >= 22 ? hangs : r() < 0.5;
       const pull = this.version >= 18 && r() < 0.5;
-      if (!blocked(zones, { ...toy, y: toy.y - 56, h: toy.h + 56 }, 16, true)) zones.push(hanging
+      if (!blocked(zones, box(toy), 16, true)) zones.push(hanging
         ? { ...toy, kind: "trim", itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
         : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: `toy:${Math.floor(r() * 6)}` });
     }

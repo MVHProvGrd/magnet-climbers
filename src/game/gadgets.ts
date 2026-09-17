@@ -21,6 +21,8 @@ export function polarityDestination(id: string, repel = false): typeof POLARITY_
 export const FREE_SPIN = new Set(["rotor-fidget-spinner", "rotor-pinwheel", "rotor-snack", "rotor-travel", "rotor-doodle"]);
 /** Nothing turns these on its own: a spinner and an alphabet letter sit dead still until they are hit. */
 export const STILL_UNTIL_HIT = new Set(["rotor-fidget-spinner", "rotor-snack", "rotor-travel", "rotor-doodle"]);
+/** A wall clock hangs on a nail and does not turn at all: it reads the time, so spinning it is nonsense. */
+export const NEVER_TURNS = new Set(["rotor-clock"]);
 /** The keyring toy as gadget-art draws it: 68px down a 44px chain from a pivot 62px above the anchor. */
 export const KEYRING = { pivotUp: 62, chain: 44, toy: 68 } as const;
 /** Where the hanging toy's face is right now, so a hit can be mapped onto the art a player sees. */
@@ -43,7 +45,7 @@ export function faceUV(face: ReturnType<typeof toyFace>, p: Vec) {
 }
 export function gadgetPose(g: Gadget, time: number) {
   const t = time + g.phase;
-  const still = !!g.spin && STILL_UNTIL_HIT.has(g.itemId);
+  const still = NEVER_TURNS.has(g.itemId) || (!!g.spin && STILL_UNTIL_HIT.has(g.itemId));
   // a still rotor keeps its phase as the resting angle, so they do not all sit the same way up
   const angle = g.kind === "rotor" ? (still ? g.phase : t * 0.95) + (g.spin?.extra ?? 0) : g.swing ? g.swing.angle : Math.sin(t * 1.3) * (g.kind === "clip" ? 0.22 : 0.5);
   const x = g.x + (g.kind === "swing" || g.kind === "clip" ? Math.sin(angle) * 45 : 0);

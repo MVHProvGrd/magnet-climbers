@@ -393,6 +393,29 @@ All use pure #FF00FF source backgrounds and the existing `07-souvenir-ready-v1/c
 
 The existing archive is a static noindex page linked from admin, not an authenticated private asset store. This pass uses that existing gallery, with no player-facing game art changes.
 
+## Requested next: a hands-free clock face
+
+The kitchen clock (`public/art/gadgets/rotor-clock.webp`, wired as the `rotor-clock` gadget) is a
+photograph with its hands painted on at about 10:10. The game wants to draw the player's real local
+time on it, and it cannot: drawing live hands over the photo would give the clock two sets.
+
+What is needed is the same clock, same lighting, same rim and dial, **with no hands and no centre
+boss** — just the face, the numerals and the bezel. The existing version stays in the archive; this
+is an addition, not a replacement.
+
+- Suggested id: `rotor-clock-faceless-v1`, eventual mapping `rotor-clock`
+- Same framing and crop as the current photo, so the measured pivot still lands on the spindle:
+  `gadget-pivots.ts` has `"rotor-clock": [0.501, 0.4957]`, i.e. the centre of the dial is at 50.1%
+  across and 49.57% down the frame. Keep the dial centred there within a pixel or two and nothing
+  in the game needs re-measuring.
+- Transparent cutout as usual, magenta source preserved.
+- If the hour/minute hands can also be delivered as two separate cutouts (each drawn pointing at 12,
+  pivot at the bottom of the shaft), the game will use them. Otherwise it will draw simple hands.
+
+Claude will wire this on delivery: read `new Date()`, rotate an hour and a minute hand about that
+pivot. The clock no longer rotates as a gadget, so the face always hangs upright and the time is
+readable — no counter-rotation needed.
+
 ## Remaining queue
 
 Prioritize the still-flat business movers: vet, plumber, noodles, library, school, bakery. Then tactile toy versions of donut, duck, robot, dino, ice-pop and penguin movers. Paper cards should become convincing photographs of paper prints, crayon drawings, postcards or notes; retain their non-stick behavior. Already refreshed pickups and destination souvenirs do not need redundant remakes. Glass/gap concepts already exist in pack 07 and need review rather than another blind replacement. Tahiti S remains an earlier queued concept, lower priority than untouched art.
