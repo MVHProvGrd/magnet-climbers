@@ -1,5 +1,6 @@
 import type { NoStickKind, NoStickZone, PowerKind } from "./types";
 import { PAPER_ADDITIONS, BUSINESS_MAGNETS } from "./fridge-art";
+import PAPER_SHAPES from "./data/paper-aspect.json";
 
 export type ItemFamily = "pickup" | "paper" | "surface" | "bumper" | "gadget";
 export interface FridgeItem {
@@ -126,10 +127,10 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
 ];
 export const PAPER_ITEMS = FRIDGE_ITEMS.filter((item) => item.family === "paper");
 /** Width/height of the photographed papers, so a v13 card takes the photo's shape instead of cropping it. */
-const PHOTO_ASPECT: Record<string, number> = {
-  "paper-0": 384 / 253, "paper-1": 253 / 384, "paper-2": 291 / 384, "paper-3": 384 / 282, "paper-4": 251 / 384, "paper-5": 365 / 384,
-  "paper-6": 234 / 384, "paper-7": 383 / 384, "paper-8": 231 / 384, "paper-9": 1, "paper-10": 384 / 279, "paper-11": 316 / 384,
-};
+/** Measured from the shipped files by scripts/paper-aspect.mjs, so a new pack cannot land
+ *  with the wrong shape: a hand-written table had every card past paper-11 down as square,
+ *  and the wide ones were cut to a square slot and drew two thirds the size they should. */
+const PHOTO_ASPECT = PAPER_SHAPES as Record<string, number>;
 /** Every paper card is cut to the shape of its own art: the photographed ones to
  *  the photo, the rest to the square the drawn cards are authored in. */
 export const PAPER_ASPECT: Record<string, number> = Object.fromEntries(

@@ -7,7 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, UPGRADES, type UpgradeKey } from "../src/game/config";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
-import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone } from "../src/game/items";
+import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
 import { howToSections, boostItems, hazardItems } from "../src/game/how-to-play";
 import { populateSetPiece, SET_PIECES } from "../src/game/world-patterns";
 import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand } from "../src/game/kid-hand";
@@ -650,4 +650,17 @@ test("a clip only tips when it is caught near one end of its bar", () => {
   c.grip = undefined;
   for (let i = 0; i < 240; i++) g.update(1 / 120);
   assert.equal(clip.lean, 0, "and hangs level again once nobody is on it");
+});
+
+test("every photographed paper card is cut to the shape of its own art", () => {
+  const papers = FRIDGE_ITEMS.filter((i) => i.family === "paper");
+  assert.ok(papers.length >= 32);
+  // a card left at 1 is square; a wide photo cut into a square slot draws small, which is
+  // how the avocado card ended up two thirds the size of its neighbours
+  const square = papers.filter((i) => PAPER_ASPECT[i.id] === 1).map((i) => i.id);
+  assert.ok(square.length <= 3, `too many square cards: ${square.join(", ")}`);
+  for (const item of papers) {
+    const a = PAPER_ASPECT[item.id];
+    assert.ok(a > 0.3 && a < 3, `${item.id} has a daft shape: ${a}`);
+  }
 });
