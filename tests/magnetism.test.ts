@@ -8,6 +8,7 @@ import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/g
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
+import { weekKey } from "../worker/src/week";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -898,6 +899,15 @@ test("a streak pays more each day and a pattern on the seventh", () => {
   // nothing for a streak that does not exist
   assert.equal(streakReward(0).coins, 0);
   assert.equal(streakReward(0).pattern, false);
+});
+
+test("the league week rolls on a Monday, UTC", () => {
+  // ISO weeks: the Thursday decides the year, and Monday starts the week
+  assert.equal(weekKey(Date.parse("2026-09-17T12:00:00Z")), "2026-W38");
+  assert.equal(weekKey(Date.parse("2026-09-20T23:59:00Z")), "2026-W38", "Sunday is still last week");
+  assert.equal(weekKey(Date.parse("2026-09-21T00:01:00Z")), "2026-W39", "Monday starts a new one");
+  // and the turn of the year lands where ISO says, not where the calendar does
+  assert.equal(weekKey(Date.parse("2027-01-01T12:00:00Z")), "2026-W53");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

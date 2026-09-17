@@ -9,7 +9,7 @@ export interface ScoreRow {
 }
 
 export type Mode = "crew" | "solo";
-export type BoardMode = Mode | "lifetime" | "coins" | "daily";
+export type BoardMode = Mode | "lifetime" | "coins" | "daily" | "league";
 
 /**
  * The daily climb: one fridge for everybody for a UTC day. The seed comes from the date alone,
@@ -82,12 +82,26 @@ export const leaderboard = {
   /** Adds one finished run's height to the global total. */
   run: (playerId: string, name: string, mode: Mode, cm: number) =>
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
+  /** This week's bucket: about thirty players, the ten at the top going up and the ten at the bottom down. */
+  league: (playerId: string) => call<LeagueStanding>(`/league?player=${encodeURIComponent(playerId)}`),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),
   rank: (mode: BoardMode, playerId: string) => call<{ rank: number | null; cm?: number; resetAt?: number }>(`/rank?mode=${mode}&player=${encodeURIComponent(playerId)}`),
   /** `at` is when the climb happened: a re-post of an older best keeps its own date. */
   submit: (playerId: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number) =>
     call<{ ok: boolean; best: number; taken?: boolean; day?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}) }) }),
 };
+
+export interface LeagueStanding {
+  week: string;
+  tier: number;
+  tierName: string;
+  bucket: number;
+  rank: number | null;
+  cm?: number;
+  promote: number;
+  relegate: number;
+  rows: ScoreRow[];
+}
 
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }
 /** Global chat: polled while the panel is open. */

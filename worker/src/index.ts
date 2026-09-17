@@ -25,6 +25,7 @@
 import PROFANITY from "../../src/game/data/profanity.json";
 import { handleShare, type Challenge } from "./card";
 import { handleAdmin } from "./admin";
+import { weekKey } from "./week";
 
 const BLOCKED = new Set((PROFANITY as string[]).map((w) => w.toLowerCase()));
 const deleet = (t: string) => t.replace(/[0]/g, "o").replace(/[1|]/g, "i").replace(/3/g, "e").replace(/[4@]/g, "a").replace(/[5$]/g, "s").replace(/[7+]/g, "t").replace(/8/g, "b").replace(/9/g, "g");
@@ -138,6 +139,68 @@ const validMode = (m: unknown): m is "crew" | "solo" => m === "crew" || m === "s
  * board they like. The client derives the same seed from the same date string.
  */
 const dayKey = (at = Date.now()) => new Date(at).toISOString().slice(0, 10);
+
+/**
+ * The weekly league. Every finished run adds its metres to your week; players sit in buckets of
+ * about thirty, and at the end of a week the top ten of a bucket go up a tier and the bottom ten
+ * go down. The global board is unwinnable for all but ten people; a bucket is a board anybody can
+ * lead, which is the whole point.
+ *
+ * There is no cron job. A player is placed the first time they climb in a new week, and their new
+ * tier is worked out from where they finished the week before, so the league keeps itself.
+ */
+export const TIERS = ["Paper", "Plastic", "Steel", "Chrome", "Gold"] as const;
+const BUCKET_SIZE = 30;
+const PROMOTE = 10;
+const RELEGATE = 10;
+let leagueReady = false;
+async function ensureLeague(env: Env): Promise<void> {
+  if (leagueReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS league (
+    player_id TEXT NOT NULL,
+    week TEXT NOT NULL,
+    tier INTEGER NOT NULL,
+    bucket INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, week)
+  )`).run().catch(() => {});
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC)").run().catch(() => {});
+  leagueReady = true;
+}
+
+/** Where a player sits this week, placing them (and settling last week) the first time they climb. */
+async function placeInLeague(env: Env, playerId: string, name: string): Promise<{ week: string; tier: number; bucket: number }> {
+  await ensureLeague(env);
+  const week = weekKey();
+  const mine = await env.DB.prepare("SELECT tier, bucket FROM league WHERE player_id = ? AND week = ?")
+    .bind(playerId, week).first<{ tier: number; bucket: number }>();
+  if (mine) return { week, tier: mine.tier, bucket: mine.bucket };
+
+  // last week decides this week's tier: the top of a bucket goes up, the bottom goes down
+  const last = await env.DB.prepare("SELECT week, tier, bucket, cm FROM league WHERE player_id = ? AND week < ? ORDER BY week DESC LIMIT 1")
+    .bind(playerId, week).first<{ week: string; tier: number; bucket: number; cm: number }>();
+  let tier = last?.tier ?? 0;
+  if (last) {
+    const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ? AND cm > ?")
+      .bind(last.week, last.tier, last.bucket, last.cm).first<{ n: number }>();
+    const size = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ?")
+      .bind(last.week, last.tier, last.bucket).first<{ n: number }>();
+    const rank = (above?.n ?? 0) + 1, members = size?.n ?? 1;
+    if (rank <= PROMOTE) tier = Math.min(TIERS.length - 1, tier + 1);
+    else if (members >= PROMOTE + RELEGATE && rank > members - RELEGATE) tier = Math.max(0, tier - 1);
+  }
+  // the newest bucket of that tier, or a fresh one when it is full
+  const open = await env.DB.prepare(
+    "SELECT bucket, COUNT(*) AS n FROM league WHERE week = ? AND tier = ? GROUP BY bucket ORDER BY bucket DESC LIMIT 1",
+  ).bind(week, tier).first<{ bucket: number; n: number }>();
+  const bucket = !open ? 1 : open.n >= BUCKET_SIZE ? open.bucket + 1 : open.bucket;
+  await env.DB.prepare("INSERT OR IGNORE INTO league (player_id, week, tier, bucket, name, cm, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?)")
+    .bind(playerId, week, tier, bucket, name, Date.now()).run();
+  return { week, tier, bucket };
+}
+
 let dailyReady = false;
 async function ensureDaily(env: Env): Promise<void> {
   if (dailyReady) return;
@@ -299,6 +362,28 @@ export default {
       return json({ ok: true, best: best?.cm ?? cm }, h);
     }
 
+    if (req.method === "GET" && url.pathname === "/league") {
+      const player = url.searchParams.get("player") ?? "";
+      if (!player) return json({ error: "bad request" }, h, 400);
+      await ensureLeague(env);
+      const week = weekKey();
+      const mine = await env.DB.prepare("SELECT tier, bucket, cm FROM league WHERE player_id = ? AND week = ?")
+        .bind(player, week).first<{ tier: number; bucket: number; cm: number }>();
+      // nobody is placed until they climb: show the tier they would carry in, and an empty table
+      if (!mine) {
+        const last = await env.DB.prepare("SELECT tier FROM league WHERE player_id = ? ORDER BY week DESC LIMIT 1")
+          .bind(player).first<{ tier: number }>();
+        return json({ week, tier: last?.tier ?? 0, tierName: TIERS[last?.tier ?? 0], bucket: 0, rank: null, promote: PROMOTE, relegate: RELEGATE, rows: [] }, h);
+      }
+      const rows = await env.DB.prepare(
+        "SELECT name, cm, player_id, updated_at AS created_at FROM league WHERE week = ? AND tier = ? AND bucket = ? AND player_id NOT LIKE 'smoke-%' ORDER BY cm DESC, updated_at ASC LIMIT 40",
+      ).bind(week, mine.tier, mine.bucket).all();
+      const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ? AND cm > ?")
+        .bind(week, mine.tier, mine.bucket, mine.cm).first<{ n: number }>();
+      return json({ week, tier: mine.tier, tierName: TIERS[mine.tier], bucket: mine.bucket,
+        rank: (above?.n ?? 0) + 1, cm: mine.cm, promote: PROMOTE, relegate: RELEGATE, rows: rows.results }, h);
+    }
+
     if (req.method === "POST" && url.pathname === "/rename") {
       let body: { playerId?: unknown; name?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
@@ -310,6 +395,7 @@ export default {
         env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId),
         env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, playerId),
         env.DB.prepare("UPDATE wallet SET name = ? WHERE player_id = ?").bind(name, playerId),
+        env.DB.prepare("UPDATE league SET name = ? WHERE player_id = ?").bind(name, playerId),
       ]);
       return json({ ok: true, name }, h);
     }
@@ -440,6 +526,10 @@ export default {
            ON CONFLICT(player_id) DO UPDATE SET cm = lifetime.cm + excluded.cm, runs = lifetime.runs + 1, name = excluded.name, updated_at = excluded.updated_at`,
         ).bind(pid, name, cm, now),
       ]);
+      // the week's league table: metres climbed, not a single best, so playing is what moves you
+      const seat = await placeInLeague(env, pid, name);
+      await env.DB.prepare("UPDATE league SET cm = cm + ?, name = ?, updated_at = ? WHERE player_id = ? AND week = ?")
+        .bind(cm, name, now, pid, seat.week).run().catch(() => {});
       return json({ ok: true }, h);
     }
 
