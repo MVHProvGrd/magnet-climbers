@@ -371,6 +371,28 @@ test("moving contacts carry climbers and polarity releases them without phantom 
   }
 });
 
+test("a resumed run finds the door where it left it, not back at rest", () => {
+  // stepGadgets moves things the world generator cannot rebuild: a toy still swinging, a
+  // spinner coasting down from a knock, a cooldown part way through. None of it is derivable
+  // from the seed, so leaving it out of the snapshot snapped every gadget back to rest on
+  // resume -- and a climber riding one was thrown off by the jump.
+  const g = new Game(levels, events, { seed: 12345, rules: "solo" });
+  g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
+  for (const gd of g.world.gadgets) { if (gd.spin) gd.spin.vel = 7; if (gd.swing) gd.swing.vel = 2; gd.hitCool = 0.25; }
+  for (let i = 0; i < 60; i++) g.update(1 / 120);
+
+  const snap = g.snapshot()!;
+  const restored = Game.restore(levels, events, JSON.parse(JSON.stringify(snap)));
+  const state = (x: Game) => x.world.gadgets.map((gd) =>
+    [gd.id, gd.hitCool ?? 0, gd.popCool ?? 0, gd.spin?.vel ?? 0, gd.spin?.extra ?? 0, gd.swing?.angle ?? 0, gd.swing?.vel ?? 0]);
+  assert.ok(state(g).some((r) => r.slice(1).some((n) => n !== 0)), "the door has to be away from rest for this to prove anything");
+  assert.deepEqual(state(restored), state(g), "a restored door carries the live door's motion");
+
+  // and it stays agreed once both are running again, which is what the player actually sees
+  for (let i = 0; i < 120; i++) { g.update(1 / 120); restored.update(1 / 120); }
+  assert.deepEqual(state(restored), state(g), "and keeps agreeing as both run on");
+});
+
 test("gadget clocks, carrier offsets, trick counters and near-misses deep-copy on save", () => {
   const g = game(); g.phase = "running"; g.world.generateTo(10); g.world.gadgetTime = 1.2;
   const gadget = g.world.gadgets[0], hold = gadgetPose(gadget, g.world.gadgetTime).hold, c = g.climbers[0];

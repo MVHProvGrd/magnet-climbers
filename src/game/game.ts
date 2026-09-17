@@ -26,6 +26,16 @@ export interface RunSnapshot {
   seed: number;
   worldVersion?: number;
   gadgetTime?: number;
+  /**
+   * What the door was doing, per gadget, at the moment it was put down. The world itself
+   * rebuilds from the seed, but stepGadgets mutates each gadget as the run goes -- a toy
+   * swinging, a spinner still coasting from a knock, a cooldown part way through -- and none
+   * of that is derivable. Left out, every gadget snapped back to rest on resume, which threw
+   * a climber riding one straight off it.
+   */
+  gadgetState?: { id: string; hitCool?: number; popCool?: number; needle?: number;
+    swing?: { angle: number; vel: number; cool: number };
+    spin?: { extra: number; vel: number; cool: number } }[];
   runTime?: number;
   feats?: RunFeats;
   tricks?: TrickState;
@@ -653,6 +663,15 @@ export class Game {
       paw: this.paw ? { ...this.paw, hit: [...this.paw.hit] } : undefined,
       handCount: this.handCount, nextHandAt: this.nextHandAt,
       gadgetTime: this.world.gadgetTime, tricks: cloneTricks(this.tricks), feats: { ...this.feats },
+      // only gadgets actually away from rest, so a quiet door costs a snapshot nothing
+      gadgetState: this.world.gadgets.flatMap((g) => {
+        const moved = g.hitCool || g.popCool || g.needle
+          || (g.swing && (g.swing.angle || g.swing.vel || g.swing.cool))
+          || (g.spin && (g.spin.extra || g.spin.vel || g.spin.cool));
+        return moved ? [{ id: g.id, ...(g.hitCool ? { hitCool: g.hitCool } : {}), ...(g.popCool ? { popCool: g.popCool } : {}),
+          ...(g.needle ? { needle: g.needle } : {}), ...(g.swing ? { swing: { ...g.swing } } : {}),
+          ...(g.spin ? { spin: { ...g.spin } } : {}) }] : [];
+      }),
     };
   }
 
@@ -664,6 +683,18 @@ export class Game {
     g.tape.invalidate();
     g.world.generateTo(snap.generated);
     g.world.gadgetTime = snap.gadgetTime ?? 0; g.runTime = snap.runTime ?? 0;
+    // put the door back the way it was left, before any climber tries to take hold of it
+    if (snap.gadgetState?.length) {
+      const by = new Map(snap.gadgetState.map((s) => [s.id, s]));
+      for (const gd of g.world.gadgets) {
+        const was = by.get(gd.id); if (!was) continue;
+        if (was.hitCool != null) gd.hitCool = was.hitCool;
+        if (was.popCool != null) gd.popCool = was.popCool;
+        if (was.needle != null) gd.needle = was.needle;
+        if (was.swing && gd.swing) gd.swing = { ...was.swing };
+        if (was.spin && gd.spin) gd.spin = { ...was.spin };
+      }
+    }
     g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();
     if (!snap.tricks) g.tricks.frontierY = snap.highestY;
     for (const seg of g.world.segments) {
