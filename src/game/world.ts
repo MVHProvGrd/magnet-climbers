@@ -198,7 +198,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 26) {
+  constructor(seed: number, startY: number, readonly version = 27) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -588,7 +588,11 @@ export class World {
         const kind = this.version >= 24 ? this.drawBag(this.gadgetBag, GADGET_KINDS) : GADGET_KINDS[(i / 4 - 1) % 4];
         // v15: a letter board on the door, not a plastic wall across it. The steel
         // lanes either side are what you climb; the board is what the gadget hangs on.
-        segment.zones = this.version >= 15
+        // v27: a slimmer board. 192 wide read as a slab; 160 still carries both gadgets
+        // (they hang at 135 and 265, inside its edges) and gives the lanes beside it more steel.
+        segment.zones = this.version >= 27
+          ? [{ x: 120, y: y + 80, w: 160, h: 180, kind: "trim" as const }]
+          : this.version >= 15
           ? [{ x: 104, y: y + 74, w: 192, h: 186, kind: "trim" as const }]
           : [{ x: 78, y: y + 20, w: 244, h: 300, kind: "trim" as const }];
         segment.bumpers = [];

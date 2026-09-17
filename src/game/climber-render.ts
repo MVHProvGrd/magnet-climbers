@@ -59,28 +59,57 @@ function tube(ctx: CanvasRenderingContext2D, start: Vec, middle: Vec, end: Vec) 
   ctx.lineTo(end.x, end.y); ctx.stroke();
 }
 
+// The shadow is one flat shape. Painted limb by limb at a fifth of full opacity, every
+// place two strokes crossed (each joint, the body under the arms) came out twice as dark,
+// and the shadow grew joints of its own. So it is drawn solid onto a scratch canvas and laid
+// down once, at the shadow's opacity, and the overlaps vanish into it. Only the toy's own
+// patch of the scratch is cleared and copied, so a full crew costs no more than before.
+let scratch: HTMLCanvasElement | null = null;
 export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t = 0, appearance: CreatureAppearance = {}) {
   const shape = geometry(c, appearance);
   const style = creatureStyle(c, appearance);
-  ctx.save();
-  // No canvas shadowBlur here: a blur pass per climber per frame was the main cost with a full crew.
-  // A wider, fainter stroke reads the same at game scale; higher toys get a softer, wider shadow.
+  // higher toys get a softer, wider shadow
   const opacity = Math.max(0.05, 0.2 - shape.lift * 0.0035);
-  ctx.strokeStyle = ctx.fillStyle = `rgba(31,37,48,${opacity})`;
-  ctx.lineCap = "round"; ctx.lineWidth = style.limb + 1 + shape.lift * 0.12;
+  const m = ctx.getTransform();
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  if (!scratch) scratch = document.createElement("canvas");
+  if (scratch.width !== cw || scratch.height !== ch) { scratch.width = cw; scratch.height = ch; }
+  const sc = scratch.getContext("2d")!;
+  // the patch of screen this shadow can reach: the origin and every limb, with room for the body and the stroke
+  const pts = [project({ x: c.x, y: c.y, z: shape.lift }, true)];
+  for (const limb of shape.limbs) pts.push(project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+  if (style.id === "human") pts.push(project(shape.head, true), project(shape.shoulder, true), project(shape.hip, true));
+  const scale = Math.hypot(m.a, m.b), pad = 44 * scale + 4;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) {
+    const d = m.transformPoint(p);
+    x0 = Math.min(x0, d.x); y0 = Math.min(y0, d.y); x1 = Math.max(x1, d.x); y1 = Math.max(y1, d.y);
+  }
+  const bx = Math.max(0, Math.floor(x0 - pad)), by = Math.max(0, Math.floor(y0 - pad));
+  const bw = Math.min(cw, Math.ceil(x1 + pad)) - bx, bh = Math.min(ch, Math.ceil(y1 + pad)) - by;
+  if (bw <= 0 || bh <= 0) return;
+  sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(bx, by, bw, bh);
+  sc.setTransform(m);
+  // No canvas shadowBlur here: a blur pass per climber per frame was the main cost with a full crew.
+  // A wider stroke reads the same at game scale.
+  sc.strokeStyle = sc.fillStyle = "#1f2530";
+  sc.lineCap = "round"; sc.lineWidth = style.limb + 1 + shape.lift * 0.12;
   if (style.id !== "human") {
     const origin = project({ x: c.x, y: c.y, z: shape.lift }, true);
-    ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(c.angle);
-    drawCreatureDecorations(ctx, c, style, t, true);
-    drawCreatureBody(ctx, style, "", true); ctx.restore();
-    for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-    ctx.restore(); return;
+    sc.save(); sc.translate(origin.x, origin.y); sc.rotate(c.angle);
+    drawCreatureDecorations(sc, c, style, t, true);
+    drawCreatureBody(sc, style, "", true); sc.restore();
+    for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+  } else {
+    for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+    sc.lineWidth = 9;
+    tube(sc, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
+    const head = project(shape.head, true);
+    sc.beginPath(); sc.arc(head.x, head.y, 7, 0, Math.PI * 2); sc.fill();
   }
-  for (const limb of shape.limbs) tube(ctx, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-  ctx.lineWidth = 9;
-  tube(ctx, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
-  const head = project(shape.head, true);
-  ctx.beginPath(); ctx.arc(head.x, head.y, 7, 0, Math.PI * 2); ctx.fill();
+  sc.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = opacity;
+  ctx.drawImage(scratch, bx, by, bw, bh, bx, by, bw, bh);
   ctx.restore();
 }
 

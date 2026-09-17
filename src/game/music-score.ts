@@ -57,8 +57,8 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
   // Landing on steel: the magnet's click plus the door's low boom. The other
   // materials are the same gesture voiced for what you actually hit.
   stick: [{ frequency: 1850, duration: 0.045, gain: 0.07, type: "sine" }, { frequency: 2700, duration: 0.065, gain: 0.025, type: "sine" }, { frequency: 130, endFrequency: 65, duration: 0.065, gain: 0.11, type: "triangle" }],
-  /** glass: a bright ring with no magnet click under it */
-  hitGlass: [{ frequency: 2950, duration: 0.19, gain: 0.05, type: "sine" }, { frequency: 4400, duration: 0.11, gain: 0.02, type: "sine" }, { frequency: 1200, endFrequency: 700, duration: 0.04, gain: 0.03, type: "noise" }],
+  /** glass: a bright ring with no magnet click under it, and a light tap so a phone speaker carries it */
+  hitGlass: [{ frequency: 2950, duration: 0.19, gain: 0.08, type: "sine" }, { frequency: 4400, duration: 0.11, gain: 0.03, type: "sine" }, { frequency: 1200, endFrequency: 700, duration: 0.04, gain: 0.05, type: "noise" }, { frequency: 240, endFrequency: 150, duration: 0.05, gain: 0.06, type: "triangle" }],
   /** plastic trim and bins: a dull hollow tock */
   hitPlastic: [{ frequency: 360, endFrequency: 210, duration: 0.07, gain: 0.09, type: "triangle" }, { frequency: 900, endFrequency: 500, duration: 0.035, gain: 0.03, type: "noise" }],
   /** paper: a soft rustle, barely pitched */

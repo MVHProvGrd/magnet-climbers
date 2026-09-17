@@ -379,6 +379,9 @@ export class Game {
     // kicking off a hanging gadget swings it the other way
     for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
     this.tape.fling(this.time, c.id, v);
+    // a fresh fling is a fresh landing: the last panel it slid on is forgotten, so coming
+    // back down on the same board sounds again instead of counting as one long slide
+    this.slideMaterial.delete(c.id);
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -956,11 +959,15 @@ export class Game {
       // v13: no steel under the toy, so it slides down whatever it is on. Each material drags differently:
       // ice lets it shoot, glass squeaks, plastic scrubs, paper nearly stops it.
       const k = this.world.version >= 13 ? this.world.slideFriction(c.x, c.y) : undefined;
-      // first frame against a material, and only if it arrived with some pace:
-      // glass rings, plastic tocks, paper rustles, ice ticks and skids
+      // first frame against a material: glass rings, plastic tocks, paper rustles, ice ticks
+      // and skids. Coming down out of the air onto it always sounds, however slow the toy
+      // is moving across the door: the hit is the drop, and a fling that lands at its apex
+      // in the middle of a window arrives with almost no pace at all. Only a change from one
+      // material to the next mid-slide needs some speed behind it to be worth a sound.
       const material = k == null ? undefined : this.world.materialAt(c.x, c.y);
-      if (material !== this.slideMaterial.get(c.id)) {
-        if (material && Math.hypot(c.vx, c.vy) > 120) {
+      const before = this.slideMaterial.get(c.id);
+      if (material !== before) {
+        if (material && (before === undefined || Math.hypot(c.vx, c.vy) > 120)) {
           const hit = { glass: this.a.sfx.hitGlass, plastic: this.a.sfx.hitPlastic, paper: this.a.sfx.hitPaper, ice: this.a.sfx.hitIce }[material];
           hit(0.94 + this.simNoise(c.id + Math.round(c.y)) * 0.12);
         }
