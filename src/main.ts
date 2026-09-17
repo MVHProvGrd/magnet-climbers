@@ -284,7 +284,7 @@ const ui = new Ui(uiRoot, () => save, {
     const changed = name !== save.name;
     save.name = name; persist();
     if (changed && leaderboardEnabled) {
-      void leaderboard.rename(save.playerId, name).then((r) => {
+      void leaderboard.rename(save.playerId, save.token, name).then((r) => {
         if (r?.ok) ui.toast(r.name === name ? "Scoreboard name updated" : `Scoreboard shows "${r.name}"`);
       });
     }

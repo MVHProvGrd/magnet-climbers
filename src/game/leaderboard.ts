@@ -77,8 +77,9 @@ export const cloud = {
 
 export const leaderboard = {
   stats: () => call<GlobalStats>("/stats"),
-  rename: (playerId: string, name: string) =>
-    call<{ ok: boolean; name: string }>("/rename", { method: "POST", body: JSON.stringify({ playerId, name }) }),
+  /** The token proves the profile is yours; without it the Worker refuses, and used to not. */
+  rename: (playerId: string, token: string, name: string) =>
+    call<{ ok: boolean; name: string }>("/rename", { method: "POST", body: JSON.stringify({ playerId, token, name }) }),
   /** Adds one finished run's height to the global total. */
   run: (playerId: string, name: string, mode: Mode, cm: number) =>
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
@@ -106,9 +107,16 @@ export interface LeagueStanding {
 export interface ChatMessage { id: number; name: string; text: string; player_id: string; created_at: number; avatar?: string | null }
 /** Global chat: polled while the panel is open. */
 export const chat = {
-  list: (after = 0) => call<{ messages: ChatMessage[]; online: number }>(`/chat?after=${after}`),
+  /**
+   * `player` is what makes a block mean anything. Blocking used to hide a sender on the one
+   * device that did it and nowhere else, so the blocked player carried on posting to the room.
+   * The Worker already had the block on file; it just needed to be told who is asking.
+   */
+  list: (after = 0, player = "") =>
+    call<{ messages: ChatMessage[]; online: number }>(`/chat?after=${after}${player ? `&player=${encodeURIComponent(player)}` : ""}`),
   /** One page of older messages, for a log scrolled back to its top. `more` is false at the start of history. */
-  older: (before: number, limit = 40) => call<{ messages: ChatMessage[]; more: boolean }>(`/chat?before=${before}&limit=${limit}`),
+  older: (before: number, limit = 40, player = "") =>
+    call<{ messages: ChatMessage[]; more: boolean }>(`/chat?before=${before}&limit=${limit}${player ? `&player=${encodeURIComponent(player)}` : ""}`),
   /** Block or report someone. Fire and forget: blocking already took effect on the device. */
   report: async (playerId: string, token: string, kind: "block" | "report", targetId: string, messageId = 0, text = ""): Promise<void> => {
     if (!leaderboardEnabled || !token) return;

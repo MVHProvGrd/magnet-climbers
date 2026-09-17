@@ -314,7 +314,7 @@ export class Ui {
   }
   private refreshChatStrip() {
     const el = this.chatStrip; if (!el) return;
-    void chat.list(0).then((r) => {
+    void chat.list(0, this.save().playerId).then((r) => {
       if (!r || el !== this.chatStrip || !el.isConnected) return;
       const lines = el.querySelector<HTMLElement>(".lines"), badge = el.querySelector<HTMLElement>(".badge");
       const last = r.messages.filter((m) => !isBlocked(m.player_id)).slice(-2);
@@ -613,7 +613,7 @@ export class Ui {
     const loadOlder = async () => {
       if (loading || !more || !oldestId()) return;
       loading = true;
-      const r = await chat.older(oldestId());
+      const r = await chat.older(oldestId(), 40, this.save().playerId);
       loading = false;
       if (!r || !p.isConnected) return;
       more = r.more;
@@ -655,7 +655,7 @@ export class Ui {
 
     const poll = async () => {
       if (!p.isConnected) { if (this.chatTimer) clearInterval(this.chatTimer); this.chatTimer = null; return; }
-      const r = await chat.list(lastId);
+      const r = await chat.list(lastId, this.save().playerId);
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
       rememberChat(r.messages);
