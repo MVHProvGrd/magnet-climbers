@@ -66,14 +66,26 @@ existing `toy-icon-512.png` master rather than drawn fresh:
 - `apple-touch-startup-image` at the common iPhone/iPad viewport sizes, on the manifest's
   `theme_color` ground with the toy centred.
 
-### 7. A kit icon — `ui-kit-v1`
-Kit and creatures are tiles in the home row now, five across. Creatures wears the player's own
-toy, which is right. Kit is borrowing the red horseshoe from `art/pickups/magnet.png`, which
-is a power-up you catch mid-climb, not the gear you buy before one.
+### 7. An icon for the KIT tile — `ui-kit-v1`
+The home row is four tiles: STORY, BOARD, KIT, HOW TO. The first two and the last wear
+photographed objects from `art/ui/`. KIT currently draws the player's own creature on a live
+canvas instead.
+
+That is not obviously wrong — it is personal, it animates, and it shows what you are wearing
+without opening anything. But the tile is now both halves of the errand: the gear you buy for
+the next climb AND the creature and pattern you wear. A climber standing there says
+"creatures" much louder than it says "kit", so the half with the coins attached is the half
+going unannounced.
 
 Wanted: one object at the same weight and lighting as `art/ui/board.webp` and its siblings,
-square, ~96×96 transparent, reading as "gear for this climb" — a small canvas tool roll, a
-carabiner, a climbing harness clip. It draws at 24px, so silhouette has to carry it.
+square, ~96×96 transparent, reading as "the things you take up with you" rather than as a
+shop — a small canvas tool roll, a climbing harness clip, a carabiner with a magnet on it. It
+draws at 24px, so silhouette has to carry it.
+
+**Worth saying plainly: this may not be worth drawing.** If the answer is that the player's
+own toy is the better icon, the right outcome is to close this and leave the tile as it is.
+It would help to see the object beside the live toy at 24px before deciding, so a rough pass
+is more useful here than a finished one.
 
 ### 8. A grip texture for bare steel — `steel-grip-v1`
 The one surface the climber can actually stick to is the only surface with nothing on it.
