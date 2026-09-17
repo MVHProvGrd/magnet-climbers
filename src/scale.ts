@@ -361,7 +361,17 @@ function boot() {
   root.querySelector("#skip")!.addEventListener("click", () => go(1));
   root.querySelector("#prev")!.addEventListener("click", () => go(-1));
   root.querySelector("#export")!.addEventListener("click", () => { file.hidden = !file.hidden; file.value = fileText(); });
-  root.querySelector("#copyall")!.addEventListener("click", () => void navigator.clipboard.writeText(fileText()));
+  // Copying silently is the same as not copying: you cannot tell, so you click it again and
+  // still cannot tell. The button says what happened, and falls back to showing the text when
+  // the clipboard is refused -- which it is on any page that is not served over https.
+  root.querySelector("#copyall")!.addEventListener("click", (e) => {
+    const btn = e.target as HTMLButtonElement, was = btn.textContent;
+    const rows = WALK.filter((i) => audit[i.id]).length;
+    navigator.clipboard.writeText(fileText()).then(
+      () => { btn.textContent = `Copied ${rows} of ${WALK.length}`; },
+      () => { file.hidden = false; file.value = fileText(); file.select(); btn.textContent = "Copy it from the box"; },
+    ).finally(() => setTimeout(() => { btn.textContent = was; }, 2200));
+  });
   root.querySelector("#wipe")!.addEventListener("click", () => {
     if (!confirm("Forget every size recorded on this device?")) return;
     audit = {}; writeAudit(audit); fillPicker(); tell();
