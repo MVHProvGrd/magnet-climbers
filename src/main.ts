@@ -16,6 +16,7 @@ import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } fro
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 import { groupNum } from "./game/hud";
 import { Ghost, loadBestTape, saveBestTape } from "./game/ghost";
+import { makeRng } from "./game/world";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -112,6 +113,9 @@ function mergeCloudBlob(blob: string) {
     if (Array.isArray(c.missions) && typeof c.missionsDay === "string") {
       if (c.missionsDay > save.missionsDay) { save.missions = c.missions; save.missionsDay = c.missionsDay; }
       else if (c.missionsDay === save.missionsDay) {
+        // two boards for one day that share nothing were rolled apart (an older build, or a
+        // different done count): the cloud copy is the shared one, so it stands
+        if (!save.missions.some((m) => c.missions!.some((x) => x.id === m.id))) save.missions = c.missions;
         save.missions = save.missions.map((m) => {
           const o = c.missions!.find((x) => x.id === m.id && x.n === m.n);
           return o ? { ...m, at: Math.max(m.at, o.at), done: m.done || o.done } : m;
@@ -592,7 +596,9 @@ function ensureDailyMissions(): void {
     return !def || !def.targets.includes(m.n);
   });
   if (!stale && save.missionsDay === today && save.missions.length === 3) return;
-  save.missions = dailyBoard(save.missionsDone);
+  // rolled from the player and the day, not from chance, so a second device rolls the same
+  // three and the boards merge by mission instead of standing side by side
+  save.missions = dailyBoard(save.missionsDone, makeRng(dailySeed(`${save.playerId}:${today}`)));
   save.missionsDay = today;
   persist();
 }
@@ -899,6 +905,16 @@ async function cloudPull(quiet = false) {
     if (!quiet) ui.toast("Progress synced from your other device");
     if (!game) ui.showMenu();
   } else if (!c) void cloudSync("launch");
+  // The daily board on the Worker knows whether today's climb was taken, whichever device
+  // took it and whatever build that device was on: a row there marks the day here too.
+  const today = todayKey();
+  if (save.daily?.day !== today) {
+    const r = await leaderboard.rank("daily", save.playerId).catch(() => null);
+    if (r && r.cm != null && (r as { day?: string }).day === today && !game) {
+      save.daily = { day: today, cm: r.cm }; persist();
+      ui.showMenu();
+    }
+  }
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
