@@ -1,8 +1,7 @@
-import { EXPEDITIONS_ENABLED, SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
 import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
-import { PACKS, INTROS, isUnlocked, nextLevel, type LevelDef } from "./expeditions";
 import { resetRagdoll } from "./ragdoll";
 import type { Climber } from "./types";
 import type { DeathCause } from "./game";
@@ -15,9 +14,7 @@ import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
 import { setChatStrip, groupNum } from "./hud";
 
 export interface UiHandlers {
-  onPlay(rules: "solo" | "crew"): void;
-  onPlayLevel(id: string): void;
-  onNextLevel(id: string): void;
+  onPlay(rules: "solo"): void;
   onIntroSeen(key: string): void;
   onResume(): void;
   /** the MENU button: freeze the sim before the pause panel shows */
@@ -25,7 +22,6 @@ export interface UiHandlers {
   onQuitRun(): void;
   onEndRun(): void;
   onBuy(key: UpgradeKey): void;
-  onBuyReserve(): void;
   /** Wear a creature + pattern for solo runs (and as the crew default). */
   onWear(look: Look): void;
   /** Dress one crew slot. */
@@ -222,7 +218,7 @@ export class Ui {
       // Scrolling panels used to lose their bottom BACK button because the floating arrow
       // replaced it. A shell panel's exit IS its header back button, so hiding it leaves
       // the panel with no way out but the backdrop.
-      if (!ownsBack && (panel.classList.contains("shop") || panel.classList.contains("collection") || panel.classList.contains("expeditions"))) exit.hidden = true;
+      if (!ownsBack && (panel.classList.contains("shop") || panel.classList.contains("collection"))) exit.hidden = true;
     }
     // any panel that is not the home screen covers the strip; do not leave it peeking out
     if (!panel.classList.contains("home")) this.setChatStripVisible(false);
@@ -318,14 +314,13 @@ export class Ui {
     if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
     // No full-height panel: the title fridge is the background, a scrim carries the text (handoff 2a).
     const p = el("div", "home");
-    const stars = Object.values(s.expeditions).reduce((a, b) => a + b, 0);
     const icon = (a: string, art: string, text: string) =>
       `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
     p.innerHTML = `
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
         <button class="wallet-chip" data-a="collection" aria-label="Creatures &amp; patterns">
-          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b>${EXPEDITIONS_ENABLED ? `<b class="star">★ ${groupNum(stars)}</b>` : ""}
+          <b class="coin">${groupNum(s.coins)}</b><b class="gem">◆ ${groupNum(s.gems)}</b>
         </button>
       </div>
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
@@ -340,10 +335,6 @@ export class Ui {
           <button class="mode-tile solo" data-a="solo">
             <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
             <i>BEST ${groupNum(s.bestSolo)} CM</i>
-          </button>
-          <button class="mode-tile exp ${EXPEDITIONS_ENABLED ? "" : "soon"}" data-a="expeditions" ${EXPEDITIONS_ENABLED ? "" : "disabled aria-disabled=\"true\""}>
-            <b>EXPEDITIONS</b><small>Crew puzzles, a fling budget, three stars.</small>
-            <i>${EXPEDITIONS_ENABLED ? `★ ${groupNum(stars)}` : "COMING SOON"}</i>
           </button>
         </div>
         <label class="home-row ${s.chill ? "on" : ""}">
@@ -363,11 +354,10 @@ export class Ui {
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
-      if (a === "expeditions" && EXPEDITIONS_ENABLED) this.showExpeditions();
       if (a === "solo") this.showQuickKit(() => this.h.onPlay("solo"));
       if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"));
       if (a === "collection") this.showCollection();
-      if (a === "board") this.showBoard(EXPEDITIONS_ENABLED ? "crew" : "solo");
+      if (a === "board") this.showBoard("solo");
       if (a === "settings") this.showSettings();
       if (a === "tutorial") this.showHowToPlay();
       if (a === "story") this.showStory(() => this.showMenu());
@@ -676,64 +666,6 @@ export class Ui {
   }
 
   /** Pack and level picker. Levels open one at a time; stars persist per level. */
-  showExpeditions(packId: string = PACKS[0].id) {
-    const s = this.save();
-    const pack = PACKS.find((p) => p.id === packId) ?? PACKS[0];
-    const p = el("div", "panel collection expeditions");
-    p.innerHTML = `<h2>Expeditions</h2>
-      <p class="tag">${esc(pack.blurb)}</p>
-      <div class="tabs">${PACKS.map((k) => `<button class="${k.id === pack.id ? "on" : ""}" data-pack="${k.id}">${esc(k.name)}</button>`).join("")}</div>
-      <div class="level-grid">${pack.levels.map((l, i) => {
-        const st = s.expeditions[l.id] ?? 0, open = isUnlocked(l.id, s.expeditions);
-        return `<button class="level ${open ? "" : "locked"} ${st ? "done" : ""}" data-level="${l.id}" ${open ? "" : "disabled"}>
-          <b>${i + 1}</b><span>${esc(l.name)}</span><i>${"★".repeat(st)}${"☆".repeat(3 - st)}</i></button>`; }).join("")}</div>
-      <p class="fine">${pack.levels.filter((l) => s.expeditions[l.id]).length}/${pack.levels.length} done · ${pack.levels.reduce((a, l) => a + (s.expeditions[l.id] ?? 0), 0)}/${pack.levels.length * 3} stars</p>
-      <button class="ghost" data-a="back">BACK</button>`;
-    p.addEventListener("click", (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-pack],[data-level],[data-a]");
-      if (!t) return;
-      if (t.dataset.pack) this.showExpeditions(t.dataset.pack);
-      else if (t.dataset.level) this.h.onPlayLevel(t.dataset.level);
-      else if (t.dataset.a === "back") this.showMenu();
-    });
-    this.show(p);
-  }
-
-  /** Two-line teaching card before a level that introduces a trick. */
-  showIntro(key: keyof typeof INTROS, go: () => void) {
-    const card = INTROS[key];
-    const p = el("div", "panel small intro");
-    p.innerHTML = `<div class="story-icon">${key === "stack" ? "🪜" : key === "catch" ? "🤝" : "🎯"}</div>
-      <h2>${esc(card.title)}</h2>${card.lines.map((l) => `<p class="tag">${esc(l)}</p>`).join("")}
-      <button class="primary" data-a="go">GOT IT</button>`;
-    p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "go") { this.clear(); go(); } });
-    this.show(p);
-  }
-
-  showLevelResult(o: { level: LevelDef; won: boolean; stars: number; flings: number; lost: number; earned: number; unlocked?: CreatureDef[] }) {
-    const p = el("div", "panel small");
-    const next = nextLevel(o.level.id);
-    p.innerHTML = `
-      <h2>${o.won ? (o.stars === 3 ? "Perfect!" : "Made it!") : o.lost >= o.level.team ? "Everyone lost" : "Out of flings"}</h2>
-      <div class="big stars">${o.won ? "★".repeat(o.stars) + "☆".repeat(3 - o.stars) : "☆☆☆"}</div>
-      <p class="tag">${esc(o.level.name)} · ${o.flings} flings${o.won ? ` (par ${o.level.par})` : ""}${o.lost ? ` · ${o.lost} lost` : ""}</p>
-      ${o.won && o.stars < 3 ? `<p class="fine">${o.flings > o.level.par ? "Under par for a star. " : ""}${o.lost ? "Lose nobody for a star." : ""}</p>` : ""}
-      <p class="tag">Earned <span class="coin">$${o.earned}</span></p>
-      ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">🎉 New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
-      ${o.won && next ? `<button class="primary" data-a="next">NEXT LEVEL</button>` : ""}
-      <button class="${o.won ? "" : "primary"}" data-a="retry">${o.won ? "PLAY AGAIN" : "TRY AGAIN"}</button>
-      <button class="ghost" data-a="map">ALL LEVELS</button>`;
-    p.addEventListener("click", (e) => {
-      const a = (e.target as HTMLElement).dataset.a;
-      const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
-      if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); return; }
-      if (a === "next") { this.clear(); this.h.onQuitRun(); this.h.onNextLevel(o.level.id); }
-      if (a === "retry") { this.clear(); this.h.onQuitRun(); this.h.onPlayLevel(o.level.id); }
-      if (a === "map") { this.clear(); this.h.onQuitRun(); this.showExpeditions(); }
-    });
-    this.show(p);
-  }
-
   /** Grid of every portrait; tap one to wear it in chat. */
   showAvatarPicker() {
     const s = this.save();
@@ -1087,8 +1019,7 @@ export class Ui {
       p.innerHTML = `
         <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>${mode === "lifetime" ? "Lifetime climbed" : mode === "coins" ? "Richest climbers" : "Highest climbs"}</h2><span class="shell-spacer"></span></div>
         <div class="shell-body">
-          <div class="seg${EXPEDITIONS_ENABLED ? "" : " seg-3"}">
-            ${EXPEDITIONS_ENABLED ? `<button class="${mode === "crew" ? "on" : ""}" data-m="crew">CREW</button>` : ""}
+          <div class="seg seg-3">
             <button class="${mode === "solo" ? "on" : ""}" data-m="solo">SOLO</button>
             <button class="${mode === "lifetime" ? "on" : ""}" data-m="lifetime">LIFETIME</button>
             <button class="${mode === "coins" ? "on" : ""}" data-m="coins">COINS</button>
@@ -1243,7 +1174,7 @@ export class Ui {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
-      if (a === "again") this.showQuickKit(() => this.h.onPlay(o.mode));
+      if (a === "again") this.showQuickKit(() => this.h.onPlay("solo"));
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }

@@ -19,7 +19,6 @@ export type UnlockRule =
   | { kind: "gadgets"; rides: number }
   | { kind: "hits"; total: number }
   | { kind: "coins"; perRun: number }
-  | { kind: "stars"; total: number }
   | { kind: "paint"; perRun: number };
 
 export interface CreatureDef {
@@ -101,7 +100,6 @@ export function unlockText(rule: UnlockRule): string {
     case "gadgets": return `Ride ${rule.rides} gadgets in one run`;
     case "hits": return `Take ${rule.total} bumper hits (lifetime)`;
     case "coins": return `Collect ${rule.perRun} coins in one run`;
-    case "stars": return `Earn ${rule.total} expedition stars`;
     case "paint": return `Grab ${rule.perRun} paint buckets in one run`;
   }
 }
@@ -116,8 +114,6 @@ export interface RunFacts {
   coins: number;
   /** lifetime bumper hits after this run */
   hitsTotal: number;
-  /** expedition stars held after this run or level */
-  stars: number;
   /** paint buckets grabbed this run */
   paints: number;
 }
@@ -134,7 +130,6 @@ export function creaturesEarned(owned: string[], f: RunFacts): CreatureDef[] {
       case "gadgets": return f.gadgetRides >= r.rides;
       case "hits": return f.hitsTotal >= r.total;
       case "coins": return !f.chill && f.coins >= r.perRun;
-      case "stars": return f.stars >= r.total;
       case "paint": return !f.chill && f.paints >= r.perRun;
     }
   });

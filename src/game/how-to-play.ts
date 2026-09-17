@@ -14,7 +14,6 @@
  * named here; while the rows come from FRIDGE_ITEMS that holds by construction, and the
  * assertion is there to fail the day someone writes the list out by hand again.
  */
-import { EXPEDITIONS_ENABLED } from "./config";
 import { FRIDGE_ITEMS, type FridgeItem } from "./items";
 
 export interface HowToRow {
@@ -50,7 +49,7 @@ const surfaces = (kind: FridgeItem["kind"]) => tally((i) => i.family === "surfac
 const CARRIED = ["coin", "gem", "heart"];
 const CREW_ONLY = ["extra"];
 export const boostItems = () => FRIDGE_ITEMS.filter((i) =>
-  i.family === "pickup" && !CARRIED.includes(i.power ?? "") && (EXPEDITIONS_ENABLED || !CREW_ONLY.includes(i.power ?? "")));
+  i.family === "pickup" && !CARRIED.includes(i.power ?? "") && !CREW_ONLY.includes(i.power ?? ""));
 export const hazardItems = () => FRIDGE_ITEMS.filter((i) => i.hazard);
 
 /** One icon per mechanic; anything new falls back to a neutral mark rather than vanishing. */
@@ -136,11 +135,6 @@ export function howToSections(): HowToSection[] {
         { icon: "👆", name: "Fling", text: "Drag back from anywhere on the screen and let go. The longer the line, the harder the throw." },
         { icon: "🧲", name: "Landing", text: "Hands and feet catch on their own. A single tip holds too, and you swing from it until you settle." },
         { icon: "❤️", name: "Hearts", text: "Three of them. A moving magnet, Cooper's hand or the cat's paw each cost one; a Little Lifeline gives one back." },
-        // crew play is unreachable while Expeditions is shelved, so its rules are not rules right now
-        ...(EXPEDITIONS_ENABLED ? [
-          { icon: "🐸", name: "Leapfrog", text: "The lowest free climber is picked for you, so a good run is a rhythm of bottom over top." },
-          { icon: "🪜", name: "Chains", text: "CLIMB builds a ladder of teammates across a wide gap. A climber holding someone is a rung and can't launch." },
-        ] : []),
       ],
     },
   ];

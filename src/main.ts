@@ -2,14 +2,13 @@ import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
 import { Game, type RunSnapshot } from "./game/game";
-import { render, setKeyboardHints, hudButtons, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
+import { render, setKeyboardHints, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
 import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
-import { CFG, UPGRADES, W, upgradeCost, RESERVE_COST, SHOP_ENABLED, statsFor, type UpgradeKey } from "./game/config";
+import { CFG, UPGRADES, W, upgradeCost, statsFor, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
-import { levelById, nextLevel, starsFor, EXPEDITION_LEVELS, type LevelDef } from "./game/expeditions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -68,7 +67,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "reserves", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "expeditions", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "crew", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -96,7 +95,6 @@ function mergeCloudBlob(blob: string) {
     save.creatures = Array.from(new Set([...save.creatures, ...(c.creatures ?? [])]));
     save.patterns = Array.from(new Set([...save.patterns, ...(c.patterns ?? [])]));
     save.hitsTotal = Math.max(save.hitsTotal, c.hitsTotal ?? 0); save.spins = Math.max(save.spins, c.spins ?? 0);
-    for (const [id, st] of Object.entries(c.expeditions ?? {})) save.expeditions[id] = Math.max(save.expeditions[id] ?? 0, st as number);
     save.intros = Array.from(new Set([...save.intros, ...(c.intros ?? [])]));
     migrateLooks(save);
     if (c.name) save.name = c.name;
@@ -173,16 +171,14 @@ canvas.addEventListener("touchend", (e) => { const now = Date.now(); if (now - l
 
 setLang(save.lang || detectLang());
 const ui = new Ui(uiRoot, () => save, {
-  onPlay: (rules) => startRun(rules),
-  onPlayLevel: (id) => { const l = levelById(id); if (l) startLevel(l); },
-  onNextLevel: (id) => { const n = nextLevel(id); if (n) startLevel(n); else ui.showExpeditions(); },
+  onPlay: () => startRun("solo"),
   onIntroSeen: (key) => { if (!save.intros.includes(key)) { save.intros.push(key); persist(); } },
   onResume: () => { paused = false; },
   onPause: () => { paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
     void cloudSync("quit");
-    if (game && game.phase !== "dead" && !game.chill && !game.level) { save.coins += game.coins; save.gems += game.gems; save.reserves = game.reserves; persist(); }
+    if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; persist(); }
     endRun(); ui.showMenu();
   },
   onBuy: (key: UpgradeKey) => {
@@ -208,10 +204,6 @@ const ui = new Ui(uiRoot, () => save, {
       return;
     }
     paused = false;
-  },
-  onBuyReserve: () => {
-    if (save.coins < RESERVE_COST || save.reserves >= 5) return;
-    save.coins -= RESERVE_COST; save.reserves += 1; persist();
   },
   onWear: (look) => {
     if (!save.creatures.includes(look.creature) || !save.patterns.includes(look.pattern)) return;
@@ -259,13 +251,13 @@ const ui = new Ui(uiRoot, () => save, {
       const r = await cloud.claim(code);
       if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
       // remember this device's old profile so it can be folded in rather than lost
-      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, reserves: save.reserves, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
+      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
       save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
       applyCloudBlob(r.blob);
       const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
       if (hadProgress && old.id !== save.playerId) {
         // wallet and lifetime add; records and upgrades take the higher; skins union
-        save.coins += old.coins; save.gems += old.gems; save.reserves = Math.min(5, save.reserves + old.reserves);
+        save.coins += old.coins; save.gems += old.gems;
         save.totalCm += old.totalCm; save.runs += old.runs;
         save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
         for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
@@ -316,7 +308,7 @@ uiReady = true;
 
 const SNAP_KEY = "magnet-climbers:run:v1";
 function saveSnapshot() {
-  if (!game || game.level) return;
+  if (!game) return;
   const snap = game.snapshot();
   try {
     if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted }));
@@ -337,7 +329,7 @@ function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: 
 setInterval(saveSnapshot, 2000);
 window.addEventListener("pagehide", saveSnapshot);
 
-let rulesNow: "solo" | "crew" = "crew";
+let rulesNow: "solo" | "crew" = "solo";
 function runEvents() {
   return {
     onPower: () => {},
@@ -350,7 +342,6 @@ function runEvents() {
       // the kit was bought for this climb and this climb is over. The run keeps the stats it
       // started with (they were read once, at the top), so a revive still climbs with the gear.
       for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
-      if (game.level) { finishLevel(game.level); return; }
       const cm = game.heightCm;
       const chill = game.chill;
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
@@ -374,7 +365,7 @@ function runEvents() {
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.reserves = game.reserves;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, stars: totalStars(), paints: game.feats.paints ?? 0 });
+      const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
@@ -454,45 +445,6 @@ function tickTutorial(dt: number) {
 let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 /** coins picked up this run, across revives; feeds the dino unlock */
 let runCoinsTotal = 0;
-/** Expedition: fixed seed, fixed team, upgrades ignored, no wall. */
-function startLevel(level: LevelDef) {
-  const go = () => {
-    rulesNow = "crew";
-    ui.clear(); clearSnapshot();
-    adUsedThisRun = false; bankedCm = 0; runCounted = false; runCoinsTotal = 0; paused = false;
-    game = new Game({ ...EXPEDITION_LEVELS } as Record<UpgradeKey, number>, runEvents(), { rules: "crew", seed: level.seed, level, lineup: lineupFor("crew") });
-    game.walletCoins = save.coins; game.walletGems = save.gems;
-    game.viewH = viewH;
-    ui.hideTip();
-    ui.setInRun(true);
-    backdropDrawn = false; appEl.classList.add("in-run");
-  };
-  if (level.intro && !save.intros.includes(level.intro)) ui.showIntro(level.intro, () => { save.intros.push(level.intro!); persist(); go(); });
-  else go();
-}
-
-const totalStars = () => Object.values(save.expeditions).reduce((a, b) => a + b, 0);
-function finishLevel(level: LevelDef) {
-  if (!game) return;
-  const lost = game.climbers.filter((c) => c.state === "lost").length;
-  const won = game.won;
-  const stars = won ? starsFor(level, game.flings, lost) : 0;
-  const before = save.expeditions[level.id] ?? 0;
-  // coins collected always bank; first-time stars pay a bonus
-  const bonus = Math.max(0, stars - before) * 25;
-  const earned = game.coins + (won ? bonus : 0);
-  save.coins += earned; save.gems += game.gems;
-  if (won) save.expeditions[level.id] = Math.max(before, stars);
-  save.hitsTotal += game.feats.hits; game.feats.hits = 0;
-  // expeditions earn creatures too (stars, chains, gadget rides, hits)
-  const unlocked = creaturesEarned(save.creatures, { mode: "crew", cm: 0, chill: false, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: earned, hitsTotal: save.hitsTotal, stars: totalStars(), paints: game.feats.paints ?? 0 });
-  for (const c of unlocked) save.creatures.push(c.id);
-  game.coins = 0; game.gems = 0; game.walletCoins = save.coins;
-  persist();
-  void cloudSync("level");
-  ui.showLevelResult({ level, won, stars, flings: game.flings, lost, earned, unlocked });
-}
-
 function startRun(rules: "solo" | "crew", withTutorial = false) {
   void cloudPull(true);
   rulesNow = rules;
@@ -518,7 +470,6 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   }
   ui.hideTip();
   if (withTutorial) ui.showTip(tutorialSteps[0].tip);
-  game.reserves = save.reserves;
   game.walletCoins = save.coins; game.walletGems = save.gems;
   game.viewH = viewH;
   ui.setInRun(true);
@@ -593,16 +544,12 @@ const hit = (p: { x: number; y: number }, r: { x: number; y: number; w: number; 
 canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
   const sp = toScreen(e);
-  const b = hudButtons(viewH, game);
   for (const r of teamTapRects(game, viewH)) {
     if (hit(sp, r)) { game.select(r.id); return; }
   }
   for (const m of offscreenMarkers(game, viewH)) {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }
   }
-  if (game.rules === "crew" && hit(sp, b.sync)) { game.sync = !game.sync; return; }
-  if (game.rules === "crew" && hit(sp, b.mode)) { game.mode = game.mode === "fling" ? "move" : "fling"; return; }
-  if (SHOP_ENABLED && game.rules === "crew" && game.reserves > 0 && hit(sp, b.reserve)) { if (game.callReserve()) { save.reserves = game.reserves; persist(); } return; }
   canvas.setPointerCapture(e.pointerId);
   game.pointerDown(toWorld(e));
 });
@@ -622,8 +569,6 @@ window.addEventListener("keydown", (e) => {
     const pool = game.anchored.filter((c) => !game!.climbers.some((o) => o.parent === c.id && o.state === "linked")).sort((a, b) => a.x - b.x);
     if (pool.length) { const i = pool.findIndex((c) => c.id === game!.selectedId); game.select(pool[(i + (k === "q" ? pool.length - 1 : 1)) % pool.length].id); }
   }
-  if (k === "c" && game.rules === "crew") game.mode = game.mode === "fling" ? "move" : "fling";
-  if (k === "x" && game.rules === "crew") game.sync = !game.sync;
 });
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase(); keys.delete(k);

@@ -99,7 +99,7 @@ export function redLineCm(g: Game) {
   const lowest = Math.max(...g.alive.map((c) => c.y));
   return Math.max(0, Math.round((g.floorY - lowest) / CFG.pxPerCm));
 }
-export const inDanger = (g: Game) => !g.chill && !g.level && g.phase === "running" && redLineCm(g) <= CFG.dangerCm;
+export const inDanger = (g: Game) => !g.chill && g.phase === "running" && redLineCm(g) <= CFG.dangerCm;
 
 /* ------------------------------------------------------------------ crew tiles */
 
@@ -319,12 +319,6 @@ function drawRedLine(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time
     ctx.font = font(800, 12); ctx.fillStyle = CHILL; ctx.textAlign = "left"; ctx.letterSpacing = "1.4px";
     ctx.fillText(tr("CHILL · NO RED LINE · NOTHING BANKS"), d.x + 14, mid);
     ctx.letterSpacing = "0px";
-  } else if (g.level) {
-    const left = g.level.flings - g.flings;
-    ctx.font = font(800, 12); ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.letterSpacing = "1.4px";
-    ctx.fillText(tr("FLINGS"), d.x + 14, mid); ctx.letterSpacing = "0px";
-    ctx.font = font(900, 18); ctx.fillStyle = left <= 2 ? DANGER : "#fff";
-    ctx.fillText(`${left} / ${g.level.flings}`, d.x + 74, mid);
   } else {
     const dist = redLineCm(g);
     const blink = danger && !reduced ? Math.floor(time / 0.6) % 2 === 0 : true;

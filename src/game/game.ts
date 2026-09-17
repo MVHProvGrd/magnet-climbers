@@ -9,7 +9,6 @@ import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidH
 import { pawPose, PAW_DURATION, PAW_TAPS, PAW_WARN, CLAW_TIPS, SCRATCH_LIFE, type CatPaw, type Scratch } from "./cat-paw";
 import { cloneTricks, freshTricks, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
-import type { LevelDef } from "./expeditions";
 
 export type Phase = "idle" | "running" | "dead";
 /** How far a clip tips when a climber hangs off one end of its bar. */
@@ -113,14 +112,10 @@ export class Game {
   rules: "solo" | "crew" = "crew";
   /** chill: no rising wall. Falling off the bottom still loses a climber. */
   chill = false;
-  /** expedition level, when this run is one; chill rules apply and the goal line ends the run */
-  level: LevelDef | null = null;
   /** flings used this run (one per gesture; a SYNC fling counts once) */
   flings = 0;
   /** what each climber is currently sliding on, so a material only sounds on contact */
   private slideMaterial = new Map<number, string>();
-  won = false;
-  private outOfFlings = 0;
   /** ladder crossing: once a stack's top grabs steel, the ones below crawl up over it one by one */
   bridge: { queue: number[]; crawler: { id: number; path: Vec[]; seg: number; t: number } | null; frozen: Set<number> } | null = null;
   reserves = 0;
@@ -137,7 +132,7 @@ export class Game {
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
 
-  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; level?: LevelDef } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number } = {}) {
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     this.rules = opts.rules ?? "crew";
     this.chill = opts.chill ?? false;
@@ -147,16 +142,11 @@ export class Game {
     this.stats = statsFor(levels);
     this.revivesLeft = this.stats.revives;
     this.startY = 0;
-    this.level = opts.level ?? null;
-    // expeditions: one fling at a time, every fling deliberate
-    if (this.level) this.sync = false;
-    if (this.level) { this.chill = true; this.rules = "crew"; }
-    this.world = new World(seed, 0, opts.worldVersion, this.level ? this.level.recipe : null);
+    this.world = new World(seed, 0, opts.worldVersion);
     this.floorY = CFG.floorStartOffset;
     this.highestY = 0;
     this.camY = -this.viewH * 0.55;
-    this.spawnTeam(this.rules === "solo" ? 1 : this.level ? this.level.team : this.stats.teamSize, 0);
-    if (this.level) this.target = { cm: this.level.goalCm, name: "GOAL", beaten: false };
+    this.spawnTeam(this.rules === "solo" ? 1 : this.stats.teamSize, 0);
     this.world.ensure(-this.viewH * 2);
     this.relabelSolo();
   }
@@ -303,7 +293,6 @@ export class Game {
     const v = this.launchVector();
     this.drag = null;
     if (!v) return;
-    if (this.level && this.flings >= this.level.flings) { this.floats.push({ x: c.x, y: c.y - 34, text: "out of flings", life: 1, color: "#ff6b6b" }); return; }
     if (this.sync && this.rules === "crew") {
       const targets = this.syncTargets();
       if (targets.length === 0) return;
@@ -860,17 +849,6 @@ export class Game {
       this.phase = "dead";
       sfx.over();
       this.events.onGameOver();
-    }
-    if (this.level && this.phase === "running") {
-      const goalY = this.startY - this.level.goalCm * CFG.pxPerCm;
-      if (this.climbers.some((c) => (c.state === "stuck" || c.state === "linked") && c.y <= goalY)) {
-        this.won = true; if (this.target) this.target.beaten = true;
-        this.phase = "dead"; sfx.power(); this.events.onGameOver();
-      } else if (this.flings >= this.level.flings && !this.climbers.some((c) => c.state === "flying") && this.pendingLaunches.length === 0) {
-        // budget spent and everyone has settled short of the goal
-        this.outOfFlings += 1 / 120;
-        if (this.outOfFlings > 1.2) { this.phase = "dead"; this.lastCause = "flings"; sfx.over(); this.events.onGameOver(); }
-      }
     }
   }
 

@@ -141,7 +141,15 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
 }
 
 /* ------------------------------------------------------------------ the bench */
-let item: FridgeItem = FRIDGE_ITEMS.find((i) => i.id === "clip-lost-cat") ?? FRIDGE_ITEMS[0];
+/** Everything the bench can walk, in the order the groups are listed. */
+const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of));
+const SIZES = "mc-scale-sizes";
+type Audit = Record<string, { w: number; h: number; at: string }>;
+const readAudit = (): Audit => { try { return JSON.parse(localStorage.getItem(SIZES) ?? "{}") as Audit; } catch { return {}; } };
+const writeAudit = (a: Audit) => { try { localStorage.setItem(SIZES, JSON.stringify(a)); } catch { /* private window */ } };
+let audit: Audit = readAudit();
+
+let item: FridgeItem = WALK[0];
 let boxW = 150, boxH = 150, lockAspect = true, hang = false;
 
 function poseClimber(x: number, y: number): Climber {
@@ -191,6 +199,7 @@ function paint(canvas: HTMLCanvasElement, readout: HTMLElement) {
     `box      <b>${boxW} × ${boxH} px</b>   (${cm(boxW)} × ${cm(boxH)} cm)\n` +
     `climber  ${CLIMBER_PX} px   ·   this is <b>${times}×</b> a climber tall\n` +
     `aspect   ${(boxW / boxH).toFixed(3)}${aspectOf(item) ? `   (art is ${aspectOf(item)!.toFixed(3)})` : ""}\n` +
+    `${audit[item.id] ? `recorded  <b>✓ ${audit[item.id].w} × ${audit[item.id].h}</b>  on ${audit[item.id].at}\n` : ""}` +
     `set it in ${esc(source(item))}` +
     (isGadget(item) ? `\n<span class="warn">a gadget draws at its own size: the box is a ruler here, not a control</span>` : "");
 }
@@ -202,11 +211,7 @@ function boot() {
       <p class="fine">The real door, a real climber for scale, and anything that can appear on it at whatever size you like. Nothing here ships — read the numbers and put them in the code.</p>
       <h2>What to look at</h2>
       <label for="item">Object</label>
-      <select id="item">${GROUPS.map((gr) => {
-        const of = FRIDGE_ITEMS.filter(gr.of);
-        return of.length ? `<optgroup label="${esc(gr.label)}">${of.map((i) =>
-          `<option value="${esc(i.id)}"${i.id === item.id ? " selected" : ""}>${esc(i.name)}</option>`).join("")}</optgroup>` : "";
-      }).join("")}</select>
+      <select id="item"></select>
       <p class="desc" id="desc"></p>
       <div class="check"><input type="checkbox" id="hang" /><label for="hang" style="margin:0">Hang it from a keyring (toys only)</label></div>
 
@@ -220,9 +225,22 @@ function boot() {
       <div class="bar">
         <button id="fit">Fit the art</button>
         <button id="match">Match the climber</button>
-        <button class="primary" id="copy">Copy numbers</button>
       </div>
       <div class="readout" id="out"></div>
+
+      <h2>Audit</h2>
+      <p class="fine" id="progress"></p>
+      <div class="bar">
+        <button id="prev">‹ Back</button>
+        <button class="primary" id="keep">Keep this size →</button>
+        <button id="skip">Skip</button>
+      </div>
+      <div class="bar">
+        <button id="export">Show the file</button>
+        <button id="copyall">Copy the file</button>
+        <button id="wipe">Start over</button>
+      </div>
+      <textarea id="file" hidden readonly></textarea>
     </div>
     <div class="card">
       <canvas class="door" id="door" width="880" height="1584"></canvas>
@@ -231,6 +249,7 @@ function boot() {
   </div>`;
 
   const canvas = root.querySelector<HTMLCanvasElement>("#door")!;
+  const picker = root.querySelector<HTMLSelectElement>("#item")!;
   const out = root.querySelector<HTMLElement>("#out")!;
   const desc = root.querySelector<HTMLElement>("#desc")!;
   const wR = root.querySelector<HTMLInputElement>("#w")!, hR = root.querySelector<HTMLInputElement>("#h")!;
@@ -258,7 +277,7 @@ function boot() {
   hN.addEventListener("change", () => setH(+hN.value));
   lock.addEventListener("change", () => { lockAspect = lock.checked; setW(boxW); });
   hangBox.addEventListener("change", () => { hang = hangBox.checked; sync(); });
-  root.querySelector("#item")!.addEventListener("change", (e) => {
+  picker.addEventListener("change", (e) => {
     item = FRIDGE_ITEMS.find((i) => i.id === (e.target as HTMLSelectElement).value)!;
     const a = aspectOf(item);
     if (a) { boxW = 150; boxH = Math.round(150 / a); }
@@ -268,12 +287,66 @@ function boot() {
     const a = aspectOf(item) ?? 1; boxW = 150; boxH = Math.round(150 / a); sync();
   });
   root.querySelector("#match")!.addEventListener("click", () => { setH(CLIMBER_PX); });
-  root.querySelector("#copy")!.addEventListener("click", () => {
-    void navigator.clipboard.writeText(`${item.id}: ${boxW} x ${boxH} px (${(boxW / CFG.pxPerCm).toFixed(1)} x ${(boxH / CFG.pxPerCm).toFixed(1)} cm, ${(boxH / CLIMBER_PX).toFixed(2)}x climber)`);
+
+  /** The picker doubles as the checklist: a tick marks every size already recorded. */
+  const fillPicker = () => {
+    const keep = item.id;
+    picker.innerHTML = GROUPS.map((gr) => {
+      const of = FRIDGE_ITEMS.filter(gr.of);
+      const done = of.filter((i) => audit[i.id]).length;
+      return of.length ? `<optgroup label="${esc(gr.label)} — ${done}/${of.length}">${of.map((i) =>
+        `<option value="${esc(i.id)}">${audit[i.id] ? "✓ " : "◻︎ "}${esc(i.name)}${audit[i.id] ? ` · ${audit[i.id].w}×${audit[i.id].h}` : ""}</option>`).join("")}</optgroup>` : "";
+    }).join("");
+    picker.value = keep;
+  };
+  const progress = root.querySelector<HTMLElement>("#progress")!;
+  const file = root.querySelector<HTMLTextAreaElement>("#file")!;
+  const fileText = () => {
+    const rows = WALK.filter((i) => audit[i.id]).map((i) => ({ id: i.id, name: i.name, family: i.family,
+      w: audit[i.id].w, h: audit[i.id].h, cm: [+(audit[i.id].w / CFG.pxPerCm).toFixed(1), +(audit[i.id].h / CFG.pxPerCm).toFixed(1)],
+      climbers: +(audit[i.id].h / CLIMBER_PX).toFixed(2), where: source(i) }));
+    return JSON.stringify({ audited: rows.length, of: WALK.length, pxPerCm: CFG.pxPerCm, climberPx: CLIMBER_PX, sizes: rows }, null, 2);
+  };
+  const tell = () => {
+    const done = WALK.filter((i) => audit[i.id]).length;
+    const at = WALK.indexOf(item) + 1;
+    const mine = audit[item.id];
+    progress.innerHTML = `${at} of ${WALK.length} · ${done} recorded` +
+      (mine ? ` · this one is <b>${mine.w}×${mine.h}</b>` : " · not recorded yet");
+    if (!file.hidden) file.value = fileText();
+  };
+  const go = (step: number) => {
+    const at = (WALK.indexOf(item) + step + WALK.length) % WALK.length;
+    item = WALK[at];
+    const mine = audit[item.id];
+    if (mine) { boxW = mine.w; boxH = mine.h; }
+    else { const a = aspectOf(item); boxW = 150; boxH = a ? Math.round(150 / a) : 150; }
+    picker.value = item.id;
+    sync(); tell();
+  };
+  root.querySelector("#keep")!.addEventListener("click", () => {
+    audit[item.id] = { w: boxW, h: boxH, at: new Date().toISOString().slice(0, 10) };
+    writeAudit(audit); fillPicker(); go(1);
+  });
+  root.querySelector("#skip")!.addEventListener("click", () => go(1));
+  root.querySelector("#prev")!.addEventListener("click", () => go(-1));
+  root.querySelector("#export")!.addEventListener("click", () => { file.hidden = !file.hidden; file.value = fileText(); });
+  root.querySelector("#copyall")!.addEventListener("click", () => void navigator.clipboard.writeText(fileText()));
+  root.querySelector("#wipe")!.addEventListener("click", () => {
+    if (!confirm("Forget every size recorded on this device?")) return;
+    audit = {}; writeAudit(audit); fillPicker(); tell();
+  });
+  addEventListener("keydown", (e) => {
+    if ((e.target as HTMLElement)?.tagName === "INPUT" || (e.target as HTMLElement)?.tagName === "TEXTAREA") return;
+    if (e.key === "ArrowRight") go(1);
+    if (e.key === "ArrowLeft") go(-1);
   });
 
-  void Promise.all([obstacleArtReady, gadgetArtReady, pickupArtReady]).then(sync);
-  sync();
+  fillPicker();
+  // open on the first item at its own shape, not at a square nobody chose
+  const first = aspectOf(item); if (first) boxH = Math.round(boxW / first);
+  void Promise.all([obstacleArtReady, gadgetArtReady, pickupArtReady]).then(() => { sync(); tell(); });
+  sync(); tell();
 }
 
 const saved = localStorage.getItem(KEY);

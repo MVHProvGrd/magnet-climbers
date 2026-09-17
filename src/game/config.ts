@@ -7,13 +7,6 @@ export const W = 400;
  * teammates to mean anything. They stay in the table, unsold, for the crew revamp.
  */
 export const SHOP_ENABLED = true;
-/**
- * Expeditions are hidden while the crew-puzzle concept gets more work; the game is the
- * single climber for now. Everything behind this still builds and still has its tests --
- * flip to true to bring the mode, its star counters and its picker back.
- */
-export const EXPEDITIONS_ENABLED = false;
-
 export const CFG = {
   gravity: 950,
   maxDrag: 130,
