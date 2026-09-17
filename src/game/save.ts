@@ -63,6 +63,12 @@ export interface SaveData {
   namePrompted: boolean;
   tutorialDone: boolean;
   chill: boolean;
+  /**
+   * Spend what the kit costs without being asked, every run. Someone who has settled on a
+   * kit does not want the shop between them and the next climb, and the kit is per-run, so
+   * "buy it again" is the answer nearly every time once they have the coins for it.
+   */
+  autoKit: boolean;
 }
 
 const KEY = "magnet-climbers:save:v1";
@@ -108,6 +114,7 @@ function defaults(): SaveData {
     namePrompted: false,
     tutorialDone: false,
     chill: false,
+    autoKit: false,
   };
 }
 

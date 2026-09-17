@@ -234,6 +234,7 @@ const ui = new Ui(uiRoot, () => save, {
     save.sound = on; save.music = on; setSound(on); setMusic(on); persist();
   },
   onToggleChill: () => { save.chill = !save.chill; persist(); },
+  onToggleAutoKit: (on: boolean) => { save.autoKit = on; persist(); },
   onOpenBoard: () => { void resubmitBests(); },
   onLinkDevice: () => {
     void (async () => {

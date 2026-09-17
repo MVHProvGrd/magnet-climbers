@@ -145,6 +145,11 @@ select.buy option { background: #1e2229; color: #fff; }
 .coin { color: var(--coin); }
 .gem { color: var(--gem); }
 .kit-list { display: flex; flex-direction: column; gap: 8px; }
+/* Says why the chips are dark, instead of leaving the player to guess. */
+.kit-note { text-align: left; opacity: 0.72; line-height: 1.45; margin: -2px 0 2px; }
+.kit-auto { display: flex; align-items: center; gap: 9px; text-align: left; padding: 2px 2px 0;
+  font-size: 13px; font-weight: 700; opacity: 0.8; cursor: pointer; }
+.kit-auto input { width: 17px; height: 17px; flex-shrink: 0; accent-color: var(--coin); margin: 0; }
 .kit-chip { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px;
   text-align: left; padding: 11px 13px; border-radius: 12px; background: rgba(255,255,255,0.05); }
 .kit-chip b { font-size: 14px; line-height: 1.2; }
@@ -345,6 +350,10 @@ select.buy option { background: #1e2229; color: #fff; }
 .how-row b { display: block; font-size: 14px; margin-bottom: 1px; }
 .how-row small { display: block; font-size: 12px; line-height: 1.45; opacity: 0.7; font-weight: 600; }
 .how-count { font-style: normal; font-size: 11px; font-weight: 700; opacity: 0.5; margin-left: 5px; letter-spacing: 0.3px; }
+/* Numbered steps someone follows with a phone in the other hand: left-aligned, roomy. */
+.how-steps { margin: 0; padding: 0 0 0 20px; text-align: left; display: flex; flex-direction: column; gap: 9px; }
+.how-steps li { font-size: 14px; line-height: 1.5; font-weight: 600; opacity: 0.88; }
+.how-steps b { font-weight: 800; opacity: 1; }
 
 /* avatars: one sprite sheet, cells picked by background-position (see avatars.ts) */
 .avi {

@@ -14,6 +14,7 @@ import { nameReason } from "./profanity";
 import { howToSections } from "./how-to-play";
 import { LANGS, lang, t, translateTree, watchTree, type Lang } from "./i18n";
 import { setChatStrip, groupNum } from "./hud";
+import { installState, promptInstall, onInstallChange, markInstallAsked, shouldOfferInstall } from "./install";
 
 export interface UiHandlers {
   onPlay(rules: "solo"): void;
@@ -38,6 +39,8 @@ export interface UiHandlers {
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
+  /** Buy the kit without asking, every climb. */
+  onToggleAutoKit(on: boolean): void;
   onSetLang(lang: Lang): void;
   onSetName(name: string): void;
   onSetAvatar(id: string): void;
@@ -324,6 +327,8 @@ export class Ui {
   showMenu() {
     const s = this.save();
     if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
+    // Once, after a few climbs, and never again whatever the answer.
+    if (shouldOfferInstall(s.runs)) { this.showInstallOffer(() => this.showMenu()); return; }
     // No full-height panel: the title fridge is the background, a scrim carries the text (handoff 2a).
     const p = el("div", "home");
     const icon = (a: string, art: string, text: string) =>
@@ -384,7 +389,7 @@ export class Ui {
       // the daily is the same climb for everyone, so no kit sheet stands in front of it
       if (a === "daily" && !done) { this.clear(); this.h.onPlayDaily(); }
       if (a === "daily" && done) this.showBoard("daily");
-      if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"));
+      if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"), { asked: true });
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard("solo");
       if (a === "settings") this.showSettings();
@@ -713,6 +718,15 @@ export class Ui {
     const chip = (a: string, text: string) => `<button class="shell-chip" data-a="${a}">${text}</button>`;
     const toggle = (a: string, on: boolean, aria: string) =>
       `<label class="shell-toggle ${on ? "on" : ""}"><input type="checkbox" data-a="${a}" ${on ? "checked" : ""} aria-label="${aria}" /><i></i></label>`;
+    // Three different answers: already on a home screen, a dialog we can raise, or iOS,
+    // where the only thing we can do is name the buttons.
+    const installRow = () => {
+      const i = installState();
+      if (i.installed) return row("Installed", "Running from your home screen", `<span class="shell-chip" aria-disabled="true">✓ DONE</span>`);
+      if (i.canPrompt) return row("Install the game", "Its own icon, no address bar, works with no signal", chip("install", "INSTALL"));
+      if (i.isIOS) return row("Add to Home Screen", "Three taps in Safari. Its own icon, no address bar", chip("install-ios", "HOW"));
+      return row("Install the game", "Open this page in Chrome, Edge or Safari on your phone to install it", `<span class="shell-chip" aria-disabled="true">—</span>`);
+    };
     p.innerHTML = `
       <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>Settings</h2><span class="shell-spacer"></span></div>
       <div class="shell-body">
@@ -731,6 +745,7 @@ export class Ui {
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Chill mode", "No red line. No coins or records; metres still count for the world total", toggle("chill", s.chill, "Chill mode"))}
         <p class="sec-label">App</p>
+        ${installRow()}
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
         ${adminKey() ? `
         <p class="sec-label">Owner</p>
@@ -780,7 +795,16 @@ export class Ui {
         syncToggles();
         return;
       }
-      if (a === "shop") { this.showQuickKit(() => this.h.onPlay("solo")); return; }
+      if (a === "shop") { this.showQuickKit(() => this.h.onPlay("solo"), { asked: true }); return; }
+      if (a === "install") {
+        markInstallAsked();
+        void promptInstall().then((out) => {
+          if (out === "accepted") this.toast("Installing — look for the icon on your home screen");
+          if (out === "unavailable") this.toast("Your browser did not offer an install this time");
+        });
+        return;
+      }
+      if (a === "install-ios") { markInstallAsked(); this.showIosInstall(); return; }
       if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
       if (a === "back") this.showMenu();
     });
@@ -802,19 +826,99 @@ export class Ui {
     // a rebuild (a new language, a new name, owner tools appearing) reopens where you were
     const body = p.querySelector<HTMLElement>(".shell-body")!;
     body.addEventListener("scroll", () => { this.settingsScroll = body.scrollTop; }, { passive: true });
+    // The browser can decide an install is possible after this panel is already drawn, and
+    // an accepted install has to turn the row into "Installed" without a rebuild.
+    const stop = onInstallChange(() => {
+      const rows = [...p.querySelectorAll<HTMLElement>(".shell-row")];
+      const here = rows.find((r) => /Install|Add to Home/.test(r.textContent ?? ""));
+      if (!here || !p.isConnected) { stop(); return; }
+      const next = el("div", "");
+      next.innerHTML = installRow();
+      const swap = next.firstElementChild;
+      if (swap) here.replaceWith(swap);
+    });
     this.show(p);
     body.scrollTop = this.settingsScroll;
   }
 
+  /**
+   * iOS has no install API, so this is the whole feature there: say which buttons, in order.
+   * Safari only: the Share sheet in Chrome or Firefox on iOS has no Add to Home Screen.
+   */
+  showIosInstall() {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Add to Home Screen</h2>
+      <p class="tag">In Safari, three taps and the game gets its own icon — no address bar, and it opens with no signal.</p>
+      <ol class="how-steps">
+        <li>Tap <b>Share</b> at the bottom of Safari — the square with an arrow coming out of it.</li>
+        <li>Scroll down the list and tap <b>Add to Home Screen</b>.</li>
+        <li>Tap <b>Add</b>. The fridge appears with your other apps.</li>
+      </ol>
+      <p class="fine">Only Safari can do this on an iPhone or iPad. If you are in Chrome or Firefox, open magnetclimbers.com in Safari first.</p>
+      <button class="primary" data-a="ok">GOT IT</button>`;
+    p.addEventListener("click", (e) => { if ((e.target as HTMLElement).dataset.a === "ok") this.showSettings(); });
+    this.show(p);
+  }
+
+  /**
+   * The one nudge. Offered once, after a few climbs, so it lands on someone who has decided
+   * they like this rather than on someone who has not played it yet. "Not now" is final.
+   */
+  showInstallOffer(then: () => void) {
+    const i = installState();
+    markInstallAsked();
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <h2>Keep the fridge handy?</h2>
+      <p class="tag">Put Magnet Climbers on your home screen: its own icon, the whole screen for the door, and it opens even with no signal.</p>
+      <button class="primary" data-a="yes">${i.isIOS ? "SHOW ME HOW" : "INSTALL"}</button>
+      <button class="ghost" data-a="no">NOT NOW</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "yes" && i.isIOS) { this.showIosInstall(); return; }
+      if (a === "yes") {
+        void promptInstall().then((out) => {
+          if (out === "accepted") this.toast("Installing — look for the icon on your home screen");
+          then();
+        });
+        return;
+      }
+      if (a === "no") then();
+    });
+    this.show(p);
+  }
+
   /** The pre-run sheet: the last thing between the menu and the door, so kit is a decision
    *  you make about the climb you are about to take. Skipped when there is nothing to buy. */
-  showQuickKit(start: () => void) {
-    const s = this.save();
-    const st = statsFor(s.kit);
+  showQuickKit(start: () => void, opts: { asked?: boolean } = {}) {
+    let s = this.save();
     // chill runs have no red line, so a stickier floor would be money for nothing
     const sellable = UPGRADES.filter((u) => u.solo && !(u.key === "floor" && s.chill));
-    const cheapest = Math.min(...sellable.map((u) => upgradeCost(u, s.kit[u.key])));
-    if (!SHOP_ENABLED || s.coins < cheapest) { start(); return; }
+    const cheapest = () => Math.min(...sellable.map((u) => upgradeCost(u, this.save().kit[u.key])));
+    /**
+     * Auto-kit: fill up in price order until the purse will not stretch, then go. Cheapest
+     * first spends the coins on the most levels rather than on one expensive one, which is
+     * what a player buying by hand does anyway.
+     */
+    if (SHOP_ENABLED && s.autoKit && !opts.asked) {
+      for (let guard = 0; guard < 12; guard++) {
+        const now = this.save();
+        const next = sellable
+          .filter((u) => now.kit[u.key] < u.max && now.coins >= upgradeCost(u, now.kit[u.key]))
+          .sort((a, b) => upgradeCost(a, now.kit[a.key]) - upgradeCost(b, now.kit[b.key]))[0];
+        if (!next) break;
+        this.h.onBuy(next.key);
+      }
+      this.clear();
+      start();
+      return;
+    }
+    // Nothing to sell and nobody asked for the shop: stay out of the way.
+    if (!SHOP_ENABLED) { start(); return; }
+    if (s.coins < cheapest() && !opts.asked) { start(); return; }
+    s = this.save();
+    const st = statsFor(s.kit);
     const p = el("div", "panel kit-quick");
     const chips = sellable.map((u) => {
       const lvl = s.kit[u.key], maxed = lvl >= u.max, cost = upgradeCost(u, lvl);
@@ -826,19 +930,33 @@ export class Ui {
           <i>${maxed ? "MAX" : `<em>${u.gain ?? ""}</em>$${cost}`}</i>
         </button>`;
     }).join("");
+    // The one thing the old sheet never said: why every chip is greyed out.
+    const short = s.coins < cheapest();
+    const allMaxed = sellable.every((u) => s.kit[u.key] >= u.max);
+    const note = allMaxed ? "Your kit is full for this climb."
+      : short ? `Not enough coins yet \u2014 the cheapest is $${groupNum(cheapest())}. Coins drop as you climb.`
+      : "";
     p.innerHTML = `
       <h2>Kit up</h2>
       <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}%` : ""}${s.kit.floor ? ` \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>
+      ${note ? `<p class="fine kit-note">${note}</p>` : ""}
       <div class="kit-list">${chips}</div>
+      <label class="kit-auto"><input type="checkbox" data-a="auto" ${s.autoKit ? "checked" : ""} /> <span>Buy this for me every climb</span></label>
       <button class="go" data-a="play">\u25b6 CLIMB</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
+      if (t.closest("[data-a=auto]")) return; // handled on change, below
       const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
-      if (k) { this.h.onBuy(k); this.showQuickKit(start); return; }
+      if (k) { this.h.onBuy(k); this.showQuickKit(start, opts); return; }
       if (t.closest("[data-a=play]")) { this.clear(); start(); return; }
       if (t.closest("[data-a=back]")) this.showMenu();
+    });
+    p.querySelector<HTMLInputElement>('input[data-a="auto"]')!.addEventListener("change", (e) => {
+      const on = (e.target as HTMLInputElement).checked;
+      this.h.onToggleAutoKit(on);
+      this.toast(on ? "Kit bought automatically from now on" : "You will be asked each climb");
     });
     this.show(p);
   }
