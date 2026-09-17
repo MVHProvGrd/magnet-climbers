@@ -692,6 +692,12 @@ export class World {
 
   /** Nearest blue attract plate whose field (rect + 110px) covers the point. */
   attractAt(x: number, y: number): NoStickZone | null {
+    // a polarity toy in its blue phase pulls, exactly as its red phase pushes. This scan was
+    // missing, so blue was three seconds of nothing while red threw you across the door.
+    for (const g of this.gadgets) {
+      const zone = gadgetZone(g, this.gadgetTime);
+      if (zone.kind === "attract" && inRect(x, y, zone, attractReach(zone))) return zone;
+    }
     for (const s of this.segments) {
       if (y < s.y - 220 || y > s.y + s.h + 220) continue;
       for (const z of s.zones) if (z.kind === "attract" && inRect(x, y, z, attractReach(z))) return z;

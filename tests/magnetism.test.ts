@@ -775,6 +775,29 @@ test("the POP! toy pops on a keyring, not just stuck to the door", () => {
   assert.equal(g.world.popped, null);
 });
 
+test("a polarity toy pulls on blue as hard as it pushes on red", () => {
+  const g = game(); g.phase = "running";
+  const seg = g.world.segments[0];
+  const toy = { id: "pol-1", itemId: "polarity-snack", kind: "polarity" as const, phase: 0, x: 200, y: -300 };
+  seg.gadgets = [toy];
+  const at = { x: 240, y: -300 };
+  // the pole flips every three seconds: blue holds first, then red pushes
+  g.world.gadgetTime = 0;
+  const blue = g.world.fieldAt(at.x, at.y);
+  g.world.gadgetTime = 3.5;
+  const red = g.world.fieldAt(at.x, at.y);
+  assert.ok(blue.attract, "blue should be a field, not three seconds of nothing");
+  assert.ok(blue.ax < -100, `blue should pull back toward the toy: ${blue.ax}`);
+  assert.ok(red.repel, "red still pushes");
+  assert.ok(red.ax > 100, `red should push away: ${red.ax}`);
+  // a plain keyring toy is resin: no field either way
+  seg.gadgets = [{ id: "sw-1", itemId: "swing-keys", kind: "swing" as const, phase: 0, x: 200, y: -300, swing: { angle: 0, vel: 0, cool: 0 } }];
+  g.world.gadgetTime = 0;
+  const none = g.world.fieldAt(at.x, at.y);
+  assert.equal(none.attract, null);
+  assert.equal(none.repel, null);
+});
+
 test("knocking the taxi keychain reports it, so it can honk", () => {
   const g = game(); g.phase = "running";
   const seg = g.world.segments[0];

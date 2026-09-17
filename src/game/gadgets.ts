@@ -57,7 +57,10 @@ export function gadgetPose(g: Gadget, time: number) {
 export function gadgetZone(g: Gadget, time: number): NoStickZone {
   // clip hold matches the visible photographed clip (36 wide); swings hold on the chain below the hook
   const p = gadgetPose(g, time), w = g.kind === "polarity" ? 64 : g.kind === "clip" ? 36 : 54, h = g.kind === "polarity" ? 64 : 14;
-  return { x: p.hold.x - w / 2, y: p.hold.y - h / 2, w, h, kind: p.active ? "repel" : "void", hue: p.active ? 0 : -1 };
+  // a polarity toy is a real magnet on both poles: red pushes, blue pulls. Anything else that
+  // hangs is plain resin, so its zone stays a hole you cannot stick to.
+  const kind = p.active ? "repel" : g.kind === "polarity" ? "attract" : "void";
+  return { x: p.hold.x - w / 2, y: p.hold.y - h / 2, w, h, kind, hue: p.active ? 0 : -1 };
 }
 export function gadgetContains(g: Gadget, time: number, p: Vec): boolean {
   const z = gadgetZone(g, time);
