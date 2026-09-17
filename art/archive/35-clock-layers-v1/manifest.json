@@ -1,0 +1,71 @@
+[
+  {
+    "file": "ready/clock-hour-hand-v1.webp",
+    "size": [
+      128,
+      256
+    ],
+    "bbox": [
+      49,
+      77,
+      78,
+      254
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 29629,
+      "semi": 876,
+      "opaque": 2263
+    },
+    "edge_pixels": 386,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/clock-minute-hand-v1.webp",
+    "size": [
+      128,
+      256
+    ],
+    "bbox": [
+      52,
+      22,
+      75,
+      251
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 29956,
+      "semi": 1092,
+      "opaque": 1720
+    },
+    "edge_pixels": 495,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  },
+  {
+    "file": "ready/rotor-clock-faceless-v1.webp",
+    "size": [
+      380,
+      384
+    ],
+    "bbox": [
+      4,
+      1,
+      376,
+      376
+    ],
+    "touches_edge": false,
+    "pixels": {
+      "transparent": 35776,
+      "semi": 525,
+      "opaque": 109619
+    },
+    "edge_pixels": 1059,
+    "magenta_tinted_opaque": 0,
+    "clean": true,
+    "reasons": []
+  }
+]

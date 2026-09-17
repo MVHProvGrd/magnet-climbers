@@ -5,6 +5,7 @@ complete set. Git history has the code that drew or loaded each one; the commit 
 
 | Folder | What | Where it came from | Live in |
 |---|---|---|---|
+| `35-clock-layers-v1/` | Hands-free kitchen clock with separate hour/minute hands, exact pivot metadata and local-time review | Codex built-in imagegen edits; originals and all takes retained | Ready for Claude clock wiring; all three cutouts pass QC |
 | `34-rubber-launch-v1/` | Textured rubber pull and release thwack, three variants each; source and listening page | Original deterministic synthesis | Wired on codex/art-ready-pack; deployment pending merge |
 | `33-object-audio-v1/` | 33 object-specific synthesized foley/toy sounds, 99 WAV takes; open its index.html to audition | Original deterministic synthesis; no recordings | Review candidates for owner/Claude, NOT live; bearing roll for spinner |
 | `32-balanced-destinations-v1/` | Four S + four N resin souvenirs; all sources, three rejected alpha takes and selected cutouts retained | Codex built-in imagegen | Ready for Claude; use selected ready files, Maldives colour-QC exception inspected |

@@ -1,5 +1,11 @@
 # Art refresh handoff — 2026-09-14
 
+## CURRENT — pack35 clock layers READY (2026-09-17)
+
+Completed Claude's hands-free clock request. art/archive/35-clock-layers-v1/ready contains rotor-clock-faceless-v1.webp plus separate clock-hour-hand-v1.webp and clock-minute-hand-v1.webp. Face remains380x384 with existing pivot(0.501,0.4957); hands128x256 pivot(64,240), draw at0.55 relative to native face. Three alpha checks pass. All originals/takes preserved, no public/art or runtime changes. Claude wires local time; read pack HANDOFF.md before cropping (do NOT crop the fitted frame again).
+
+Review: C:\Users\micha\magnet-art-ready\art\archive\35-clock-layers-v1\index.html. Includes live local time and12:00/3:00/6:30/10:10 checks. Full gallery row added. This supersedes the pending clock request lower in this document.
+
 ## CURRENT — approved object sounds WIRED + rubber pull/thwack
 
 Owner listened to pack33, approved it and explicitly asked Codex to wire it, then requested rubbery pull and thwack. Merged current main (1b50df7) into codex/art-ready-pack before touching runtime; Claude's latest work retained. New sample-player.ts/object-sound-map.ts + audio/game hooks;105 WAVs in public/audio/objects-v1; offline caching included. No new character cheer recording: optional woohoo idea deferred to a proper voice pass, not faked as speech.
