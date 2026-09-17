@@ -16,7 +16,7 @@ export class SamplePlayer {
     this.queued.delete(key);
     this.loading.add(key);
     void Promise.all([1, 2, 3].map(async take => {
-      const response = await fetch(`${this.base}audio/objects-v1/${key}-${take}.wav`);
+      const response = await fetch(`${this.base}audio/objects-v1/${key}-${take}.mp3`);
       if (!response.ok) throw new Error(`sample HTTP ${response.status}`);
       return this.c.decodeAudioData(await response.arrayBuffer());
     })).then(buffers => { this.buffers.set(key, buffers); })

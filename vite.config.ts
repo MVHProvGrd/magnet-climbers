@@ -39,7 +39,8 @@ export default defineConfig({
       workbox: {
         // Icon revisions trigger manifest refreshes; serve the same cached PNG offline.
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^icon-v$/],
-        globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2,mp3,wav}"],
+        // Foley ships as mp3, not the WAV masters: 51s of PCM was 4.8 MB of install weight
+          globPatterns: ["**/*.{js,css,html,png,svg,webp,woff2,mp3}"],
           // Owner reference pages, not the game. Everything under public/ is install weight
           // for every player, and neither of these is reachable from inside the game.
           globIgnores: ["elements/**", "art-archive/**"],

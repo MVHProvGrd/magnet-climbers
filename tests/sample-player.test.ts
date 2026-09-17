@@ -11,7 +11,7 @@ test('object samples cover every approved non-POP alias and shipped files', () =
     assert.equal(OBJECT_SAMPLES[id], key);
   }
   for (const key of [...new Set(Object.values(OBJECT_SAMPLES)), 'pop-in', 'pop-out', 'rubber-pull', 'rubber-release']) {
-    for (let take = 1; take <= 3; take++) assert.ok(existsSync(`public/audio/objects-v1/${key}-${take}.wav`));
+    for (let take = 1; take <= 3; take++) assert.ok(existsSync(`public/audio/objects-v1/${key}-${take}.mp3`));
   }
 });
 
