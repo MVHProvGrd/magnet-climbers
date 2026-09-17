@@ -76,6 +76,8 @@ export interface Env {
 }
 
 const MAX_CM = 200_000;
+/** A lifetime is many runs deep, so it is capped far above a single climb rather than at it. */
+const MAX_LIFETIME_CM = 2_000_000_000;
 const NAME_RE = /[^\p{L}\p{N} _.\-!?]/gu;
 /** Chat rows kept before the oldest are pruned. Deep enough that scrolling back has somewhere to go. */
 const CHAT_HISTORY = 5000;
@@ -573,10 +575,16 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/run") {
       if (await rateLimited(env, `run:${clientIp(req)}`, 40, 60_000)) return json({ error: "slow down" }, h, 429);
-      let body: { playerId?: unknown; mode?: unknown; cm?: unknown };
+      let body: { playerId?: unknown; mode?: unknown; cm?: unknown; total?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const cm = Math.floor(Number(body.cm));
       const pid = String(body.playerId ?? "");
+      // The device's own lifetime figure. A run post that never arrives used to be lost for
+      // good, since this table only ever added, so the board sat below what the player could
+      // read on their own screen for ever. Taking the higher of the two lets it catch up.
+      // Bounded the same way a single run is: a number outside that is simply ignored.
+      const claimed = Math.floor(Number(body.total));
+      const total = Number.isFinite(claimed) && claimed > 0 && claimed <= MAX_LIFETIME_CM ? claimed : 0;
       if (!pid || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
         return json({ error: "bad run" }, h, 400);
       }
@@ -588,8 +596,8 @@ export default {
         env.DB.prepare("UPDATE stats SET total_cm = total_cm + ?, runs = runs + 1 WHERE id = 1").bind(cm),
         env.DB.prepare(
           `INSERT INTO lifetime (player_id, name, cm, runs, updated_at) VALUES (?, ?, ?, 1, ?)
-           ON CONFLICT(player_id) DO UPDATE SET cm = lifetime.cm + excluded.cm, runs = lifetime.runs + 1, name = excluded.name, updated_at = excluded.updated_at`,
-        ).bind(pid, name, cm, now),
+           ON CONFLICT(player_id) DO UPDATE SET cm = MAX(lifetime.cm + excluded.cm, ?5), runs = lifetime.runs + 1, name = excluded.name, updated_at = excluded.updated_at`,
+        ).bind(pid, name, cm, now, total),
       ]);
       // the week's league table: metres climbed, not a single best, so playing is what moves you
       const seat = await placeInLeague(env, pid, name);

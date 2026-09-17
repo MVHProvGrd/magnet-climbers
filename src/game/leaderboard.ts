@@ -81,8 +81,15 @@ export const leaderboard = {
   rename: (playerId: string, token: string, name: string) =>
     call<{ ok: boolean; name: string }>("/rename", { method: "POST", body: JSON.stringify({ playerId, token, name }) }),
   /** Adds one finished run's height to the global total. */
-  run: (playerId: string, name: string, mode: Mode, cm: number) =>
-    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm }) }),
+  /**
+   * A finished run, for the lifetime board. `cm` is the increment and `total` is what this
+   * device believes the lifetime is: the server adds the one and then takes the higher of the
+   * two. Without the total a post that never landed -- no signal, a closed tab, a 429 -- was
+   * gone for good, and nothing ever reconciled it, so the board drifted quietly below the
+   * figure the player reads on their own screen and never caught up.
+   */
+  run: (playerId: string, name: string, mode: Mode, cm: number, total: number) =>
+    call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, name, mode, cm, total }) }),
   /** This week's bucket: about thirty players, the ten at the top going up and the ten at the bottom down. */
   league: (playerId: string) => call<LeagueStanding>(`/league?player=${encodeURIComponent(playerId)}`),
   top: (mode: BoardMode, limit = 25) => call<ScoreRow[]>(`/top?mode=${mode}&limit=${limit}`),

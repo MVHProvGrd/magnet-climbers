@@ -384,7 +384,15 @@ export class Ui {
           <b>RACE YOUR BEST</b><small>same door, you beside you</small>
           <span class="ghost-cm">${groupNum(ghostCm)} CM</span>
         </button>` : ""}
-        <p class="home-month">${esc(themeFor().name)} fridge${s.patterns.includes(themeFor().pattern) ? "" : " · climb once this month to keep its pattern"}</p>
+        ${(() => {
+          // "Term Starts fridge" was the theme's name with the word fridge stuck on the end,
+          // which reads as nonsense rather than as September's door. And once the pattern was
+          // earned the line had nothing left to say, so it sat there saying the nonsense.
+          const t = themeFor(), month = new Date().toLocaleString("en", { month: "long" });
+          const has = s.patterns.includes(t.pattern);
+          return `<p class="home-month">${esc(month)}'s door: <b>${esc(t.name)}</b>${
+            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"}</p>`;
+        })()}
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS</span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
