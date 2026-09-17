@@ -9,7 +9,7 @@
  * `dockRect`, `hudButtons` and `teamDots` are the single source of truth for hit testing,
  * so input rects can never drift from what is painted.
  */
-import type { Game } from "./game";
+import type { DeathCause, Game, Phase } from "./game";
 import type { Climber } from "./types";
 import { CFG, W } from "./config";
 import { appearanceFor } from "./creatures";
@@ -56,6 +56,49 @@ export function setHudSafeBottom(px: number) { safeBottom = Math.max(28, px); }
 /** Raised when the chat strip is showing, so the dock clears it (handoff 1a). */
 /** Chat is menu-only now; kept as a no-op so callers need not care. */
 export function setChatStrip(_on: boolean) { /* no in-run chat */ }
+
+/**
+ * Screen-reader narration for the canvas (index.html's #sr-live). The canvas paints nothing
+ * a screen reader can read, so this is the only way a blind player learns what is happening --
+ * but it only speaks on real events (run start, a height milestone, death) so it never
+ * chatters over itself the way a per-frame update would.
+ */
+let srLive: HTMLElement | null | undefined;
+function liveRegion(): HTMLElement | null {
+  if (srLive === undefined) srLive = typeof document !== "undefined" ? document.getElementById("sr-live") : null;
+  return srLive ?? null;
+}
+export function announce(text: string) {
+  const el = liveRegion();
+  if (el) el.textContent = text;
+}
+
+/** Short spoken form of ui.ts's game-over cause text -- this fires the instant the run ends, before that panel opens. */
+const DEATH_CAUSE: Record<DeathCause, string> = {
+  redline: "Caught by the red line.",
+  fell: "You fell.",
+  paw: "The cat got you.",
+  hand: "Cooper swatted you off.",
+  bumper: "Knocked loose by a moving magnet.",
+  flings: "Out of flings.",
+};
+
+let lastPhase: Phase | null = null;
+let lastMilestoneCm = 0;
+/** Every two metres: frequent enough to matter, far short of chatter. */
+const MILESTONE_STEP_CM = 200;
+function announceRunState(g: Game) {
+  if (g.phase === "running" && lastPhase !== "running") {
+    lastMilestoneCm = 0;
+    announce("Run started.");
+  } else if (g.phase === "dead" && lastPhase !== "dead") {
+    announce(DEATH_CAUSE[g.lastCause ?? "fell"]);
+  } else if (g.phase === "running") {
+    const step = Math.floor(g.heightCm / MILESTONE_STEP_CM) * MILESTONE_STEP_CM;
+    if (step > lastMilestoneCm) { lastMilestoneCm = step; announce(`${groupNum(step)} centimetres climbed.`); }
+  }
+  lastPhase = g.phase;
+}
 
 export const topBarRect = () => ({ x: TOP_X, y: TOP_Y, w: TOP_W, h: TOP_H });
 export const lineRect = (viewH: number) => ({ x: 12, y: viewH - safeBottom - LINE_H, w: W - 24, h: LINE_H });
@@ -239,6 +282,7 @@ const CHIP_H = 28;
 
 
 export function drawDock(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time: number) {
+  announceRunState(g);
   drawTopBar(ctx, g);
   drawRedLine(ctx, g, viewH, time);
   drawEffects(ctx, g, viewH);
