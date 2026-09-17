@@ -87,10 +87,16 @@ function askForKey() {
 
 /* --------------------------------------------------------------- the subject */
 /** Things that really do appear on a door, grouped the way an owner thinks about them. */
-const GROUPS: { label: string; of: (i: FridgeItem) => boolean }[] = [
-  { label: "Paper on the door", of: (i) => i.family === "paper" },
-  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-") },
-  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard },
+/**
+ * `done` hides a group from the walk. Temporary: these three were measured on 17 September
+ * and their sizes are kept in data/scale-audit.json, waiting to be applied to the game in one
+ * pass. Hiding them keeps the walk to what is actually left rather than making the owner step
+ * past sixty-one things already decided. Clear the flags to audit them again.
+ */
+const GROUPS: { label: string; of: (i: FridgeItem) => boolean; done?: true }[] = [
+  { label: "Paper on the door", of: (i) => i.family === "paper", done: true },
+  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-"), done: true },
+  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard, done: true },
   { label: "Hanging gadgets", of: (i) => i.family === "gadget" },
   { label: "Souvenir plates", of: (i) => i.kind === "attract" || i.kind === "repel" },
   { label: "Surfaces and fittings", of: (i) => i.family === "surface" && i.kind !== "attract" && i.kind !== "repel" },
@@ -192,7 +198,8 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
  * drew each as a red rectangle with its name in it -- nothing you could judge and nothing a
  * number would reach. They stay as they are, so the walk no longer asks about them.
  */
-const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter((i) => !i.hazard);
+const OPEN = GROUPS.filter((gr) => !gr.done);
+const WALK: FridgeItem[] = OPEN.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter((i) => !i.hazard);
 /**
  * v2: every number recorded before this was taken against whatever the bench happened to
  * draw, and for the sixteen advertising magnets that was a sheet of dark plastic trim rather
@@ -332,7 +339,7 @@ function boot() {
   /** The picker doubles as the checklist: a tick marks every size already recorded. */
   const fillPicker = () => {
     const keep = item.id;
-    picker.innerHTML = GROUPS.map((gr) => {
+    picker.innerHTML = OPEN.map((gr) => {
       const of = FRIDGE_ITEMS.filter(gr.of);
       const done = of.filter((i) => audit[i.id]).length;
       return of.length ? `<optgroup label="${esc(gr.label)} — ${done}/${of.length}">${of.map((i) =>

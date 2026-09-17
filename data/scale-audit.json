@@ -1,0 +1,808 @@
+{
+  "note": "Owner-chosen sizes from the scale bench. Not applied to the game yet.",
+  "recordedAt": "2026-09-17",
+  "pxPerCm": 10,
+  "climberPx": 36,
+  "groupsComplete": [
+    "Paper on the door",
+    "Toy magnets",
+    "Advertising magnets"
+  ],
+  "audited": 61,
+  "of": 150,
+  "sizes": [
+    {
+      "id": "paper-0",
+      "name": "Slice of Life",
+      "family": "paper",
+      "w": 158,
+      "h": 104,
+      "cm": [
+        15.8,
+        10.4
+      ],
+      "climbers": 2.89,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-1",
+      "name": "Cat Nap Club",
+      "family": "paper",
+      "w": 99,
+      "h": 150,
+      "cm": [
+        9.9,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-2",
+      "name": "Higher Together",
+      "family": "paper",
+      "w": 114,
+      "h": 150,
+      "cm": [
+        11.4,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-3",
+      "name": "Scenic Route",
+      "family": "paper",
+      "w": 113,
+      "h": 83,
+      "cm": [
+        11.3,
+        8.3
+      ],
+      "climbers": 2.31,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-4",
+      "name": "Space Cadet",
+      "family": "paper",
+      "w": 98,
+      "h": 150,
+      "cm": [
+        9.8,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-5",
+      "name": "Home Sweet Fridge",
+      "family": "paper",
+      "w": 143,
+      "h": 150,
+      "cm": [
+        14.3,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-6",
+      "name": "Grow Your Own Way",
+      "family": "paper",
+      "w": 77,
+      "h": 127,
+      "cm": [
+        7.7,
+        12.7
+      ],
+      "climbers": 3.53,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-7",
+      "name": "Stay Cool",
+      "family": "paper",
+      "w": 150,
+      "h": 150,
+      "cm": [
+        15,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-8",
+      "name": "Snack List",
+      "family": "paper",
+      "w": 90,
+      "h": 150,
+      "cm": [
+        9,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-9",
+      "name": "You Got This",
+      "family": "paper",
+      "w": 47,
+      "h": 47,
+      "cm": [
+        4.7,
+        4.7
+      ],
+      "climbers": 1.31,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-10",
+      "name": "Don't Let Go",
+      "family": "paper",
+      "w": 88,
+      "h": 64,
+      "cm": [
+        8.8,
+        6.4
+      ],
+      "climbers": 1.78,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-11",
+      "name": "More Magnets",
+      "family": "paper",
+      "w": 123,
+      "h": 150,
+      "cm": [
+        12.3,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-12",
+      "name": "Donut Worry",
+      "family": "paper",
+      "w": 72,
+      "h": 72,
+      "cm": [
+        7.2,
+        7.2
+      ],
+      "climbers": 2,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-13",
+      "name": "Avo Good Climb",
+      "family": "paper",
+      "w": 172,
+      "h": 121,
+      "cm": [
+        17.2,
+        12.1
+      ],
+      "climbers": 3.36,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-14",
+      "name": "Tiny Dinosaur",
+      "family": "paper",
+      "w": 124,
+      "h": 150,
+      "cm": [
+        12.4,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-15",
+      "name": "Rain Check",
+      "family": "paper",
+      "w": 159,
+      "h": 112,
+      "cm": [
+        15.9,
+        11.2
+      ],
+      "climbers": 3.11,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-16",
+      "name": "Lucky Duck",
+      "family": "paper",
+      "w": 107,
+      "h": 110,
+      "cm": [
+        10.7,
+        11
+      ],
+      "climbers": 3.06,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-17",
+      "name": "Sundae Summit",
+      "family": "paper",
+      "w": 82,
+      "h": 178,
+      "cm": [
+        8.2,
+        17.8
+      ],
+      "climbers": 4.94,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-18",
+      "name": "Gone Fishing",
+      "family": "paper",
+      "w": 161,
+      "h": 100,
+      "cm": [
+        16.1,
+        10
+      ],
+      "climbers": 2.78,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-19",
+      "name": "Beep Boop",
+      "family": "paper",
+      "w": 114,
+      "h": 150,
+      "cm": [
+        11.4,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-0",
+      "name": "Midnight Pizza Menu",
+      "family": "paper",
+      "w": 167,
+      "h": 108,
+      "cm": [
+        16.7,
+        10.8
+      ],
+      "climbers": 3,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-1",
+      "name": "Lost Sock Notice",
+      "family": "paper",
+      "w": 112,
+      "h": 150,
+      "cm": [
+        11.2,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-2",
+      "name": "Moon Camp Postcard",
+      "family": "paper",
+      "w": 129,
+      "h": 77,
+      "cm": [
+        12.9,
+        7.7
+      ],
+      "climbers": 2.14,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-3",
+      "name": "Tiny Chef Recipe",
+      "family": "paper",
+      "w": 173,
+      "h": 112,
+      "cm": [
+        17.3,
+        11.2
+      ],
+      "climbers": 3.11,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-4",
+      "name": "School Aquarium Trip",
+      "family": "paper",
+      "w": 124,
+      "h": 174,
+      "cm": [
+        12.4,
+        17.4
+      ],
+      "climbers": 4.83,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-5",
+      "name": "Kitchen Gig Ticket",
+      "family": "paper",
+      "w": 95,
+      "h": 41,
+      "cm": [
+        9.5,
+        4.1
+      ],
+      "climbers": 1.14,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-6",
+      "name": "Fridge Family Portrait",
+      "family": "paper",
+      "w": 158,
+      "h": 132,
+      "cm": [
+        15.8,
+        13.2
+      ],
+      "climbers": 3.67,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-7",
+      "name": "Secret Treasure Map",
+      "family": "paper",
+      "w": 154,
+      "h": 119,
+      "cm": [
+        15.4,
+        11.9
+      ],
+      "climbers": 3.31,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-8",
+      "name": "Plant Watering Rota",
+      "family": "paper",
+      "w": 168,
+      "h": 148,
+      "cm": [
+        16.8,
+        14.8
+      ],
+      "climbers": 4.11,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-9",
+      "name": "Monster Math Homework",
+      "family": "paper",
+      "w": 118,
+      "h": 150,
+      "cm": [
+        11.8,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-10",
+      "name": "Breakfast Blueprint",
+      "family": "paper",
+      "w": 167,
+      "h": 112,
+      "cm": [
+        16.7,
+        11.2
+      ],
+      "climbers": 3.11,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "paper-new-11",
+      "name": "Dog Ate My Shopping List",
+      "family": "paper",
+      "w": 129,
+      "h": 180,
+      "cm": [
+        12.9,
+        18
+      ],
+      "climbers": 5,
+      "where": "world.ts card slots + data/paper-aspect.json"
+    },
+    {
+      "id": "bumper-0",
+      "name": "Rolling Donut",
+      "family": "bumper",
+      "w": 62,
+      "h": 39,
+      "cm": [
+        6.2,
+        3.9
+      ],
+      "climbers": 1.08,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-1",
+      "name": "Duck Dash",
+      "family": "bumper",
+      "w": 47,
+      "h": 32,
+      "cm": [
+        4.7,
+        3.2
+      ],
+      "climbers": 0.89,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-2",
+      "name": "Robot Patrol",
+      "family": "bumper",
+      "w": 37,
+      "h": 41,
+      "cm": [
+        3.7,
+        4.1
+      ],
+      "climbers": 1.14,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-3",
+      "name": "Dino Slide",
+      "family": "bumper",
+      "w": 62,
+      "h": 32,
+      "cm": [
+        6.2,
+        3.2
+      ],
+      "climbers": 0.89,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-4",
+      "name": "Pop Magnet",
+      "family": "bumper",
+      "w": 69,
+      "h": 30,
+      "cm": [
+        6.9,
+        3
+      ],
+      "climbers": 0.83,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-5",
+      "name": "Cool Cruiser",
+      "family": "bumper",
+      "w": 36,
+      "h": 37,
+      "cm": [
+        3.6,
+        3.7
+      ],
+      "climbers": 1.03,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-6",
+      "name": "Yellow Taxi",
+      "family": "bumper",
+      "w": 48,
+      "h": 32,
+      "cm": [
+        4.8,
+        3.2
+      ],
+      "climbers": 0.89,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-7",
+      "name": "Race Car",
+      "family": "bumper",
+      "w": 42,
+      "h": 24,
+      "cm": [
+        4.2,
+        2.4
+      ],
+      "climbers": 0.67,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-8",
+      "name": "Banana",
+      "family": "bumper",
+      "w": 42,
+      "h": 41,
+      "cm": [
+        4.2,
+        4.1
+      ],
+      "climbers": 1.14,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-9",
+      "name": "Space Shuttle",
+      "family": "bumper",
+      "w": 33,
+      "h": 39,
+      "cm": [
+        3.3,
+        3.9
+      ],
+      "climbers": 1.08,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-10",
+      "name": "Letter Block",
+      "family": "bumper",
+      "w": 38,
+      "h": 39,
+      "cm": [
+        3.8,
+        3.9
+      ],
+      "climbers": 1.08,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-11",
+      "name": "Plastic Brick",
+      "family": "bumper",
+      "w": 26,
+      "h": 22,
+      "cm": [
+        2.6,
+        2.2
+      ],
+      "climbers": 0.61,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "bumper-12",
+      "name": "Gummy Bear",
+      "family": "bumper",
+      "w": 19,
+      "h": 28,
+      "cm": [
+        1.9,
+        2.8
+      ],
+      "climbers": 0.78,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-0",
+      "name": "Bright Smile Dentist",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-1",
+      "name": "Midnight Pizza",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-2",
+      "name": "Happy Paws Vet",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-3",
+      "name": "Emergency Plumber",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-4",
+      "name": "Takeaway Noodles",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-5",
+      "name": "Library Due Date",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-6",
+      "name": "School Bus Hotline",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-7",
+      "name": "Corner Bakery",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-8",
+      "name": "City Cab Co.",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-9",
+      "name": "24h Locksmith",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-10",
+      "name": "Sushi Counter",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-11",
+      "name": "Shine Car Wash",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-12",
+      "name": "Corner Realty",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-13",
+      "name": "Tax Prep Desk",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-14",
+      "name": "Clear Pool Care",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "business-15",
+      "name": "Ink & Needle Tattoo",
+      "family": "bumper",
+      "w": 93,
+      "h": 56,
+      "cm": [
+        9.3,
+        5.6
+      ],
+      "climbers": 1.56,
+      "where": "world.ts, where the zone is cut"
+    }
+  ]
+}
