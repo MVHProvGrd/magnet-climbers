@@ -75,7 +75,28 @@ existing `toy-icon-512.png` master rather than drawn fresh:
 - `apple-touch-startup-image` at the common iPhone/iPad viewport sizes, on the manifest's
   `theme_color` ground with the toy centred.
 
-### 8. Store listing art — *not yet, hold*
+### 8. A grip texture for bare steel — `steel-grip-v1`
+The one surface the climber can actually stick to is the only surface with nothing on it.
+Every photogenic object on the door — cards, the calendar, the jar photo — is a slide-off.
+A player's eye goes to exactly the wrong places.
+
+Wanted: a tileable square overlay, ~256×256, that reads as "a magnet would hold here" —
+iron filings caught in the brushed grain, a faint magnetic scratch halo. Subtle: it lays
+over the existing steel in `scenery-materials.ts`, it does not replace it, and the door must
+still look like a photograph of a fridge.
+
+### 9. Height-tier backdrops — `door-tier-1..3`
+Two or three tall portrait layers (~9:16) drawn as a parallax base in `scenery.ts`, keyed to
+height: warm counter light at the bottom, cooler daylight near the top of the door. At 200cm
+and at 400cm the background is currently the same texture, so climbing does not feel like
+going anywhere.
+
+### 10. Danger vignette — `danger-vignette-v1`
+One full-screen edge-darkening red glow, ~9:19.5, composited over the play canvas with its
+opacity driven by how close the red line is. Today the line is one or two pixels and a small
+HUD bar, so the thing that kills almost every run has essentially no telegraph.
+
+### 11. Store listing art — *not yet, hold*
 Icon and screenshots for a store listing, plus fridge-door skin variants if paid cosmetic
 packs are ever built. Listed so it is not forgotten; nothing should be drawn for it until
 that call is actually made.
