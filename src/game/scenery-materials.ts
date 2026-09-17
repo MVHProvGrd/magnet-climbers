@@ -199,6 +199,63 @@ export function drawSeam(ctx: CanvasRenderingContext2D, top: number, bottom: num
 // zones
 // ---------------------------------------------------------------------------
 
+// Every zone's bezel, base fill, ribs and sticker art are the same pixels every frame; only
+// the glass drift and the plate glow actually read `t`. So each zone bakes its unchanging
+// parts into a small offscreen canvas once and a frame just blits it back with drawImage,
+// the same trick `steel()` above uses for the door tile. The bake is split into an `under`
+// layer (drawn first) and an optional `over` layer (drawn after the live animated bit), so
+// a zone whose static art sits both beneath and on top of its `t`-driven overlay (glass's
+// edge highlight over the drifting reflection; a plate's gloss streak over its glow and
+// letter) still composites in the exact same order the frame-by-frame version painted it.
+// PAD gives the bake room for castShadow's blur, which lands a few px outside the zone's
+// own rect; the live version painted that overflow directly onto the frame, so leaving it
+// out here would visibly crop the shadow.
+//
+// Cached by the zone object itself: zones are created once per generated segment (world.ts)
+// and never resized after, and segments fall off `World.segments` (a `shift()`) as the door
+// scrolls past them. A WeakMap keyed on the zone means a zone's bake is collected the moment
+// nothing but this cache still references it, so the cache can never outgrow what is still
+// reachable from the live world — no separate eviction pass needed, unlike a Map that would
+// otherwise grow for as long as the run does.
+const PAD = 16;
+const ZONE_SCALE = 2;
+// A baked canvas's pixel size is `Math.ceil((w + PAD*2) * ZONE_SCALE)`, which can round up to
+// a hair more than `(w + PAD*2) * ZONE_SCALE` device pixels. Compositing it back with drawImage
+// at the *nominal* `w + PAD*2` size (rather than that actual, slightly larger canvas size)
+// stretches those extra rounding pixels across the whole image, softening it by a fraction of
+// a pixel everywhere -- worse the further a pixel sits from the top-left corner, which is why
+// it shows up as concentric ghosting around curved edges rather than a flat blur. Composited
+// at its own true size instead, the extra sliver is just inert transparent margin.
+interface ZoneLayer { canvas: HTMLCanvasElement; w: number; h: number }
+interface ZoneLayers { key: string; under: ZoneLayer; over: ZoneLayer | null }
+const zoneLayers = new WeakMap<NoStickZone, ZoneLayers>();
+
+function bakeZoneLayer(z: NoStickZone, paint: (g: CanvasRenderingContext2D) => void): ZoneLayer {
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.ceil((z.w + PAD * 2) * ZONE_SCALE));
+  c.height = Math.max(1, Math.ceil((z.h + PAD * 2) * ZONE_SCALE));
+  const g = c.getContext("2d")!;
+  g.scale(ZONE_SCALE, ZONE_SCALE);
+  g.translate(-(z.x - PAD), -(z.y - PAD)); // paint() keeps using the zone's own x/y, as the live code always did
+  paint(g);
+  return { canvas: c, w: c.width / ZONE_SCALE, h: c.height / ZONE_SCALE };
+}
+
+/** Builds (or reuses) a zone's static bake. `paintOver` is only needed by zones with an
+ *  animated bit sandwiched between two static passes; most zones pass nothing. */
+function zoneLayersFor(z: NoStickZone, paintUnder: (g: CanvasRenderingContext2D) => void, paintOver?: (g: CanvasRenderingContext2D) => void): ZoneLayers {
+  const key = `${z.w}x${z.h}`;
+  const cached = zoneLayers.get(z);
+  if (cached && cached.key === key) return cached;
+  const layers: ZoneLayers = { key, under: bakeZoneLayer(z, paintUnder), over: paintOver ? bakeZoneLayer(z, paintOver) : null };
+  zoneLayers.set(z, layers);
+  return layers;
+}
+
+function drawZoneLayer(ctx: CanvasRenderingContext2D, z: NoStickZone, layer: ZoneLayer | null) {
+  if (layer) ctx.drawImage(layer.canvas, z.x - PAD, z.y - PAD, layer.w, layer.h);
+}
+
 export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   if (z.hue === -1) return drawHandle(ctx, z);
   switch (z.kind) {
@@ -211,8 +268,13 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, t: numbe
   }
 }
 
-/** Steel island: a pull handle standing off the door. Fully inside the collider. */
+/** Steel island: a pull handle standing off the door. Fully inside the collider. Nothing about
+ *  it depends on `t`, so the whole thing is one static bake. */
 function drawHandle(ctx: CanvasRenderingContext2D, z: NoStickZone) {
+  drawZoneLayer(ctx, z, zoneLayersFor(z, (g) => paintHandle(g, z)).under);
+}
+
+function paintHandle(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   const r = z.h / 2;
   castShadow(ctx, z.x, z.y, z.w, z.h, r, 1.6);
   const g = ctx.createLinearGradient(0, z.y, 0, z.y + z.h);
@@ -234,8 +296,9 @@ function drawHandle(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   ctx.fillRect(z.x + z.w - r * 0.9 - 1.5, z.y + 2, 1.5, z.h - 4);
 }
 
-/** Frosted display glass in a light bezel. Tree/sky reflection reads as glass, not steel. */
-function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
+/** The bezel, recess and frosted glass fill plus its leaf/sky reflection blobs: everything in
+ *  the display glass that never reads `t`. */
+function paintGlassUnder(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   const bez = Math.min(7, z.w * 0.06, z.h * 0.06);
   // bezel (part of the non-stick rect)
   const bg = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
@@ -273,6 +336,38 @@ function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
     ctx.fillStyle = rg;
     ctx.fillRect(bx - br, by - br, br * 2, br * 2);
   }
+  ctx.restore();
+}
+
+/** Top-left inner edge light and bottom-right inner shade: also static, but painted over the
+ *  live drift streaks in the original ordering, so it bakes into a separate "over" layer. */
+function paintGlassOver(ctx: CanvasRenderingContext2D, z: NoStickZone) {
+  const bez = Math.min(7, z.w * 0.06, z.h * 0.06);
+  const ix = z.x + bez + 1.5, iy = z.y + bez + 1.5, iw = z.w - 2 * bez - 3, ih = z.h - 2 * bez - 3;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ix, iy, iw, ih);
+  ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(ix, iy, iw, 1.5);
+  ctx.fillRect(ix, iy, 1.5, ih);
+  ctx.fillStyle = "rgba(0,20,40,0.25)";
+  ctx.fillRect(ix, iy + ih - 2, iw, 2);
+  ctx.fillRect(ix + iw - 2, iy, 2, ih);
+  ctx.restore();
+}
+
+/** Frosted display glass in a light bezel. Tree/sky reflection reads as glass, not steel.
+ *  Only the two drift streaks depend on `t`; they're sandwiched live between the two bakes. */
+function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
+  const layers = zoneLayersFor(z, (g) => paintGlassUnder(g, z), (g) => paintGlassOver(g, z));
+  drawZoneLayer(ctx, z, layers.under);
+  const bez = Math.min(7, z.w * 0.06, z.h * 0.06);
+  const ix = z.x + bez + 1.5, iy = z.y + bez + 1.5, iw = z.w - 2 * bez - 3, ih = z.h - 2 * bez - 3;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ix, iy, iw, ih);
+  ctx.clip();
   // two diagonal reflection streaks that drift very slowly
   const drift = Math.sin(t * 0.25 + z.x * 0.01) * 6;
   ctx.strokeStyle = "rgba(255,255,255,0.55)";
@@ -287,14 +382,8 @@ function drawGlass(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   ctx.moveTo(ix + 18 + drift, iy + ih - 6);
   ctx.lineTo(ix + iw + 6 + drift, iy + 6);
   ctx.stroke();
-  // top-left inner edge light, bottom-right inner shade
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.fillRect(ix, iy, iw, 1.5);
-  ctx.fillRect(ix, iy, 1.5, ih);
-  ctx.fillStyle = "rgba(0,20,40,0.25)";
-  ctx.fillRect(ix, iy + ih - 2, iw, 2);
-  ctx.fillRect(ix + iw - 2, iy, 2, ih);
   ctx.restore();
+  drawZoneLayer(ctx, z, layers.over);
 }
 
 /** Molded black plastic trim: matte, horizontal ribs, a soft top sheen. */
@@ -358,6 +447,11 @@ function drawGap(ctx: CanvasRenderingContext2D, z: NoStickZone) {
  * of a tilted card do not poke outside it).
  */
 function drawSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
+  drawZoneLayer(ctx, z, zoneLayersFor(z, (g) => paintSticker(g, z)).under);
+}
+
+/** No `t` in the original signature at all: the whole sticker is static. */
+function paintSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   const hue = z.hue ?? 0;
   const kind = Math.floor(hash(hue, z.x, z.y) * 4); // 0 polaroid, 1 souvenir plate, 2 sticky note, 3 kid's drawing
   const tilt = ((hue % 10) - 5) * 0.018;
@@ -493,19 +587,20 @@ function drawSticker(ctx: CanvasRenderingContext2D, z: NoStickZone) {
   ctx.restore();
 }
 
-/** Reversed-polarity plate: a glossy red enamel tile with a glowing N, matching the title art. */
-/** Right-polarity plate: glossy blue enamel with a glowing S. It pulls, and it is steel. */
-function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+/** Shared shape for the field plates: only the accent colours (enamel body, bevel, glow,
+ *  glowing letter, gloss and its glass-window tint) differ between attract and repel. */
+interface PlateColors { body: [string, string, string]; bevel: string; window: string; glow: string; letter: (pulse: number) => string; glowShadow: string; caption: string; label: string }
+
+function paintPlateUnder(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors) {
   castShadow(ctx, z.x, z.y, z.w, z.h, 8, 1.4);
   const g = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-  g.addColorStop(0, "#2f6fd6");
-  g.addColorStop(0.5, "#1c4aa0");
-  g.addColorStop(1, "#102c66");
+  g.addColorStop(0, p.body[0]);
+  g.addColorStop(0.5, p.body[1]);
+  g.addColorStop(1, p.body[2]);
   ctx.fillStyle = g;
   roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
   ctx.fill();
-  ctx.strokeStyle = "rgba(140,190,255,0.85)";
+  ctx.strokeStyle = p.bevel;
   ctx.lineWidth = 2;
   roundRectPath(ctx, z.x + 2, z.y + 2, z.w - 4, z.h - 4, 6);
   ctx.stroke();
@@ -514,81 +609,72 @@ function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
   roundRectPath(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 8);
   ctx.stroke();
   const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
-  ctx.fillStyle = "rgba(0,8,30,0.75)";
+  ctx.fillStyle = p.window;
   roundRectPath(ctx, ix, iy, iw, ih, 5);
   ctx.fill();
-  const glow = ctx.createRadialGradient(z.x + z.w / 2, iy + ih / 2, 2, z.x + z.w / 2, iy + ih / 2, Math.max(iw, ih) * 0.6);
-  glow.addColorStop(0, `rgba(90,160,255,${0.45 + pulse * 0.35})`);
-  glow.addColorStop(1, "rgba(90,160,255,0)");
-  ctx.fillStyle = glow;
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  ctx.font = `900 ${Math.min(30, ih * 0.8)}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = `rgba(${150 + pulse * 60},${200 + pulse * 40},255,1)`;
-  ctx.shadowColor = "rgba(90,160,255,0.9)";
-  ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText("S", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
-  ctx.shadowBlur = 0;
-  const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
-  gl.addColorStop(0, "rgba(255,255,255,0.28)");
-  gl.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gl;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  ctx.fillStyle = "rgba(200,225,255,0.9)";
-  ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.fillText("ATTRACTS", z.x + z.w / 2, z.y + z.h - 6);
 }
 
-function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
-  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
-  castShadow(ctx, z.x, z.y, z.w, z.h, 8, 1.4);
-  // enamel body
-  const g = ctx.createLinearGradient(z.x, z.y, z.x + z.w, z.y + z.h);
-  g.addColorStop(0, "#c8232f");
-  g.addColorStop(0.5, "#8f1620");
-  g.addColorStop(1, "#5c0d15");
-  ctx.fillStyle = g;
-  roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
-  ctx.fill();
-  // bevel
-  ctx.strokeStyle = "rgba(255,120,120,0.8)";
-  ctx.lineWidth = 2;
-  roundRectPath(ctx, z.x + 2, z.y + 2, z.w - 4, z.h - 4, 6);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,0.5)";
-  ctx.lineWidth = 1.2;
-  roundRectPath(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 8);
-  ctx.stroke();
-  // inner glass window with the glowing N
-  const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
-  ctx.fillStyle = "rgba(30,0,4,0.75)";
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  const glow = ctx.createRadialGradient(z.x + z.w / 2, iy + ih / 2, 2, z.x + z.w / 2, iy + ih / 2, Math.max(iw, ih) * 0.6);
-  glow.addColorStop(0, `rgba(255,80,80,${0.45 + pulse * 0.35})`);
-  glow.addColorStop(1, "rgba(255,80,80,0)");
-  ctx.fillStyle = glow;
-  roundRectPath(ctx, ix, iy, iw, ih, 5);
-  ctx.fill();
-  ctx.font = `900 ${Math.min(30, ih * 0.8)}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = `rgba(255,${150 + pulse * 60},${150 + pulse * 60},1)`;
-  ctx.shadowColor = "rgba(255,60,60,0.9)";
-  ctx.shadowBlur = 8 + pulse * 8;
-  ctx.fillText("N", z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
-  ctx.shadowBlur = 0;
-  // gloss streak
+/** The gloss streak and bottom caption paint over the live glow and letter in the original
+ *  order, so (like glass's edge highlight) they bake into a separate "over" layer. */
+function paintPlateOver(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors) {
   const gl = ctx.createLinearGradient(z.x, z.y, z.x + z.w * 0.6, z.y + z.h * 0.5);
   gl.addColorStop(0, "rgba(255,255,255,0.28)");
   gl.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gl;
   roundRectPath(ctx, z.x, z.y, z.w, z.h, 8);
   ctx.fill();
-  ctx.fillStyle = "rgba(255,200,200,0.85)";
+  ctx.fillStyle = p.caption;
   ctx.font = "bold 8px system-ui, sans-serif";
-  ctx.fillText("REPELS", z.x + z.w / 2, z.y + z.h - 6);
+  ctx.textAlign = "center";
+  ctx.fillText(p.label, z.x + z.w / 2, z.y + z.h - 6);
+}
+
+/** The pulsing glow and glowing letter: the only part of a field plate that reads `t`. */
+function drawPlateLive(ctx: CanvasRenderingContext2D, z: NoStickZone, p: PlateColors, pulse: number, letter: string) {
+  const ix = z.x + 8, iy = z.y + 8, iw = z.w - 16, ih = z.h - 24;
+  const glow = ctx.createRadialGradient(z.x + z.w / 2, iy + ih / 2, 2, z.x + z.w / 2, iy + ih / 2, Math.max(iw, ih) * 0.6);
+  glow.addColorStop(0, p.glow.replace("{a}", String(0.45 + pulse * 0.35)));
+  glow.addColorStop(1, p.glow.replace("{a}", "0"));
+  ctx.fillStyle = glow;
+  roundRectPath(ctx, ix, iy, iw, ih, 5);
+  ctx.fill();
+  ctx.font = `900 ${Math.min(30, ih * 0.8)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillStyle = p.letter(pulse);
+  ctx.shadowColor = p.glowShadow;
+  ctx.shadowBlur = 8 + pulse * 8;
+  ctx.fillText(letter, z.x + z.w / 2, iy + ih / 2 + Math.min(30, ih * 0.8) * 0.36);
+  ctx.shadowBlur = 0;
+}
+
+/** Right-polarity plate: glossy blue enamel with a glowing S. It pulls, and it is steel. */
+const ATTRACT_COLORS: PlateColors = {
+  body: ["#2f6fd6", "#1c4aa0", "#102c66"], bevel: "rgba(140,190,255,0.85)", window: "rgba(0,8,30,0.75)",
+  glow: "rgba(90,160,255,{a})", glowShadow: "rgba(90,160,255,0.9)",
+  letter: (pulse) => `rgba(${150 + pulse * 60},${200 + pulse * 40},255,1)`,
+  caption: "rgba(200,225,255,0.9)", label: "ATTRACTS",
+};
+function drawAttract(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
+  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+  const layers = zoneLayersFor(z, (g) => paintPlateUnder(g, z, ATTRACT_COLORS), (g) => paintPlateOver(g, z, ATTRACT_COLORS));
+  drawZoneLayer(ctx, z, layers.under);
+  drawPlateLive(ctx, z, ATTRACT_COLORS, pulse, "S");
+  drawZoneLayer(ctx, z, layers.over);
+}
+
+/** Reversed-polarity plate: a glossy red enamel tile with a glowing N, matching the title art. */
+const REPEL_COLORS: PlateColors = {
+  body: ["#c8232f", "#8f1620", "#5c0d15"], bevel: "rgba(255,120,120,0.8)", window: "rgba(30,0,4,0.75)",
+  glow: "rgba(255,80,80,{a})", glowShadow: "rgba(255,60,60,0.9)",
+  letter: (pulse) => `rgba(255,${150 + pulse * 60},${150 + pulse * 60},1)`,
+  caption: "rgba(255,200,200,0.85)", label: "REPELS",
+};
+function drawRepel(ctx: CanvasRenderingContext2D, z: NoStickZone, t: number) {
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  const layers = zoneLayersFor(z, (g) => paintPlateUnder(g, z, REPEL_COLORS), (g) => paintPlateOver(g, z, REPEL_COLORS));
+  drawZoneLayer(ctx, z, layers.under);
+  drawPlateLive(ctx, z, REPEL_COLORS, pulse, "N");
+  drawZoneLayer(ctx, z, layers.over);
 }
 
 // ---------------------------------------------------------------------------
