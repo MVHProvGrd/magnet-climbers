@@ -3,6 +3,7 @@ import { sfx, playObjectSound, playBubbleSound, stopPullSound } from "./audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { gadgetZone } from "./gadgets";
+import { Recorder } from "./recorder";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
@@ -114,6 +115,8 @@ export class Game {
   chill = false;
   /** flings used this run (one per gesture; a SYNC fling counts once) */
   flings = 0;
+  /** every fling and climb, in order, so a run can be drawn again or checked later */
+  readonly tape = new Recorder();
   /** what each climber is currently sliding on, so a material only sounds on contact */
   private slideMaterial = new Map<number, string>();
   reserves = 0;
@@ -325,6 +328,7 @@ export class Game {
 
   /** Sends a climber flying. Returns false (and spends nothing) when it cannot go: a ladder rung or an unlocked hanger. */
   launch(c: Climber, v: Vec): boolean {
+    // recorded before the refusals below, so a tape only ever holds flings that happened
     if (this.isLadder(c)) { this.floats.push({ x: c.x, y: c.y - 34, text: "someone's hanging on you: CLIMB them up", life: 1, color: "#ff6b6b" }); return false; }
     if (c.state === "linked" && !c.locked) { this.floats.push({ x: c.x, y: c.y - 34, text: "CLIMB up first", life: 1, color: "#ff6b6b" }); return false; }
     if (this.phase === "idle") this.phase = "running";
@@ -334,6 +338,7 @@ export class Game {
     }
     // kicking off a hanging gadget swings it the other way
     for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
+    this.tape.fling(this.runTime, c.id, v);
     c.state = "flying";
     c.grip = undefined;
     c.parent = null; c.locked = false;
@@ -552,6 +557,7 @@ export class Game {
   move(c: Climber, p: Vec) {
     const t = this.moveTarget(c, p);
     if (!t) { this.floats.push({ x: c.x, y: c.y - 30, text: "out of reach", life: 0.9, color: "#ff6b6b" }); return; }
+    this.tape.move(this.runTime, c.id, { x: t.x, y: t.y });
     if (this.phase === "idle") this.phase = "running";
     const was = { x: c.x, y: c.y, grip: c.grip, state: c.state, parent: c.parent, locked: c.locked, angle: c.angle };
     if (t.parent == null) {
@@ -595,6 +601,14 @@ export class Game {
     return CFG.floorBase * mult * this.stats.floorMult;
   }
 
+  /** Seal this run's tape: everything a replay needs to build the same climb again. */
+  sealTape(daily = false) {
+    return this.tape.tape({
+      seed: this.world.seed, world: this.world.version, kit: { ...this.levels },
+      chill: this.chill, daily, cm: this.heightCm, seconds: Math.round(this.runTime),
+    });
+  }
+
   snapshot(): RunSnapshot | null {
     if (this.phase !== "running") return null;
     const taken: string[] = [];
@@ -621,6 +635,8 @@ export class Game {
     const legacyVersion = snap.climbers.some((c) => c.hp != null) ? 1 : 0;
     const g = new Game(levels, events, { rules: snap.rules, seed: snap.seed, palette, lineup, chill: snap.chill ?? false, worldVersion: snap.worldVersion ?? legacyVersion });
     if (snap.feats) g.feats = { ...g.feats, ...snap.feats };
+    // the climb up to this point was never recorded, so this run can no longer be replayed
+    g.tape.invalidate();
     g.world.generateTo(snap.generated);
     g.world.gadgetTime = snap.gadgetTime ?? 0; g.runTime = snap.runTime ?? 0;
     g.tricks = snap.tricks ? cloneTricks(snap.tricks) : freshTricks();

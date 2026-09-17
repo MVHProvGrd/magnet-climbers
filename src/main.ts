@@ -304,6 +304,8 @@ const ui = new Ui(uiRoot, () => save, {
 uiReady = true;
 
 const SNAP_KEY = "magnet-climbers:run:v1";
+/** The tape of the best climb on this device: the ghost feature reads it, nothing else does yet. */
+const TAPE_KEY = "magnet-climbers:tape:v1";
 function saveSnapshot() {
   if (!game) return;
   const snap = game.snapshot();
@@ -361,6 +363,11 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      // the tape of your best climb is kept for the ghost that will draw it
+      if (!chill && cm > 0 && cm >= save.bestSolo) {
+        const tape = game.sealTape(dailyRun);
+        if (tape) { try { localStorage.setItem(TAPE_KEY, JSON.stringify(tape)); } catch { /* full or private */ } }
+      }
       // the fridge of the month pays its pattern the first time you finish a climb on it
       const month = monthKey();
       if (save.themeMonth !== month) {

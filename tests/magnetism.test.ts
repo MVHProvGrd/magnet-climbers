@@ -9,6 +9,7 @@ import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
+import { replay, tapeBytes } from "../src/game/recorder";
 import { weekKey } from "../worker/src/week";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
@@ -927,6 +928,42 @@ test("every month has a door and a pattern only that month gives out", () => {
   assert.equal(themeFor(Date.parse("2026-09-30T23:59:00Z")).id, "pencil");
   assert.equal(themeFor(Date.parse("2026-10-01T00:01:00Z")).id, "harvest");
   assert.equal(monthKey(Date.parse("2026-10-01T00:01:00Z")), "2026-10");
+});
+
+test("a tape replays into the same climb it recorded", () => {
+  // the whole point of the recorder: seed plus inputs is enough to build the run again
+  const play = (g: Game) => {
+    g.phase = "running";
+    for (let i = 0; i < 6; i++) {
+      const c = g.climbers[0];
+      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90 : -90, y: -360 });
+      for (let k = 0; k < 90; k++) g.update(1 / 120);
+    }
+    return g;
+  };
+  const live = play(new Game(levels, events, { seed: 4242, rules: "solo" }));
+  const tape = live.sealTape();
+  assert.ok(tape, "a run with flings in it has a tape");
+  assert.ok(tape!.events.length >= 3, `expected flings on the tape: ${tape!.events.length}`);
+  assert.equal(tape!.seed, 4242);
+  assert.equal(tape!.world, live.world.version, "a tape carries the terrain version it was climbed on");
+
+  const ghost = new Game(levels, events, { seed: tape!.seed, rules: "solo", worldVersion: tape!.world });
+  ghost.phase = "running";
+  replay(tape!, ghost,
+    (g, e) => { if (e.k === "fling") { const c = g.climbers.find((x) => x.id === e.id); if (c) g.launch(c, e.v); } },
+    (g, dt) => g.update(dt));
+  assert.equal(ghost.heightCm, live.heightCm, "the replay climbs exactly as high as the run did");
+  assert.deepEqual(ghost.climbers.map((c) => [Math.round(c.x), Math.round(c.y)]),
+    live.climbers.map((c) => [Math.round(c.x), Math.round(c.y)]), "and ends in the same place");
+
+  // a run nobody played leaves no tape, and a tape stays small enough to keep
+  assert.equal(new Game(levels, events, { seed: 1, rules: "solo" }).sealTape(), null);
+  // a run picked up from a snapshot has an unrecorded past, so it refuses to hand one over
+  const resumed = Game.restore(levels, events, live.snapshot() ?? ({} as never));
+  resumed.launch(resumed.climbers[0], { x: 40, y: -300 });
+  assert.equal(resumed.sealTape(), null, "a resumed run must not pretend to be a full tape");
+  assert.ok(tapeBytes(tape!) < 4000, `a short run should be a small tape: ${tapeBytes(tape!)} bytes`);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {
