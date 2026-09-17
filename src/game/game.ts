@@ -1,4 +1,4 @@
-import { CFG, CLIMBER_COLORS, CURRENT_WORLD_VERSION, statsFor, W, type UpgradeKey } from "./config";
+import { CFG, CLIMBER_COLORS, statsFor, W, type UpgradeKey } from "./config";
 import { sfx, playObjectSound, playBubbleSound, stopPullSound } from "./audio";
 import { silentAudio, type GameAudio } from "./silent-audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
@@ -155,7 +155,7 @@ export class Game {
     this.stats = statsFor(levels);
     this.revivesLeft = this.stats.revives;
     this.startY = 0;
-    this.world = new World(seed, 0, opts.worldVersion ?? CURRENT_WORLD_VERSION);
+    this.world = new World(seed, 0, opts.worldVersion);
     this.floorY = CFG.floorStartOffset;
     this.highestY = 0;
     this.camY = -this.viewH * 0.55;
@@ -356,13 +356,12 @@ export class Game {
     c.parent = null; c.locked = false;
     c.vx = v.x;
     c.vy = v.y;
-    // World v24+: spin used to add up to ~4 rad/s of noise on top of the fling itself, keyed to
-    // the release frame -- invisible before the throw and unbeatable by skill after it. Gated on
-    // world version rather than just deleted: a tape (or a saved ghost) recorded against an older
-    // version replays through this same code path, and its spins would silently change if the
-    // formula changed under it. Version < 24 keeps the old noisy formula so those tapes still
-    // land where they landed; new runs get spin that tracks the throw.
-    c.spin = this.world.version >= 24 ? v.x * 0.02 : v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 8;
+    // Spin tracks the fling itself (sideways speed -> tumble); the noise term used to be
+    // (simNoise - 0.5) * 8, which is keyed to this.time and so effectively random per release
+    // frame -- up to ~4 rad/s of spin the player never chose and could not see coming, roughly
+    // half of the controllable range from a full-width drag. A tiny jitter is kept for texture
+    // (a real toy never leaves the hand spinning exactly true) but at a scale too small to fight.
+    c.spin = v.x * 0.012 + (this.simNoise(c.id) - 0.5) * 0.6;
     // pop off the door in proportion to the pull; the magnet brings it back
     const full = CFG.maxDrag * CFG.launchScale * this.stats.launchMult;
     const pull = Math.max(0, Math.min(1, Math.hypot(v.x, v.y) / full));
@@ -375,10 +374,11 @@ export class Game {
     c.squash = 1;
     // the band snapping back past its rest length, pitched by how hard it was pulled
     this.a.sfx.twang(.85 + pull * .5);
-    // and the climber leaving the door: a rising whoosh under the twang, not instead of it --
-    // this was the one composed effect never wired up, so the game's one constant gesture
-    // (flinging, every few seconds) had a release sound but no sense of departure.
-    this.a.sfx.launch(.9 + pull * .6);
+    // twang is the band letting go (falling pitch, right at the release); launch is the toy
+    // actually taking off (rising pitch + a rising noise sweep). They are two different halves
+    // of the same instant, not the same sound twice, so both fire -- pitched up together by pull
+    // so a hard fling reads as a bigger departure, not just a louder snap.
+    this.a.sfx.launch(.9 + pull * .4);
     this.burst(c.x, c.y, c.color, 6);
     this.selectedId = c.id;
     return true;
@@ -614,16 +614,15 @@ export class Game {
     const steps = Math.floor(this.heightCm / CFG.floorStepCm);
     let mult = Math.min(CFG.floorCapMult, 1 + steps * CFG.floorStepMult);
     mult *= Math.min(CFG.floorCreepCap, 1 + CFG.floorCreepPer10s * (this.runTime / 10));
+    if (this.effects.candy > 0) mult *= CFG.candySlow;
     const alive = this.alive;
     if (alive.length) {
       const lowest = Math.max(...alive.map((c) => c.y));
       if (this.floorY - lowest > CFG.floorCatchupGap) mult *= CFG.floorCatchupMult;
     }
-    // World v24+: the wall's speed feeds the loss condition, so capping it is a physics change
-    // like the spin fix above and gets the same treatment -- an old tape's floor has to keep
-    // catching up exactly the way it did when the tape was recorded, uncapped spikes included.
-    if (this.world.version >= 24) mult = Math.min(CFG.floorMultCap, mult);
-    if (this.effects.candy > 0) mult *= CFG.candySlow;
+    // each factor above is capped on its own, but the ramp, creep and catch-up can all land at once;
+    // cap their combined product so a climber meets one escalation, not an ~11x spike (candy's slowdown is exempt).
+    mult = Math.min(mult, CFG.floorMultCap);
     return CFG.floorBase * mult * this.stats.floorMult;
   }
 
@@ -846,8 +845,8 @@ export class Game {
     for (const s of this.world.segments) {
       for (const b of s.bumpers) {
         if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.7)) {
-          // how fast the climber was actually moving into the bumper, before the knock overwrites it
-          const impact = Math.min(1, Math.hypot(c.vx, c.vy) / CFG.bumperKnock);
+          // speed going into the hit, before the knockback below overwrites it
+          const impact = Math.min(1, Math.hypot(c.vx, c.vy) / 300);
           const bx = b.x + b.w / 2;
           c.vx = (c.x < bx ? -1 : 1) * CFG.bumperKnock + b.vx;
           c.vy = -Math.abs(c.vy) * 0.3 + 60 + (b.vy < 0 ? b.vy : 0);
@@ -982,8 +981,8 @@ export class Game {
           if (c.iframes <= 0 && inRect(c.x, c.y, b, CFG.climberRadius * 0.5)) {
             c.state = "flying";
             c.grip = undefined;
-            // a stuck climber was standing still, so the impact is the bumper's own speed
-            const impact = Math.min(1, Math.hypot(b.vx, b.vy) / CFG.bumperKnock);
+            // a stuck climber isn't moving; what it feels is the bumper swinging into it
+            const impact = Math.min(1, Math.hypot(b.vx, b.vy) / 300);
             // Knock clear of the bumper, retaining Claude's no-stick grace window.
             const away = c.x < b.x + b.w / 2 ? -1 : 1;
             c.vx = away * 260 + b.vx * 0.6;
@@ -1276,14 +1275,15 @@ export class Game {
     return CFG.floorBase > 0 ? this.wallSpeed() / (CFG.floorBase * this.stats.floorMult) : 0;
   }
 
-  /** One hit point off, a grace window, and a loss at zero. `impact` (0-1) is how hard the hit
-   *  landed, so a bumper grazed at a crawl doesn't crack as loud as one taken at full fling speed;
-   *  callers that don't have a real velocity to offer (the paw, the hand) just take the max. */
-  private damage(c: Climber, quiet = false, cause: DeathCause = "fell", impact = 1) {
+  /** One hit point off, a grace window, and a loss at zero.
+   * `intensity` (0-1) is the impact speed against a reference, same convention as
+   * playObjectSound; call sites with a real collision speed pass it, everything else
+   * (a fixed-force swat or paw) keeps the old full-strength thud. */
+  private damage(c: Climber, quiet = false, cause: DeathCause = "fell", intensity = 1) {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
     this.feats.hits++;
-    this.a.sfx.bump(impact);
+    this.a.sfx.bump(intensity);
     this.shake = 0.6;
     this.burst(c.x, c.y, "#ffffff", 8);
     if (!quiet || c.hp <= 0) this.floats.push({ x: c.x, y: c.y - 34, text: c.hp > 0 ? "-1 ♥" : "KO!", life: 0.9, color: "#ff6b6b" });

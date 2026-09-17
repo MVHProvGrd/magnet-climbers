@@ -1008,3 +1008,20 @@ test("knocking the taxi keychain reports it, so it can honk", () => {
   g.world.knockSwings({ x: 180, y: -180 }, 300);
   assert.equal(g.world.knocked, null);
 });
+
+test("the wall's ramp, creep and catch-up multipliers cap as a product, not just individually", () => {
+  const g = game(); g.phase = "running";
+  // climb enormously high (saturates the stepped ramp at floorCapMult on its own) and run for a
+  // long time (saturates the creep at floorCreepCap on its own): each factor is already at its own
+  // ceiling, so their product alone is floorCapMult * floorCreepCap = 10, well past floorMultCap.
+  g.startY = 0; g.highestY = -1_000_000; g.runTime = 100_000;
+  assert.ok(CFG.floorCapMult * CFG.floorCreepCap > CFG.floorMultCap, "the setup actually exercises the cap");
+  // and stack the catch-up nudge on top by leaving the lone climber far above the wall
+  g.floorY = g.highestY + CFG.floorCatchupGap + 1000;
+  g.climbers[0].y = g.highestY;
+  g.climbers[0].state = "flying";
+  const uncappedProduct = CFG.floorCapMult * CFG.floorCreepCap * CFG.floorCatchupMult;
+  assert.ok(uncappedProduct > CFG.floorMultCap, "catch-up alone would blow well past the cap too");
+  assert.ok(g.wallMult() <= CFG.floorMultCap + 1e-9, "the combined multiplier never exceeds floorMultCap");
+  assert.ok(g.wallMult() > CFG.floorCapMult, "the cap still allows more than any single factor alone, just not their full product");
+});
