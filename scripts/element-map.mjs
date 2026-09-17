@@ -34,7 +34,8 @@ const candidates = (item) => {
   if (id.startsWith("swing-toy-")) return [`/elements/keyrings/${id}.png`];
   if (item.family === "gadget") {
     // the three polarity themes are photographed as their toy, not under the gadget's id
-    const poles = { "polarity-snack": "candy-pole", "polarity-travel": "compass-base", "polarity-doodle": "crayon" };
+    // the polarity themes are photographed as their toy, and the compass rotor is its own dial
+    const poles = { "polarity-snack": "candy-pole", "polarity-travel": "compass-base", "polarity-doodle": "crayon", "rotor-compass": "compass-base" };
     return [`/art/gadgets/${poles[id] ?? id}.webp`, `/art/gadgets/${id}.png`];
   }
   return [`/art/real-v1/obstacles/${id}.png`, `/art/real-v1/obstacles/${id}.webp`];

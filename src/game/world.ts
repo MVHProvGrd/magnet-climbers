@@ -177,7 +177,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 22, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 23, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -555,7 +555,11 @@ export class World {
         segment.bumpers = [];
         // v16: paper never dangles off a keyring chain. A doodle is a bit of paper,
         // so it only ever turns up under a clip; hard charms take the swinging hook.
-        const themes = this.version >= 16 && kind === "swing" ? THEMES.filter((t) => !PAPER_THEMES.has(t)) : [...THEMES];
+        // v23: the compass is a compass, not a pole flipper, so polarity is the candy pole and
+        // the crayon. v16 still holds for swings: a doodle is paper, so it is clipped, never hung.
+        const themes = kind === "swing" && this.version >= 16 ? THEMES.filter((t) => !PAPER_THEMES.has(t))
+          : kind === "polarity" && this.version >= 23 ? THEMES.filter((t) => t !== "travel")
+          : [...THEMES];
         let first = "";
         segment.gadgets = [0, 1].map((n) => {
           let theme = pick(art, themes);

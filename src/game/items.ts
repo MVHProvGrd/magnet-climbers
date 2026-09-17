@@ -49,6 +49,7 @@ const GADGET_VARIANTS = [
   ["rotor-pinwheel", "rotor", "Paper Pinwheel"],
   ["rotor-thermometer", "rotor", "Dial Thermometer"],
   ["rotor-fidget-spinner", "rotor", "Fidget Spinner"],
+  ["rotor-compass", "rotor", "Brass Compass"],
   ["clip-concert-ticket", "clip", "Kitchen Sessions Ticket"],
   ["clip-report-card", "clip", "Report Card"],
   ["clip-takeout-receipt", "clip", "Takeaway Receipt"],

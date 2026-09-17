@@ -82,7 +82,9 @@ export interface Gadget extends Vec { id: string; itemId: string; kind: "swing" 
   spin?: { extra: number; vel: number; cool: number };
   /** POP! toy on a keyring: one bit per bubble, flipped by a climber going through it. */
   pops?: number;
-  popCool?: number }
+  popCool?: number;
+  /** Compass: rotation of the needle art, 0 pointing north. It follows whoever climbs past. */
+  needle?: number }
 export interface MagneticGrip {
   contacts: MagneticContact[];
   pose: "flat" | "feet" | "hands" | "mixed" | "single";

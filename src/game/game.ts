@@ -752,6 +752,7 @@ export class Game {
     const sdt = dt * slow;
     if (this.phase === "running") { this.world.gadgetTime += sdt; this.world.stepGadgets(sdt); }
     this.tipClips(sdt);
+    this.swingNeedles(sdt);
     this.world.superGrip = this.effects.superMagnet > 0;
     for (const k of Object.keys(this.effects) as (keyof ActiveEffects)[]) {
       if (this.effects[k] > 0) this.effects[k] = Math.max(0, this.effects[k] - dt);
@@ -1139,6 +1140,32 @@ export class Game {
    * outer third of a 36 px bar counts, so this is a reward for a precise landing rather
    * than something that happens on every grab. Cosmetic: the hold does not move with it.
    */
+  /**
+   * A brass compass points at the nearest climber inside its range and swings back to north once
+   * everyone has gone. It is a real magnet on the door doing what a compass does near one: no
+   * field, no pole flipping, nothing to time -- it just notices you.
+   */
+  private swingNeedles(dt: number) {
+    const RANGE = 190;
+    for (const g of this.world.gadgets) {
+      if (g.itemId !== "rotor-compass") continue;
+      let near: Climber | null = null, best = RANGE;
+      for (const c of this.climbers) {
+        if (c.state === "lost") continue;
+        const d = Math.hypot(c.x - g.x, c.y - g.y);
+        if (d < best) { best = d; near = c; }
+      }
+      // the needle art points north at 0, so a bearing of atan2 turns a quarter further
+      const want = near ? Math.atan2(near.y - g.y, near.x - g.x) + Math.PI / 2 : 0;
+      const at = g.needle ?? 0;
+      // take the short way round, and lag behind a fast climber the way a real needle does
+      let diff = (want - at + Math.PI) % (Math.PI * 2);
+      if (diff < 0) diff += Math.PI * 2;
+      diff -= Math.PI;
+      g.needle = at + diff * Math.min(1, dt * (near ? 6 : 2));
+    }
+  }
+
   private tipClips(dt: number) {
     for (const g of this.world.gadgets) {
       if (g.kind !== "clip") continue;

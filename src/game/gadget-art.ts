@@ -163,11 +163,22 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   // photo assemblies carry their own hook, chain or clip: that IS the hold, so no plate or drawn hardware over it
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
-  const rotorImg = g.kind === "rotor" ? objectArt.get(g.itemId) : undefined;
+  // the compass is drawn from two pieces so its needle can move on its own
+  const compassFace = g.itemId === "rotor-compass" ? objectArt.get("compass-base") : undefined;
+  const rotorImg = g.kind === "rotor" ? (compassFace ?? objectArt.get(g.itemId)) : undefined;
   if (rotorImg) {
     // spindle-centred by the install script, so the draw offset IS the pivot
     const { w, h } = imageSize(rotorImg), s = 76 / Math.max(w, h);
     ctx.drawImage(rotorImg, -pivot[0] * w * s, -pivot[1] * h * s, w * s, h * s);
+    const needle = compassFace ? objectArt.get("compass-needle") : undefined;
+    if (needle) {
+      // measured on the polarity compass at 88px and scaled to the rotor's 76: the needle is
+      // pinned a shade below the dial centre, which is where the real one is riveted
+      ctx.save(); ctx.shadowColor = "transparent";
+      ctx.translate(0, 3.2); ctx.rotate(g.needle ?? 0);
+      ctx.drawImage(needle, -4.7, -25, 9.5, 57);
+      ctx.restore();
+    }
   } else if (g.kind === "rotor") {
     plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
     ctx.shadowColor = "transparent";

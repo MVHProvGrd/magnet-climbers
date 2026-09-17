@@ -180,7 +180,7 @@ test("mid-flight saves deep-copy joints and resume the identical physical trajec
 });
 
 test("item IDs are unique and every surface has matching physical behavior", () => {
-  assert.equal(FRIDGE_ITEMS.length, 151);
+  assert.equal(FRIDGE_ITEMS.length, 152);
   assert.equal(new Set(FRIDGE_ITEMS.map((item) => item.id)).size, FRIDGE_ITEMS.length);
   for (const item of FRIDGE_ITEMS.filter((item) => item.kind)) {
     const z = itemZone(item.id, 20, -200, 80, 80), world = surface([z]);
@@ -208,7 +208,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 22);
+  assert.equal(modern.snapshot()!.worldVersion, 23);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -326,7 +326,7 @@ test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", 
   // v18: the pool is every gadget variant less swing-doodle - paper is clipped, never hung off a chain (v16).
   // Pin the pool, not the sample: which variants a handful of seeds happens to deal is not the contract.
   const pool = FRIDGE_ITEMS.filter((i) => i.family === "gadget" && i.id !== "swing-doodle");
-  assert.equal(pool.length, 47, "gadget pool changed size");
+  assert.equal(pool.length, 48, "gadget pool changed size");
   for (const id of ids) assert.ok(pool.some((i) => i.id === id), `${id} was dealt but is not a gadget item`);
   assert.ok(ids.size >= pool.length - 8, `only ${ids.size} of ${pool.length} gadget variants ever appeared`);
   assert.ok(!ids.has("swing-doodle"), "paper never dangles from a chain");
@@ -837,6 +837,25 @@ test("toys still go straight on the door, not only on keyrings", () => {
   const now = count(22);
   assert.ok(now.stuck >= now.keyrings / 2, `stuck toys ${now.stuck} against ${now.keyrings} keyrings`);
   assert.ok(count(21).stuck < now.stuck, "v22 is the version that brought them back");
+});
+
+test("the compass needle follows a climber and settles back to north", () => {
+  const g = game(); g.phase = "running";
+  const compass = { id: "cmp", itemId: "rotor-compass", kind: "rotor" as const, phase: 2.4, x: 200, y: -300 };
+  g.world.segments = [{ y: -500, h: 500, zones: [], bumpers: [], gadgets: [compass], powerUps: [] }];
+  const c = g.climbers[0];
+  const settle = (x: number, y: number) => {
+    for (let i = 0; i < 180; i++) { Object.assign(c, { x, y, state: "stuck", vx: 0, vy: 0, vz: 0, z: 0 }); g.update(1 / 60); }
+    return compass.needle ?? 0;
+  };
+  // the needle art points north at 0, so a bearing turns a quarter further than atan2
+  assert.ok(Math.abs(settle(110, -300) + Math.PI / 2) < 0.1, "should point left at a climber on its left");
+  assert.ok(Math.abs(settle(290, -300) - Math.PI / 2) < 0.1, "should point right");
+  assert.ok(Math.abs(settle(200, -410)) < 0.1, "should point up");
+  assert.ok(Math.abs(Math.abs(settle(200, -190)) - Math.PI) < 0.1, "should point down");
+  // out of its range it swings back to north, and it never turns as a gadget
+  assert.ok(Math.abs(settle(900, 900)) < 0.1, "back to north when nobody is near");
+  assert.equal(gadgetPose(compass, 0).angle, gadgetPose(compass, 4).angle, "a compass hangs still");
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {
