@@ -102,7 +102,10 @@ export class World {
     for (const g of this.gadgets) {
       const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);
-      if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+      if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) {
+        this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+        this.knocked = g.itemId;
+      }
     }
     for (const seg of this.segments) for (const z of seg.zones) {
       const inside = p.x > z.x - 12 && p.x < z.x + z.w + 12 && p.y > z.y - 12 && p.y < z.y + z.h + 12;

@@ -14,7 +14,7 @@ import { fingerJoints, handTouches, handWorldPoint, SWIPE_DURATION, type KidHand
 import { pawPose, PAW_WARN } from "../src/game/cat-paw";
 import { gadgetPose, gadgetZone, GADGET_KINDS } from "../src/game/gadgets";
 import { cloneTricks, freshTricks, registerTrick } from "../src/game/tricks";
-import { EFFECTS, MUSIC_STEP, musicStep } from "../src/game/music-score";
+import { EFFECTS, MUSIC_STEP, TOY_VOICE, musicStep } from "../src/game/music-score";
 import { setSound } from "../src/game/audio";
 import type { Climber, NoStickZone } from "../src/game/types";
 
@@ -663,6 +663,17 @@ test("every photographed paper card is cut to the shape of its own art", () => {
     const a = PAPER_ASPECT[item.id];
     assert.ok(a > 0.3 && a < 3, `${item.id} has a daft shape: ${a}`);
   }
+});
+
+test("every keychain with a voice has a sound to play, and no two dangle silently alike", () => {
+  const ids = new Set(FRIDGE_ITEMS.map((i) => i.id));
+  for (const [id, voice] of Object.entries(TOY_VOICE)) {
+    assert.ok(ids.has(id) || id.startsWith("swing-"), `${id} is not an item`);
+    assert.ok(EFFECTS[voice]?.length, `${id} asks for ${voice}, which does not exist`);
+  }
+  // the bumper toys are what hang off the keyrings, so they all need a noise
+  const bumpers = FRIDGE_ITEMS.filter((i) => i.id.startsWith("bumper-") && i.id !== "bumper-4");
+  for (const b of bumpers) assert.ok(TOY_VOICE[b.id], `${b.id} is mute`);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

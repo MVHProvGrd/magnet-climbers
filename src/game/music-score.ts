@@ -17,6 +17,22 @@ export function musicStep(step: number, danger: number, chill = false): Voice[] 
   if (!chill && danger > 0.75 && beat === 7) notes.push({ frequency: hz(root + 31), duration: 0.1, gain: 0.07, type: "triangle" });
   return notes;
 }
+/**
+ * What each hanging toy says when it is knocked. Ids are the world's item ids, so a toy
+ * on a keyring (`swing-toy-N`) sounds like the same toy stuck straight on the door
+ * (`bumper-N`). Anything not listed swings in silence.
+ */
+export const TOY_VOICE: Record<string, string> = {
+  "bumper-0": "bell", "bumper-1": "squeak", "bumper-2": "blip", "bumper-3": "roar",
+  "bumper-5": "bell", "bumper-6": "taxi", "bumper-7": "revv", "bumper-8": "boing",
+  "bumper-9": "whoosh", "bumper-10": "clack", "bumper-11": "tick", "bumper-12": "boing",
+  "swing-keys": "keys", "swing-bottle-opener": "clink", "swing-disco-ball": "chime",
+  "swing-rubber-duck": "squeak", "swing-bead-lanyard": "rattle", "swing-carabiner-whistle": "whistleToot",
+  "swing-wind-chime": "chime", "swing-baby-shoe": "bell", "swing-scissors": "snip",
+  "swing-measuring-spoons": "rattle", "swing-souvenir-spoon": "clink", "swing-fishing-lure": "rattle",
+  "swing-snack": "clink", "swing-travel": "clink", "swing-doodle": "clink",
+};
+// the POP! toy (bumper-4) keeps its own bubble sounds, so it is deliberately absent above
 export const EFFECTS: Record<string, readonly Voice[]> = {
   launch: [{ frequency: 145, endFrequency: 510, duration: 0.22, gain: 0.12, type: "triangle" }, { frequency: 900, endFrequency: 2400, duration: 0.12, gain: 0.035, type: "noise" }],
   // Drawing the sling: rubber creaking under tension. The whole effect is pitched
@@ -52,6 +68,90 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
     { frequency: 1244, duration: 0.09, gain: 0.035, type: "sine" },
     { frequency: 830, duration: 0.15, delay: 0.14, gain: 0.09, type: "triangle" },
     { frequency: 1660, duration: 0.12, delay: 0.14, gain: 0.03, type: "sine" },
+  ],
+  // ---- toy voices -------------------------------------------------------------
+  // What each hanging thing says when a climber brushes past it. Short, quiet and
+  // distinct: several toys share a voice where they would really sound alike.
+  /** rubber duck, and the duck keyring: a squeeze, up then down */
+  squeak: [
+    { frequency: 900, endFrequency: 1500, duration: 0.09, gain: 0.08, type: "sine" },
+    { frequency: 1500, endFrequency: 760, duration: 0.11, delay: 0.09, gain: 0.07, type: "sine" },
+    { frequency: 2400, duration: 0.05, gain: 0.02, type: "noise" },
+  ],
+  /** tin robot: two flat blips, the second a step up */
+  blip: [
+    { frequency: 520, duration: 0.07, gain: 0.07, type: "triangle" },
+    { frequency: 780, duration: 0.09, delay: 0.1, gain: 0.07, type: "triangle" },
+  ],
+  /** plastic dinosaur: a small growl */
+  roar: [
+    { frequency: 150, endFrequency: 90, duration: 0.3, gain: 0.1, type: "triangle" },
+    { frequency: 420, endFrequency: 220, duration: 0.26, gain: 0.05, type: "noise" },
+  ],
+  /** race car: a short rev */
+  revv: [
+    { frequency: 110, endFrequency: 320, duration: 0.22, gain: 0.09, type: "triangle" },
+    { frequency: 600, endFrequency: 1500, duration: 0.2, gain: 0.035, type: "noise" },
+  ],
+  /** space shuttle: a rising rush of air */
+  whoosh: [
+    { frequency: 400, endFrequency: 2600, duration: 0.3, gain: 0.07, type: "noise" },
+    { frequency: 180, endFrequency: 320, duration: 0.28, gain: 0.05, type: "sine" },
+  ],
+  /** wooden alphabet block: a dry knock */
+  clack: [
+    { frequency: 320, endFrequency: 190, duration: 0.06, gain: 0.1, type: "triangle" },
+    { frequency: 1400, duration: 0.03, gain: 0.03, type: "noise" },
+  ],
+  /** plastic brick, and the pop toy's cousins: a hard tick */
+  tick: [
+    { frequency: 900, endFrequency: 600, duration: 0.04, gain: 0.08, type: "triangle" },
+    { frequency: 2600, duration: 0.02, gain: 0.025, type: "noise" },
+  ],
+  /** gummy bear and banana: soft and rubbery */
+  boing: [
+    { frequency: 260, endFrequency: 520, duration: 0.1, gain: 0.08, type: "sine" },
+    { frequency: 520, endFrequency: 300, duration: 0.14, delay: 0.09, gain: 0.05, type: "sine" },
+  ],
+  /** iced donut, and the penguin: one small round bell */
+  bell: [
+    { frequency: 1320, duration: 0.24, gain: 0.06, type: "sine" },
+    { frequency: 1980, duration: 0.16, gain: 0.02, type: "sine" },
+  ],
+  /** house keys: a handful of metal on a ring */
+  keys: [
+    { frequency: 2600, duration: 0.05, gain: 0.05, type: "noise" },
+    { frequency: 3100, duration: 0.05, delay: 0.05, gain: 0.045, type: "noise" },
+    { frequency: 2300, duration: 0.07, delay: 0.11, gain: 0.04, type: "noise" },
+    { frequency: 1800, duration: 0.09, delay: 0.18, gain: 0.03, type: "noise" },
+  ],
+  /** one piece of metal against another: bottle opener, spoon, carabiner */
+  clink: [
+    { frequency: 2100, duration: 0.09, gain: 0.06, type: "sine" },
+    { frequency: 3150, duration: 0.06, gain: 0.025, type: "sine" },
+  ],
+  /** wind chime and disco ball: a little falling arpeggio */
+  chime: [
+    { frequency: 1568, duration: 0.3, gain: 0.05, type: "sine" },
+    { frequency: 1319, duration: 0.3, delay: 0.09, gain: 0.045, type: "sine" },
+    { frequency: 1047, duration: 0.34, delay: 0.19, gain: 0.04, type: "sine" },
+  ],
+  /** beads, measuring spoons, a lure's rattle: many small things at once */
+  rattle: [
+    { frequency: 1800, duration: 0.05, gain: 0.045, type: "noise" },
+    { frequency: 2400, duration: 0.05, delay: 0.04, gain: 0.04, type: "noise" },
+    { frequency: 1500, duration: 0.06, delay: 0.09, gain: 0.035, type: "noise" },
+  ],
+  /** the whistle on the carabiner, and the referee in every kid's pocket */
+  whistleToot: [
+    { frequency: 2093, duration: 0.16, gain: 0.05, type: "sine" },
+    { frequency: 2217, duration: 0.16, gain: 0.025, type: "sine" },
+    { frequency: 3000, duration: 0.1, gain: 0.02, type: "noise" },
+  ],
+  /** kitchen scissors: two quick snips */
+  snip: [
+    { frequency: 2800, duration: 0.03, gain: 0.05, type: "noise" },
+    { frequency: 2400, duration: 0.04, delay: 0.07, gain: 0.045, type: "noise" },
   ],
   link: [{ frequency: 660, duration: 0.12, gain: 0.09, type: "sine" }, { frequency: 990, duration: 0.13, delay: 0.07, gain: 0.06, type: "sine" }],
   coin: [{ frequency: 1050, duration: 0.07, gain: 0.07, type: "sine" }, { frequency: 1575, duration: 0.16, delay: 0.055, gain: 0.055, type: "sine" }],
