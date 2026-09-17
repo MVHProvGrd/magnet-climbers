@@ -175,6 +175,20 @@
   .ledger div{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:14px;
     padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:14px}
   .ledger b{font-family:var(--display);font-weight:800;letter-spacing:.4px;font-size:15px}
+  .band{margin-top:22px}
+  .band > h3{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:.3px;margin:0 0 3px}
+  .band > p{margin:0 0 10px;color:var(--ink-3);font-size:14px;max-width:74ch}
+  .finds{display:grid;gap:0}
+  .find{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:12px 0;border-top:1px solid var(--line-soft)}
+  .find b{font-family:var(--display);font-weight:800;font-size:15.5px;letter-spacing:.3px}
+  .find code{grid-column:1/-1;font-family:var(--mono);font-size:12px;color:var(--ink-3);word-break:break-word}
+  .find p{grid-column:1/-1;margin:2px 0 0;color:var(--ink-2);font-size:14px;max-width:80ch}
+  .flag{align-self:start;font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:1.4px;
+    text-transform:uppercase;padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .flag.open{color:var(--danger);box-shadow:inset 0 0 0 1px currentColor}
+  .flag.fixed{color:var(--accent);box-shadow:inset 0 0 0 1px currentColor}
+  .flag.decided{color:var(--ink-3);box-shadow:inset 0 0 0 1px currentColor}
+  .flag.wrong{color:var(--ink-3);box-shadow:inset 0 0 0 1px currentColor;text-decoration:line-through}
   .ledger span{color:var(--ink-2)}
   footer{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
 </style>
@@ -196,29 +210,17 @@
         <dt>Items on the door</dt><dd>152</dd>
         <dt>Coin sinks</dt><dd>2, one doubling</dd>
         <dt>Reasons to return</dt><dd>daily · streak · league</dd>
-        <dt>Tests</dt><dd>68 passing</dd>
+        <dt>Tests</dt><dd>69 passing</dd>
       </dl>
     </div>
   </div>
 
   <section>
     <h2>Now <span class="count">in this order</span></h2>
-    <p class="note">All three are the recorder cashing in. Nothing here needs a new idea — they need the tape, which exists.</p>
+    <p class="note">The ghost has shipped, so these two are what is left of the recorder cashing in — and the first of them is the fairness ship-blocker in the audit below.</p>
     <div class="steps">
   <article class="step">
     <div class="step-n">1</div>
-    <div class="step-body">
-      <h3>Ghost of your best run</h3>
-      <p class="lede">Your own best climb, drawn on the door beside you.</p>
-      <p class="why">The recorder is in and the best run on a device already keeps its tape, so this is playback and a second climber drawn faintly — no new systems. A line on the fridge says how far you got; a ghost says how you got there, which is the part worth beating.</p>
-      <div class="rig">
-        <span class="chip"><b>size</b><span>medium</span></span>
-        <span class="chip touch">recorder playback</span><span class="chip touch">a ghosted climber in render.ts</span><span class="chip touch">the tape already in local storage</span>
-      </div>
-    </div>
-  </article>
-  <article class="step">
-    <div class="step-n">2</div>
     <div class="step-body">
       <h3>Replay the daily on the server</h3>
       <p class="lede">Check a daily score by climbing it again, not by trusting the number.</p>
@@ -230,7 +232,7 @@
     </div>
   </article>
   <article class="step">
-    <div class="step-n">3</div>
+    <div class="step-n">2</div>
     <div class="step-body">
       <h3>Async race from a share link</h3>
       <p class="lede">Race the run your friend actually climbed, not their number.</p>
@@ -248,7 +250,7 @@
     <p class="note">These pay off once there is a reason to come back. In order, but the order is softer.</p>
     <div class="steps">
   <article class="step">
-    <div class="step-n">4</div>
+    <div class="step-n">3</div>
     <div class="step-body">
       <h3>Accounts</h3>
       <p class="lede">Sign in on top of the link codes.</p>
@@ -260,7 +262,7 @@
     </div>
   </article>
   <article class="step">
-    <div class="step-n">5</div>
+    <div class="step-n">4</div>
     <div class="step-body">
       <h3>Live ghost race</h3>
       <p class="lede">Two climbers, one door, settled by the server.</p>
@@ -272,7 +274,7 @@
     </div>
   </article>
   <article class="step">
-    <div class="step-n">6</div>
+    <div class="step-n">5</div>
     <div class="step-body">
       <h3>Capacitor, rewarded ads, IAP</h3>
       <p class="lede">Wrap it and let it earn.</p>
@@ -296,9 +298,15 @@
   </section>
 
   <section>
+    <h2>Audit <span class="count">22 lanes, September</span></h2>
+    <p class="note">Twenty-two read-only passes over the shipped build — first run, fling feel, difficulty, economy, retention, fairness, visuals, audio, UI, accessibility, performance, architecture, tests, PWA, the Worker, privacy, world variety, genre benchmark, monetisation, reach and two blind playtests. Everything below names the file it lives in.</p>
+    <div class="band"><h3>Ship-blockers</h3><p>Nothing else on this page matters if these are still true when the game gets its first real traffic.</p><div class="finds"><div class="find"><b>Scores are taken on trust</b><span class="flag open">open</span><code>worker/src/index.ts</code><p>POST /score and /run accept any cm with no proof and no token, so a console fetch takes #1 on the daily instantly. /rename has no ownership check either, which is impersonation. This is what roadmap item 1 exists to close.</p></div><div class="find"><b>Chat cannot see personal information</b><span class="flag open">open</span><code>worker/src/index.ts cleanChat</code><p>A phone number, a street address and a social handle all pass through untouched, in a game children play, while our own privacy page tells them not to post exactly those. The profanity filter falls to spaces, repeated letters and fullwidth Unicode, and an evasion never counts toward a strike.</p></div><div class="find"><b>Block is cosmetic</b><span class="flag open">open</span><code>src/game/ui.ts, worker/src/index.ts</code><p>Blocking hides a sender in one browser; the Worker is never told, so a blocked player keeps posting to everyone else. Reports and strikes sit in D1 until someone opens the admin panel by hand.</p></div><div class="find"><b>Link codes can be guessed</b><span class="flag open">open</span><code>worker/src/index.ts POST /claim</code><p>Six characters, ten minutes, no rate limit and no lockout, and a claimed code hands over a child's whole profile. Nothing anywhere in the Worker is rate limited.</p></div><div class="find"><b>The core gesture is silent</b><span class="flag open">open</span><code>src/game/audio.ts, src/game/game.ts</code><p>sfx.launch() is composed and never called. The one thing every player does every few seconds makes no sound.</p></div></div></div><div class="band"><h3>The loop itself</h3><p>Retention machinery is ahead of the thing it retains people for. This is the gap.</p><div class="finds"><div class="find"><b>The fling is not legible in ten seconds</b><span class="flag open">open</span><code>src/main.ts, src/game/magnetism.ts</code><p>Under scripted play the first run ended at 0 cm before a single successful stick. Everything below this line is infrastructure for a core loop players have not been convinced to love yet. Suggested: quietly forgiving physics for the first three flings of a first-ever run, not another text bubble.</p></div><div class="find"><b>Release adds spin nobody can control</b><span class="flag open">open</span><code>src/game/game.ts launch</code><p>c.spin takes a noise term worth about four radians a second, keyed to the release frame. Skill cannot overcome it and the player cannot see it.</p></div><div class="find"><b>Terrain stops getting harder at 1,360 cm</b><span class="flag open">open</span><code>src/game/world.ts generate</code><p>difficulty is min(1, i/40) and every probability that reads it flatlines there. Measured hazard density is identical from 1,360 cm to 13,600 cm; only the red line still escalates, so most of a strong run is on flat ground.</p></div><div class="find"><b>Every seed has the same skeleton</b><span class="flag open">open</span><code>src/game/world.ts generate</code><p>Gadget doors land on i%4 and set pieces on i%5, so across ten seeds they fall in exactly the same columns. Gadget kinds are a literal round robin. Only the contents vary, never the pacing.</p></div><div class="find"><b>A weak run is eight times more seed than skill</b><span class="flag open">open</span><code>src/game/world.ts</code><p>A bot with fixed inputs ranged 73 to 625 cm across ten seeds. Hazard-heavy doors can string together with no anti-streak clamp.</p></div><div class="find"><b>Speed multipliers stack with no ceiling</b><span class="flag open">open</span><code>src/game/game.ts wallSpeed</code><p>The stepped ramp, the creep and the catch-up multiply with no cap on the product, so a climber who pulls ahead can meet an eleven-times spike rather than an escalation.</p></div></div></div><div class="band"><h3>Economy</h3><p>Modelled at about 230 coins a run on day one and about 7,000 a day by day thirty.</p><div class="finds"><div class="find"><b>Income outruns every sink</b><span class="flag open">open</span><code>src/game/config.ts, src/game/creatures.ts</code><p>A full kit is 758 coins and the prize machine caps at 25,600. Both flatten against a curve that keeps climbing, and solo has no permanent sink at all.</p></div><div class="find"><b>Sell nothing that touches the climb</b><span class="flag decided">decided</span><code>—</code><p>The reading across the monetisation and privacy lanes agrees: rewarded ads on the hook that already exists, one-time cosmetic packs, a patron tip. Never creatures or patterns for cash, never league placement, never anything that climbs faster. Any purchase screen needs a parental gate.</p></div></div></div><div class="band"><h3>Reach</h3><p>The daily is Wordle-shaped mechanically and produces nothing anyone can post.</p><div class="finds"><div class="find"><b>The daily has no shareable artefact</b><span class="flag open">open</span><code>worker/src/card.ts</code><p>Challenge.mode is solo or crew; there is no daily. So the one run where the whole world climbed the same fridge shares the same generic card as any other: a name, a number, a mode pill. No date, no rank, no streak — and rank is already computed in main.ts.</p></div><div class="find"><b>A challenge sends a number, not a door</b><span class="flag open">open</span><code>src/main.ts startRun, src/game/share.ts</code><p>Accepting a challenge generates a fresh fridge, so the target height came off a course the recipient never sees. The ghost now makes the fix cheap: send the tape's seed.</p></div><div class="find"><b>The game-over card never mentions the loop</b><span class="flag open">open</span><code>src/game/ui.ts showGameOver</code><p>No daily, no streak, no league tier at the exact moment attention is highest. The league is two taps deep and opens on a blank body.</p></div></div></div><div class="band"><h3>Craft</h3><p>Small, mostly cheap, and each one is somebody's first impression.</p><div class="finds"><div class="find"><b>Five tabs in a four-column grid</b><span class="flag open">open</span><code>src/style.css .seg</code><p>The board's fifth tab orphans onto a second row.</p></div><div class="find"><b>The red line has no telegraph</b><span class="flag open">open</span><code>src/game/render.ts, src/game/hud.ts</code><p>One or two pixels and a small bar, for the thing that ends almost every run. Death reads as a number running out rather than a threat arriving.</p></div><div class="find"><b>Climbing higher does not look like going anywhere</b><span class="flag open">open</span><code>src/game/scenery-materials.ts</code><p>The door is the same texture at 200 cm and at 400 cm; only the props change.</p></div><div class="find"><b>Six gradients per climber per frame</b><span class="flag open">open</span><code>src/game/climber-render.ts</code><p>None cached, though most change only with the climber's colour. Every visible zone rebuilds its gradients and shadows every frame too, despite the file saying it caches them. Measured against a 49.8 ms draw spike in real play.</p></div><div class="find"><b>Segment generation hitches</b><span class="flag open">open</span><code>src/game/world.ts generate</code><p>Tail spikes of four to six milliseconds on the frame a new door scrolls in, from sticker placement retries and bumper path checks done all at once.</p></div><div class="find"><b>The canvas is invisible to a screen reader</b><span class="flag open">open</span><code>src/game/ui.ts, index.html</code><p>No role, no label, no live region, and drag is the only touch input. Push and pull are told apart by hue alone, and the prize reel ignores prefers-reduced-motion.</p></div><div class="find"><b>The app precaches 10.8 MB on install</b><span class="flag fixed">fixed</span><code>vite.config.ts</code><p>188 files, 7.9 MB of it art, downloading against the assets actually on screen.</p></div></div></div><div class="band"><h3>Wrong</h3><p>Reported by an auditor, checked against the code, and false. Kept visible so nobody re-files them.</p><div class="finds"><div class="find"><b>“Nothing ever dies of the hand or the paw”</b><span class="flag wrong">wrong</span><code>src/game/game.ts damage</code><p>It does. damage() calls lose() with the cause at zero hearts, and the hand and paw call sites pass their own. The bot that reported this had three hearts, took three hits and never reached zero, so it only ever saw the red line.</p></div><div class="find"><b>“The photogenic objects are the ones you cannot stick to”</b><span class="flag wrong">wrong</span><code>src/game/world.ts isMetal</code><p>The opposite, since world version 15: a photo on a fridge is held there by a magnet, so a magnet holds on it. Cards, the calendar and the photo props are all climbable. Glass, trim and voids are what slide you off.</p></div></div></div>
+  </section>
+
+  <section>
     <h2>Shipped <span class="count">this month</span></h2>
     <p class="note">Everything the plan called Now, plus the decisions that came with it.</p>
-    <div class="ledger"><div><b>Weekly league</b><span>Buckets of about thirty by metres climbed that week; the top ten go up a tier on Monday, the bottom ten go down, across Paper, Plastic, Steel, Chrome and Gold. No cron job — a player is seated the first time they climb in a new week.</span></div><div><b>Fridge of the month</b><span>Twelve doors across the year, repainted on the first, each carrying one pattern you can only get by climbing that month. The prize machine will not sell them at any price.</span></div><div><b>Input recorder</b><span>Every fling and climb written down with its run time. A tape replays into the same climb, to the centimetre; the best run on a device keeps one.</span></div><div><b>Daily climb</b><span>One fridge for everybody from the UTC date, one scored attempt, no kit, a TODAY board, and the Worker owns the day.</span></div><div><b>Missions and streaks</b><span>Three missions at a time against counters the run already kept, and a daily streak paying 40 up to 200 with a pattern on the seventh day.</span></div><div><b>Crew and Expeditions</b><span>Out of the game and into archive/crew, with four upgrades nobody could feel.</span></div></div>
+    <div class="ledger"><div><b>Ghost of your best run</b><span>The whole sim again: a second Game from the tape's seed, stepped 1/120 beside the live run and fed its flings. Only offered on the door the tape was recorded on, because a ghost anywhere else is a lie. Sound came out of the sim to make room for it.</span></div><div><b>Install and auto-kit</b><span>beforeinstallprompt captured, a Settings row that knows all three states, written-out Safari steps for iOS, and one offer after three climbs. Plus a kit that buys itself, so CLIMB AGAIN is one tap.</span></div><div><b>Weekly league</b><span>Buckets of about thirty by metres climbed that week; the top ten go up a tier on Monday, the bottom ten go down, across Paper, Plastic, Steel, Chrome and Gold. No cron job — a player is seated the first time they climb in a new week.</span></div><div><b>Fridge of the month</b><span>Twelve doors across the year, repainted on the first, each carrying one pattern you can only get by climbing that month. The prize machine will not sell them at any price.</span></div><div><b>Input recorder</b><span>Every fling and climb written down with its run time. A tape replays into the same climb, to the centimetre; the best run on a device keeps one.</span></div><div><b>Daily climb</b><span>One fridge for everybody from the UTC date, one scored attempt, no kit, a TODAY board, and the Worker owns the day.</span></div><div><b>Missions and streaks</b><span>Three missions at a time against counters the run already kept, and a daily streak paying 40 up to 200 with a pattern on the seventh day.</span></div><div><b>Crew and Expeditions</b><span>Out of the game and into archive/crew, with four upgrades nobody could feel.</span></div></div>
   </section>
 
   <footer>Generated from <span style="font-family:var(--mono)">scripts/roadmap-page.mjs</span>. The ordered backlog lives in ROADMAP.md; the crew plan in CREW_DESIGN.md. Edit the script, not this page.</footer>

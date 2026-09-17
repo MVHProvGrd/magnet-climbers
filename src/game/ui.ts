@@ -1272,7 +1272,7 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; missions?: Mission[]; missionsPaid?: number; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; missions?: Mission[]; missionsPaid?: number; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null; daily?: boolean }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
@@ -1323,7 +1323,10 @@ export class Ui {
       <div class="revive-row">
         ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
       </div>`}
-      <button class="go" data-a="again">CLIMB AGAIN</button>
+      ${o.daily
+        ? `<p class="lost-banked"><i>That was today's climb \u2014 one go each, same fridge for everyone. A new one at midnight UTC.</i></p>
+           <button class="go" data-a="board">SEE TODAY'S BOARD</button>`
+        : `<button class="go" data-a="again">CLIMB AGAIN</button>`}
       <div class="lost-ghosts">
         ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
@@ -1334,6 +1337,8 @@ export class Ui {
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
       if (a === "again") this.showQuickKit(() => this.h.onPlay("solo"));
+      // the daily is one attempt: there is nothing to climb again, so it offers the board
+      if (a === "board") { this.h.onQuitRun(); this.showBoard("daily"); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }

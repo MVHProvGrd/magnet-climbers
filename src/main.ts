@@ -417,7 +417,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
