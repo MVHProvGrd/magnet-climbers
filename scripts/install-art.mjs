@@ -135,6 +135,36 @@ for (const id of ["clip-snack", "clip-travel", "clip-doodle"]) {
   pivots[id] = [+(m.cx / m.w).toFixed(4), +(m.susp / m.h).toFixed(4)];
 }
 
+/**
+ * Assets that ship byte for byte. The fitting above trims to the opaque bounds, which is
+ * right for a cutout and wrong for anything already fitted to a pivot: re-cropping the
+ * clock face would move its spindle and the hands would no longer sit on it. Codex's pack
+ * 35 handoff is explicit about not cropping the exported frame again.
+ */
+const VERBATIM = [
+  // re-encoded, never resized: the frame keeps its exact pixel dimensions, so the normalized
+  // pivot is untouched. Only a crop or a rescale would move the spindle.
+  ["35-clock-layers-v1/ready/rotor-clock-faceless-v1.webp", "public/art/gadgets/rotor-clock.webp", true],
+  ["35-clock-layers-v1/ready/clock-hour-hand-v1.webp", "public/art/gadgets/clock-hour-hand.webp", false],
+  ["35-clock-layers-v1/ready/clock-minute-hand-v1.webp", "public/art/gadgets/clock-minute-hand.webp", false],
+];
+for (const [src, dst, recode] of VERBATIM) {
+  const from = `art/archive/${src}`;
+  if (!existsSync(from)) { console.log("missing", from); continue; }
+  mkdirSync(dirname(dst), { recursive: true });
+  const raw = readFileSync(from);
+  let out = raw;
+  if (recode) {
+    const img = await loadImage(raw);
+    const canvas = createCanvas(img.width, img.height);
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    const shrunk = canvas.toBuffer("image/webp", 90);
+    if (shrunk.length < raw.length) out = shrunk;
+  }
+  writeFileSync(dst, out);
+  console.log(`${dst.padEnd(46)} ${recode ? "re-encoded" : "verbatim  "} ${(raw.length / 1024) | 0}KB -> ${(out.length / 1024) | 0}KB`);
+}
+
 if (Object.keys(pivots).length) {
   const body = Object.entries(pivots).sort(([a], [b]) => a.localeCompare(b))
     .map(([id, [x, y]]) => `  "${id}": [${x}, ${y}],`).join("\n");

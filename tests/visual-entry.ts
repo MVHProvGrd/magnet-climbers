@@ -1,7 +1,7 @@
 export { Game } from "../src/game/game";
 export { setPickupArt } from '../src/game/pickup-art';
 export { setObstacleArt, OBSTACLE_IDS } from '../src/game/obstacle-art';
-export { drawGadget, setGadgetArt, setDestinationArt, setObjectArt } from "../src/game/gadget-art";
+export { drawGadget, setGadgetArt, setDestinationArt, setObjectArt, setWallClock } from "../src/game/gadget-art";
 export { gadgetPose, gadgetZone, GADGET_KINDS, THEMES } from "../src/game/gadgets";
 export { MUSIC_STEP, musicStep, EFFECTS } from "../src/game/music-score";
 export { drawKidHand, handPose, handTouches, handWorldPoint, SWIPE_DURATION, RECOIL_DURATION } from "../src/game/kid-hand";

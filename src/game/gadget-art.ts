@@ -45,6 +45,8 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
   // Whole photographed assemblies - hook, chain, clip or spindle baked in - keyed by the item id
   // the world hands out. Each one hangs or turns about its own measured point in GADGET_PIVOTS.
   ...GADGET_ASSEMBLIES.map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
+  // the clock ships as a hands-free dial plus its two hands, so it can tell the actual time
+  ...["clock-hour-hand", "clock-minute-hand"].map((id) => loadImage(`art/gadgets/${id}.webp`, (image) => setObjectArt(id, image))),
   loadImage("art/real-v1/kid-arm.webp", (image) => setObjectArt("kid-arm", image)),
   loadImage("art/real-v1/cat-paw.webp", (image) => setObjectArt("cat-paw", image)),
   loadImage("art/real-v1/cat-paw-claws.webp", (image) => setObjectArt("cat-paw-claws", image)),
@@ -59,6 +61,12 @@ export const gadgetArtReady = typeof Image === "undefined" ? Promise.resolve() :
  */
 export const KEYCHAIN = { x: 0.4936, y: 0.1771, chainEnd: 218 / 384 };
 const KEYCHAIN_PIVOT = { x: KEYCHAIN.x, y: KEYCHAIN.y };
+
+/** Wall clock reading, swappable so a render can be pinned to a known time. */
+let wallClock = () => new Date();
+export function setWallClock(read: () => Date) { wallClock = read; }
+/** Hand geometry from pack 35: 128x256 frames pivoting at (64,240), at 0.55 of the face. */
+const HAND = { px: 64, py: 240, scale: 0.55 };
 const imageSize = (img: CanvasImageSource) => ({
   w: (img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width || 1,
   h: (img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height || 1,
@@ -200,6 +208,23 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     // spindle-centred by the install script, so the draw offset IS the pivot
     const { w, h } = imageSize(rotorImg), s = 76 / Math.max(w, h);
     ctx.drawImage(rotorImg, -pivot[0] * w * s, -pivot[1] * h * s, w * s, h * s);
+    // The clock's dial ships without hands. Lay them over the spindle at the real local
+    // time: the face turns with the gadget and the hands carry that turn plus their own
+    // angle, so it still reads correctly however far round the rotor has gone.
+    const hourHand = objectArt.get("clock-hour-hand"), minuteHand = objectArt.get("clock-minute-hand");
+    if (g.itemId === "rotor-clock" && hourHand && minuteHand) {
+      const at = wallClock(), minutes = at.getMinutes() + at.getSeconds() / 60;
+      const hs = HAND.scale * s;
+      for (const [hand, angle] of [
+        [hourHand, ((at.getHours() % 12) + minutes / 60) * Math.PI / 6],
+        [minuteHand, minutes * Math.PI / 30],
+      ] as const) {
+        const d = imageSize(hand);
+        ctx.save(); ctx.rotate(angle);
+        ctx.drawImage(hand, -HAND.px * hs, -HAND.py * hs, d.w * hs, d.h * hs);
+        ctx.restore();
+      }
+    }
 
   } else if (g.kind === "rotor") {
     plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
