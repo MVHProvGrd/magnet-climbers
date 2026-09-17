@@ -13,16 +13,7 @@ pivot is called out, and a `-v1` suffix on the id so a re-cut can land beside th
 
 ## Queued
 
-### 1. A hands-free clock face — `rotor-clock-faceless-v1`
-**Status:** described in full in `ART_REFRESH_HANDOFF.md` (§ "Requested next: a hands-free
-clock face"). Not yet delivered.
-
-The kitchen clock magnet now shows the player's real phone time, drawn as live hands over
-the photo — which gives it two sets of hands. The same clock with **no hands and no centre
-cap**, same rim, dial, lighting and numerals, replaces it. Dial centre must stay at
-`[0.501, 0.4957]` of the canvas so `gadget-pivots.ts` needs no change.
-
-### 2. League tier badges — Paper, Plastic, Steel, Chrome, Gold
+### 1. League tier badges — Paper, Plastic, Steel, Chrome, Gold
 Five badges, one per tier in `worker/src/index.ts` `TIERS`. Shown on the board's LEAGUE tab
 (`src/game/ui.ts` `showBoard`) and, once it exists, on a home-dock rank chip.
 
@@ -34,7 +25,7 @@ Five badges, one per tier in `worker/src/index.ts` `TIERS`. Shown on the board's
 
 Today: the tier name is plain text.
 
-### 3. A streak flame — `streak-flame-v1`
+### 2. A streak flame — `streak-flame-v1`
 The daily streak counter uses the 🔥 emoji, which renders differently on every platform and
 breaks the kitchen-photo look. Wanted: one small object, ~128×128 transparent, that reads as
 "days in a row" on a fridge door — a magnetic day counter, a wax seal, a tally sticker. It
@@ -42,18 +33,18 @@ sits next to a number, so leave the number out of the art.
 
 Today: `🔥` in `src/game/ui.ts`.
 
-### 4. Board empty state — `board-empty-v1`
+### 3. Board empty state — `board-empty-v1`
 ~240×240 transparent. The LEAGUE and TODAY tabs open on a blank body with one line of text
 before any score lands, which is the first thing a new player sees on that screen. Wanted:
 a bare fridge door with a single blank magnetic notepad on it — an invitation, not an error.
 
-### 5. Daily share card background — `card-base-daily.jpg`
+### 4. Daily share card background — `card-base-daily.jpg`
 1200×630 JPEG for `worker/src/assets/`, a sibling of the existing `card-base.jpg`. Used when
 the shared run was the daily climb, so it wants a "today" motif — a magnetic date tile or a
 torn calendar day on the door — with the same cover framing and the same clear band across
 the middle-left where `cardSvg` writes the name and the height.
 
-### 6. Set-piece doors, three or four more
+### 5. Set-piece doors, three or four more
 `world-patterns.ts` `SET_PIECES` has four: `water-station`, `busy-month`, `ice-alley`,
 `handle-hop`. A long climb cycles them six or seven times. Same on-door treatment as the
 existing four (340 wide × ~280 tall, sitting on the steel, not replacing it):
@@ -63,10 +54,10 @@ existing four (340 wide × ~280 tall, sitting on the steel, not replacing it):
 - a row of bottle openers,
 - a takeaway-menu fan.
 
-These are the biggest single lever on how varied a run looks, so they are the most valuable
-art on this list after the clock.
+These are the biggest single lever on how varied a run looks, and with the clock delivered
+they are the most valuable art on this list.
 
-### 7. iOS home-screen set
+### 6. iOS home-screen set
 `index.html` carries one 192×192 `apple-touch-icon` and no splash screens, so launching from
 an iOS home screen shows white until the bundle loads. Needed, all derivable from the
 existing `toy-icon-512.png` master rather than drawn fresh:
@@ -74,6 +65,15 @@ existing `toy-icon-512.png` master rather than drawn fresh:
 - `apple-touch-icon` at 180×180,
 - `apple-touch-startup-image` at the common iPhone/iPad viewport sizes, on the manifest's
   `theme_color` ground with the toy centred.
+
+### 7. A kit icon — `ui-kit-v1`
+Kit and creatures are tiles in the home row now, five across. Creatures wears the player's own
+toy, which is right. Kit is borrowing the red horseshoe from `art/pickups/magnet.png`, which
+is a power-up you catch mid-climb, not the gear you buy before one.
+
+Wanted: one object at the same weight and lighting as `art/ui/board.webp` and its siblings,
+square, ~96×96 transparent, reading as "gear for this climb" — a small canvas tool roll, a
+carabiner, a climbing harness clip. It draws at 24px, so silhouette has to carry it.
 
 ### 8. A grip texture for bare steel — `steel-grip-v1`
 The one surface the climber can actually stick to is the only surface with nothing on it.
@@ -105,5 +105,9 @@ that call is actually made.
 
 ## Delivered
 
-Nothing from this list yet. The gadget, obstacle, pickup, creature and set-piece art already
-in `public/art/` predates this file; `ART_REFRESH_HANDOFF.md` is its record.
+- **A hands-free clock face.** Landed as Codex pack 35 (a layered face and separate hands),
+  wired up in "The fridge clock tells the time". The kitchen clock now shows the player's
+  real phone time without carrying two sets of hands.
+
+Everything else already in `public/art/` predates this file; `ART_REFRESH_HANDOFF.md` is its
+record.

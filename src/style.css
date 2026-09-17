@@ -495,14 +495,20 @@ select.buy option { background: #1e2229; color: #fff; }
   bottom: calc(var(--safe-px) + var(--dock-lift) * var(--px));
   display: flex; flex-direction: column; gap: calc(8 * var(--px));
 }
-.home-icons { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(8 * var(--px)); }
+/* Five now, not three: kit and creatures came up out of the dock, so auto-fit rather than a
+   count that has to be edited every time the row gains or loses a tile. */
+.home-icons { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: calc(6 * var(--px)); }
 .home-icon {
   height: calc(56 * var(--px)); border: 0; border-radius: calc(14 * var(--px));
   background: var(--slab); box-shadow: var(--slab-shadow); cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(3 * var(--px));
+  padding: 0 calc(2 * var(--px)); overflow: hidden;
 }
-.home-icon img { width: calc(24 * var(--px)); height: calc(24 * var(--px)); display: block; }
-.home-icon span { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(1.6 * var(--px)); color: rgba(255,255,255,.8); }
+.home-icon img, .home-icon canvas { width: calc(24 * var(--px)); height: calc(24 * var(--px)); display: block; }
+/* At a fifth of the width the labels are close enough to touch, so the tracking comes in and
+   a long one ellipsises rather than wrapping the tile taller than its neighbours. */
+.home-icon span { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(.9 * var(--px)); color: rgba(255,255,255,.8);
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-dock {
   padding: calc(10 * var(--px)); border-radius: calc(18 * var(--px));
   background: var(--slab); box-shadow: var(--slab-shadow);

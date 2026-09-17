@@ -337,6 +337,11 @@ export class Ui {
     const p = el("div", "home");
     const icon = (a: string, art: string, text: string) =>
       `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
+    // Kit and creatures earn a place in the top row rather than a full-width row each at the
+    // bottom of a dock you had to scroll past the missions to reach. Both take their own face
+    // instead of a shared icon: the kit shows what it costs, creatures show who is wearing it.
+    const tile = (a: string, inner: string, text: string) =>
+      `<button class="home-icon" data-a="${a}">${inner}<span>${text}</span></button>`;
     const today = todayKey();
     const done = s.daily?.day === today;
     const streak = s.streak.last === today || s.streak.last === todayKey(Date.now() - 86_400_000) ? s.streak.days : 0;
@@ -356,6 +361,8 @@ export class Ui {
       <div class="home-icons">
         ${icon("story", "story", "STORY")}
         ${icon("board", "board", "BOARD")}
+        ${SHOP_ENABLED ? tile("shop", `<img src="${import.meta.env.BASE_URL}art/pickups/magnet.png" alt="" />`, "KIT") : ""}
+        ${tile("collection", `<canvas class="home-creature" width="48" height="48" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>`, "TOYS")}
         ${icon("tutorial", "help", "HOW TO")}
       </div>
       <div class="home-dock">
@@ -382,14 +389,6 @@ export class Ui {
           <b class="chill">CHILL</b><small>no red line</small>
           <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
         </label>
-        ${SHOP_ENABLED ? `<button class="home-row" data-a="shop">
-          <b>KIT UP</b><small>gear for one climb</small>
-          <span class="coin">$${groupNum(s.coins)}</span>
-        </button>` : ""}
-        <button class="home-row" data-a="collection">
-          <b>CREATURES</b>
-          <canvas class="home-creature" width="34" height="34" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>
-        </button>
       </div>
       </div>
     `;
@@ -432,7 +431,11 @@ export class Ui {
       lastDraw = now;
       const t = (now - t0) / 1000;
       cards.forEach((cv, i) => {
-        const ctx = cv.getContext("2d")!; ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 100, 100);
+        // The climber is posed inside a 100-unit box and stood at its middle, so the scale has
+        // to come from the canvas rather than a constant: a hard 2 only ever framed the 200px
+        // collection cards and drew any smaller one somewhere off its own edge.
+        const k = cv.width / 100;
+        const ctx = cv.getContext("2d")!; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, 100, 100);
         const c = climbers[i]; c.angle = Math.sin(t * 1.3 + i) * 0.12; c.squash = Math.sin(t * 2.2 + i) * 0.08;
         for (const [limb, joint] of c.ragdoll!.limbs.entries()) { joint.angle = Math.sin(t * 1.6 + i + limb * 1.7) * 0.25; joint.bend = Math.sin(t * 1.9 + i * 2 + limb) * 0.3; }
         drawClimber(ctx, c, false, t, appearanceFor(c));
