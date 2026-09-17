@@ -267,7 +267,9 @@ export function drawZone(ctx: CanvasRenderingContext2D, z: NoStickZone, time: nu
   }
   if (z.kind === "attract" || z.kind === "repel") {
     const repel = z.kind === "repel";
-    const souvenir = destinationArtFor(z.x, z.y, repel);
+    // v26 plates carry the souvenir they were cut for, so the art and the size agree. Older
+    // ones still hash their position, which is how they were generated.
+    const souvenir = (z.itemId ? destinationArtById(z.itemId) : undefined) ?? destinationArtFor(z.x, z.y, repel);
     ctx.save();
     if (souvenir) {
       ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;

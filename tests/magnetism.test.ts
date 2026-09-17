@@ -8,6 +8,7 @@ import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/g
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, dailyBoard, refill, settle, streakReward } from "../src/game/missions";
+import { sizeOf } from "../src/game/item-sizes";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
 import { replay, tapeBytes } from "../src/game/recorder";
 import { Ghost } from "../src/game/ghost";
@@ -203,7 +204,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 25);
+  assert.equal(modern.snapshot()!.worldVersion, 26);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -306,7 +307,10 @@ test("three knuckles flex without changing finger lengths or collision tips", ()
 
 test("all gadget themes spawn deterministically; v3 terrain stays gadget-free", () => {
   const ids = new Set<string>();
-  for (let seed = 1; seed <= 12; seed++) {
+  // v26 added an advertising-magnet draw to the stream, so the same twelve seeds no longer
+  // reach every variant. The claim is that all of them are reachable, not that twelve seeds
+  // is the number, so the search widens rather than the assertion softening.
+  for (let seed = 1; seed <= 24; seed++) {
     const a = new World(seed, 0), b = new World(seed, 0), legacy = new World(seed, 0, 3);
     a.generateTo(33); b.generateTo(33); legacy.generateTo(33);
     assert.deepEqual(a.segments, b.segments); assert.equal(legacy.gadgets.length, 0);
@@ -984,6 +988,61 @@ test("missions read the run, pay once, and the board tops itself up", () => {
     if (m.stat !== "daily") continue;
     for (const n of m.targets) assert.equal(n, 1, `${m.id} asks for ${n} days on a board that lasts one`);
   }
+});
+
+test("v26 souvenir plates are cut to the size chosen for the magnet on them", () => {
+  // The plate used to be a rolled rectangle with whichever souvenir its position hashed to
+  // hung inside it, so the art and the box agreed only by luck. Now the magnet is picked
+  // first and the box is its chosen size, which is what makes the audit mean anything.
+  let seen = 0;
+  for (let seed = 1; seed <= 14; seed++) {
+    const w = new World(seed, 0);
+    w.generateTo(120);
+    for (const seg of w.segments) {
+      for (const z of seg.zones) {
+        if (z.kind !== "repel" && z.kind !== "attract") continue;
+        // toy keychains are repel zones too; they are checked by their own test
+        if (!z.itemId || !/^(attract|repel)-/.test(z.itemId)) continue;
+        const want = sizeOf(z.itemId);
+        assert.ok(want, `${z.itemId} has no chosen size`);
+        // a strong plate is drawn 25% bigger on purpose, so allow exactly that multiple
+        const ratio = z.w / want![0];
+        assert.ok(Math.abs(ratio - 1) < 0.02 || Math.abs(ratio - 1.25) < 0.02,
+          `${z.itemId} cut ${z.w}x${z.h}, chosen ${want![0]}x${want![1]}`);
+        assert.ok(Math.abs(z.h / want![1] - ratio) < 0.02, `${z.itemId} was stretched, not scaled`);
+        seen++;
+      }
+    }
+  }
+  assert.ok(seen > 10, `expected plates across fourteen seeds, saw ${seen}`);
+
+  // and world 25 keeps the rolled rectangles it always had
+  const old = new World(3, 0, 25);
+  old.generateTo(120);
+  const oldPlates = old.segments.flatMap((s) => s.zones.filter((z) => z.kind === "repel" || z.kind === "attract"));
+  assert.ok(oldPlates.length > 0, "world 25 still makes plates");
+  assert.ok(oldPlates.every((z) => !/^(attract|repel)-/.test(z.itemId ?? "")), "and does not name their souvenir");
+});
+
+test("v26 toy magnets are cut to the size chosen for the toy, not a shared rectangle", () => {
+  // Every toy used to land in a box rolled from one range, so a gummy bear and a race car
+  // came out the same size on the door when they are nothing like it in the hand.
+  let seen = 0;
+  for (let seed = 1; seed <= 10; seed++) {
+    const w = new World(seed, 0);
+    w.generateTo(120);
+    for (const seg of w.segments) {
+      for (const z of seg.zones) {
+        if (!z.itemId?.startsWith("bumper-")) continue;
+        const want = sizeOf(z.itemId)!;
+        assert.ok(want, `${z.itemId} has no chosen size`);
+        assert.equal(Math.round(z.w), want[0], `${z.itemId} width`);
+        assert.equal(Math.round(z.h), want[1], `${z.itemId} height`);
+        seen++;
+      }
+    }
+  }
+  assert.ok(seen > 5, `expected toys across ten seeds, saw ${seen}`);
 });
 
 test("the cold air vent is one grille across the whole door", () => {

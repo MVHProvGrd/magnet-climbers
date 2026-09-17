@@ -6,7 +6,8 @@ import type { Gadget, Bumper, NoStickZone, PowerKind, PowerUp, Rect, Segment, Ve
 import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS, toyHook } from "./items";
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES, type SetPiece } from "./world-patterns";
-import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, NEVER_TURNS, PAPER_THEMES, THEMES, toyFace } from "./gadgets";
+import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, NEVER_TURNS, PAPER_THEMES, THEMES, toyFace, ATTRACT_DESTINATIONS, REPEL_DESTINATIONS } from "./gadgets";
+import { sizeOf } from "./item-sizes";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -197,7 +198,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 25) {
+  constructor(seed: number, startY: number, readonly version = 26) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -321,8 +322,14 @@ export class World {
     const laneSegment = this.version >= 10 && (kind === "pillar" || kind === "window");
     // repel panels show up later
     if (i > 6 && r() < 0.25 + difficulty * 0.3 && !laneSegment) {
-      const rw = rangeOf(r, 70, 120);
-      const rh = rangeOf(r, 70, 110);
+      // v26: the souvenir is chosen first and the rect is cut to the size picked for it on
+      // the scale bench, instead of rolling a rectangle and hanging whichever magnet the
+      // position happened to hash to inside it. Same placement, same retries, same
+      // everything else -- only the two numbers come from the table now.
+      const souvenir = this.version >= 26 ? pick(r, REPEL_DESTINATIONS as unknown as string[]) : "";
+      const chosen = souvenir ? sizeOf(souvenir) : undefined;
+      const rw = chosen ? chosen[0] : rangeOf(r, 70, 120);
+      const rh = chosen ? chosen[1] : rangeOf(r, 70, 110);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
       const rx = this.version >= 8 ? onOneDoor(r, rw, 10) : rangeOf(r, 10, W - rw - 10);
       // v9+: plates vary in strength; the odd big one is a slingshot that throws a flier well past its arc
@@ -332,17 +339,19 @@ export class World {
       // v13: magnets only sit on bare steel; try a few heights before giving the door up
       let plate = { x: Math.min(rx, W - rw2 - 10), y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)), w: rw2, h: rh2 };
       for (let k = 0; k < 3 && this.version >= 13 && blocked(zones, plate); k++) plate = { ...plate, y: y + rangeOf(r, m, Math.max(m, h - rh2 - m)) };
-      if (!(this.version >= 13 && blocked(zones, plate))) zones.push({ ...plate, kind: "repel", power });
+      if (!(this.version >= 13 && blocked(zones, plate))) zones.push({ ...plate, kind: "repel", power, ...(souvenir ? { itemId: souvenir } : {}) });
     }
 
     // blue attract plates (v5+): pull airborne climbers in, and they are steel, so they catch you
     if (this.version >= 5 && i > 5 && r() < 0.22 + difficulty * 0.25 && !laneSegment) {
-      const aw = rangeOf(r, 64, 100);
-      const ah = rangeOf(r, 64, 96);
+      const souvenir = this.version >= 26 ? pick(r, ATTRACT_DESTINATIONS as unknown as string[]) : "";
+      const chosen = souvenir ? sizeOf(souvenir) : undefined;
+      const aw = chosen ? chosen[0] : rangeOf(r, 64, 100);
+      const ah = chosen ? chosen[1] : rangeOf(r, 64, 96);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
       const ax = this.version >= 8 ? onOneDoor(r, aw, 10) : rangeOf(r, 10, W - aw - 10), ay = y + rangeOf(r, m, h - ah - m);
       const clash = zones.some((o) => ax < o.x + o.w + 16 && ax + aw > o.x - 16 && ay < o.y + o.h + 16 && ay + ah > o.y - 16);
-      if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract", power: this.version >= 9 ? rangeOf(r, 0.7, 1.6) : 1 });
+      if (!clash) zones.push({ x: ax, y: ay, w: aw, h: ah, kind: "attract", power: this.version >= 9 ? rangeOf(r, 0.7, 1.6) : 1, ...(souvenir ? { itemId: souvenir } : {}) });
     }
 
     // v13: toy keychains hang on the steel: no grip (a weak N push nudges you off), swing only when brushed
@@ -364,7 +373,15 @@ export class World {
     }
     const cleared = this.version >= 22 && (setPieceDoor || gadgetDoor);
     if (this.version >= 13 && i > 3 && !cleared && r() < (this.version >= 22 ? 0.6 : 0.3)) {
-      const tw = rangeOf(r, 60, 76), th = rangeOf(r, 40, 52);
+      // v26: pick the toy first, then cut its box to the size chosen for it on the bench.
+      // Rolling a box and dropping whichever toy came up inside it is what made a gummy bear
+      // and a race car the same size on the door when they are nothing like it in the hand.
+      const toys26 = this.version >= 26
+        ? BUMPER_ITEMS.filter((it) => it.id.startsWith("bumper-") && (this.version >= 14 || Number(it.id.slice(7)) <= 5))
+        : [];
+      const toyPick = toys26.length ? pick(r, toys26) : undefined;
+      const toySize = toyPick ? sizeOf(toyPick.id) : undefined;
+      const tw = toySize ? toySize[0] : rangeOf(r, 60, 76), th = toySize ? toySize[1] : rangeOf(r, 40, 52);
       const m = SEAM_MARGIN + 60; // room for the hook and chain above
       let toy = { x: onOneDoor(r, tw, 10), y: y + rangeOf(r, m, Math.max(m, h - th - SEAM_MARGIN)), w: tw, h: th };
       // toys keep clear of everything, magnets included (hook and chain need 56 px above the toy)
@@ -383,14 +400,21 @@ export class World {
       const hanging = this.version >= 22 ? hangs : r() < 0.5;
       const pull = this.version >= 18 && r() < 0.5;
       if (!blocked(zones, box(toy), 16, true)) zones.push(hanging
-        ? { ...toy, kind: "trim", itemId: `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
-        : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: `toy:${Math.floor(r() * 6)}` });
+        ? { ...toy, kind: "trim", itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
+        : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}` });
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {
       // v13: sliders are real advertising magnets, drawn at collider size, so the collider is magnet-sized
-      const bw = this.version >= 13 ? rangeOf(r, 96, 124) : rangeOf(r, 44, 64);
-      const bh = this.version >= 13 ? 60 : 34;
+      // v26: a slider is one of the sixteen photographed advertising magnets, at the size
+      // chosen for it. Until now the world never named one, so `fridgeItem(b.itemId)` found
+      // nothing in drawBumper and every slider fell back to the drawn letter tile -- the whole
+      // set of adverts shipped, loaded on every boot, and never once appeared on a door.
+      const adverts = this.version >= 26 ? FRIDGE_ITEMS.filter((it) => it.id.startsWith("business-")) : [];
+      const advert = adverts.length ? pick(r, adverts) : undefined;
+      const advertSize = advert ? sizeOf(advert.id) : undefined;
+      const bw = advertSize ? advertSize[0] : this.version >= 13 ? rangeOf(r, 96, 124) : rangeOf(r, 44, 64);
+      const bh = advertSize ? advertSize[1] : this.version >= 13 ? 60 : 34;
       const by = y + rangeOf(r, 30, h - 60);
       const speed = rangeOf(r, 60, 90 + difficulty * 120) * (r() < 0.5 ? 1 : -1);
       // motion: sideways early; lifts and zig-zags appear as difficulty rises
@@ -416,8 +440,9 @@ export class World {
       if (ok) bumpers.push({
         x: bx, y: motion === "slide" ? travel.y : Math.min(Math.max(by, minY), maxY), w: bw, h: bh, vx: motion === "lift" ? 0 : speed,
         minX: 0, maxX: W - bw, motion, vy, minY, maxY,
-        label: pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
-        hue: Math.floor(r() * 360),
+        label: advert ? (advert.label ?? advert.name) : pick(r, ["VEG", "24/7", "A", "M", "PIZZA", "★", "dentist", "MOM"]),
+        hue: advert ? advert.hue ?? 0 : Math.floor(r() * 360),
+        ...(advert ? { itemId: advert.id } : {}),
       });
     }
 
@@ -469,7 +494,13 @@ export class World {
             // slot made a portrait card read as a stamp beside a landscape one
             const area = Math.max(zone.w * zone.h, this.version >= 19 ? 20000 : 11000);
             const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
-            let cw = Math.round(Math.sqrt(area * aspect)), ch = Math.round(cw / aspect);
+            // v26: the card is already chosen by here, so it is cut at the size picked for it
+            // on the bench rather than at whatever area its slot happened to have. Placement
+            // below is untouched -- it still nudges, and still gives the card up rather than
+            // leave a stamp, only now it starts from a size someone decided.
+            const want = this.version >= 26 ? sizeOf(choice.id) : undefined;
+            let cw = want ? want[0] : Math.round(Math.sqrt(area * aspect));
+            let ch = want ? want[1] : Math.round(cw / aspect);
             // a resized card may move, so it must clear the bumper paths too --
             // those were laid down before this pass and expect bare steel
             const paths = bumpers.map((b) => b.motion === "lift"
@@ -494,7 +525,10 @@ export class World {
                 const at = { x: cx + n.x, y: cy + n.y };
                 if (fitsAt(cw, ch, at)) { put = at; placed = true; break; }
               }
-              while (!placed && cw > 104) {
+              // a crowded slot may still shrink it, but never past three quarters of the
+              // chosen size: below that it is not the card that was judged any more
+              const floor = want ? Math.round(want[0] * 0.75) : 104;
+              while (!placed && cw > floor) {
                 cw -= 6; ch = Math.round(cw / aspect);
                 placed = nudges.some((n) => { const at = { x: cx + n.x, y: cy + n.y }; if (fitsAt(cw, ch, at)) { put = at; return true; } return false; });
               }

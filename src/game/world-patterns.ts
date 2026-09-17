@@ -1,6 +1,7 @@
 import { itemZone } from "./items";
 import type { Segment } from "./types";
 import { rule } from "./placement";
+import { sizeOf } from "./item-sizes";
 
 export const SET_PIECES = ["water-station", "busy-month", "ice-alley", "handle-hop"] as const;
 /** obstacles/vent.png is 320x82: a wide grille. Stretched tall it turns to mush, so it is laid in bands. */
@@ -14,6 +15,13 @@ export type SetPiece = typeof SET_PIECES[number];
  */
 export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boolean, version = 0) {
   const y = s.y;
+  /**
+   * v26: a set piece is cut at the size chosen for it on the scale bench, centred where it
+   * was going to sit anyway. Before this each one filled whatever slot the pattern gave it,
+   * so a water station and a calendar came out near enough the same however different they
+   * are in a kitchen. `chosen` returns null below v26 so older doors are untouched.
+   */
+  const chosen = (id: string) => (version >= 26 ? sizeOf(id) : undefined);
   // v8+: the art lives on one door and never crosses the centre seam; the other door is the lane
   const onDoor = version >= 8;
   const w = onDoor ? 176 : 244, x = onDoor ? (rightLane ? 12 : 212) : rightLane ? 14 : 78;
@@ -23,12 +31,18 @@ export function populateSetPiece(s: Segment, pattern: SetPiece, rightLane: boole
   const trayW = onDoor ? 82 : 113, trayGap = onDoor ? 94 : 125;
   s.zones = []; s.bumpers = [];
   if (pattern === "water-station") {
-    const d = fit(25, 280); s.zones.push(itemZone("dispenser", x, d.y, w, d.h));
+    const pick = chosen("dispenser");
+    const d = fit(25, pick ? pick[1] : 280);
+    const dw = pick ? pick[0] : w;
+    s.zones.push(itemZone("dispenser", x + Math.round((w - dw) / 2), d.y, dw, d.h));
     // v21: no silver handle bolted across the dispenser. Real water stations have no grab bar,
     // and the steel lane beside the panel is the route anyway.
     if (version < 21) s.zones.push(itemZone("handle", x + 28, y + 173, 70, 24));
   } else if (pattern === "busy-month") {
-    const d = fit(34, 264); s.zones.push(itemZone("calendar", x, d.y, w, d.h));
+    const pick = chosen("calendar");
+    const d = fit(34, pick ? pick[1] : 264);
+    const cw = pick ? pick[0] : w;
+    s.zones.push(itemZone("calendar", x + Math.round((w - cw) / 2), d.y, cw, d.h));
   } else if (pattern === "ice-alley" && version >= 13) {
     // one tray, standing on end at the photo's own proportions, centred on its door,
     // no handle. The photo is 340x170 and the renderer turns it a quarter turn, so a
