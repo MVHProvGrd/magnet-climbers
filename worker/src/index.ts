@@ -22,32 +22,50 @@
  * Trust model: honour system with sanity caps. Runs are seeded and deterministic,
  * so a later version can submit the input log and have the server replay it.
  */
-import PROFANITY from "../../src/game/data/profanity.json";
 import { handleShare, type Challenge } from "./card";
 import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
+import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 
-const BLOCKED = new Set((PROFANITY as string[]).map((w) => w.toLowerCase()));
-const deleet = (t: string) => t.replace(/[0]/g, "o").replace(/[1|]/g, "i").replace(/3/g, "e").replace(/[4@]/g, "a").replace(/[5$]/g, "s").replace(/[7+]/g, "t").replace(/8/g, "b").replace(/9/g, "g");
-/** Server-side mirror of the client name filter: substring match on 5+ letter words, whole-token on shorter. */
-function nameIsProfane(name: string): boolean {
-  const whole = deleet(name.toLowerCase()).replace(/[^a-z]/g, "");
-  const tokens = name.toLowerCase().split(/[^a-z0-9]+/).map((t) => deleet(t).replace(/[^a-z]/g, "")).filter(Boolean);
-  for (const bad of BLOCKED) {
-    if (bad.length < 3) continue;
-    if (bad.length <= 4) { if (whole === bad || tokens.some((t) => t === bad || (bad.length === 4 && t.startsWith(bad)))) return true; }
-    else if (whole.includes(bad)) return true;
-  }
-  return false;
+/** Server-side mirror of the client name filter — same word list, same leetspeak/Unicode/
+ *  repeat normalization, kept in one place (src/game/profanity.ts) so the two never drift. */
+const nameIsProfane = nameHasProfanity;
+
+// Formatted phone numbers (555-123-4567, 555.123.4567, (555) 123-4567) and bare 10/11-digit
+// runs, which are effectively never anything else in a chat message — a climb height tops
+// out at 6 digits (MAX_CM) and nobody spells out a 10-digit age or score.
+const PHONE_RE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b|\b\d{10,11}\b/g;
+// House-number + street-name + suffix, e.g. "123 Main St" / "45 Oak Avenue".
+const ADDRESS_RE = /\b\d{1,5}\s+[a-z]+(?:\s+[a-z]+){0,2}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|ct|court|way|pl|place|cir|circle|hwy|highway)\b\.?/gi;
+// A messaging-app name followed by a handle ("my snap is john.doe99", "discord: Kid_99"), or
+// a Discord-style "name#1234" tag on its own. The handle must contain a digit or a joining
+// character (a plain word after "is" — "discord is fun" — is left alone).
+const HANDLE_RE = /\b(?:snap(?:chat)?|insta(?:gram)?|ig|discord|kik|tiktok|whatsapp|telegram|skype|facebook)\b(?:\s*(?:is|:|=|@)\s*)([a-z0-9](?:[a-z0-9._-]{1,22}[a-z0-9])?)/gi;
+const TAG_RE = /\b[a-z0-9_]{2,20}#\d{3,6}\b/gi;
+
+/** Phone numbers, street addresses and social handles, masked out before anything else runs.
+ *  Deliberately narrow (formatted numbers, "number street suffix", "platform: handle") so an
+ *  age ("I'm 8"), a score ("1234 cm") or a plain sentence ("level 100") never gets touched. */
+function maskPII(text: string): { clean: string; hit: boolean } {
+  let hit = false;
+  let out = text.replace(PHONE_RE, () => { hit = true; return "[redacted]"; });
+  out = out.replace(ADDRESS_RE, () => { hit = true; return "[redacted]"; });
+  out = out.replace(TAG_RE, () => { hit = true; return "[redacted]"; });
+  out = out.replace(HANDLE_RE, (full, handle: string) => {
+    if (!/[0-9._-]/.test(handle)) return full; // "discord is fun" — no real handle here
+    hit = true;
+    return "[redacted]";
+  });
+  return { clean: out, hit };
 }
 
-/** Chat text filter: profane words become stars, links are dropped. Whole-message rejection is for names only. */
-function cleanChat(text: string): string {
-  return text
-    .replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|io|gg|xyz)\b\S*/gi, "[link]")
-    .split(/(\s+)/)
-    .map((tok) => (/\s/.test(tok) || !nameIsProfane(tok) ? tok : "*".repeat(Math.min(tok.length, 6))))
-    .join("");
+/** Chat text filter: PII is redacted, profane words become stars, links are dropped.
+ *  Whole-message rejection is for names only. */
+function cleanChat(text: string): { clean: string; censored: boolean; pii: boolean } {
+  const noLinks = text.replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|io|gg|xyz)\b\S*/gi, "[link]");
+  const { clean: noPII, hit: pii } = maskPII(noLinks);
+  const { clean, censored } = censorChat(noPII);
+  return { clean, censored, pii };
 }
 
 export interface Env {
@@ -87,8 +105,6 @@ export async function ensureCensors(env: Env): Promise<void> {
   )`).run().catch(() => {});
   censorsReady = true;
 }
-/** Words starred out of this message. A stripped link is not a swear, so it does not count. */
-const wasCensored = (text: string) => text.split(/(\s+)/).some((tok) => !/\s/.test(tok) && nameIsProfane(tok));
 /** Strikes before a player's own words start going to the owner for review. */
 const CENSOR_REVIEW_AT = 3;
 
@@ -127,6 +143,41 @@ export async function ensureReports(env: Env): Promise<void> {
   await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))").run().catch(() => {});
   reportsReady = true;
 }
+
+/** Per-IP request counters for the write routes. Created on demand, like the other tables. */
+let rateLimitsReady = false;
+async function ensureRateLimits(env: Env): Promise<void> {
+  if (rateLimitsReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT NOT NULL,
+    bucket INTEGER NOT NULL,
+    n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, bucket)
+  )`).run().catch(() => {});
+  rateLimitsReady = true;
+}
+
+/** Fixed-window per-key limiter backed by D1, so the count holds across Worker instances
+ *  instead of living in memory (which a Worker cannot rely on between requests). A key stays
+ *  over its limit for the rest of the window it tripped in, which is deliberately a little
+ *  stricter than a sliding window and much simpler. Returns true when `key` is over `limit`
+ *  requests in the current `windowMs` window. */
+async function rateLimited(env: Env, key: string, limit: number, windowMs: number): Promise<boolean> {
+  await ensureRateLimits(env);
+  const bucket = Math.floor(Date.now() / windowMs);
+  await env.DB.prepare(
+    "INSERT INTO rate_limits (key, bucket, n) VALUES (?, ?, 1) ON CONFLICT(key, bucket) DO UPDATE SET n = rate_limits.n + 1",
+  ).bind(key, bucket).run().catch(() => {});
+  const row = await env.DB.prepare("SELECT n FROM rate_limits WHERE key = ? AND bucket = ?").bind(key, bucket).first<{ n: number }>().catch(() => null);
+  // occasional sweep so old buckets don't sit in the table forever; cheap enough to run inline
+  if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rate_limits WHERE bucket < ?").bind(bucket - 8).run().catch(() => {});
+  return (row?.n ?? 0) > limit;
+}
+
+/** Cloudflare's canonical client IP header; falls back to a shared bucket if it is ever
+ *  missing (local `wrangler dev`, tests), which just makes the limit apply to everyone at
+ *  once rather than not applying at all. */
+const clientIp = (req: Request) => req.headers.get("CF-Connecting-IP") ?? "unknown";
 
 const json = (data: unknown, headers: Record<string, string>, status = 200) =>
   new Response(JSON.stringify(data), { status, headers });
@@ -305,6 +356,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/score") {
+      if (await rateLimited(env, `score:${clientIp(req)}`, 30, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown; at?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
@@ -385,11 +437,16 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/rename") {
-      let body: { playerId?: unknown; name?: unknown };
+      if (await rateLimited(env, `rename:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { playerId?: unknown; token?: unknown; name?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12);
       if (!playerId || name.length < 3) return json({ error: "bad name" }, h, 400);
+      // without this, anyone could rename anyone else's rows on a public leaderboard
+      const owner = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!owner || owner.token !== token) return json({ error: "forbidden" }, h, 403);
       if (nameIsProfane(name)) name = "climber";
       await env.DB.batch([
         env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, playerId),
@@ -401,6 +458,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/save") {
+      if (await rateLimited(env, `save:${clientIp(req)}`, 30, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; token?: unknown; blob?: unknown; rev?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
@@ -439,6 +497,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/link") {
+      if (await rateLimited(env, `link:${clientIp(req)}`, 10, 5 * 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; token?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
@@ -458,6 +517,10 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/claim") {
+      // The whole point of a 6-char code is that guessing it is infeasible; a script with no
+      // throttle can still try thousands of codes inside the 10-minute window, so cap attempts
+      // per IP well under what it would take to have a real shot at a live code.
+      if (await rateLimited(env, `claim:${clientIp(req)}`, 12, 10 * 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { code?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -471,6 +534,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/merge") {
+      if (await rateLimited(env, `merge:${clientIp(req)}`, 15, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { fromId?: unknown; fromToken?: unknown; toId?: unknown; toToken?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const fromId = String(body.fromId ?? "").slice(0, 64), fromToken = String(body.fromToken ?? "").slice(0, 64);
@@ -508,6 +572,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/run") {
+      if (await rateLimited(env, `run:${clientIp(req)}`, 40, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; mode?: unknown; cm?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const cm = Math.floor(Number(body.cm));
@@ -529,7 +594,10 @@ export default {
       // the week's league table: metres climbed, not a single best, so playing is what moves you
       const seat = await placeInLeague(env, pid, name);
       await env.DB.prepare("UPDATE league SET cm = cm + ?, name = ?, updated_at = ? WHERE player_id = ? AND week = ?")
-        .bind(cm, name, now, pid, seat.week).run().catch(() => {});
+        .bind(cm, name, now, pid, seat.week).run()
+        // the run itself is already saved above; losing the league update would just leave a
+        // player's bucket standing stale, but that should never happen silently
+        .catch((err) => console.error("league update failed", pid, seat.week, err));
       return json({ ok: true }, h);
     }
 
@@ -548,15 +616,28 @@ export default {
         // `avatar` arrived after launch; until the column exists the room still answers
         env.DB.prepare(`SELECT ${cols}, NULL AS avatar FROM chat WHERE ${where} ORDER BY id DESC LIMIT ?`).bind(arg, limit)
           .all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>());
-      const messages = (rows.results ?? []).reverse();
+      let messages = (rows.results ?? []).reverse();
+      // A block only used to be enforced on the device that made it, which does nothing for
+      // everyone else the blocked player is still posting to. `/chat/report` already records
+      // a block server-side, so a caller that says who it is gets its own blocked senders
+      // filtered out here too, whichever device it is reading from.
+      const viewer = url.searchParams.get("player")?.slice(0, 64) || null;
+      if (viewer) {
+        await ensureReports(env);
+        const blocks = await env.DB.prepare("SELECT target_id FROM chat_reports WHERE kind = 'block' AND reporter_id = ?")
+          .bind(viewer).all<{ target_id: string }>().catch(() => ({ results: [] as { target_id: string }[] }));
+        const blocked = new Set((blocks.results ?? []).map((r) => r.target_id));
+        if (blocked.size) messages = messages.filter((m) => !blocked.has(m.player_id));
+      }
       // a short page is the end of the history, which is how the panel knows to stop asking
       if (before) return json({ messages, online: 0, more: messages.length === limit }, h);
       const online = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM chat WHERE created_at > ?").bind(Date.now() - 10 * 60_000).first<{ n: number }>();
       return json({ messages, online: online?.n ?? 0 }, h);
     }
 
-    // A player blocking or reporting someone. Blocking is enforced on the device that
-    // did it; both land here so the owner can see who is being complained about.
+    // A player blocking or reporting someone. Both land here so the owner can see who is
+    // being complained about; a block is also honoured for that player in GET /chat above,
+    // once a caller identifies itself with `?player=`.
     if (req.method === "POST" && url.pathname === "/chat/report") {
       let body: { playerId?: unknown; token?: unknown; kind?: unknown; targetId?: unknown; messageId?: unknown; text?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
@@ -578,8 +659,8 @@ export default {
         ?? "climber";
       // the message as the reporter read it; the chat row is gone once it is deleted or pruned,
       // so fall back to what the client sent rather than filing a flag with nothing on it
-      const sent = cleanChat(String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 160));
-      const reported = msg?.text ?? (sent || null);
+      const sentClean = cleanChat(String(body.text ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 160));
+      const reported = msg?.text ?? (sentClean.clean || null);
       await env.DB.prepare(
         "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       ).bind(kind, targetId, name, playerId, messageId, reported, Date.now()).run();
@@ -605,7 +686,7 @@ export default {
       const known = await env.DB.prepare("SELECT name FROM lifetime WHERE player_id = ?").bind(playerId).first<{ name: string }>();
       if (known?.name) name = known.name;
       if (name.length < 3 || nameIsProfane(name)) name = "climber";
-      const clean = cleanChat(text);
+      const { clean, censored, pii } = cleanChat(text);
       const now = Date.now();
       const insert = () => env.DB.prepare("INSERT INTO chat (player_id, name, text, created_at, avatar) VALUES (?, ?, ?, ?, ?)").bind(playerId, name, clean, now, avatar).run();
       const ins = await insert().catch(async () => {
@@ -617,7 +698,7 @@ export default {
       if (id % 50 === 0) await env.DB.prepare("DELETE FROM chat WHERE id < ?").bind(id - CHAT_HISTORY).run();
       // Three strikes and the owner sees what they actually typed. The room only ever shows
       // the starred version; the raw text is kept on the flag, not in the chat log.
-      if (wasCensored(text)) {
+      if (censored) {
         await ensureCensors(env);
         await env.DB.prepare(
           "INSERT INTO chat_censors (player_id, n, updated_at) VALUES (?, 1, ?) ON CONFLICT(player_id) DO UPDATE SET n = chat_censors.n + 1, updated_at = excluded.updated_at",
@@ -629,6 +710,14 @@ export default {
             "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES ('censor', ?, ?, 'filter', ?, ?, ?)",
           ).bind(playerId, name, id, text, now).run().catch(() => {});
         }
+      }
+      // A kid trying to share a phone number, an address or a social handle is the biggest
+      // real-world risk in this room, so it goes to the owner immediately — no three strikes.
+      if (pii) {
+        await ensureReports(env);
+        await env.DB.prepare(
+          "INSERT OR IGNORE INTO chat_reports (kind, target_id, target_name, reporter_id, message_id, text, created_at) VALUES ('pii', ?, ?, 'filter', ?, ?, ?)",
+        ).bind(playerId, name, id, text, now).run().catch(() => {});
       }
       return json({ ok: true, message: { id, name, text: clean, player_id: playerId, created_at: now, avatar } }, h);
     }
