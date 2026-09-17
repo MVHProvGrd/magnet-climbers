@@ -1,5 +1,6 @@
 import type { Lang } from "./i18n";
 import { UPGRADES, type UpgradeKey } from "./config";
+import type { Mission } from "./missions";
 
 export interface SaveData {
   version: 1;
@@ -49,6 +50,9 @@ export interface SaveData {
   /** chat and profile portrait id from `avatars.ts`; empty = coloured initial */
   avatar: string;
   introSeen: boolean;
+  /** three at a time, and a count of every one ever finished (it sets how hard the next roll is) */
+  missions: Mission[];
+  missionsDone: number;
   /** the daily climb already taken: its UTC day, what it scored, and the streak it continued */
   daily: { day: string; cm: number } | null;
   /** consecutive days with a daily climb, and the last day counted */
@@ -75,6 +79,8 @@ function defaults(): SaveData {
     totalCm: 0,
     upgrades,
     kit,
+    missions: [],
+    missionsDone: 0,
     daily: null,
     streak: { days: 0, last: "" },
     sound: true,

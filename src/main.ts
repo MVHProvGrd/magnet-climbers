@@ -9,6 +9,7 @@ import { loadPlacement } from "./game/placement";
 import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, prizeCost, type Look } from "./game/creatures";
+import { refill, settle, type RunTally } from "./game/missions";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -359,6 +360,17 @@ function runEvents() {
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
       save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      // missions read the run that just ended, pay out, and the board tops itself back up
+      const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
+        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.round(game.runTime), daily: dailyRun ? 1 : 0 };
+      const settled = settle(save.missions, tally);
+      save.missions = settled.board;
+      if (settled.finished.length) {
+        save.coins += settled.paid;
+        save.missionsDone += settled.finished.length;
+        save.missions = refill(save.missions, save.missionsDone);
+        ui.toast(settled.finished.length === 1 ? `Mission done · $${settled.paid}` : `${settled.finished.length} missions done · $${settled.paid}`);
+      }
       if (dailyRun) {
         const day = todayKey();
         save.daily = { day, cm };
@@ -371,7 +383,7 @@ function runEvents() {
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm);
-      const panel = ui.showGameOver({ cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -446,6 +458,7 @@ let runCoinsTotal = 0;
 /** True while the current run is today's shared climb. */
 let dailyRun = false;
 function startRun(rules: "solo", withTutorial = false, daily = false) {
+  if (save.missions.length < 3) { save.missions = refill(save.missions, save.missionsDone); persist(); }
   void cloudPull(true);
   rulesNow = rules;
   ui.clear();

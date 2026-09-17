@@ -7,6 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
+import { MISSIONS, refill, settle } from "../src/game/missions";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";
@@ -848,6 +849,42 @@ test("the daily climb is one fridge a day, the same for everyone", () => {
   // the day rolls at UTC midnight
   assert.equal(todayKey(Date.parse("2026-09-17T23:59:00Z")), "2026-09-17");
   assert.equal(todayKey(Date.parse("2026-09-18T00:01:00Z")), "2026-09-18");
+});
+
+test("missions read the run, pay once, and the board tops itself up", () => {
+  const board = refill([], 0, () => 0.5);
+  assert.equal(board.length, 3, "three at a time");
+  assert.equal(new Set(board.map((m) => m.id)).size, 3, "and never the same one twice");
+
+  // a per-run goal takes the best run, not a running total: two half-runs do not finish it
+  const climb = { id: "climb", n: 1500, pay: 110, at: 0, done: false };
+  const half = { cm: 900, coins: 0, gadgetRides: 0, hits: 0, paints: 0, seconds: 0, daily: 0 };
+  let one = settle([climb], half);
+  assert.equal(one.finished.length, 0);
+  assert.equal(one.board[0].at, 900, "progress shows the best run so far");
+  one = settle(one.board, half);
+  assert.equal(one.finished.length, 0, "two 900s are not an 1800");
+  one = settle(one.board, { ...half, cm: 1600 });
+  assert.equal(one.finished.length, 1);
+  assert.equal(one.paid, 110);
+
+  // a hit voids the no-damage mission for that run, whatever height it reached
+  const unhurt = { id: "unhurt", n: 600, pay: 80, at: 0, done: false };
+  assert.equal(settle([unhurt], { ...half, cm: 900, hits: 1 }).finished.length, 0);
+  assert.equal(settle([unhurt], { ...half, cm: 900, hits: 0 }).finished.length, 1);
+
+  // the daily mission counts days, so it does add up across runs
+  const today = { id: "today", n: 2, pay: 90, at: 0, done: false };
+  const first = settle([today], { ...half, daily: 1 });
+  assert.equal(first.finished.length, 0);
+  assert.equal(settle(first.board, { ...half, daily: 1 }).finished.length, 1);
+
+  // a finished mission leaves the board and a new one takes its place
+  const after = refill(one.board, 1, () => 0.2);
+  assert.equal(after.length, 3);
+  assert.ok(!after.some((m) => m.done));
+  // every mission says something a player can picture
+  for (const m of MISSIONS) assert.ok(m.text(m.targets[0]).length > 12, m.id);
 });
 
 test("knocking the taxi keychain reports it, so it can honk", () => {

@@ -1,5 +1,6 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { sfx } from "./audio";
+import { missionText, type Mission } from "./missions";
 import { CREATURES, PATTERNS, prizeCost, PRIZE_ODDS, appearanceFor, creatureById, patternColors, unlockText, type CreatureDef, type CreatureId, type Look, type PatternDef } from "./creatures";
 import { drawClimber } from "./climber-render";
 import { resetRagdoll } from "./ragdoll";
@@ -156,6 +157,16 @@ const el = (tag: string, cls: string, html = "") => {
 };
 
 /** All non-canvas UI: menus, shop, pause, game over. Plain DOM so it ports to a WebView untouched. */
+/** One mission as a row: what to do, how far along, what it pays. */
+function missionRow(m: Mission): string {
+  const pct = Math.max(0, Math.min(100, Math.round((m.at / m.n) * 100)));
+  return `<div class="mission ${m.done ? "done" : ""}">
+    <span class="mission-txt">${esc(missionText(m))}</span>
+    <span class="mission-bar"><i style="width:${pct}%"></i></span>
+    <span class="mission-pay">$${m.pay}</span>
+  </div>`;
+}
+
 export class Ui {
   root: HTMLElement;
   private panel: HTMLElement | null = null;
@@ -344,6 +355,10 @@ export class Ui {
             <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : "TAKE TODAY'S"}${streak ? ` · ${streak}🔥` : ""}</i>
           </button>
         </div>
+        ${s.missions.length ? `<div class="home-missions">
+          <span class="mission-head">MISSIONS</span>
+          ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
+        </div>` : ""}
         <label class="home-row ${s.chill ? "on" : ""}">
           <b class="chill">CHILL</b><small>no red line</small>
           <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
@@ -1112,7 +1127,7 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; missions?: Mission[]; missionsPaid?: number; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
@@ -1154,6 +1169,10 @@ export class Ui {
         <span class="totals"><b class="coin">${groupNum(o.walletCoins ?? 0)}</b> <b class="gem">◆ ${groupNum(o.walletGems ?? 0)}</b></span>
       </div>`}
       ${(o.unlocked ?? []).map((c) => `<button class="unlock" data-a="wear" data-c="${c.id}">New creature: <b>${esc(c.name)}</b><small>${esc(c.detail)} · tap to wear</small></button>`).join("")}
+      ${o.missions?.length ? `<div class="home-missions lost-missions">
+        <span class="mission-head">${o.missionsPaid ? `MISSIONS · $${groupNum(o.missionsPaid)}` : "MISSIONS"}</span>
+        ${o.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
+      </div>` : ""}
       ${o.ended ? "" : `
       <span class="lost-label dim">${crew ? "REVIVE THE CREW" : "BACK ON THE DOOR"}</span>
       <div class="revive-row">
