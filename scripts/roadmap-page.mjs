@@ -9,81 +9,81 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 /** Every item carries its own argument: what it is, why now, and what it touches. */
 const NOW = [
   {
-    title: "Daily seeded run",
-    line: "One fridge for everybody, 24 hours, one scored attempt.",
-    why: "The cheapest retention in the repo, because the hard part is already done: the sim is deterministic from a seed, so a date-derived seed and one extra board is the whole feature. It gives a reason to open the app that is not \"beat your own number\", and it makes the scoreboard comparable — today everyone's best is against a different door.",
-    touches: ["main.ts seed of the day", "worker: a daily board + one attempt per player", "board tabs"],
-    size: "small",
-  },
-  {
-    title: "Missions, three at a time",
-    line: "Rotating goals paid in coins, written against counters that already exist.",
-    why: "Nothing new needs instrumenting. The run already counts chains, gadget rides, paints, hits, coins, height and cause of death. Missions turn those into a reason to play differently on a door you have climbed a hundred times, and they feed coins to a machine whose price doubles with every spin you take.",
-    touches: ["feats in game.ts", "save: three active + progress", "menu and game-over cards"],
-    size: "medium",
-  },
-  {
-    title: "Daily reward and streak",
-    line: "Open the app, claim a drop. Seven in a row pays a pattern.",
-    why: "Promoted after the audit, because the two things that were above it are already built. It pairs with the daily run — the streak is the reason to open, the run is the reason to stay — and it needs no server work beyond a claimed-on date.",
-    touches: ["save: last claim + streak", "menu badge", "a claim card"],
-    size: "small",
-  },
-];
-
-const THEN = [
-  {
     title: "Weekly league",
     line: "Buckets of about thirty by lifetime metres; top promote, bottom drop.",
-    why: "The global board is unwinnable for everyone except the top ten, so it stops motivating almost every player. Buckets give a climb that any player can be near the top of, and the metres are already banked per player.",
-    touches: ["worker: a bucketing job", "board tab", "tier badge"],
+    why: "With a daily board live, this is the next thing that makes a score worth caring about. The global board is unwinnable for everyone outside the top ten, so it stops motivating almost every player; a bucket is a board you can be near the top of. The metres are already banked per player, so the work is a grouping job and a tab.",
+    touches: ["worker: a weekly bucketing job", "board tab", "tier badge"],
     size: "large",
   },
   {
     title: "Themed fridge of the month",
     line: "A different kitchen, a different door, one limited pattern.",
-    why: "Every update needs something to show, and the art pipeline is the strongest part of this project. A monthly door is the cheapest way to turn that strength into a reason to post — and the surfaces, seams and palette are already data.",
+    why: "The daily run is the thing worth clicking; a monthly door is the thing worth posting. The art pipeline is the strongest part of this project and the surfaces, seams and palette are already data, so this turns that strength into a reason to show up in a feed.",
     touches: ["scenery palette", "an art pack", "one pattern behind a date"],
     size: "medium",
   },
   {
     title: "Input recorder",
     line: "Log every fling and climb as {tick, id, vector}.",
-    why: "The gate in front of ghosts, async races and any real score validation. On its own it is invisible to players, which is exactly why it should be built deliberately rather than as step one of a race feature.",
+    why: "The gate in front of ghosts, async races and any real score validation — and now that a daily board exists, validation matters more than it did yesterday. Invisible to players on its own, which is exactly why it should be built deliberately rather than as step one of a race feature.",
     touches: ["game.ts input capture", "snapshot format", "worker: replay check"],
     size: "medium",
   },
 ];
 
+const THEN = [
+  {
+    title: "Ghost of your best run",
+    line: "Your own best climb, drawn on the door beside you.",
+    why: "Straight off the recorder, and the first thing it pays for. A line on the fridge says how far you got; a ghost says how you got there, which is the part worth beating.",
+    touches: ["recorder playback", "a second climber drawn ghosted"],
+    size: "medium",
+  },
+  {
+    title: "Async race from a share link",
+    line: "Race the run your friend actually climbed, not their number.",
+    why: "The share links already exist and already carry a height. Racing the recording turns a number into an opponent, and it needs no server beyond storing the tape.",
+    touches: ["share links", "worker: tape storage", "race UI"],
+    size: "large",
+  },
+  {
+    title: "Accounts",
+    line: "Sign in on top of the link codes.",
+    why: "Link codes carry a profile between devices today, which covers most of it. Accounts become worth the migration once there is a streak and a league standing worth losing — which, as of this week, there is.",
+    touches: ["OAuth client ids from you", "worker: identity", "save merge"],
+    size: "large",
+  },
+];
+
 const HOLD = [
-  ["Ghosts, async race, live race", "All three need the input recorder first, and the recorder needs score validation to be worth building. Real work, none of it makes tomorrow's session happen."],
-  ["Accounts (Google/Apple)", "Link codes already carry a profile between devices. Accounts are a migration project with an OAuth dependency on you; the value only shows up once there is progress worth losing."],
-  ["Capacitor, AdMob, IAP", "Packaging and money on top of a loop that does not yet bring anyone back. Ship the return reason first, then wrap it."],
-  ["Offline income, prestige, season pass", "These are the shape of a much bigger game. Revisit when a week of retention data says the core loop holds."],
+  ["Live ghost race", "A Durable Object per match, inputs over a socket, the server settling the result. Real work, and it only makes sense after async racing proves anyone wants to race at all."],
+  ["Capacitor, AdMob, IAP", "Packaging and money. The loop now brings people back; give it a few weeks of daily numbers before wrapping it."],
+  ["Offline income, prestige, season pass", "The shape of a much bigger game. Revisit when the daily board says the core loop holds."],
+  ["Crew", "Cut in September and archived under archive/crew, with CREW_DESIGN.md as the plan. Stage 1 is Stack, if it ever comes back."],
 ];
 
 const DECIDE = [
   {
-    q: "Crew: commit one verb, or cut the code?",
-    body: "Crew and expeditions are hidden behind flags, and half of them is inert code that still costs us. The upgrade table sells nothing for team size, arm reach, chain length or reserve climbers because none of them do anything for a lone climber — that was a real bug this week, not a hypothetical. Either Stage 1 (Stack) ships behind a flag and the rest follows one verb per release, or the dead paths come out and CREW_DESIGN.md keeps the plan until it is wanted. Drifting is the expensive option.",
+    q: "Answered: crew is cut, not paused",
+    body: "The dead paths came out — crew rules, the lineup, SYNC, stacking, the human ladder, reserve climbers, the Expeditions tile and the four upgrades a lone climber could not feel. archive/crew holds the expedition recipes and a note on what went and what stayed; CREW_DESIGN.md is still the plan if it comes back one verb at a time.",
   },
   {
-    q: "Does EXPEDITIONS keep saying COMING SOON?",
-    body: "It has sat on the menu as a disabled tile for a while. Give it a date or take the tile down — a permanent \"coming soon\" teaches players to ignore the menu.",
+    q: "Answered: the daily run is what gets promoted",
+    body: "So it was built first, and the streak was built to sit under it. The themed fridge is the thing that gives a post something to look at, which is why it is second on the list rather than first.",
   },
   {
-    q: "What is the first thing you would pay to promote?",
-    body: "The answer decides whether the next month goes into the daily loop or into themed fridges. A monthly fridge skin is the thing that gives every update something to post; the daily run is the thing that makes the post worth clicking.",
+    q: "Open: how long does a daily board keep its rows?",
+    body: "Every day writes a row per player and nothing clears them. Fine for months; worth a retention rule before it is worth a bill. Say the word and the Worker drops days older than thirty on the next write.",
   },
 ];
 
 const SHIPPED = [
-  ["Prize machine", "Was next on the list; it was already built and is now a real sink — every spin costs double the last, 100 → 200 → 400, up to a 25,600 ceiling. A complete set of fourteen patterns costs about 179,000 coins."],
-  ["Instant restart and the near miss", "Was third on the list; already done. CLIMB AGAIN goes straight back to the door through the kit sheet, and your best height is drawn on the fridge as a line that turns green when you pass it."],
-  ["Creature roster and patterns", "Bodies, patterns, unlock rules and the collection panel all exist. The roadmap still listed this as work."],
-  ["Kit, per run", "Coins buy a higher jump and a stickier floor for one climb, three clicks each, gone when the run ends."],
-  ["Chat, with moderation", "Global chat, scroll-back, block and report by avatar, and a three-strike censor flag into the admin panel."],
-  ["Owner tooling", "Art archive, element map, placement workbench, and now a scale bench that puts any object on the real door beside a real climber."],
+  ["Daily climb", "One fridge for everybody, from the UTC date alone; one scored attempt, no kit, a TODAY board, and the Worker decides the day so nobody can pick a friendlier one."],
+  ["Missions", "Three at a time on the menu and the game-over card, written against counters the run already kept. Finish one, it pays and another rotates in."],
+  ["Streak", "The daily pays 40 up to 200 as the days run, and the seventh in a row pays a pattern. A missed day starts again at one."],
+  ["Crew and Expeditions", "Out of the game and into archive/crew. Four upgrades nobody could feel went with them."],
+  ["Prize machine", "Every spin costs double the last up to a 25,600 ceiling; a full set of fourteen patterns is about 179,000 coins."],
+  ["Scale bench", "Any object on the real door beside a real climber, at any size, with a walk-through audit and one exported file."],
 ];
 
 const item = (it, n) => `
@@ -142,21 +142,21 @@ const BODY = `
 <div class="wrap">
   <p class="eyebrow">Magnet Climbers &middot; plan</p>
   <h1>What to build next</h1>
-  <p class="standfirst">Re-ordered after reading the code rather than the backlog. Two of the three things that were queued turned out to be built already; what is left is the gap that has not moved — nothing brings anyone back tomorrow.</p>
+  <p class="standfirst">The three things that were queued here are built. There is a reason to open the app tomorrow now; what follows is about making a score worth caring about, and giving each update something to show.</p>
 
   <div class="lede-wrap">
     <div class="thesis">
-      <p>Stop adding objects to the door. The next three releases should be the reason to open the app again: a daily run everyone shares, missions written against counters we already keep, and a streak worth protecting.</p>
-      <p>Then the league and a themed door each month. Everything else — ghosts, races, accounts, store wrappers — is real work that does not change whether anyone plays tomorrow.</p>
+      <p>The return loop is in: a daily climb everyone shares, three missions written against counters we already kept, and a streak that pays for turning up. That was the gap, and it is closed.</p>
+      <p>Next is worth caring about: a league where an ordinary player can be near the top, a door that changes every month, and the recorder that ghosts and races both need. Money and packaging wait for a few weeks of daily numbers.</p>
     </div>
     <div class="state">
       <h4>Where it stands</h4>
       <dl>
-        <dt>Mode</dt><dd>solo only</dd>
+        <dt>Modes</dt><dd>solo · daily</dd>
         <dt>World version</dt><dd>23</dd>
         <dt>Items on the door</dt><dd>152</dd>
         <dt>Coin sinks</dt><dd>2, one doubling</dd>
-        <dt>Reasons to return</dt><dd>0</dd>
+        <dt>Reasons to return</dt><dd>daily · streak · missions</dd>
         <dt>Tests</dt><dd>65 passing</dd>
       </dl>
     </div>
@@ -164,7 +164,7 @@ const BODY = `
 
   <section>
     <h2>Now <span class="count">in this order</span></h2>
-    <p class="note">Three releases. Each one is small enough to ship inside a week and answers the same question: why open this again?</p>
+    <p class="note">The question has moved on from "why open this again" to "why does my score matter". These three answer that one.</p>
     <div class="steps">${NOW.map((it, i) => item(it, i + 1)).join("")}</div>
   </section>
 
@@ -180,13 +180,13 @@ const BODY = `
   </section>
 
   <section>
-    <h2>Yours to decide <span class="count">blocking, not urgent</span></h2>
+    <h2>Decisions <span class="count">two settled, one open</span></h2>
     ${DECIDE.map((d) => `<div class="ask"><h3>${esc(d.q)}</h3><p>${esc(d.body)}</p></div>`).join("")}
   </section>
 
   <section>
-    <h2>Struck off <span class="count">already built when checked</span></h2>
-    <p class="note">The backlog had these as work to come. They are in the code today — the first two were the items sitting above everything else.</p>
+    <h2>Shipped <span class="count">this pass</span></h2>
+    <p class="note">Everything the plan called Now, plus the decisions that came with it.</p>
     <div class="ledger">${SHIPPED.map(([t, b]) => `<div><b>${esc(t)}</b><span>${esc(b)}</span></div>`).join("")}</div>
   </section>
 

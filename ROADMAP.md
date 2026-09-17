@@ -7,6 +7,14 @@ moving bumpers, kid hand swipes, tricks, gadgets, field guide, cloud save with
 device linking and merge, global and lifetime boards, challenge links with
 verified share cards, PWA auto-update, generated music loops.
 
+## Done in the retention pass (September)
+**Daily climb** — one fridge for everyone from the UTC date, one scored
+attempt, no kit, a TODAY board; the Worker owns the day. **Missions** — three
+at a time on the menu and the game-over card, written against counters the run
+already kept. **Streak** — the daily pays 40 up to 200 as the days run, and the
+seventh in a row pays a pattern. **Crew and Expeditions cut** — see
+`archive/crew/README.md`.
+
 ## Done since this list was written
 Checked against the code, not this file: the **creature roster** (#4), the
 **prize machine** (#5, now doubling in price up to a ceiling) and **instant restart
@@ -14,30 +22,16 @@ with the near-miss line** (#7) are all in the game. Also since: per-run kit
 (coins buy a higher jump and a stickier floor for one climb), chat with
 moderation, and the owner's scale bench.
 
-## Now — retention (the "why did I open this again" layer)
-1. **Missions, three at a time.** Rotating goals written against things we
-   already track (tricks, stickers stuck, coins in a run, height without a
-   bumper hit, mode-specific). Complete one, it pays coins and a new one
-   rotates in. Progress shown on the menu and at game over.
-2. **Daily reward and streak.** Open the app, claim a coin drop. Seven days in
-   a row pays a skin. Streak counter on the menu; miss a day, it resets.
-3. **Daily seeded run.** Same fridge for everyone for 24 h (resets midnight
-   Central), one board per day in D1, one attempt scored. Sim is already
-   deterministic; needs a seed-of-the-day and a `daily` board.
-4. ~~**Creature roster (#17).**~~ *Done.* Bodies on the four-magnet rig: gecko, frog,
-   octopus, robot first; patterns (colours, effects) within each creature.
-   Creatures unlock from moments (tutorial, height, crew chain, gadget
-   challenge); patterns from the prize machine, streak and missions. Codex
-   draws, Claude wires unlocks, shop and save.
-5. ~~**Prize machine.**~~ *Done. Each spin costs double the last -- 100, 200,
-   400 -- up to a 25,600 ceiling; a full set of fourteen is about 179k coins.*
-6. **Crew staged rollout (#18, `CREW_DESIGN.md`).** One crew verb per release:
-   Stack → Catch → Octopus wide hold → Gecko wall kick → Pair fling → Robot
-   bumper feet → Tether. Each ships with a section only it solves and an
-   intro card. Stage 1 first; CLIMB and chains already exist.
-7. ~~**Instant restart and "so close".**~~ *Done: CLIMB AGAIN returns through
-   the kit sheet, and your best height is a line on the fridge that turns green
-   when you pass it.*
+## Now — worth caring about
+1. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
+   promote, bottom 10 drop. Tier badge on the scoreboard. The global board is
+   unwinnable outside the top ten; a bucket is a board you can lead.
+2. **Themed fridges:** a monthly skin of the fridge (stickers, plates, palette)
+   with one limited pattern. The daily run is what makes a post worth clicking;
+   this is what gives the post something to look at.
+3. **Input recorder:** log every fling/climb as `{tick, id, vector}` per run.
+   Foundation for replay, ghosts and score validation — and with a daily board
+   live, validation matters more than it did.
 
 ## Next — social and progression
 8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
