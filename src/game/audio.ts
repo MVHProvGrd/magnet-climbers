@@ -1,1 +1,1 @@
-export { sfx, setSound, setMusic, unlockAudio, updateAudio, silenceAudio, playObjectSound, playBubbleSound, pullSound, stopPullSound, releaseSound } from "./sound-engine";
+export { sfx, setSound, setMusic, unlockAudio, updateAudio, silenceAudio, playObjectSound, playBubbleSound, pullSound, stopPullSound, releaseSound, bumpSound } from "./sound-engine";

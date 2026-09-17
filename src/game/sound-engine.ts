@@ -63,14 +63,19 @@ function playVoice(c: AudioContext, voice: Voice, at: number, bus: GainNode) {
   source.onended = () => { source.disconnect(); filter?.disconnect(); gain.disconnect(); voices--; };
   source.start(t); source.stop(t + voice.duration + 0.02);
 }
-/** `rate` pitches the whole effect: the sling uses it so the creak climbs with the draw. */
-function effect(name: string, rate = 1) {
+/** `rate` pitches the whole effect: the sling uses it so the creak climbs with the draw.
+ *  `gainMult` scales its loudness, for effects (a collision) whose volume should track impact. */
+function effect(name: string, rate = 1, gainMult = 1) {
   if (!enabled || !active) return;
   const c = context(); if (!c || c.state !== "running") return;
   if (c.currentTime - (lastEffect.get(name) ?? -10) < (name === "stretch" ? 0.055 : 0.035)) return;
   lastEffect.set(name, c.currentTime);
   for (const voice of EFFECTS[name]) {
-    const v = rate === 1 ? voice : { ...voice, frequency: voice.frequency * rate, ...(voice.endFrequency ? { endFrequency: voice.endFrequency * rate } : {}) };
+    const v = rate === 1 && gainMult === 1 ? voice : {
+      ...voice,
+      ...(rate !== 1 ? { frequency: voice.frequency * rate, ...(voice.endFrequency ? { endFrequency: voice.endFrequency * rate } : {}) } : {}),
+      ...(gainMult !== 1 ? { gain: voice.gain * gainMult } : {}),
+    };
     playVoice(c, v, c.currentTime, fxBus);
   }
 }
@@ -98,6 +103,13 @@ export function pullSound(tension: number) {
   if (sample('rubber-pull', .45 + pull * .25, .85 + pull * .55, 'pull', .075) === 'pending') effect('stretch', 1 + pull * .8);
 }
 export function stopPullSound() { samples?.stopGroup('pull'); }
+/** Every collision used to sound the same regardless of how hard it landed; `speed` (impact
+ *  velocity, 0-1 already normalized by the caller) now scales its loudness the way
+ *  `playObjectSound`'s `strength` does, so a graze taps and a full-speed hit cracks. */
+export function bumpSound(speed = 1) {
+  const power = Number.isFinite(speed) ? Math.max(0, Math.min(1, speed)) : 1;
+  effect('bump', 1, 0.4 + power * 0.7);
+}
 export function releaseSound(tension: number) {
   stopPullSound();
   const pull = Number.isFinite(tension) ? Math.max(0, Math.min(1, tension)) : 0;
@@ -185,3 +197,4 @@ export const sfx = Object.fromEntries(Object.keys(EFFECTS).map((name) => [name, 
 // Preserve the existing gesture API (and pitch parameters) while replacing its timbre.
 sfx.stretch = (rate = 1) => pullSound((rate - 1) / .8);
 sfx.twang = (rate = 1) => releaseSound((rate - .85) / .5);
+sfx.bump = (speed = 1) => bumpSound(speed);

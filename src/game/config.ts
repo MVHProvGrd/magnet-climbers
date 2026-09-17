@@ -2,6 +2,14 @@
 export const W = 400;
 
 /**
+ * World generation version a fresh run starts at (`src/game/world.ts` defaults to an older
+ * number, which existing tapes and ghosts still ask for explicitly). Kept here, not there, so a
+ * bump for a physics change -- not a terrain change -- doesn't need to touch the generator at
+ * all: see the launch-spin and wall-speed-cap gates in `game.ts`.
+ */
+export const CURRENT_WORLD_VERSION = 24;
+
+/**
  * The upgrade shop. The crew-only upgrades (team size, arm reach, chain length, spare tokens)
  * left with the crew code; what a lone climber can feel is what is on the shelf.
  */
@@ -34,6 +42,10 @@ export const CFG = {
   /** time creep: +2% per 10 s of running time on top of the height ramp (dithering costs), capped at 2x */
   floorCreepPer10s: 0.02,
   floorCreepCap: 2,
+  /** ramp, creep and catch-up each cap on their own, but their product doesn't: worst case they
+   *  would stack to ~11x base. Cap the combined multiplier so a climber who has pulled ahead
+   *  meets an escalation, not a cliff. */
+  floorMultCap: 6,
   floorStartOffset: 320,
   powerRadius: 36,
   bumperKnock: 420,
