@@ -84,7 +84,9 @@ export interface Gadget extends Vec { id: string; itemId: string; kind: "swing" 
   pops?: number;
   popCool?: number;
   /** Compass: rotation of the needle art, 0 pointing north. It follows whoever climbs past. */
-  needle?: number }
+  needle?: number;
+  /** Contact debounce for the ones that neither swing nor spin: a clock, a compass, a pole toy. */
+  hitCool?: number }
 export interface MagneticGrip {
   contacts: MagneticContact[];
   pose: "flat" | "feet" | "hands" | "mixed" | "single";

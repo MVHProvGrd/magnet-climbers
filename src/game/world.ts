@@ -7,7 +7,7 @@ import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS, toyHook } from "
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
-import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES, toyFace } from "./gadgets";
+import { faceUV, FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, NEVER_TURNS, PAPER_THEMES, THEMES, toyFace } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -85,6 +85,7 @@ export class World {
   stepGadgets(dt: number) {
     for (const seg of this.segments) for (const z of seg.zones) if (z.popCool) z.popCool = Math.max(0, z.popCool - dt);
     for (const g of this.gadgets) if (g.popCool) g.popCool = Math.max(0, g.popCool - dt);
+    for (const g of this.gadgets) if (g.hitCool) g.hitCool = Math.max(0, g.hitCool - dt);
     for (const g of this.hanging) {
       const s = g.swing; if (!s) continue;
       s.cool = Math.max(0, s.cool - dt);
@@ -135,6 +136,15 @@ export class World {
           g.pops ^= 1 << best; g.popCool = 0.16;
           this.popped = { index: best, inward: !!(g.pops & (1 << best)) };
         }
+      }
+      // Things that neither swing nor spin still make a noise when you hit them: a clock and a
+      // compass on their nails, a pole toy on the door. Nothing moves, so they carry their own
+      // debounce rather than a swing's.
+      if ((g.kind === "polarity" || NEVER_TURNS.has(g.itemId)) && (g.hitCool ?? 0) <= 0) {
+        const pose = gadgetPose(g, this.gadgetTime);
+        const reach = g.kind === "polarity" ? 40 : 38;
+        if (Math.hypot(p.x - pose.x, p.y - pose.y) < reach) { g.hitCool = 0.25; this.knocked = g.itemId; }
+        continue;
       }
       const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);

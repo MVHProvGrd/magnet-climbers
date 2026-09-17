@@ -28,6 +28,8 @@ export const TOY_VOICE: Record<string, string> = {
   "bumper-9": "whoosh", "bumper-10": "clack", "bumper-11": "tick", "bumper-12": "boing",
   "rotor-fidget-spinner": "whirr", "rotor-pinwheel": "flutter",
   "rotor-snack": "clack", "rotor-travel": "clack", "rotor-doodle": "clack",
+  "rotor-compass": "compassTap",
+  "polarity-snack": "poleThud", "polarity-travel": "compassTap", "polarity-doodle": "poleThud",
   "swing-keys": "keys", "swing-bottle-opener": "clink", "swing-disco-ball": "chime",
   "swing-rubber-duck": "squeak", "swing-bead-lanyard": "rattle", "swing-carabiner-whistle": "whistleToot",
   "swing-wind-chime": "chime", "swing-baby-shoe": "bell", "swing-scissors": "snip",
@@ -101,6 +103,16 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
     { frequency: 900, endFrequency: 1500, duration: 0.12, gain: 0.035, type: "noise" },
     { frequency: 1500, endFrequency: 600, duration: 0.5, delay: 0.1, gain: 0.03, type: "noise" },
     { frequency: 220, endFrequency: 150, duration: 0.45, delay: 0.08, gain: 0.025, type: "triangle" },
+  ],
+  /** knuckle on a brass compass case: a small dull ring under glass */
+  compassTap: [
+    { frequency: 1250, endFrequency: 900, duration: 0.09, gain: 0.05, type: "sine" },
+    { frequency: 620, duration: 0.06, gain: 0.035, type: "triangle" },
+  ],
+  /** a plastic pole toy taking a knock: a hollow thud, no ring to it */
+  poleThud: [
+    { frequency: 300, endFrequency: 170, duration: 0.08, gain: 0.08, type: "triangle" },
+    { frequency: 760, endFrequency: 380, duration: 0.04, gain: 0.03, type: "noise" },
   ],
   /** a paper pinwheel: no bearing, just air in the vanes */
   flutter: [

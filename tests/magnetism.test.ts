@@ -723,12 +723,14 @@ test("hitting a fidget spinner winds it up, and it coasts back down", () => {
   // the dial thermometer still turns on its own
   const dial = { id: "dial-0", itemId: "rotor-thermometer", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
   assert.notEqual(gadgetPose(dial, 0).angle, gadgetPose(dial, 4).angle);
-  // a wall clock is not on a free bearing, so nothing to wind up
-  const clock = { id: "clock-1", itemId: "rotor-clock", kind: "rotor" as const, phase: 0, x: 200, y: -300 };
+  // a wall clock is not on a free bearing: hitting it makes a noise but winds nothing up
+  const clock: typeof still = { id: "clock-1", itemId: "rotor-clock", kind: "rotor", phase: 0, x: 200, y: -300, spin: undefined as never };
+  delete (clock as { spin?: unknown }).spin;
   seg.gadgets = [clock];
   g.world.knocked = null;
   g.world.knockSwings({ x: 205, y: -295 }, 300);
-  assert.equal(g.world.knocked, null);
+  assert.equal(g.world.knocked, "rotor-clock");
+  assert.equal(clock.spin, undefined, "nothing to wind up on a nail");
 });
 
 test("v21 never stretches the grille, and bolts no handle onto a surface", () => {

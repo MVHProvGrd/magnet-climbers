@@ -110,6 +110,24 @@ function polarityField(ctx: CanvasRenderingContext2D, cx: number, cy: number, w:
   ctx.restore();
 }
 /** Bright grips use the actual collision geometry, independent of the decorative sprite. */
+/**
+ * The compass, drawn from its two photos. Measured off `compass-base.webp`: the golden dial spans
+ * 60% of the frame and its centre sits 4.6% below the frame's, because the hanging loop is in the
+ * picture too. The needle art (64x384) is centred on its own frame, so it pivots about its middle.
+ * Both were guessed before, which is why the needle sat low and swung outside the bezel.
+ */
+const COMPASS = { dial: 0.6, drop: 0.0459, needle: 0.82 };
+function drawCompass(ctx: CanvasRenderingContext2D, base: CanvasImageSource, needle: CanvasImageSource | undefined, size: number, angle: number, spin = 0) {
+  ctx.drawImage(base, -size / 2, -size / 2, size, size);
+  if (!needle) return;
+  const len = COMPASS.dial * COMPASS.needle * size;
+  const shadow = ctx.shadowColor;
+  ctx.save(); ctx.shadowColor = "transparent";
+  ctx.translate(0, COMPASS.drop * size); ctx.rotate(angle + spin);
+  ctx.drawImage(needle, -len / 12, -len / 2, len / 6, len);
+  ctx.restore(); ctx.shadowColor = shadow;
+}
+
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
   const p = gadgetPose(g, time), z = gadgetZone(g, time), theme = g.itemId.split("-")[1];
   const index = THEMES.indexOf(theme as typeof THEMES[number]);
@@ -165,20 +183,14 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   ctx.shadowColor = "#26303966"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5;
   // the compass is drawn from two pieces so its needle can move on its own
   const compassFace = g.itemId === "rotor-compass" ? objectArt.get("compass-base") : undefined;
-  const rotorImg = g.kind === "rotor" ? (compassFace ?? objectArt.get(g.itemId)) : undefined;
-  if (rotorImg) {
+  const rotorImg = g.kind === "rotor" ? objectArt.get(g.itemId) : undefined;
+  if (g.kind === "rotor" && compassFace) {
+    drawCompass(ctx, compassFace, objectArt.get("compass-needle"), 76, g.needle ?? 0);
+  } else if (rotorImg) {
     // spindle-centred by the install script, so the draw offset IS the pivot
     const { w, h } = imageSize(rotorImg), s = 76 / Math.max(w, h);
     ctx.drawImage(rotorImg, -pivot[0] * w * s, -pivot[1] * h * s, w * s, h * s);
-    const needle = compassFace ? objectArt.get("compass-needle") : undefined;
-    if (needle) {
-      // measured on the polarity compass at 88px and scaled to the rotor's 76: the needle is
-      // pinned a shade below the dial centre, which is where the real one is riveted
-      ctx.save(); ctx.shadowColor = "transparent";
-      ctx.translate(0, 3.2); ctx.rotate(g.needle ?? 0);
-      ctx.drawImage(needle, -4.7, -25, 9.5, 57);
-      ctx.restore();
-    }
+
   } else if (g.kind === "rotor") {
     plate(ctx, -29, -29, 58, 58, ["#db6454", "#49aeb3", "#c695dd"][index] ?? "#49aeb3", 15);
     ctx.shadowColor = "transparent";
@@ -216,14 +228,8 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
       ctx.save(); ctx.translate(cx, cy);
       ctx.shadowColor = "#22303966"; ctx.shadowBlur = 6; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
       if (theme === "travel") {
-        ctx.drawImage(object, -44, -44, 88, 88);
-        if (needle) {
-          // the needle swings to the live pole and spins as the switch nears
-          ctx.shadowColor = "transparent";
-          const spin = p.remaining < .65 ? time * 18 : 0;
-          ctx.save(); ctx.translate(0, 3.7); ctx.rotate(facing + spin);
-          ctx.drawImage(needle, -5.5, -29, 11, 66); ctx.restore();
-        }
+        // the needle swings to the live pole and spins as the switch nears
+        drawCompass(ctx, object, needle, 88, facing, p.remaining < .65 ? time * 18 : 0);
       } else if (theme === "snack") { ctx.rotate(-Math.PI / 2 + facing); ctx.drawImage(object, -43, -17, 86, 34); }
       else { ctx.rotate(facing); ctx.drawImage(object, -44, -22, 88, 44); }
       ctx.restore();
@@ -238,9 +244,9 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
     ctx.font = "bold 11px system-ui";
     ctx.fillText(p.active ? "−" : "+", barX - 8, barY + 8);
     ctx.fillText(`${Math.ceil(p.remaining)}`, barX + 62, barY + 8);
-  } else if (!assembly && !rotorImg && !(g.kind === "swing" && hardware && charm2)) {
-    // a photographed rotor is a magnet - a clock, a dial, a letter - so it carries no drawn
-    // clip. The metal object IS the hold; only the drawn letter board still needs hardware.
+  } else if (!assembly && !rotorImg && !compassFace && !(g.kind === "swing" && hardware && charm2)) {
+    // a photographed rotor is a magnet - a clock, a dial, a compass, a letter - so it carries no
+    // drawn clip. The metal object IS the hold; only the drawn letter board still needs hardware.
     plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
     drawHardwareGrip(ctx, z, g.kind === "clip" ? 1 : g.kind === "rotor" ? 2 : index === 2 ? 3 : 0);
   }

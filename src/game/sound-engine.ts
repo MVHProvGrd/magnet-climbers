@@ -83,12 +83,12 @@ function sample(key: string, gain: number, rate = 1, group = 'object', cooldown 
 /** Called only on the world's debounced contact event. Pending loads use the old sound,
  * but never replay the collision later when decoding completes. */
 export function playObjectSound(itemId: string, strength = 1) {
-  const key = OBJECT_SAMPLES[itemId]; if (!key) return;
+  const key = OBJECT_SAMPLES[itemId];
+  const voice = TOY_VOICE[itemId] ?? TOY_VOICE[itemId.replace(/^swing-toy-/, 'bumper-')];
+  // no approved sample for this one yet: its written voice is the sound, not silence
+  if (!key) { if (voice) effect(voice); return; }
   const power = Number.isFinite(strength) ? Math.max(0, Math.min(1, strength)) : .5;
-  if (sample(key, .25 + .35 * power) === 'pending') {
-    const fallback = TOY_VOICE[itemId] ?? TOY_VOICE[itemId.replace(/^swing-toy-/, 'bumper-')];
-    if (fallback) effect(fallback);
-  }
+  if (sample(key, .25 + .35 * power) === 'pending' && voice) effect(voice);
 }
 export function playBubbleSound(inward: boolean, index = 0) {
   if (sample(inward ? 'pop-in' : 'pop-out', .65, 1, 'bubble', .08) === 'pending') effect(inward ? 'popIn' : ['pop1', 'pop2', 'pop3'][index % 3]);
