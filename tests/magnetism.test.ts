@@ -683,12 +683,17 @@ test("the shop only sells upgrades a lone climber can feel", () => {
   // a solo run reads magnetRadius, magnetCatch, launchMult, floorMult and revives; teamSize,
   // reach and maxLinks all need teammates, so selling them would take coins for nothing
   const solo = ["magnetRadius", "magnetCatch", "launchMult", "floorMult", "revives"] as const;
-  for (const u of UPGRADES) {
+  for (const u of UPGRADES.filter((u) => u.solo)) {
     const maxed = statsFor({ ...zero, [u.key]: u.max });
-    const moved = solo.some((k) => maxed[k] !== base[k]);
-    assert.equal(moved, u.solo, `${u.key} is marked solo: ${u.solo} but ${moved ? "does" : "does not"} change a solo stat`);
+    assert.ok(solo.some((k) => maxed[k] !== base[k]), `${u.key} is sold but changes nothing for a lone climber`);
+    assert.ok(u.gain, `${u.key} is sold without saying what a click buys`);
+    // three clicks each: a short ladder the player finishes, not a grind
+    assert.equal(u.max, 3, `${u.key} should cap at three`);
   }
-  assert.ok(UPGRADES.filter((u) => u.solo).length >= 4, "something is still on the shelf");
+  // spare lives are not for sale: a free second chance is the ad or gems, nothing else
+  assert.equal(UPGRADES.find((u) => u.key === "revive")!.solo, false);
+  assert.equal(statsFor(zero).revives, 0);
+  assert.ok(UPGRADES.filter((u) => u.solo).length >= 2, "something is still on the shelf");
 });
 
 test("hitting a fidget spinner winds it up, and it coasts back down", () => {

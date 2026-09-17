@@ -818,7 +818,7 @@ export class Ui {
         syncToggles();
         return;
       }
-      if (a === "shop") { this.showShop(); return; }
+      if (a === "shop") { this.showQuickKit(() => this.h.onPlay("solo")); return; }
       if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
       if (a === "back") this.showMenu();
     });
@@ -848,6 +848,7 @@ export class Ui {
    *  you make about the climb you are about to take. Skipped when there is nothing to buy. */
   showQuickKit(start: () => void) {
     const s = this.save();
+    const st = statsFor(s.kit);
     const sellable = UPGRADES.filter((u) => u.solo);
     const cheapest = Math.min(...sellable.map((u) => upgradeCost(u, s.kit[u.key])));
     if (!SHOP_ENABLED || s.coins < cheapest) { start(); return; }
@@ -856,16 +857,16 @@ export class Ui {
       const lvl = s.kit[u.key], maxed = lvl >= u.max, cost = upgradeCost(u, lvl);
       const can = !maxed && s.coins >= cost;
       return `
-        <button class="kit-chip ${can ? "" : "disabled"} ${lvl ? "on" : ""}" data-k="${u.key}" ${can ? "" : "disabled"}>
-          <b>${u.name}</b>
-          <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small>
-          <i>${maxed ? "MAX" : `$${cost}`}</i>
+        <button class="kit-chip ${maxed ? "maxed" : can ? "" : "disabled"} ${lvl ? "on" : ""}" data-k="${u.key}" ${can ? "" : "disabled"}>
+          <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
+          <span>${u.desc}</span>
+          <i>${maxed ? "MAX" : `<em>${u.gain ?? ""}</em>$${cost}`}</i>
         </button>`;
     }).join("");
     p.innerHTML = `
       <h2>Kit up</h2>
-      <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only</p>
-      <div class="kit-grid">${chips}</div>
+      <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power || s.kit.floor ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}% \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>
+      <div class="kit-list">${chips}</div>
       <button class="go" data-a="play">\u25b6 CLIMB</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
@@ -875,46 +876,6 @@ export class Ui {
       if (k) { this.h.onBuy(k); this.showQuickKit(start); return; }
       if (t.closest("[data-a=play]")) { this.clear(); start(); return; }
       if (t.closest("[data-a=back]")) this.showMenu();
-    });
-    this.show(p);
-  }
-
-  showShop() {
-    const s = this.save();
-    const st = statsFor(s.kit);
-    const p = el("div", "panel shop");
-    const loaded = UPGRADES.reduce((n, u) => n + s.kit[u.key], 0);
-    // crew-only upgrades are not sold while the game is one climber: nothing to grab, nothing to stack
-    const rows = UPGRADES.filter((u) => u.solo).map((u) => {
-      const lvl = s.kit[u.key];
-      const maxed = lvl >= u.max;
-      const cost = upgradeCost(u, lvl);
-      const can = !maxed && s.coins >= cost;
-      return `
-        <div class="row">
-          <div class="info">
-            <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
-            <span>${u.desc}</span>
-          </div>
-          <button class="buy ${can ? "" : "disabled"}" data-k="${u.key}" ${can ? "" : "disabled"}>
-            ${maxed ? "MAX" : `$${cost}`}
-          </button>
-        </div>`;
-    }).join("");
-    const slower = Math.round((1 - st.floorMult) * 100);
-    p.innerHTML = `
-      <h2>Kit up</h2>
-      <p class="tag"><span class="coin">$${s.coins}</span> \u00b7 one climb only${loaded ? ` \u00b7 magnet ${st.magnetRadius}px \u00b7 sling \u00d7${st.launchMult.toFixed(2)}${slower ? ` \u00b7 line ${slower}% slower` : ""}${st.revives ? ` \u00b7 ${st.revives} token${st.revives > 1 ? "s" : ""}` : ""}` : ""}</p>
-      <div class="rows">${rows}</div>
-      <button data-a="play">\u25b6 CLIMB</button>
-      <button class="ghost" data-a="back">BACK</button>
-    `;
-    p.addEventListener("click", (e) => {
-      const t = e.target as HTMLElement;
-      const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
-      if (k) { this.h.onBuy(k); this.showShop(); return; }
-      if (t.dataset.a === "play") { this.clear(); this.h.onPlay("solo"); return; }
-      if (t.dataset.a === "back") this.showMenu();
     });
     this.show(p);
   }

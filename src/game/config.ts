@@ -128,6 +128,8 @@ export interface UpgradeDef {
   costGrowth: number;
   /** does this change anything for a lone climber? Crew-only upgrades are not sold today. */
   solo: boolean;
+  /** what one click buys, for the button: the player should never have to guess. */
+  gain?: string;
 }
 
 export type UpgradeKey =
@@ -141,12 +143,12 @@ export type UpgradeKey =
 
 export const UPGRADES: UpgradeDef[] = [
   { key: "team", name: "Team size", desc: "+1 climber at the start of every run", max: 5, baseCost: 60, costGrowth: 1.9, solo: false },
-  { key: "magnet", name: "Magnet strength", desc: "Grabs steel from further out, so you stick where you would have slipped", max: 6, baseCost: 40, costGrowth: 1.7, solo: true },
+  { key: "magnet", name: "Magnet strength", desc: "Grabs steel from further out", max: 6, baseCost: 40, costGrowth: 1.7, solo: false },
   { key: "reach", name: "Arm reach", desc: "Grab teammates from further away", max: 6, baseCost: 45, costGrowth: 1.7, solo: false },
   { key: "links", name: "Chain length", desc: "More climbers can hang off one anchor", max: 4, baseCost: 80, costGrowth: 2.0, solo: false },
-  { key: "power", name: "Slingshot power", desc: "Every pull launches you further", max: 5, baseCost: 50, costGrowth: 1.8, solo: true },
-  { key: "floor", name: "Sticky floor", desc: "The red line climbs slower behind you", max: 5, baseCost: 70, costGrowth: 1.9, solo: true },
-  { key: "revive", name: "Spare tokens", desc: "+1 free second chance per run", max: 3, baseCost: 150, costGrowth: 2.5, solo: true },
+  { key: "power", name: "Higher jump", desc: "Pull back and every sling throws you further up the door.", max: 3, baseCost: 50, costGrowth: 1.8, solo: true, gain: "+9% jump" },
+  { key: "floor", name: "Sticky floor", desc: "The red line creeping up behind you climbs slower.", max: 3, baseCost: 70, costGrowth: 1.9, solo: true, gain: "-9% line" },
+  { key: "revive", name: "Spare tokens", desc: "+1 free second chance per run", max: 3, baseCost: 150, costGrowth: 2.5, solo: false },
 ];
 
 export function upgradeCost(def: UpgradeDef, level: number): number {
