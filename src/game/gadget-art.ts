@@ -198,11 +198,10 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   const compassFace = g.itemId === "rotor-compass" ? objectArt.get("compass-base") : undefined;
   const rotorImg = g.kind === "rotor" ? objectArt.get(g.itemId) : undefined;
   if (g.kind === "rotor" && compassFace) {
-    // the loop in the photo hangs on a real hook: draw the bar first so the compass covers it
-    ctx.save(); ctx.translate(-p.x, -p.y);
-    plate(ctx, z.x + 2, z.y + 3, z.w, z.h, "#21323a55", 3);
-    drawHardwareGrip(ctx, z, 2);
-    ctx.restore();
+    // No bar and no clip behind it. The compass was given a drawn hook on the theory that its
+    // loop had to hang on something, but the photograph already carries its own brass loop and
+    // is narrower than the hardware underneath -- so the steel stuck out above the case and the
+    // compass read as clipped to the door rather than hung on it. It is a magnet like the rest.
     drawCompass(ctx, compassFace, objectArt.get("compass-needle"), 76, g.needle ?? 0);
   } else if (rotorImg) {
     // spindle-centred by the install script, so the draw offset IS the pivot
