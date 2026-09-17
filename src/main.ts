@@ -72,7 +72,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -102,6 +102,10 @@ function mergeCloudBlob(blob: string) {
     save.intros = Array.from(new Set([...save.intros, ...(c.intros ?? [])]));
     migrateLooks(save);
     if (c.name) save.name = c.name;
+    // one daily climb per player, not per device: the later day wins, and on the same day
+    // the better score; the streak likewise follows whichever device counted most recently
+    if (c.daily && (!save.daily || c.daily.day > save.daily.day || (c.daily.day === save.daily.day && c.daily.cm > save.daily.cm))) save.daily = c.daily;
+    if (c.streak && (c.streak.last > save.streak.last || (c.streak.last === save.streak.last && c.streak.days > save.streak.days))) save.streak = c.streak;
   } catch { /* ignore */ }
 }
 let syncing = false;
@@ -419,6 +423,8 @@ function runEvents() {
       const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
+      // the daily climb is spent for every device the moment it ends, not when this one quits
+      if (dailyRun) void cloudSync("daily");
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm, save.totalCm);
       const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
