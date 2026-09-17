@@ -363,8 +363,8 @@ export class Ui {
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "expeditions" && EXPEDITIONS_ENABLED) this.showExpeditions();
-      if (a === "solo") this.h.onPlay("solo");
-      if (a === "shop") this.showShop();
+      if (a === "solo") this.showQuickKit(() => this.h.onPlay("solo"));
+      if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"));
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard(EXPEDITIONS_ENABLED ? "crew" : "solo");
       if (a === "settings") this.showSettings();
@@ -844,6 +844,41 @@ export class Ui {
     body.scrollTop = this.settingsScroll;
   }
 
+  /** The pre-run sheet: the last thing between the menu and the door, so kit is a decision
+   *  you make about the climb you are about to take. Skipped when there is nothing to buy. */
+  showQuickKit(start: () => void) {
+    const s = this.save();
+    const sellable = UPGRADES.filter((u) => u.solo);
+    const cheapest = Math.min(...sellable.map((u) => upgradeCost(u, s.kit[u.key])));
+    if (!SHOP_ENABLED || s.coins < cheapest) { start(); return; }
+    const p = el("div", "panel kit-quick");
+    const chips = sellable.map((u) => {
+      const lvl = s.kit[u.key], maxed = lvl >= u.max, cost = upgradeCost(u, lvl);
+      const can = !maxed && s.coins >= cost;
+      return `
+        <button class="kit-chip ${can ? "" : "disabled"} ${lvl ? "on" : ""}" data-k="${u.key}" ${can ? "" : "disabled"}>
+          <b>${u.name}</b>
+          <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small>
+          <i>${maxed ? "MAX" : `$${cost}`}</i>
+        </button>`;
+    }).join("");
+    p.innerHTML = `
+      <h2>Kit up</h2>
+      <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only</p>
+      <div class="kit-grid">${chips}</div>
+      <button class="go" data-a="play">\u25b6 CLIMB</button>
+      <button class="ghost" data-a="back">BACK</button>
+    `;
+    p.addEventListener("click", (e) => {
+      const t = e.target as HTMLElement;
+      const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
+      if (k) { this.h.onBuy(k); this.showQuickKit(start); return; }
+      if (t.closest("[data-a=play]")) { this.clear(); start(); return; }
+      if (t.closest("[data-a=back]")) this.showMenu();
+    });
+    this.show(p);
+  }
+
   showShop() {
     const s = this.save();
     const st = statsFor(s.kit);
@@ -1221,7 +1256,6 @@ export class Ui {
       </div>`}
       <button class="go" data-a="again">CLIMB AGAIN</button>
       <div class="lost-ghosts">
-        ${SHOP_ENABLED && !o.chill ? `<button class="ghost" data-a="shop">KIT UP FIRST</button>` : ""}
         ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
       </div>
@@ -1230,9 +1264,7 @@ export class Ui {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
-      if (a === "again") { this.clear(); this.h.onPlay(o.mode); }
-      // the last kit went with the last run, so the way back into a climb passes the shop
-      if (a === "shop") { this.h.onQuitRun(); this.showShop(); }
+      if (a === "again") this.showQuickKit(() => this.h.onPlay(o.mode));
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }
