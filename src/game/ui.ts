@@ -361,8 +361,7 @@ export class Ui {
       <div class="home-icons">
         ${icon("story", "story", "STORY")}
         ${icon("board", "board", "BOARD")}
-        ${SHOP_ENABLED ? tile("shop", `<img src="${import.meta.env.BASE_URL}art/pickups/magnet.png" alt="" />`, "KIT") : ""}
-        ${tile("collection", `<canvas class="home-creature" width="48" height="48" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>`, "TOYS")}
+        ${tile("kit", `<canvas class="home-creature" width="48" height="48" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>`, "KIT")}
         ${icon("tutorial", "help", "HOW TO")}
       </div>
       <div class="home-dock">
@@ -398,6 +397,8 @@ export class Ui {
       // the daily is the same climb for everyone, so no kit sheet stands in front of it
       if (a === "daily" && !done) { this.clear(); this.h.onPlayDaily(); }
       if (a === "daily" && done) this.showBoard("daily");
+      // one door for both errands: what you are wearing, and what you are taking up with you
+      if (a === "kit") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
       if (a === "shop") this.showQuickKit(() => this.h.onPlay("solo"), { asked: true });
       if (a === "collection") this.showCollection();
@@ -447,12 +448,26 @@ export class Ui {
   }
 
   /** Creatures and patterns: what you own, what you wear, how to earn the rest. */
-  showCollection(tab: "creatures" | "patterns" = "creatures") {
+  /**
+   * Everything you own or can buy, behind one door. Kit and creatures were two full-width
+   * rows, then two tiles, and they were always the same errand: what am I taking up the
+   * fridge. The kit tab leads because it is the one with a decision and coins attached, and
+   * it is labelled for the climb rather than for the shop, because the thing players get
+   * wrong about it is that it lasts one run.
+   */
+  showCollection(tab: "kit" | "creatures" | "patterns" = "creatures") {
     const s = this.save();
     const p = el("div", "panel collection");
     const owned = (c: CreatureDef) => s.creatures.includes(c.id);
     let body = "";
-    if (tab === "creatures") {
+    if (tab === "kit") {
+      const { chips, note } = this.kitParts();
+      const st = statsFor(s.kit);
+      body = `<p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}%` : ""}${s.kit.floor ? ` \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>
+        ${note ? `<p class="fine kit-note">${note}</p>` : ""}
+        <div class="kit-list">${chips}</div>
+        <label class="kit-auto"><input type="checkbox" data-a="auto" ${s.autoKit ? "checked" : ""} /> <span>Buy this for me every climb</span></label>`;
+    } else if (tab === "creatures") {
       body = `<div class="guide-grid">${CREATURES.map((c) => {
         const on = s.creature === c.id, has = owned(c);
         return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-c="${c.id}" ${has ? "" : "disabled"}>
@@ -469,18 +484,25 @@ export class Ui {
         </button>`; }).join("")}</div>
         <button class="primary" data-a="prize">🎰 PRIZE MACHINE · $${groupNum(prizeCost(s.spins))}</button>`;
     }
-    p.innerHTML = `<h2>Collection</h2>
-      <div class="tabs"><button class="${tab === "creatures" ? "on" : ""}" data-tab="creatures">CREATURES ${s.creatures.length}/${CREATURES.length}</button><button class="${tab === "patterns" ? "on" : ""}" data-tab="patterns">PATTERNS ${s.patterns.length}/${PATTERNS.length}</button></div>
+    p.innerHTML = `<h2>Your kit</h2>
+      <div class="tabs">${SHOP_ENABLED ? `<button class="${tab === "kit" ? "on" : ""}" data-tab="kit">THIS CLIMB</button>` : ""}<button class="${tab === "creatures" ? "on" : ""}" data-tab="creatures">CREATURES ${s.creatures.length}/${CREATURES.length}</button><button class="${tab === "patterns" ? "on" : ""}" data-tab="patterns">PATTERNS ${s.patterns.length}/${PATTERNS.length}</button></div>
       ${body}
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-c],[data-p],[data-a]");
       if (!t) return;
       if (t.dataset.tab) { this.showCollection(t.dataset.tab as "creatures"); return; }
+      if (t.dataset.k) { this.h.onBuy(t.dataset.k as UpgradeKey); this.showCollection("kit"); return; }
       if (t.dataset.c) { this.h.onWear({ creature: t.dataset.c as CreatureId, pattern: this.save().pattern }); this.showCollection("creatures"); return; }
       if (t.dataset.p) { this.h.onWear({ creature: this.save().creature, pattern: t.dataset.p }); this.showCollection("patterns"); return; }
+      if (t.dataset.a === "auto") return; // handled on change, below
       if (t.dataset.a === "prize") this.showPrize();
       if (t.dataset.a === "back") this.showMenu();
+    });
+    p.querySelector<HTMLInputElement>('input[data-a="auto"]')?.addEventListener("change", (e) => {
+      const on = (e.target as HTMLInputElement).checked;
+      this.h.onToggleAutoKit(on);
+      this.toast(on ? "Kit bought automatically from now on" : "You will be asked each climb");
     });
     this.show(p);
     this.startPreviews(p);
@@ -905,6 +927,33 @@ export class Ui {
 
   /** The pre-run sheet: the last thing between the menu and the door, so kit is a decision
    *  you make about the climb you are about to take. Skipped when there is nothing to buy. */
+  /**
+   * The kit, as buyable chips. Shared by the pre-run sheet and the Kit panel so the two can
+   * never drift into describing the same purchase differently. `sellable` leaves out the
+   * sticky floor in chill, where there is no red line for it to slow.
+   */
+  private kitParts() {
+    const s = this.save();
+    const sellable = UPGRADES.filter((u) => u.solo && !(u.key === "floor" && s.chill));
+    const cheapest = Math.min(...sellable.map((u) => upgradeCost(u, s.kit[u.key])));
+    const chips = sellable.map((u) => {
+      const lvl = s.kit[u.key], maxed = lvl >= u.max, cost = upgradeCost(u, lvl);
+      const can = !maxed && s.coins >= cost;
+      return `
+        <button class="kit-chip ${maxed ? "maxed" : can ? "" : "disabled"} ${lvl ? "on" : ""}" data-k="${u.key}" ${can ? "" : "disabled"}>
+          <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
+          <span>${u.desc}</span>
+          <i>${maxed ? "MAX" : `<em>${u.gain ?? ""}</em>$${cost}`}</i>
+        </button>`;
+    }).join("");
+    // Say why every chip is dark, rather than leaving the player to work it out.
+    const allMaxed = sellable.every((u) => s.kit[u.key] >= u.max);
+    const note = allMaxed ? "Your kit is full for this climb."
+      : s.coins < cheapest ? `Not enough coins yet \u2014 the cheapest is $${groupNum(cheapest)}. Coins drop as you climb.`
+      : "";
+    return { sellable, cheapest, chips, note };
+  }
+
   showQuickKit(start: () => void, opts: { asked?: boolean } = {}) {
     let s = this.save();
     // chill runs have no red line, so a stickier floor would be money for nothing
@@ -934,22 +983,7 @@ export class Ui {
     s = this.save();
     const st = statsFor(s.kit);
     const p = el("div", "panel kit-quick");
-    const chips = sellable.map((u) => {
-      const lvl = s.kit[u.key], maxed = lvl >= u.max, cost = upgradeCost(u, lvl);
-      const can = !maxed && s.coins >= cost;
-      return `
-        <button class="kit-chip ${maxed ? "maxed" : can ? "" : "disabled"} ${lvl ? "on" : ""}" data-k="${u.key}" ${can ? "" : "disabled"}>
-          <b>${u.name} <small>${"\u25cf".repeat(lvl)}${"\u25cb".repeat(u.max - lvl)}</small></b>
-          <span>${u.desc}</span>
-          <i>${maxed ? "MAX" : `<em>${u.gain ?? ""}</em>$${cost}`}</i>
-        </button>`;
-    }).join("");
-    // The one thing the old sheet never said: why every chip is greyed out.
-    const short = s.coins < cheapest();
-    const allMaxed = sellable.every((u) => s.kit[u.key] >= u.max);
-    const note = allMaxed ? "Your kit is full for this climb."
-      : short ? `Not enough coins yet \u2014 the cheapest is $${groupNum(cheapest())}. Coins drop as you climb.`
-      : "";
+    const { chips, note } = this.kitParts();
     p.innerHTML = `
       <h2>Kit up</h2>
       <p class="tag"><span class="coin">$${groupNum(s.coins)}</span> \u00b7 this climb only${s.kit.power ? ` \u00b7 jump +${Math.round((st.launchMult - 1) * 100)}%` : ""}${s.kit.floor ? ` \u00b7 line -${Math.round((1 - st.floorMult) * 100)}%` : ""}</p>

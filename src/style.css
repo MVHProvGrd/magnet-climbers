@@ -504,7 +504,10 @@ select.buy option { background: #1e2229; color: #fff; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(3 * var(--px));
   padding: 0 calc(2 * var(--px)); overflow: hidden;
 }
-.home-icon img, .home-icon canvas { width: calc(24 * var(--px)); height: calc(24 * var(--px)); display: block; }
+.home-icon img { width: calc(24 * var(--px)); height: calc(24 * var(--px)); display: block; }
+/* The climber is posed with air around it inside its box, so at the icons' 24px it reads
+   noticeably lighter than the photographed ones. Drawn larger, it weighs the same. */
+.home-icon canvas { width: calc(32 * var(--px)); height: calc(32 * var(--px)); display: block; margin: calc(-4 * var(--px)) 0; }
 /* At a fifth of the width the labels are close enough to touch, so the tracking comes in and
    a long one ellipsises rather than wrapping the tile taller than its neighbours. */
 .home-icon span { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(.9 * var(--px)); color: rgba(255,255,255,.8);
