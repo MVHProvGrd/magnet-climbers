@@ -96,7 +96,8 @@ const GROUPS: { label: string; of: (i: FridgeItem) => boolean }[] = [
   { label: "Surfaces and fittings", of: (i) => i.family === "surface" && i.kind !== "attract" && i.kind !== "repel" },
   { label: "Pickups", of: (i) => i.family === "pickup" },
 ];
-/** A gadget draws itself at a size baked into gadget-art, so the sliders cannot move it. */
+/** gadget-art fits every gadget's art into this many pixels, whatever its own shape. */
+const GADGET_FIT = 76;
 const isGadget = (i: FridgeItem) => i.family === "gadget";
 /** The advertising magnets: family "bumper", but not one of the photographed toys. */
 const isAdvert = (i: FridgeItem) => i.family === "bumper" && !i.id.startsWith("bumper-");
@@ -144,9 +145,17 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
     drawZone(ctx, zone(item.kind), 0, 42); return;
   }
   if (isGadget(item)) {
-    // drawn at its own size about the hold, so centre it in the box we were given
-    drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior!, x: x + w / 2, y: y + h / 2, phase: 0,
+    // drawGadget fits its art into a baked 76px and takes no size from the caller, so the
+    // slider moved the number and nothing else -- a letter stayed the same size at 8px as at
+    // 516. Scale the whole draw instead, about the centre of the box, so what is on screen is
+    // the size the readout claims and a gadget can actually be judged against the climber.
+    const px = artPixels(item);
+    const drawnH = px ? GADGET_FIT * (px.h / Math.max(px.w, px.h)) : GADGET_FIT;
+    const k = h / drawnH;
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(k, k);
+    drawGadget(ctx, { id: item.id, itemId: item.id, kind: item.behavior!, x: 0, y: 0, phase: 0,
       ...(item.behavior === "swing" || item.behavior === "clip" ? { swing: { angle: 0, vel: 0, cool: 0 } } : {}) }, 0);
+    ctx.restore();
     return;
   }
   if (item.family === "pickup") {
