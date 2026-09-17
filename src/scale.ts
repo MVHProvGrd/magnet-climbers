@@ -90,7 +90,7 @@ function askForKey() {
 const GROUPS: { label: string; of: (i: FridgeItem) => boolean }[] = [
   { label: "Paper on the door", of: (i) => i.family === "paper" },
   { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-") },
-  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") },
+  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard },
   { label: "Hanging gadgets", of: (i) => i.family === "gadget" },
   { label: "Souvenir plates", of: (i) => i.kind === "attract" || i.kind === "repel" },
   { label: "Surfaces and fittings", of: (i) => i.family === "surface" && i.kind !== "attract" && i.kind !== "repel" },
@@ -177,7 +177,13 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
 
 /* ------------------------------------------------------------------ the bench */
 /** Everything the bench can walk, in the order the groups are listed. */
-const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of));
+/**
+ * Cooper's hand and the cat's paw are guide cards, not things on the door. They are animated
+ * by kid-hand.ts and cat-paw.ts at their own scale, they never become a zone, and the bench
+ * drew each as a red rectangle with its name in it -- nothing you could judge and nothing a
+ * number would reach. They stay as they are, so the walk no longer asks about them.
+ */
+const WALK: FridgeItem[] = GROUPS.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter((i) => !i.hazard);
 /**
  * v2: every number recorded before this was taken against whatever the bench happened to
  * draw, and for the sixteen advertising magnets that was a sheet of dark plastic trim rather
