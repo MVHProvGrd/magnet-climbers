@@ -348,6 +348,18 @@ function drawArc(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, v
     if (i > 5 && z === 0 && g.world.isMetal(x, y, CFG.magnetism.snapDistance + g.stats.magnetRadius)) {
       ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); break;
     }
+    // touched down on glass, plastic or paper: that is where the toy arrives, and nothing there
+    // holds it. A hollow ring and a short tail say "you land here, then you slide".
+    if (i > 5 && z === 0 && !g.world.isMetal(x, y, CFG.magnetism.panelInset)) {
+      ctx.strokeStyle = ctx.fillStyle as string; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.stroke();
+      for (let k = 1; k <= 3; k++) {
+        ctx.globalAlpha = 0.45 - k * 0.1;
+        ctx.beginPath(); ctx.arc(x, y + 6 + k * 7, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
     if (i % every === 0) {
       // dots shrink as the toy comes back toward the door
       const r = (taper ? 3.5 - i / 40 : 2.5) + z * 0.03;
