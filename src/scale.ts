@@ -17,9 +17,9 @@ import { CFG, W } from "./game/config";
 import { FRIDGE_ITEMS, PAPER_ASPECT, type FridgeItem } from "./game/items";
 import { drawSurface, drawZone, drawPower, drawBumper } from "./game/scenery";
 import { drawClimber } from "./game/climber-render";
-import { drawGadget, gadgetArtReady, destinationArtById, drawDestination } from "./game/gadget-art";
-import { obstacleArtReady } from "./game/obstacle-art";
-import { pickupArtReady } from "./game/pickup-art";
+import { drawGadget, gadgetArtReady, destinationArtById, drawDestination, objectArtById } from "./game/gadget-art";
+import { obstacleArtReady, obstacleImage } from "./game/obstacle-art";
+import { pickupArtReady, pickupImage } from "./game/pickup-art";
 import { resetRagdoll } from "./game/ragdoll";
 import type { Climber, NoStickZone, PowerKind } from "./game/types";
 
@@ -108,13 +108,30 @@ const source = (i: FridgeItem) =>
   : i.id === "ice-tray" || i.id === "plastic" ? "placement.ts rule size"
   : "world.ts, where the zone is cut";
 
-/** The natural shape of a thing's art, when we know it. */
-function aspectOf(item: FridgeItem): number | undefined {
-  if (item.family === "paper") return PAPER_ASPECT[item.id];
-  // an advertising magnet is drawn into a 100x60 box by drawBusinessMagnet, so that is its
-  // real shape; the bench used to open it as a square, which is a shape it never has
+/** Pixel size of whatever bitmap a thing is actually drawn from, when there is one. */
+function artPixels(item: FridgeItem): { w: number; h: number } | undefined {
+  const img = item.family === "pickup" ? pickupImage(item.power as PowerKind)
+    : item.kind === "attract" || item.kind === "repel" ? destinationArtById(item.id)
+    : obstacleImage(item.id) ?? objectArtById(item.id);
+  if (!img) return undefined;
+  const w = (img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width;
+  const h = (img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height;
+  return w && h ? { w, h } : undefined;
+}
+
+/**
+ * The shape a thing really is, so one slider can size it without ever distorting it.
+ *
+ * Every family has an answer: a photograph knows its own pixels, paper has a measured table,
+ * an advertising magnet is authored into a hundred by sixty, and a gadget draws itself at a
+ * size baked into gadget-art. Squashing was never a decision anyone wanted to make -- it only
+ * ever produced a number that looked right on the bench and wrong on the door.
+ */
+function aspectOf(item: FridgeItem): number {
+  if (item.family === "paper") return PAPER_ASPECT[item.id] ?? 1;
   if (isAdvert(item)) return 100 / 60;
-  return undefined;
+  const px = artPixels(item);
+  return px ? px.w / px.h : 1;
 }
 
 /** Draw one item into a rect with the game's own renderer. */
@@ -133,7 +150,11 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
     return;
   }
   if (item.family === "pickup") {
-    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(w / 26, w / 26);
+    // drawPickupImage lays the art out at 46px. The bench scaled from 26, so every pickup came
+    // out nearly twice the size the slider claimed -- which is no use at all on a bench whose
+    // entire job is judging size.
+    const k = h / 46;
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(k, k);
     drawPower(ctx, { x: 0, y: 0, kind: item.power as PowerKind, taken: false, bob: 0 }, 0); ctx.restore(); return;
   }
   if (item.family === "paper") { drawZone(ctx, zone("sticker"), 0, 42); return; }
@@ -170,7 +191,7 @@ const writeAudit = (a: Audit) => { try { localStorage.setItem(SIZES, JSON.string
 let audit: Audit = readAudit();
 
 let item: FridgeItem = WALK[0];
-let boxW = 150, boxH = 150, lockAspect = true, hang = false;
+let boxW = 150, boxH = 150, hang = false;
 
 function poseClimber(x: number, y: number): Climber {
   const c: Climber = { id: 1, x, y, vx: 0, vy: 0, angle: 0, spin: 0, state: "stuck", color: "#4fc3f7",
@@ -207,9 +228,6 @@ function paint(canvas: HTMLCanvasElement, readout: HTMLElement) {
     if (!(cm % 20)) ctx.fillText(`${cm}`, 210, py + 3.5);
   }
 
-  // the box we are sizing, so an odd-shaped photo still reads as its collider
-  ctx.strokeStyle = "rgba(255,138,61,.75)"; ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
-  ctx.strokeRect(x + .5, y + .5, boxW, boxH); ctx.setLineDash([]);
   ctx.restore();
 
   const cm = (px: number) => (px / CFG.pxPerCm).toFixed(1);
@@ -236,16 +254,8 @@ function boot() {
       <div class="check"><input type="checkbox" id="hang" /><label for="hang" style="margin:0">Hang it from a keyring (toys only)</label></div>
 
       <h2>Size</h2>
-      <label for="w">Width — <span id="wv"></span></label>
-      <div class="row"><input type="range" id="w" min="16" max="400" step="1" /><input type="number" id="wn" min="1" max="400" /></div>
-      <label for="h">Height — <span id="hv"></span></label>
-      <div class="row"><input type="range" id="h" min="16" max="560" step="1" /><input type="number" id="hn" min="1" max="560" /></div>
-      <div class="check"><input type="checkbox" id="lock" checked /><label for="lock" style="margin:0">Keep the art's own shape</label></div>
-
-      <div class="bar">
-        <button id="fit">Fit the art</button>
-        <button id="match">Match the climber</button>
-      </div>
+      <label for="h">Size — <span id="hv"></span></label>
+      <div class="row"><input type="range" id="h" min="8" max="560" step="1" /><input type="number" id="hn" min="1" max="560" /></div>
       <div class="readout" id="out"></div>
 
       <h2>Audit</h2>
@@ -266,7 +276,7 @@ function boot() {
     </div>
     <div class="card">
       <canvas class="door" id="door" width="880" height="1584"></canvas>
-      <p class="fine" style="margin-top:10px">Ticks down the seam are the game's centimetres, ten pixels each. The dashed box is the collider, which is what the world actually places — art may sit inside it.</p>
+      <p class="fine" style="margin-top:10px">Ticks down the seam are the game's centimetres, ten pixels each. The art keeps its own shape: set how tall it should be and the width follows.</p>
     </div>
   </div>`;
 
@@ -274,30 +284,26 @@ function boot() {
   const picker = root.querySelector<HTMLSelectElement>("#item")!;
   const out = root.querySelector<HTMLElement>("#out")!;
   const desc = root.querySelector<HTMLElement>("#desc")!;
-  const wR = root.querySelector<HTMLInputElement>("#w")!, hR = root.querySelector<HTMLInputElement>("#h")!;
-  const wN = root.querySelector<HTMLInputElement>("#wn")!, hN = root.querySelector<HTMLInputElement>("#hn")!;
-  const wV = root.querySelector<HTMLElement>("#wv")!, hV = root.querySelector<HTMLElement>("#hv")!;
-  const lock = root.querySelector<HTMLInputElement>("#lock")!;
+  const hR = root.querySelector<HTMLInputElement>("#h")!;
+  const hN = root.querySelector<HTMLInputElement>("#hn")!;
+  const hV = root.querySelector<HTMLElement>("#hv")!;
   const hangBox = root.querySelector<HTMLInputElement>("#hang")!;
 
   const sync = () => {
-    wR.value = wN.value = String(boxW); hR.value = hN.value = String(boxH);
-    wV.textContent = `${boxW} px · ${(boxW / CFG.pxPerCm).toFixed(1)} cm`;
-    hV.textContent = `${boxH} px · ${(boxH / CFG.pxPerCm).toFixed(1)} cm`;
+    hR.value = hN.value = String(boxH);
+    hV.textContent = `${boxH} px tall · ${(boxH / CFG.pxPerCm).toFixed(1)} cm · ${boxW}×${boxH}`;
     desc.textContent = item.description;
     hangBox.disabled = !item.id.startsWith("bumper-");
     paint(canvas, out);
   };
-  const setW = (v: number) => { boxW = Math.max(1, Math.min(400, Math.round(v)));
-    const a = aspectOf(item); if (lockAspect && a) boxH = Math.round(boxW / a); sync(); };
-  const setH = (v: number) => { boxH = Math.max(1, Math.min(560, Math.round(v)));
-    const a = aspectOf(item); if (lockAspect && a) boxW = Math.round(boxH * a); sync(); };
-
-  wR.addEventListener("input", () => setW(+wR.value));
-  wN.addEventListener("change", () => setW(+wN.value));
+  /** One number. The width follows the art's own shape, so nothing here can distort anything. */
+  const setH = (v: number) => {
+    boxH = Math.max(1, Math.min(560, Math.round(v)));
+    boxW = Math.max(1, Math.round(boxH * aspectOf(item)));
+    sync();
+  };
   hR.addEventListener("input", () => setH(+hR.value));
   hN.addEventListener("change", () => setH(+hN.value));
-  lock.addEventListener("change", () => { lockAspect = lock.checked; setW(boxW); });
   hangBox.addEventListener("change", () => { hang = hangBox.checked; sync(); });
   picker.addEventListener("change", (e) => {
     item = FRIDGE_ITEMS.find((i) => i.id === (e.target as HTMLSelectElement).value)!;
@@ -307,10 +313,6 @@ function boot() {
     load();
     sync(); tell();
   });
-  root.querySelector("#fit")!.addEventListener("click", () => {
-    const a = aspectOf(item) ?? 1; boxW = 150; boxH = Math.round(150 / a); sync();
-  });
-  root.querySelector("#match")!.addEventListener("click", () => { setH(CLIMBER_PX); });
 
   /** The picker doubles as the checklist: a tick marks every size already recorded. */
   const fillPicker = () => {
@@ -342,8 +344,8 @@ function boot() {
   /** The box to show this item in: the size already recorded, or its own natural shape. */
   const load = () => {
     const mine = audit[item.id];
-    if (mine) { boxW = mine.w; boxH = mine.h; return; }
-    const a = aspectOf(item); boxW = 150; boxH = a ? Math.round(150 / a) : 150;
+    boxH = mine ? mine.h : 150;
+    boxW = Math.max(1, Math.round(boxH * aspectOf(item)));
   };
   const go = (step: number) => {
     const at = (WALK.indexOf(item) + step + WALK.length) % WALK.length;
