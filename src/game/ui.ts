@@ -349,6 +349,10 @@ export class Ui {
           <b class="chill">CHILL</b><small>no red line</small>
           <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
         </label>
+        ${SHOP_ENABLED ? `<button class="home-row" data-a="shop">
+          <b>KIT UP</b><small>gear for one climb</small>
+          <span class="coin">$${groupNum(s.coins)}</span>
+        </button>` : ""}
         <button class="home-row" data-a="collection">
           <b>CREATURES</b>
           <canvas class="home-creature" width="34" height="34" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>
@@ -360,6 +364,7 @@ export class Ui {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "expeditions" && EXPEDITIONS_ENABLED) this.showExpeditions();
       if (a === "solo") this.h.onPlay("solo");
+      if (a === "shop") this.showShop();
       if (a === "collection") this.showCollection();
       if (a === "board") this.showBoard(EXPEDITIONS_ENABLED ? "crew" : "solo");
       if (a === "settings") this.showSettings();
@@ -754,7 +759,7 @@ export class Ui {
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         ${row("Creatures &amp; patterns", "Pick who climbs and how they are painted", chip("collection", "OPEN"))}
-        ${SHOP_ENABLED ? row("Upgrades", "Spend coins on a stronger magnet, a bigger sling and spare tokens", chip("shop", "OPEN")) : ""}
+        ${SHOP_ENABLED ? row("Kit up", "Spend coins on gear for your next climb", chip("shop", "OPEN")) : ""}
         <p class="sec-label">Play on another device</p>
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
@@ -841,11 +846,12 @@ export class Ui {
 
   showShop() {
     const s = this.save();
-    const st = statsFor(s.upgrades);
+    const st = statsFor(s.kit);
     const p = el("div", "panel shop");
+    const loaded = UPGRADES.reduce((n, u) => n + s.kit[u.key], 0);
     // crew-only upgrades are not sold while the game is one climber: nothing to grab, nothing to stack
     const rows = UPGRADES.filter((u) => u.solo).map((u) => {
-      const lvl = s.upgrades[u.key];
+      const lvl = s.kit[u.key];
       const maxed = lvl >= u.max;
       const cost = upgradeCost(u, lvl);
       const can = !maxed && s.coins >= cost;
@@ -862,18 +868,18 @@ export class Ui {
     }).join("");
     const slower = Math.round((1 - st.floorMult) * 100);
     p.innerHTML = `
-      <h2>Upgrades</h2>
-      <p class="tag"><span class="coin">$${s.coins}</span> \u00b7 magnet ${st.magnetRadius}px \u00b7 sling \u00d7${st.launchMult.toFixed(2)}${slower ? ` \u00b7 line ${slower}% slower` : ""}${st.revives ? ` \u00b7 ${st.revives} token${st.revives > 1 ? "s" : ""}` : ""}</p>
+      <h2>Kit up</h2>
+      <p class="tag"><span class="coin">$${s.coins}</span> \u00b7 one climb only${loaded ? ` \u00b7 magnet ${st.magnetRadius}px \u00b7 sling \u00d7${st.launchMult.toFixed(2)}${slower ? ` \u00b7 line ${slower}% slower` : ""}${st.revives ? ` \u00b7 ${st.revives} token${st.revives > 1 ? "s" : ""}` : ""}` : ""}</p>
       <div class="rows">${rows}</div>
-      <button data-a="collection">\ud83c\udfa8 CREATURES &amp; PATTERNS</button>
+      <button data-a="play">\u25b6 CLIMB</button>
       <button class="ghost" data-a="back">BACK</button>
     `;
     p.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       const k = t.closest<HTMLElement>("[data-k]")?.dataset.k as UpgradeKey | undefined;
       if (k) { this.h.onBuy(k); this.showShop(); return; }
-      if (t.dataset.a === "collection") { this.showCollection(); return; }
-      if (t.dataset.a === "back") this.showSettings();
+      if (t.dataset.a === "play") { this.clear(); this.h.onPlay("solo"); return; }
+      if (t.dataset.a === "back") this.showMenu();
     });
     this.show(p);
   }
@@ -1215,6 +1221,7 @@ export class Ui {
       </div>`}
       <button class="go" data-a="again">CLIMB AGAIN</button>
       <div class="lost-ghosts">
+        ${SHOP_ENABLED && !o.chill ? `<button class="ghost" data-a="shop">KIT UP FIRST</button>` : ""}
         ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
       </div>
@@ -1224,6 +1231,8 @@ export class Ui {
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
       if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
       if (a === "again") { this.clear(); this.h.onPlay(o.mode); }
+      // the last kit went with the last run, so the way back into a climb passes the shop
+      if (a === "shop") { this.h.onQuitRun(); this.showShop(); }
       if (a === "quit") { this.clear(); this.h.onQuitRun(); }
       const wear = (e.target as HTMLElement).closest<HTMLElement>("[data-a=wear]")?.dataset.c as CreatureId | undefined;
       if (wear) { this.h.onWear({ creature: wear, pattern: this.save().pattern }); this.toast(`Wearing ${creatureById(wear).name}`); }

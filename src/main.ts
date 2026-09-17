@@ -187,11 +187,11 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onBuy: (key: UpgradeKey) => {
     const def = UPGRADES.find((u) => u.key === key)!;
-    const lvl = save.upgrades[key];
+    const lvl = save.kit[key];
     const cost = upgradeCost(def, lvl);
     if (lvl >= def.max || save.coins < cost) return;
     save.coins -= cost;
-    save.upgrades[key] = lvl + 1;
+    save.kit[key] = lvl + 1;
     persist();
   },
   onRevive: (method) => {
@@ -346,6 +346,9 @@ function runEvents() {
       if (!game) return;
       paused = true;
       clearSnapshot();
+      // the kit was bought for this climb and this climb is over. The run keeps the stats it
+      // started with (they were read once, at the top), so a revive still climbs with the gear.
+      for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
       if (game.level) { finishLevel(game.level); return; }
       const cm = game.heightCm;
       const chill = game.chill;
@@ -384,7 +387,7 @@ function runEvents() {
 function lineupFor(rules: "solo" | "crew"): Look[] {
   const me: Look = { creature: save.creature, pattern: save.pattern };
   if (rules === "solo") return [me];
-  const n = statsFor(save.upgrades).teamSize;
+  const n = statsFor(save.kit).teamSize;
   return Array.from({ length: n }, (_, i) => save.crew[i] ?? me);
 }
 
@@ -395,7 +398,7 @@ function resumeRun() {
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
   ui.clear();
   paused = false;
-  game = Game.restore(save.upgrades, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
+  game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor(r.snap.rules));
   if (!game.chill) {
     const best = game.rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: game.heightCm > best };
@@ -500,7 +503,7 @@ function startRun(rules: "solo" | "crew", withTutorial = false) {
   runCoinsTotal = 0;
   paused = false;
   const lineup = lineupFor(rules);
-  game = new Game(save.upgrades, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
+  game = new Game(save.kit, runEvents(), withTutorial ? { rules, seed: TUTORIAL_SEED, lineup } : { rules, chill: save.chill, lineup });
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
@@ -561,6 +564,9 @@ function submitScore(cm: number, panel: HTMLElement) {
 
 function endRun() {
   clearSnapshot();
+  // the kit was for that climb: it is used up whether it carried you far or not
+  for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
+  persist();
   if (updateReady) setTimeout(applyUpdate, 400);
   tutorial = null;
   ui.hideTip();
