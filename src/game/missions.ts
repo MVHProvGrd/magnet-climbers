@@ -55,7 +55,11 @@ export const MISSIONS: readonly MissionDef[] = [
   { id: "unhurt", text: (n) => `Reach ${n.toLocaleString()} cm without taking a hit`, stat: "hits", targets: [600, 1200, 2000], pays: [80, 150, 260] },
   { id: "paint", text: (n) => `Grab ${n} paint buckets in one run`, stat: "paints", targets: [2, 3, 5], pays: [60, 110, 200] },
   { id: "stay", text: (n) => `Last ${n} seconds in one run`, stat: "seconds", targets: [60, 120, 240], pays: [50, 100, 190] },
-  { id: "today", text: (n) => (n === 1 ? "Take today's daily climb" : `Take the daily climb ${n} days running`), stat: "daily", targets: [1, 2, 3], pays: [40, 90, 160] },
+  // One target, deliberately. The board is rolled fresh each day, so a mission asking for
+  // two or three days running reset to nought every midnight and could never be finished --
+  // it sat there all day as a job that could not be done. The habit across days is the
+  // streak's business, and the streak already pays for it.
+  { id: "today", text: () => "Take today's daily climb", stat: "daily", targets: [1], pays: [40] },
 ];
 
 /** A mission's progress after a run: the best single run for a per-run goal, a total for a tally. */

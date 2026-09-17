@@ -7,7 +7,7 @@ import { DOOR_SEAM, World } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
-import { MISSIONS, refill, settle, streakReward } from "../src/game/missions";
+import { MISSIONS, dailyBoard, refill, settle, streakReward } from "../src/game/missions";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
 import { replay, tapeBytes } from "../src/game/recorder";
 import { Ghost } from "../src/game/ghost";
@@ -976,6 +976,28 @@ test("missions read the run, pay once, and the board tops itself up", () => {
   assert.ok(!after.some((m) => m.done));
   // every mission says something a player can picture
   for (const m of MISSIONS) assert.ok(m.text(m.targets[0]).length > 12, m.id);
+
+  // The board is rolled fresh every day, so every mission on it has to be finishable inside
+  // one. A cross-day target reset to nought each midnight and sat there as a job that could
+  // not be done -- "take the daily climb 2 days running", on a board that forgets overnight.
+  for (const m of MISSIONS) {
+    if (m.stat !== "daily") continue;
+    for (const n of m.targets) assert.equal(n, 1, `${m.id} asks for ${n} days on a board that lasts one`);
+  }
+});
+
+test("a day's board is three, rolled once, and finished ones stay put", () => {
+  const board = dailyBoard(0, () => 0.31);
+  assert.equal(board.length, 3);
+  assert.equal(new Set(board.map((m) => m.id)).size, 3, "no mission twice on one board");
+
+  // the same day asked again gives the same three, because main.ts only rolls on a new day;
+  // what matters here is that finishing one does not evict it
+  const done = settle(board, { cm: 99_999, coins: 999, gadgetRides: 99, hits: 0, paints: 99, seconds: 9999, daily: 1 });
+  assert.ok(done.finished.length > 0, "a huge run finishes something");
+  assert.equal(done.board.length, 3, "the board stays three");
+  assert.ok(done.board.some((m) => m.done), "and keeps the finished one, to show it was earned");
+  for (const m of done.board.filter((x) => x.done)) assert.equal(m.at, m.n, "a finished mission reads as full");
 });
 
 test("a streak pays more each day and a pattern on the seventh", () => {

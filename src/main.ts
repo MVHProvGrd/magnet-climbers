@@ -538,7 +538,14 @@ function updateMissionStrip(dt: number): void {
 
 function ensureDailyMissions(): void {
   const today = todayKey();
-  if (save.missionsDay === today && save.missions.length === 3) return;
+  // A board already in a save may hold a mission from before the targets were day-sized --
+  // "take the daily climb 2 days running", which a board that forgets overnight can never
+  // finish. Anything asking for more than its definition now offers is rolled away.
+  const stale = save.missions.some((m) => {
+    const def = missionById(m.id);
+    return !def || !def.targets.includes(m.n);
+  });
+  if (!stale && save.missionsDay === today && save.missions.length === 3) return;
   save.missions = dailyBoard(save.missionsDone);
   save.missionsDay = today;
   persist();
