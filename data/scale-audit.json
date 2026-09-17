@@ -6,10 +6,21 @@
   "groupsComplete": [
     "Paper on the door",
     "Toy magnets",
-    "Advertising magnets"
+    "Advertising magnets",
+    "Hanging gadgets",
+    "Souvenir plates",
+    "Surfaces and fittings",
+    "Pickups"
   ],
-  "audited": 61,
-  "of": 150,
+  "notSized": {
+    "kid-hand": "animated by kid-hand.ts at its own scale",
+    "cat-paw": "animated by cat-paw.ts at its own scale",
+    "gap": "deliberately variable: the world cuts it to what the gap needs",
+    "seam": "the groove between the doors, full height",
+    "vent": "spans both doors by rule since world 25"
+  },
+  "audited": 147,
+  "of": 147,
   "sizes": [
     {
       "id": "paper-0",
@@ -803,6 +814,1124 @@
       ],
       "climbers": 1.56,
       "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "swing-snack",
+      "name": "Lemon Keyring",
+      "family": "gadget",
+      "w": 53,
+      "h": 80,
+      "cm": [
+        5.3,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-travel",
+      "name": "Trail Keyring",
+      "family": "gadget",
+      "w": 34,
+      "h": 80,
+      "cm": [
+        3.4,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-doodle",
+      "name": "Star Keyring",
+      "family": "gadget",
+      "w": 30,
+      "h": 80,
+      "cm": [
+        3,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-snack",
+      "name": "Alphabet A",
+      "family": "gadget",
+      "w": 43,
+      "h": 47,
+      "cm": [
+        4.3,
+        4.7
+      ],
+      "climbers": 1.31,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-travel",
+      "name": "Alphabet B",
+      "family": "gadget",
+      "w": 37,
+      "h": 47,
+      "cm": [
+        3.7,
+        4.7
+      ],
+      "climbers": 1.31,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-doodle",
+      "name": "Alphabet C",
+      "family": "gadget",
+      "w": 34,
+      "h": 47,
+      "cm": [
+        3.4,
+        4.7
+      ],
+      "climbers": 1.31,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-snack",
+      "name": "Snack Clip",
+      "family": "gadget",
+      "w": 106,
+      "h": 94,
+      "cm": [
+        10.6,
+        9.4
+      ],
+      "climbers": 2.61,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-travel",
+      "name": "Postcard Clip",
+      "family": "gadget",
+      "w": 108,
+      "h": 100,
+      "cm": [
+        10.8,
+        10
+      ],
+      "climbers": 2.78,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-doodle",
+      "name": "Art Class Clip",
+      "family": "gadget",
+      "w": 81,
+      "h": 98,
+      "cm": [
+        8.1,
+        9.8
+      ],
+      "climbers": 2.72,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "polarity-snack",
+      "name": "Candy Poles",
+      "family": "gadget",
+      "w": 62,
+      "h": 62,
+      "cm": [
+        6.2,
+        6.2
+      ],
+      "climbers": 1.72,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "polarity-travel",
+      "name": "Compass Poles",
+      "family": "gadget",
+      "w": 70,
+      "h": 70,
+      "cm": [
+        7,
+        7
+      ],
+      "climbers": 1.94,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "polarity-doodle",
+      "name": "Crayon Poles",
+      "family": "gadget",
+      "w": 58,
+      "h": 58,
+      "cm": [
+        5.8,
+        5.8
+      ],
+      "climbers": 1.61,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-keys",
+      "name": "House Keys",
+      "family": "gadget",
+      "w": 43,
+      "h": 93,
+      "cm": [
+        4.3,
+        9.3
+      ],
+      "climbers": 2.58,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-bottle-opener",
+      "name": "Bottle Opener",
+      "family": "gadget",
+      "w": 18,
+      "h": 75,
+      "cm": [
+        1.8,
+        7.5
+      ],
+      "climbers": 2.08,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-disco-ball",
+      "name": "Disco Ball",
+      "family": "gadget",
+      "w": 32,
+      "h": 80,
+      "cm": [
+        3.2,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-rubber-duck",
+      "name": "Rubber Duck",
+      "family": "gadget",
+      "w": 25,
+      "h": 80,
+      "cm": [
+        2.5,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-bead-lanyard",
+      "name": "Bead Lanyard",
+      "family": "gadget",
+      "w": 32,
+      "h": 125,
+      "cm": [
+        3.2,
+        12.5
+      ],
+      "climbers": 3.47,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-carabiner-whistle",
+      "name": "Carabiner and Whistle",
+      "family": "gadget",
+      "w": 22,
+      "h": 119,
+      "cm": [
+        2.2,
+        11.9
+      ],
+      "climbers": 3.31,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-wind-chime",
+      "name": "Wind Chime",
+      "family": "gadget",
+      "w": 19,
+      "h": 110,
+      "cm": [
+        1.9,
+        11
+      ],
+      "climbers": 3.06,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-baby-shoe",
+      "name": "Baby Shoe",
+      "family": "gadget",
+      "w": 23,
+      "h": 80,
+      "cm": [
+        2.3,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-scissors",
+      "name": "Kitchen Scissors",
+      "family": "gadget",
+      "w": 31,
+      "h": 121,
+      "cm": [
+        3.1,
+        12.1
+      ],
+      "climbers": 3.36,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-measuring-spoons",
+      "name": "Measuring Spoons",
+      "family": "gadget",
+      "w": 61,
+      "h": 150,
+      "cm": [
+        6.1,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-souvenir-spoon",
+      "name": "Souvenir Spoon",
+      "family": "gadget",
+      "w": 23,
+      "h": 150,
+      "cm": [
+        2.3,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-fishing-lure",
+      "name": "Fishing Lure",
+      "family": "gadget",
+      "w": 20,
+      "h": 100,
+      "cm": [
+        2,
+        10
+      ],
+      "climbers": 2.78,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-clock",
+      "name": "Kitchen Clock",
+      "family": "gadget",
+      "w": 65,
+      "h": 66,
+      "cm": [
+        6.5,
+        6.6
+      ],
+      "climbers": 1.83,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-pinwheel",
+      "name": "Paper Pinwheel",
+      "family": "gadget",
+      "w": 58,
+      "h": 60,
+      "cm": [
+        5.8,
+        6
+      ],
+      "climbers": 1.67,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-thermometer",
+      "name": "Dial Thermometer",
+      "family": "gadget",
+      "w": 68,
+      "h": 68,
+      "cm": [
+        6.8,
+        6.8
+      ],
+      "climbers": 1.89,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-fidget-spinner",
+      "name": "Fidget Spinner",
+      "family": "gadget",
+      "w": 61,
+      "h": 55,
+      "cm": [
+        6.1,
+        5.5
+      ],
+      "climbers": 1.53,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "rotor-compass",
+      "name": "Brass Compass",
+      "family": "gadget",
+      "w": 93,
+      "h": 93,
+      "cm": [
+        9.3,
+        9.3
+      ],
+      "climbers": 2.58,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-concert-ticket",
+      "name": "Kitchen Sessions Ticket",
+      "family": "gadget",
+      "w": 84,
+      "h": 55,
+      "cm": [
+        8.4,
+        5.5
+      ],
+      "climbers": 1.53,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-report-card",
+      "name": "Report Card",
+      "family": "gadget",
+      "w": 70,
+      "h": 112,
+      "cm": [
+        7,
+        11.2
+      ],
+      "climbers": 3.11,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-takeout-receipt",
+      "name": "Takeaway Receipt",
+      "family": "gadget",
+      "w": 31,
+      "h": 89,
+      "cm": [
+        3.1,
+        8.9
+      ],
+      "climbers": 2.47,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-birthday-invite",
+      "name": "Birthday Invitation",
+      "family": "gadget",
+      "w": 68,
+      "h": 113,
+      "cm": [
+        6.8,
+        11.3
+      ],
+      "climbers": 3.14,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-lost-cat",
+      "name": "Lost Cat Poster",
+      "family": "gadget",
+      "w": 80,
+      "h": 138,
+      "cm": [
+        8,
+        13.8
+      ],
+      "climbers": 3.83,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-coupon-sheet",
+      "name": "Coupon Sheet",
+      "family": "gadget",
+      "w": 75,
+      "h": 132,
+      "cm": [
+        7.5,
+        13.2
+      ],
+      "climbers": 3.67,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "clip-grandma-polaroid",
+      "name": "Grandma's Photo",
+      "family": "gadget",
+      "w": 58,
+      "h": 85,
+      "cm": [
+        5.8,
+        8.5
+      ],
+      "climbers": 2.36,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-0",
+      "name": "Rolling Donut Keyring",
+      "family": "gadget",
+      "w": 74,
+      "h": 74,
+      "cm": [
+        7.4,
+        7.4
+      ],
+      "climbers": 2.06,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-1",
+      "name": "Duck Dash Keyring",
+      "family": "gadget",
+      "w": 72,
+      "h": 72,
+      "cm": [
+        7.2,
+        7.2
+      ],
+      "climbers": 2,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-2",
+      "name": "Robot Patrol Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-3",
+      "name": "Dino Slide Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-4",
+      "name": "Pop Magnet Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-5",
+      "name": "Cool Cruiser Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-6",
+      "name": "Yellow Taxi Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-7",
+      "name": "Race Car Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-8",
+      "name": "Banana Keyring",
+      "family": "gadget",
+      "w": 77,
+      "h": 77,
+      "cm": [
+        7.7,
+        7.7
+      ],
+      "climbers": 2.14,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-9",
+      "name": "Space Shuttle Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-10",
+      "name": "Letter Block Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-11",
+      "name": "Plastic Brick Keyring",
+      "family": "gadget",
+      "w": 66,
+      "h": 66,
+      "cm": [
+        6.6,
+        6.6
+      ],
+      "climbers": 1.83,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "swing-toy-12",
+      "name": "Gummy Bear Keyring",
+      "family": "gadget",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "gadget-art.ts (the draw size in its branch)"
+    },
+    {
+      "id": "attract-fiji",
+      "name": "Fiji (S)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-hawaii",
+      "name": "Hawaii (S)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-bali",
+      "name": "Bali (S)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-tahiti",
+      "name": "Tahiti (S)",
+      "family": "surface",
+      "w": 85,
+      "h": 80,
+      "cm": [
+        8.5,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-seychelles",
+      "name": "Seychelles (S)",
+      "family": "surface",
+      "w": 82,
+      "h": 80,
+      "cm": [
+        8.2,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-cape-town",
+      "name": "Cape Town (S)",
+      "family": "surface",
+      "w": 118,
+      "h": 80,
+      "cm": [
+        11.8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-rio",
+      "name": "Rio (S)",
+      "family": "surface",
+      "w": 87,
+      "h": 80,
+      "cm": [
+        8.7,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-cancun",
+      "name": "Cancún (S)",
+      "family": "surface",
+      "w": 87,
+      "h": 80,
+      "cm": [
+        8.7,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-maldives",
+      "name": "Maldives (S)",
+      "family": "surface",
+      "w": 85,
+      "h": 80,
+      "cm": [
+        8.5,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-phuket",
+      "name": "Phuket (S)",
+      "family": "surface",
+      "w": 82,
+      "h": 80,
+      "cm": [
+        8.2,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "attract-zanzibar",
+      "name": "Zanzibar (S)",
+      "family": "surface",
+      "w": 84,
+      "h": 80,
+      "cm": [
+        8.4,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-norway",
+      "name": "Norway (N)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-alaska",
+      "name": "Alaska (N)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-iceland",
+      "name": "Iceland (N)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-jurmala",
+      "name": "Jūrmala (N)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-kyiv",
+      "name": "Kyiv (N)",
+      "family": "surface",
+      "w": 80,
+      "h": 80,
+      "cm": [
+        8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-edinburgh",
+      "name": "Edinburgh (N)",
+      "family": "surface",
+      "w": 89,
+      "h": 80,
+      "cm": [
+        8.9,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-lapland",
+      "name": "Lapland (N)",
+      "family": "surface",
+      "w": 82,
+      "h": 80,
+      "cm": [
+        8.2,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-banff",
+      "name": "Banff (N)",
+      "family": "surface",
+      "w": 78,
+      "h": 80,
+      "cm": [
+        7.8,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-hokkaido",
+      "name": "Hokkaido (N)",
+      "family": "surface",
+      "w": 79,
+      "h": 80,
+      "cm": [
+        7.9,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-svalbard",
+      "name": "Svalbard (N)",
+      "family": "surface",
+      "w": 79,
+      "h": 80,
+      "cm": [
+        7.9,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "repel-tromso",
+      "name": "Tromsø (N)",
+      "family": "surface",
+      "w": 79,
+      "h": 80,
+      "cm": [
+        7.9,
+        8
+      ],
+      "climbers": 2.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "dispenser",
+      "name": "Water Station",
+      "family": "surface",
+      "w": 176,
+      "h": 315,
+      "cm": [
+        17.6,
+        31.5
+      ],
+      "climbers": 8.75,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "calendar",
+      "name": "Busy Month",
+      "family": "surface",
+      "w": 164,
+      "h": 243,
+      "cm": [
+        16.4,
+        24.3
+      ],
+      "climbers": 6.75,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "ice-tray",
+      "name": "Ice Cube Alley",
+      "family": "surface",
+      "w": 191,
+      "h": 72,
+      "cm": [
+        19.1,
+        7.2
+      ],
+      "climbers": 2,
+      "where": "placement.ts rule size"
+    },
+    {
+      "id": "handle",
+      "name": "Silver Handle",
+      "family": "surface",
+      "w": 199,
+      "h": 17,
+      "cm": [
+        19.9,
+        1.7
+      ],
+      "climbers": 0.47,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "glass",
+      "name": "Glass Panel",
+      "family": "surface",
+      "w": 178,
+      "h": 296,
+      "cm": [
+        17.8,
+        29.6
+      ],
+      "climbers": 8.22,
+      "where": "world.ts, where the zone is cut"
+    },
+    {
+      "id": "plastic",
+      "name": "Plastic Trim",
+      "family": "surface",
+      "w": 375,
+      "h": 150,
+      "cm": [
+        37.5,
+        15
+      ],
+      "climbers": 4.17,
+      "where": "placement.ts rule size"
+    },
+    {
+      "id": "heart",
+      "name": "Little Lifeline",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "coin",
+      "name": "Pocket Change",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "gem",
+      "name": "Ice Gem",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "magnet",
+      "name": "Super Magnet",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "extra",
+      "name": "Pocket Pal",
+      "family": "pickup",
+      "w": 83,
+      "h": 83,
+      "cm": [
+        8.3,
+        8.3
+      ],
+      "climbers": 2.31,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "paint",
+      "name": "Paint Bucket",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "slowmo",
+      "name": "Kitchen Timer",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "reach",
+      "name": "Reach Badge",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
+    },
+    {
+      "id": "candy",
+      "name": "Candy Drop",
+      "family": "pickup",
+      "w": 50,
+      "h": 50,
+      "cm": [
+        5,
+        5
+      ],
+      "climbers": 1.39,
+      "where": "scenery.ts drawPower"
     }
   ]
 }

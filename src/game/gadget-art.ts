@@ -1,6 +1,7 @@
 import type { Gadget } from "./types";
 import { gadgetPose, gadgetZone, THEMES, POLARITY_DESTINATIONS, polarityDestination } from "./gadgets";
 import { drawFieldMagnet, drawHardwareGrip, drawPops, BUSINESS_MAGNETS } from "./fridge-art";
+import { sizeOf } from "./item-sizes";
 import { GADGET_PIVOTS } from "./gadget-pivots";
 import { toyHook } from "./items";
 
@@ -124,6 +125,8 @@ function polarityField(ctx: CanvasRenderingContext2D, cx: number, cy: number, w:
  * picture too. The needle art (64x384) is centred on its own frame, so it pivots about its middle.
  * Both were guessed before, which is why the needle sat low and swung outside the bezel.
  */
+/** gadget-art fits every gadget into this many pixels before any chosen size is applied. */
+const GADGET_FIT = 76;
 const COMPASS = { dial: 0.6, drop: 0.0459, needle: 0.82 };
 function drawCompass(ctx: CanvasRenderingContext2D, base: CanvasImageSource, needle: CanvasImageSource | undefined, size: number, angle: number, spin = 0) {
   // hang the DIAL on the spot, not the picture: the frame carries the hanging loop above the
@@ -141,10 +144,31 @@ function drawCompass(ctx: CanvasRenderingContext2D, base: CanvasImageSource, nee
   ctx.restore();
 }
 
+/**
+ * How far off its drawn size a gadget should be. gadget-art fits every gadget's art into 76px
+ * whatever its own shape, so that fit is the "one" this multiplies.
+ */
+function gadgetDrawScale(itemId: string): number {
+  const want = sizeOf(itemId);
+  const img = objectArt.get(itemId);
+  if (!want || !img) return 1;
+  const { w, h } = imageSize(img);
+  const drawn = GADGET_FIT * (h / Math.max(w, h));
+  return drawn > 0 ? want[1] / drawn : 1;
+}
+
 export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: number) {
   const p = gadgetPose(g, time), z = gadgetZone(g, time), theme = g.itemId.split("-")[1];
   const index = THEMES.indexOf(theme as typeof THEMES[number]);
   ctx.save(); ctx.lineCap = "round";
+  // The size chosen on the scale bench, applied as one scale over the whole draw rather than
+  // pushed into each of the three fitting rules below (max-dimension for a rotor, area for a
+  // clip, the lemon's hardware for a keyring). Scaling the lot keeps every pivot, hook and
+  // chain meeting where it was measured to meet, and reproduces exactly what was judged on
+  // the bench -- which used this same model. The hold box in gadgetZone is unchanged, so this
+  // moves no collision and needs no world version.
+  const gadgetScale = gadgetDrawScale(g.itemId);
+  if (gadgetScale !== 1) ctx.scale(gadgetScale, gadgetScale);
   // by item id, not by theme: a gadget may be any one of the photographed variants
   const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(g.itemId) : undefined;
   const pivot = GADGET_PIVOTS[g.itemId] ?? [KEYCHAIN_PIVOT.x, KEYCHAIN_PIVOT.y];

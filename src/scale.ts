@@ -14,6 +14,8 @@
  * Gate: the Worker's ADMIN_KEY, same as the placement workbench.
  */
 import { CFG, W } from "./game/config";
+import { DOOR_SEAM } from "./game/world";
+import { sizeOf, sizeAt } from "./game/item-sizes";
 import { FRIDGE_ITEMS, PAPER_ASPECT, type FridgeItem } from "./game/items";
 import { drawSurface, drawZone, drawPower, drawBumper } from "./game/scenery";
 import { drawClimber } from "./game/climber-render";
@@ -94,9 +96,9 @@ function askForKey() {
  * past sixty-one things already decided. Clear the flags to audit them again.
  */
 const GROUPS: { label: string; of: (i: FridgeItem) => boolean; done?: true }[] = [
-  { label: "Paper on the door", of: (i) => i.family === "paper", done: true },
-  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-"), done: true },
-  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard, done: true },
+  { label: "Paper on the door", of: (i) => i.family === "paper" },
+  { label: "Toy magnets", of: (i) => i.family === "bumper" && i.id.startsWith("bumper-") },
+  { label: "Advertising magnets", of: (i) => i.family === "bumper" && !i.id.startsWith("bumper-") && !i.hazard },
   { label: "Hanging gadgets", of: (i) => i.family === "gadget" },
   { label: "Souvenir plates", of: (i) => i.kind === "attract" || i.kind === "repel" },
   { label: "Surfaces and fittings", of: (i) => i.family === "surface" && i.kind !== "attract" && i.kind !== "repel" },
@@ -198,22 +200,38 @@ function drawItemAt(ctx: CanvasRenderingContext2D, item: FridgeItem, x: number, 
  * drew each as a red rectangle with its name in it -- nothing you could judge and nothing a
  * number would reach. They stay as they are, so the walk no longer asks about them.
  */
-const OPEN = GROUPS.filter((gr) => !gr.done);
-const WALK: FridgeItem[] = OPEN.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter((i) => !i.hazard);
 /**
- * v2: every number recorded before this was taken against whatever the bench happened to
- * draw, and for the sixteen advertising magnets that was a sheet of dark plastic trim rather
- * than the magnet. Rather than leave a list of sizes measured from the wrong object, the key
- * moves and the walk starts clean.
+ * Things the walk does not ask about, because a single number is the wrong answer for them.
+ *
+ * The hand and the paw are guide cards, animated by kid-hand.ts and cat-paw.ts at their own
+ * scale. The door gap is deliberately variable: the world cuts it to whatever the gap needs
+ * to be at that point in the climb. The centre seam is the groove between the doors and runs
+ * the whole height of the fridge. The cold air vent spans both doors by rule since world 25,
+ * so its width is the door and its height follows the photograph.
+ *
+ * Pinning any of them would be recording a decision nobody wants made.
  */
-const SIZES = "mc-scale-sizes:v2";
-type Audit = Record<string, { w: number; h: number; at: string }>;
+const NOT_SIZED = new Set(["gap", "seam", "vent"]);
+const OPEN = GROUPS.filter((gr) => !gr.done);
+/** One predicate, so the list and the walk can never disagree about what is in the audit. */
+const inWalk = (i: FridgeItem) => !i.hazard && !NOT_SIZED.has(i.id);
+const WALK: FridgeItem[] = OPEN.flatMap((gr) => FRIDGE_ITEMS.filter(gr.of)).filter(inWalk);
+/**
+ * v3: the bench used to record pixels and now records a percentage of the chosen size, so an
+ * old entry would be read as a wildly wrong percent. The key moves rather than misreading it.
+ */
+const SIZES = "mc-scale-sizes:v3";
+type Audit = Record<string, { pct: number; at: string }>;
 const readAudit = (): Audit => { try { return JSON.parse(localStorage.getItem(SIZES) ?? "{}") as Audit; } catch { return {}; } };
 const writeAudit = (a: Audit) => { try { localStorage.setItem(SIZES, JSON.stringify(a)); } catch { /* private window */ } };
 let audit: Audit = readAudit();
 
+/** One door, seam excluded: 0 to 195. Anything that must sit on a door cannot exceed it. */
+const DOOR_W = DOOR_SEAM.x;
+
 let item: FridgeItem = WALK[0];
-let boxW = 150, boxH = 150, hang = false;
+/** Everything is now a percentage of the size chosen on this bench and kept in item-sizes. */
+let pct = 100, boxW = 150, boxH = 150, hang = false;
 
 function poseClimber(x: number, y: number): Climber {
   const c: Climber = { id: 1, x, y, vx: 0, vy: 0, angle: 0, spin: 0, state: "stuck", color: "#4fc3f7",
@@ -231,8 +249,9 @@ function paint(canvas: HTMLCanvasElement, readout: HTMLElement) {
   ctx.scale(canvas.width / W, canvas.width / W);
   drawSurface(ctx, 0, VIEW_H);
 
-  // the thing under test, centred on the left door
-  const x = Math.round(110 - boxW / 2), y = Math.round(300 - boxH / 2);
+  // Centred on the left door's real middle, not on a number near it. A thing that sits on one
+  // door is placed against that door's centre in the game, so the bench has to judge it there.
+  const x = Math.round(DOOR_W / 2 - boxW / 2), y = Math.round(300 - boxH / 2);
   drawItemAt(ctx, item, x, y, boxW, boxH, hang);
 
   // the ruler: a climber standing on the right door, at the size the game draws one
@@ -259,9 +278,11 @@ function paint(canvas: HTMLCanvasElement, readout: HTMLElement) {
     `box      <b>${boxW} × ${boxH} px</b>   (${cm(boxW)} × ${cm(boxH)} cm)\n` +
     `climber  ${CLIMBER_PX} px   ·   this is <b>${times}×</b> a climber tall\n` +
     `aspect   ${(boxW / boxH).toFixed(3)}${aspectOf(item) ? `   (art is ${aspectOf(item)!.toFixed(3)})` : ""}\n` +
-    `${audit[item.id] ? `recorded  <b>✓ ${audit[item.id].w} × ${audit[item.id].h}</b>  on ${audit[item.id].at}\n` : ""}` +
+    `${audit[item.id] ? `recorded  <b>✓ ${audit[item.id].pct}%</b>  on ${audit[item.id].at}\n` : ""}` +
     `set it in ${esc(source(item))}` +
-    (isGadget(item) ? `\n<span class="warn">a gadget draws at its own size: the box is a ruler here, not a control</span>` : "");
+    (boxW > DOOR_W
+      ? `\n<span class="warn">${boxW - DOOR_W} px past one door (${DOOR_W} px / ${cm(DOOR_W)} cm). Size it freely to judge it, but a thing that sits on a door cannot be placed wider than one.</span>`
+      : "");
 }
 
 function boot() {
@@ -277,7 +298,7 @@ function boot() {
 
       <h2>Size</h2>
       <label for="h">Size — <span id="hv"></span></label>
-      <div class="row"><input type="range" id="h" min="8" max="560" step="1" /><input type="number" id="hn" min="1" max="560" /></div>
+      <div class="row"><input type="range" id="h" min="10" max="300" step="1" /><input type="number" id="hn" min="10" max="300" /></div>
       <div class="readout" id="out"></div>
 
       <h2>Audit</h2>
@@ -312,20 +333,26 @@ function boot() {
   const hangBox = root.querySelector<HTMLInputElement>("#hang")!;
 
   const sync = () => {
-    hR.value = hN.value = String(boxH);
-    hV.textContent = `${boxH} px tall · ${(boxH / CFG.pxPerCm).toFixed(1)} cm · ${boxW}×${boxH}`;
+    hR.value = hN.value = String(pct);
+    hV.textContent = `${pct}% · ${boxW}×${boxH} px · ${(boxH / CFG.pxPerCm).toFixed(1)} cm tall`;
     desc.textContent = item.description;
     hangBox.disabled = !item.id.startsWith("bumper-");
     paint(canvas, out);
   };
-  /** One number. The width follows the art's own shape, so nothing here can distort anything. */
-  const setH = (v: number) => {
-    boxH = Math.max(1, Math.min(560, Math.round(v)));
-    boxW = Math.max(1, Math.round(boxH * aspectOf(item)));
+  /**
+   * One number, and it is a percentage now. 100 is the size chosen for this thing on the
+   * bench and kept in item-sizes.json, so the slider says how far off that the door should
+   * be rather than restating a pixel count already decided.
+   */
+  const setPct = (v: number) => {
+    pct = Math.max(10, Math.min(300, Math.round(v)));
+    const at = sizeAt(item.id, pct);
+    if (at) { boxW = at[0]; boxH = at[1]; }
+    else { boxH = Math.round(150 * pct / 100); boxW = Math.max(1, Math.round(boxH * aspectOf(item))); }
     sync();
   };
-  hR.addEventListener("input", () => setH(+hR.value));
-  hN.addEventListener("change", () => setH(+hN.value));
+  hR.addEventListener("input", () => setPct(+hR.value));
+  hN.addEventListener("change", () => setPct(+hN.value));
   hangBox.addEventListener("change", () => { hang = hangBox.checked; sync(); });
   picker.addEventListener("change", (e) => {
     item = FRIDGE_ITEMS.find((i) => i.id === (e.target as HTMLSelectElement).value)!;
@@ -340,19 +367,22 @@ function boot() {
   const fillPicker = () => {
     const keep = item.id;
     picker.innerHTML = OPEN.map((gr) => {
-      const of = FRIDGE_ITEMS.filter(gr.of);
+      const of = FRIDGE_ITEMS.filter(gr.of).filter(inWalk);
       const done = of.filter((i) => audit[i.id]).length;
       return of.length ? `<optgroup label="${esc(gr.label)} — ${done}/${of.length}">${of.map((i) =>
-        `<option value="${esc(i.id)}">${audit[i.id] ? "✓ " : "◻︎ "}${esc(i.name)}${audit[i.id] ? ` · ${audit[i.id].w}×${audit[i.id].h}` : ""}</option>`).join("")}</optgroup>` : "";
+        `<option value="${esc(i.id)}">${audit[i.id] ? "✓ " : "◻︎ "}${esc(i.name)}${audit[i.id] ? ` · ${audit[i.id].pct}%` : ""}</option>`).join("")}</optgroup>` : "";
     }).join("");
     picker.value = keep;
   };
   const progress = root.querySelector<HTMLElement>("#progress")!;
   const file = root.querySelector<HTMLTextAreaElement>("#file")!;
   const fileText = () => {
-    const rows = WALK.filter((i) => audit[i.id]).map((i) => ({ id: i.id, name: i.name, family: i.family,
-      w: audit[i.id].w, h: audit[i.id].h, cm: [+(audit[i.id].w / CFG.pxPerCm).toFixed(1), +(audit[i.id].h / CFG.pxPerCm).toFixed(1)],
-      climbers: +(audit[i.id].h / CLIMBER_PX).toFixed(2), where: source(i) }));
+    const rows = WALK.filter((i) => audit[i.id]).map((i) => {
+      const p = audit[i.id].pct, at = sizeAt(i.id, p) ?? [0, 0], was = sizeOf(i.id) ?? [0, 0];
+      return { id: i.id, name: i.name, family: i.family, percent: p, w: at[0], h: at[1], wasW: was[0], wasH: was[1],
+        cm: [+(at[0] / CFG.pxPerCm).toFixed(1), +(at[1] / CFG.pxPerCm).toFixed(1)],
+        climbers: +(at[1] / CLIMBER_PX).toFixed(2), where: source(i) };
+    });
     return JSON.stringify({ audited: rows.length, of: WALK.length, pxPerCm: CFG.pxPerCm, climberPx: CLIMBER_PX, sizes: rows }, null, 2);
   };
   const tell = () => {
@@ -360,14 +390,15 @@ function boot() {
     const at = WALK.indexOf(item) + 1;
     const mine = audit[item.id];
     progress.innerHTML = `${at} of ${WALK.length} · ${done} recorded` +
-      (mine ? ` · this one is <b>${mine.w}×${mine.h}</b>` : " · not recorded yet");
+      (mine ? ` · this one is <b>${mine.pct}%</b>` : " · not changed yet");
     if (!file.hidden) file.value = fileText();
   };
   /** The box to show this item in: the size already recorded, or its own natural shape. */
   const load = () => {
-    const mine = audit[item.id];
-    boxH = mine ? mine.h : 150;
-    boxW = Math.max(1, Math.round(boxH * aspectOf(item)));
+    pct = audit[item.id]?.pct ?? 100;
+    const at = sizeAt(item.id, pct);
+    if (at) { boxW = at[0]; boxH = at[1]; }
+    else { boxH = Math.round(150 * pct / 100); boxW = Math.max(1, Math.round(boxH * aspectOf(item))); }
   };
   const go = (step: number) => {
     const at = (WALK.indexOf(item) + step + WALK.length) % WALK.length;
@@ -377,7 +408,7 @@ function boot() {
     sync(); tell();
   };
   root.querySelector("#keep")!.addEventListener("click", () => {
-    audit[item.id] = { w: boxW, h: boxH, at: new Date().toISOString().slice(0, 10) };
+    audit[item.id] = { pct, at: new Date().toISOString().slice(0, 10) };
     writeAudit(audit); fillPicker(); go(1);
   });
   root.querySelector("#skip")!.addEventListener("click", () => go(1));
@@ -405,8 +436,8 @@ function boot() {
   });
 
   fillPicker();
-  // open on the first item at its own shape, not at a square nobody chose
-  const first = aspectOf(item); if (first) boxH = Math.round(boxW / first);
+  // open on the first item at its chosen size, which is what 100% means now
+  load();
   void Promise.all([obstacleArtReady, gadgetArtReady, pickupArtReady]).then(() => { sync(); tell(); });
   sync(); tell();
 }

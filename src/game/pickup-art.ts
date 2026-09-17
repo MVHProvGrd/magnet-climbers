@@ -2,6 +2,7 @@
  * Image pickups (public/art/pickups/<kind>.png, 256 px, generated per art/ASSET_SPEC.md).
  * Until an image loads (or when Image is unavailable, e.g. tests) callers fall back to the canvas art.
  */
+import { sizeOf } from "./item-sizes";
 import type { PowerKind } from "./types";
 
 const KINDS: PowerKind[] = ["coin", "gem", "heart", "magnet", "extra", "slowmo", "reach", "candy", "paint"];
@@ -20,7 +21,7 @@ export const pickupImage = (kind: PowerKind) => images.get(kind);
 export function setPickupArt(kind: PowerKind, image: HTMLImageElement) { images.set(kind, image); }
 
 /** Drawn centred on the origin at the game's pickup size (about 32 px). Returns false when no image is ready. */
-export function drawPickupImage(ctx: CanvasRenderingContext2D, kind: PowerKind, size = 46): boolean {
+export function drawPickupImage(ctx: CanvasRenderingContext2D, kind: PowerKind, size = sizeOf(kind)?.[1] ?? 46): boolean {
   const img = images.get(kind);
   if (!img) return false;
   ctx.drawImage(img, -size / 2, -size / 2, size, size);
