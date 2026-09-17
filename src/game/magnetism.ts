@@ -1,4 +1,4 @@
-import { CFG } from "./config";
+import { CFG, W } from "./config";
 import type { Climber, LimbId, MagneticContact, MagneticGrip, Vec } from "./types";
 import type { World } from "./world";
 import { flightLimb } from "./ragdoll";
@@ -73,7 +73,8 @@ export function attachGrip(c: Climber, available: MagneticContact[], flat = fals
   };
   // Snap the body by the primary tip displacement. Other limbs flex to their contacts.
   const offset = rotate(pivotLocal, c.angle);
-  c.x = pivot.x - offset.x; c.y = pivot.y - offset.y;
+  // a tip caught on the door's outer margin must not put the body past the edge of the fridge
+  c.x = Math.max(CFG.climberRadius, Math.min(W - CFG.climberRadius, pivot.x - offset.x)); c.y = pivot.y - offset.y;
   return true;
 }
 

@@ -119,15 +119,18 @@ function cors(req: Request, env: Env): Record<string, string> {
 }
 
 /** How many times each player has had a word starred out of their chat. Created on demand. */
+// A ready flag is only latched once the statements actually ran: a transient D1 error on the
+// first call in an isolate must not skip table creation for the life of that isolate.
 let censorsReady = false;
 export async function ensureCensors(env: Env): Promise<void> {
   if (censorsReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_censors (
     player_id TEXT PRIMARY KEY,
     n INTEGER NOT NULL DEFAULT 0,
     updated_at INTEGER NOT NULL
-  )`).run().catch(() => {});
-  censorsReady = true;
+  )`).run().catch(() => { ok = false; });
+  if (ok) censorsReady = true;
 }
 /** Strikes before a player's own words start going to the owner for review. */
 const CENSOR_REVIEW_AT = 3;
@@ -137,22 +140,24 @@ const CENSOR_REVIEW_AT = 3;
 let resetsReady = false;
 export async function ensureScoreResets(env: Env): Promise<void> {
   if (resetsReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS score_resets (
     player_id TEXT NOT NULL,
     mode TEXT NOT NULL,
     at INTEGER NOT NULL,
     cm INTEGER,
     PRIMARY KEY (player_id, mode)
-  )`).run().catch(() => {});
+  )`).run().catch(() => { ok = false; });
   // the column arrived after the table; D1 tolerates the failed ALTER when it is already there
   await env.DB.prepare("ALTER TABLE score_resets ADD COLUMN cm INTEGER").run().catch(() => {});
-  resetsReady = true;
+  if (ok) resetsReady = true;
 }
 
 /** Blocks and reports from players. Created on demand so no migration has to be run by hand. */
 let reportsReady = false;
 export async function ensureReports(env: Env): Promise<void> {
   if (reportsReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,
@@ -162,23 +167,24 @@ export async function ensureReports(env: Env): Promise<void> {
     message_id INTEGER,
     text TEXT,
     created_at INTEGER NOT NULL
-  )`).run().catch(() => {});
+  )`).run().catch(() => { ok = false; });
   // one row per reporter, target and message: tapping report twice is not two reports
-  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))").run().catch(() => {});
-  reportsReady = true;
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))").run().catch(() => { ok = false; });
+  if (ok) reportsReady = true;
 }
 
 /** Per-IP request counters for the write routes. Created on demand, like the other tables. */
 let rateLimitsReady = false;
 async function ensureRateLimits(env: Env): Promise<void> {
   if (rateLimitsReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
     key TEXT NOT NULL,
     bucket INTEGER NOT NULL,
     n INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (key, bucket)
-  )`).run().catch(() => {});
-  rateLimitsReady = true;
+  )`).run().catch(() => { ok = false; });
+  if (ok) rateLimitsReady = true;
 }
 
 /** Fixed-window per-key limiter backed by D1, so the count holds across Worker instances
@@ -196,6 +202,17 @@ async function rateLimited(env: Env, key: string, limit: number, windowMs: numbe
   // occasional sweep so old buckets don't sit in the table forever; cheap enough to run inline
   if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rate_limits WHERE bucket < ?").bind(bucket - 8).run().catch(() => {});
   return (row?.n ?? 0) > limit;
+}
+
+/**
+ * Whether a post about a player comes from that player. A profile with a cloud save has a
+ * token, and a post that does not carry it is somebody else's: without this, anyone could
+ * rename or pad another player's board rows from the public player id. A player who has
+ * never synced has no token yet, and their first posts are taken on trust as before.
+ */
+async function ownsProfile(env: Env, playerId: string, token: string): Promise<boolean> {
+  const owner = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>().catch(() => null);
+  return !owner || owner.token === token;
 }
 
 /** Cloudflare's canonical client IP header; falls back to a shared bucket if it is ever
@@ -231,6 +248,7 @@ const RELEGATE = 10;
 let leagueReady = false;
 async function ensureLeague(env: Env): Promise<void> {
   if (leagueReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS league (
     player_id TEXT NOT NULL,
     week TEXT NOT NULL,
@@ -240,9 +258,9 @@ async function ensureLeague(env: Env): Promise<void> {
     cm INTEGER NOT NULL DEFAULT 0,
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (player_id, week)
-  )`).run().catch(() => {});
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC)").run().catch(() => {});
-  leagueReady = true;
+  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC)").run().catch(() => { ok = false; });
+  if (ok) leagueReady = true;
 }
 
 /** Where a player sits this week, placing them (and settling last week) the first time they climb. */
@@ -258,8 +276,9 @@ async function placeInLeague(env: Env, playerId: string, name: string): Promise<
     .bind(playerId, week).first<{ week: string; tier: number; bucket: number; cm: number }>();
   let tier = last?.tier ?? 0;
   if (last) {
-    const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ? AND cm > ?")
-      .bind(last.week, last.tier, last.bucket, last.cm).first<{ n: number }>();
+    // ties break on player id so the rank is strict: a tie at the line never promotes eleven
+    const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ? AND (cm > ? OR (cm = ? AND player_id < ?))")
+      .bind(last.week, last.tier, last.bucket, last.cm, last.cm, playerId).first<{ n: number }>();
     const size = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ?")
       .bind(last.week, last.tier, last.bucket).first<{ n: number }>();
     const rank = (above?.n ?? 0) + 1, members = size?.n ?? 1;
@@ -284,6 +303,7 @@ const DAILY_WORLD = new World(1, 0).version;
 let tapesReady = false;
 async function ensureTapes(env: Env): Promise<void> {
   if (tapesReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS tapes (
     player_id TEXT NOT NULL,
     day TEXT NOT NULL,
@@ -294,12 +314,13 @@ async function ensureTapes(env: Env): Promise<void> {
     tape TEXT,
     created_at INTEGER NOT NULL,
     PRIMARY KEY (player_id, day)
-  )`).run().catch(() => {});
-  tapesReady = true;
+  )`).run().catch(() => { ok = false; });
+  if (ok) tapesReady = true;
 }
 
 async function ensureDaily(env: Env): Promise<void> {
   if (dailyReady) return;
+  let ok = true;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily (
     player_id TEXT NOT NULL,
     day TEXT NOT NULL,
@@ -308,9 +329,9 @@ async function ensureDaily(env: Env): Promise<void> {
     seconds INTEGER,
     created_at INTEGER NOT NULL,
     PRIMARY KEY (player_id, day)
-  )`).run().catch(() => {});
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS daily_board ON daily (day, cm DESC)").run().catch(() => {});
-  dailyReady = true;
+  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS daily_board ON daily (day, cm DESC)").run().catch(() => { ok = false; });
+  if (ok) dailyReady = true;
 }
 
 export default {
@@ -402,7 +423,7 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/score") {
       if (await rateLimited(env, `score:${clientIp(req)}`, 30, 60_000)) return json({ error: "slow down" }, h, 429);
-      let body: { playerId?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown; at?: unknown };
+      let body: { playerId?: unknown; token?: unknown; name?: unknown; mode?: unknown; cm?: unknown; seconds?: unknown; at?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
       let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
@@ -410,6 +431,7 @@ export default {
       const cm = Math.floor(Number(body.cm));
       const secs = Number.isFinite(Number(body.seconds)) && Number(body.seconds) > 0 ? Math.min(86400, Math.round(Number(body.seconds))) : null;
       if (!playerId || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad score" }, h, 400);
+      if (!(await ownsProfile(env, playerId, String(body.token ?? "").slice(0, 64)))) return json({ error: "forbidden" }, h, 403);
       // The daily climb is one attempt on one shared fridge: the first score of the day stands,
       // whatever a later one says, and the day is this server's, not the caller's.
       if (body.mode === "daily") {
@@ -450,17 +472,17 @@ export default {
       // the day the climb happened instead of claiming it was set the moment the app opened.
       const claimed = Math.floor(Number(body.at));
       const at = Number.isFinite(claimed) && claimed > 1700000000000 && claimed <= now ? claimed : now;
-      // keep only the player's best per mode; the name updates every submit
+      // keep only the player's best per mode; the name follows the climb that set it
       const upsert = (withSeconds: boolean) => env.DB.prepare(withSeconds
         ? `INSERT INTO scores (player_id, name, mode, cm, created_at, seconds) VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(player_id, mode) DO UPDATE SET
-             name = excluded.name,
+             name = CASE WHEN excluded.cm > scores.cm THEN excluded.name ELSE scores.name END,
              cm = MAX(scores.cm, excluded.cm),
              seconds = CASE WHEN excluded.cm > scores.cm THEN excluded.seconds ELSE scores.seconds END,
              created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`
         : `INSERT INTO scores (player_id, name, mode, cm, created_at) VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(player_id, mode) DO UPDATE SET
-             name = excluded.name,
+             name = CASE WHEN excluded.cm > scores.cm THEN excluded.name ELSE scores.name END,
              cm = MAX(scores.cm, excluded.cm),
              created_at = CASE WHEN excluded.cm > scores.cm THEN excluded.created_at ELSE scores.created_at END`);
       // add the column on the fly if it is missing (D1 tolerates a failed ALTER), then write
@@ -511,6 +533,7 @@ export default {
         env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, playerId),
         env.DB.prepare("UPDATE wallet SET name = ? WHERE player_id = ?").bind(name, playerId),
         env.DB.prepare("UPDATE league SET name = ? WHERE player_id = ?").bind(name, playerId),
+        env.DB.prepare("UPDATE chat SET name = ? WHERE player_id = ?").bind(name, playerId),
       ]);
       return json({ ok: true, name }, h);
     }
@@ -631,10 +654,10 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/run") {
       if (await rateLimited(env, `run:${clientIp(req)}`, 40, 60_000)) return json({ error: "slow down" }, h, 429);
-      let body: { playerId?: unknown; mode?: unknown; cm?: unknown; total?: unknown };
+      let body: { playerId?: unknown; token?: unknown; mode?: unknown; cm?: unknown; total?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const cm = Math.floor(Number(body.cm));
-      const pid = String(body.playerId ?? "");
+      const pid = String(body.playerId ?? "").slice(0, 64);
       // The device's own lifetime figure. A run post that never arrives used to be lost for
       // good, since this table only ever added, so the board sat below what the player could
       // read on their own screen for ever. Taking the higher of the two lets it catch up.
@@ -645,6 +668,7 @@ export default {
         return json({ error: "bad run" }, h, 400);
       }
       if (pid.startsWith("smoke-")) return json({ ok: true }, h);
+      if (!(await ownsProfile(env, pid, String(body.token ?? "").slice(0, 64)))) return json({ error: "forbidden" }, h, 403);
       let name = String((body as { name?: unknown }).name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
       if (nameIsProfane(name)) name = "climber";
       const now = Date.now();
@@ -681,6 +705,9 @@ export default {
         env.DB.prepare(`SELECT ${cols}, NULL AS avatar FROM chat WHERE ${where} ORDER BY id DESC LIMIT ?`).bind(arg, limit)
           .all<{ id: number; name: string; text: string; player_id: string; created_at: number; avatar: string | null }>());
       let messages = (rows.results ?? []).reverse();
+      // whether the page was full is decided before a viewer's blocks thin it, or a reader
+      // who has blocked someone would be told their history ends where it does not
+      const fullPage = messages.length === limit;
       // A block only used to be enforced on the device that made it, which does nothing for
       // everyone else the blocked player is still posting to. `/chat/report` already records
       // a block server-side, so a caller that says who it is gets its own blocked senders
@@ -694,7 +721,7 @@ export default {
         if (blocked.size) messages = messages.filter((m) => !blocked.has(m.player_id));
       }
       // a short page is the end of the history, which is how the panel knows to stop asking
-      if (before) return json({ messages, online: 0, more: messages.length === limit }, h);
+      if (before) return json({ messages, online: 0, more: fullPage }, h);
       const online = await env.DB.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM chat WHERE created_at > ?").bind(Date.now() - 10 * 60_000).first<{ n: number }>();
       return json({ messages, online: online?.n ?? 0 }, h);
     }
@@ -703,6 +730,7 @@ export default {
     // being complained about; a block is also honoured for that player in GET /chat above,
     // once a caller identifies itself with `?player=`.
     if (req.method === "POST" && url.pathname === "/chat/report") {
+      if (await rateLimited(env, `report:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; token?: unknown; kind?: unknown; targetId?: unknown; messageId?: unknown; text?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);
@@ -732,6 +760,8 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/chat") {
+      // the per-player cooldown below is per player; minting players is cheap, so the address is limited too
+      if (await rateLimited(env, `chat:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
       let body: { playerId?: unknown; token?: unknown; name?: unknown; text?: unknown; avatar?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const playerId = String(body.playerId ?? "").slice(0, 64);

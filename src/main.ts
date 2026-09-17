@@ -16,6 +16,7 @@ import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } fro
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 import { groupNum } from "./game/hud";
 import { Ghost, loadBestTape, saveBestTape } from "./game/ghost";
+import { makeRng } from "./game/world";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -72,7 +73,7 @@ document.addEventListener("keydown", unlockAudio);
 const persist = () => writeSave(save);
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay"] as const;
 function cloudBlob(): string {
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
@@ -102,6 +103,26 @@ function mergeCloudBlob(blob: string) {
     save.intros = Array.from(new Set([...save.intros, ...(c.intros ?? [])]));
     migrateLooks(save);
     if (c.name) save.name = c.name;
+    // one daily climb per player, not per device: the later day wins, and on the same day
+    // the better score; the streak likewise follows whichever device counted most recently
+    if (c.daily && (!save.daily || c.daily.day > save.daily.day || (c.daily.day === save.daily.day && c.daily.cm > save.daily.cm))) save.daily = c.daily;
+    if (c.streak && (c.streak.last > save.streak.last || (c.streak.last === save.streak.last && c.streak.days > save.streak.days))) save.streak = c.streak;
+    // the day's three missions are one board, not one per device: a newer day's board replaces
+    // an older one; the same day's merges by mission, keeping whichever side got further, so a
+    // mission finished and paid on one phone cannot be finished and paid again on the other
+    if (Array.isArray(c.missions) && typeof c.missionsDay === "string") {
+      if (c.missionsDay > save.missionsDay) { save.missions = c.missions; save.missionsDay = c.missionsDay; }
+      else if (c.missionsDay === save.missionsDay) {
+        // two boards for one day that share nothing were rolled apart (an older build, or a
+        // different done count): the cloud copy is the shared one, so it stands
+        if (!save.missions.some((m) => c.missions!.some((x) => x.id === m.id))) save.missions = c.missions;
+        save.missions = save.missions.map((m) => {
+          const o = c.missions!.find((x) => x.id === m.id && x.n === m.n);
+          return o ? { ...m, at: Math.max(m.at, o.at), done: m.done || o.done } : m;
+        });
+      }
+    }
+    save.missionsDone = Math.max(save.missionsDone, c.missionsDone ?? 0);
   } catch { /* ignore */ }
 }
 let syncing = false;
@@ -317,14 +338,14 @@ function saveSnapshot() {
   if (!game) return;
   const snap = game.snapshot();
   try {
-    if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted }));
+    if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted, dailyRun, runCoinsTotal }));
     else localStorage.removeItem(SNAP_KEY);
   } catch { /* storage unavailable */ }
 }
 function clearSnapshot() {
   try { localStorage.removeItem(SNAP_KEY); } catch { /* ignore */ }
 }
-function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: number; runCounted: boolean } | null {
+function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: number; runCounted: boolean; dailyRun?: boolean; runCoinsTotal?: number } | null {
   try {
     const raw = localStorage.getItem(SNAP_KEY);
     if (!raw) return null;
@@ -369,7 +390,7 @@ function runEvents() {
       bankedCm = cm;
       game.coins = 0; game.gems = 0;
       game.walletCoins = save.coins; game.walletGems = save.gems;
-      save.hitsTotal += game.feats.hits; game.feats.hits = 0;
+      save.hitsTotal += game.feats.hits;
       // the tape of your best climb is kept for the ghost that will draw it; a daily's tape
       // always goes with its score, because the Worker replays it rather than trusting the number
       const tape = !chill && cm > 0 ? game.sealTape(dailyRun) : null;
@@ -389,6 +410,8 @@ function runEvents() {
       const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
         hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
       const settled = settle(save.missions, tally);
+      // banked into the lifetime count above; zeroed only now the tally has read them
+      game.feats.hits = 0;
       save.missions = settled.board;
       if (settled.finished.length) {
         save.coins += settled.paid;
@@ -419,7 +442,9 @@ function runEvents() {
       const earnedCreatures = creaturesEarned(save.creatures, { mode: rulesNow, cm, chill, maxChain: game.feats.maxChain, gadgetRides: game.feats.gadgetRides, coins: runCoinsTotal, hitsTotal: save.hitsTotal, paints: game.feats.paints ?? 0 });
       for (const c of earnedCreatures) save.creatures.push(c.id);
       persist();
-      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.name, rulesNow, newCm, save.totalCm);
+      // the daily climb is spent for every device the moment it ends, not when this one quits
+      if (dailyRun) void cloudSync("daily");
+      if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.token, save.name, rulesNow, newCm, save.totalCm);
       const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (!chill) submitScore(cm, panel);
     },
@@ -434,7 +459,9 @@ function lineupFor(_rules: "solo"): Look[] {
 function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
-  adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted; runCoinsTotal = 0;
+  adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted;
+  // a daily climb reloaded mid-run is still the daily climb: one go, no revives, its own board
+  dailyRun = r.dailyRun ?? false; runCoinsTotal = r.runCoinsTotal ?? 0;
   ui.clear();
   paused = false;
   game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor("solo"));
@@ -541,7 +568,7 @@ function updateMissionStrip(dt: number): void {
     if (missionById(m.id)?.stat === "daily" && !dailyRun) continue;
     const at = liveProgress(m, run);
     if (at >= m.n) {
-      if (!missionHit.has(m.id)) { missionHit.add(m.id); missionCheer = 3; missionCheerId = m.id; }
+      if (!missionHit.has(m.id)) { missionHit.add(m.id); missionCheer = 3; missionCheerId = m.id; sfx.chime(); }
       continue;
     }
     const pct = (at / m.n) * 100;
@@ -569,7 +596,9 @@ function ensureDailyMissions(): void {
     return !def || !def.targets.includes(m.n);
   });
   if (!stale && save.missionsDay === today && save.missions.length === 3) return;
-  save.missions = dailyBoard(save.missionsDone);
+  // rolled from the player and the day, not from chance, so a second device rolls the same
+  // three and the boards merge by mission instead of standing side by side
+  save.missions = dailyBoard(save.missionsDone, makeRng(dailySeed(`${save.playerId}:${today}`)));
   save.missionsDay = today;
   persist();
 }
@@ -634,7 +663,7 @@ async function resubmitBests() {
       save[bestKey] = 0; save[atKey] = 0; save[secKey] = 0; persist();
       continue;
     }
-    void leaderboard.submit(save.playerId, save.name, mode, save[bestKey], save[secKey] || undefined, save[atKey] || undefined);
+    void leaderboard.submit(save.playerId, save.token, save.name, mode, save[bestKey], save[secKey] || undefined, save[atKey] || undefined);
   }
 }
 
@@ -647,7 +676,7 @@ function submitScore(cm: number, panel: HTMLElement) {
   const board = dailyRun ? "daily" as const : rulesNow;
   const send = (target: HTMLElement = panel) => {
     panel = target;
-    void leaderboard.submit(save.playerId, save.name, board, cm, seconds, Date.now(), dailyRun ? dailyTape ?? undefined : undefined).then(async (r) => {
+    void leaderboard.submit(save.playerId, save.token, save.name, board, cm, seconds, Date.now(), dailyRun ? dailyTape ?? undefined : undefined).then(async (r) => {
       if (!r) { ui.setGameOverRank(panel, "Scoreboard unreachable"); return; }
       // the Worker could not confirm the climb: say so rather than pretend it counted
       if (dailyRun && r.verified === false) { ui.setGameOverRank(panel, r.reason === "no tape" ? "Update the app to post to the daily" : "Climb could not be verified"); return; }
@@ -876,6 +905,16 @@ async function cloudPull(quiet = false) {
     if (!quiet) ui.toast("Progress synced from your other device");
     if (!game) ui.showMenu();
   } else if (!c) void cloudSync("launch");
+  // The daily board on the Worker knows whether today's climb was taken, whichever device
+  // took it and whatever build that device was on: a row there marks the day here too.
+  const today = todayKey();
+  if (save.daily?.day !== today) {
+    const r = await leaderboard.rank("daily", save.playerId).catch(() => null);
+    if (r && r.cm != null && (r as { day?: string }).day === today && !game) {
+      save.daily = { day: today, cm: r.cm }; persist();
+      ui.showMenu();
+    }
+  }
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });

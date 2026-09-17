@@ -105,6 +105,9 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
       env.DB.prepare("UPDATE scores SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
       env.DB.prepare("UPDATE lifetime SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
       env.DB.prepare("UPDATE chat SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
+      env.DB.prepare("UPDATE wallet SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
+      env.DB.prepare("UPDATE league SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
+      env.DB.prepare("UPDATE daily SET name = ? WHERE player_id = ?").bind(name, str("playerId")),
     ]);
     return json({ ok: true, name });
   }
