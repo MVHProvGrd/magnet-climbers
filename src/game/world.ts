@@ -7,7 +7,7 @@ import { PAPER_ITEMS, BUMPER_ITEMS, PAPER_ASPECT, FRIDGE_ITEMS } from "./items";
 import { rule } from "./placement";
 import { populateSetPiece, SET_PIECES } from "./world-patterns";
 import type { Section } from "./expeditions";
-import { gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES } from "./gadgets";
+import { FREE_SPIN, gadgetContains, gadgetPose, gadgetZone, GADGET_KINDS, PAPER_THEMES, THEMES } from "./gadgets";
 
 /** Small seeded PRNG so a run can be replayed / shared later (daily challenge). */
 export function makeRng(seed: number) {
@@ -90,6 +90,23 @@ export class World {
       s.vel += (-9.8 * Math.sin(s.angle) - 1.4 * s.vel) * dt;
       s.angle += s.vel * dt;
     }
+    // a knocked spinner whirls and coasts back down to its idle drift; bearings lose about half a second
+    for (const g of this.gadgets) {
+      const s = g.spin; if (!s) continue;
+      s.cool = Math.max(0, s.cool - dt);
+      s.extra += s.vel * dt;
+      s.vel -= s.vel * Math.min(1, 1.1 * dt);
+      if (Math.abs(s.vel) < 0.02) s.vel = 0;
+    }
+  }
+
+  /** Spin a free rotor up. dir is the travel direction, strength 0..1. Capped so it never blurs out. */
+  spinGadget(id: string, dir: number, strength = 1) {
+    const g = this.gadgets.find((g) => g.id === id); const s = g?.spin;
+    if (!s || s.cool > 0) return false;
+    s.vel = Math.max(-26, Math.min(26, s.vel + 16 * (dir || 1) * Math.max(0.3, strength)));
+    s.cool = 0.25;
+    return true;
   }
   /** Knock a swing: dir is the travel direction (sign of x velocity), strength 0..1. Capped at ±3 rad/s like the study. */
   bumpGadget(id: string, dir: number, strength = 1) {
@@ -100,10 +117,17 @@ export class World {
   /** A flying climber passing through the hanging charm knocks it (once per pass). */
   knockSwings(p: Vec, vx: number) {
     for (const g of this.gadgets) {
+      const strength = Math.min(1, Math.abs(vx) / 300);
+      if (g.spin) {
+        const pose = gadgetPose(g, this.gadgetTime);
+        // a rotor is a disc, so anywhere on the face counts, not just the arm a climber can hold
+        if (Math.hypot(p.x - pose.x, p.y - pose.y) < 38 && this.spinGadget(g.id, Math.sign(vx), strength)) this.knocked = g.itemId;
+        continue;
+      }
       const s = g.swing; if (!s || g.fixed || s.cool > 0) continue;
       const pose = gadgetPose(g, this.gadgetTime);
       if (Math.hypot(p.x - pose.x, p.y - pose.y) < 30) {
-        this.bumpGadget(g.id, Math.sign(vx), Math.min(1, Math.abs(vx) / 300));
+        this.bumpGadget(g.id, Math.sign(vx), strength);
         this.knocked = g.itemId;
       }
     }
@@ -141,7 +165,7 @@ export class World {
   /** Expedition recipe; when set, segments come from it instead of the endless generator. */
   spec: Section[] | null = null;
 
-  constructor(seed: number, startY: number, readonly version = 20, spec: Section[] | null = null) {
+  constructor(seed: number, startY: number, readonly version = 21, spec: Section[] | null = null) {
     this.spec = spec;
     this.seed = seed;
     this.rng = makeRng(seed);
@@ -520,6 +544,8 @@ export class World {
           // v16: the clip is part of the photo, a real steel clip biting the board.
           // Paper held that way does not sway, so a clip is a fixed grip, not a pendulum.
           if (kind === "clip" && this.version >= 16) g.fixed = true;
+          // a spinner or a pinwheel is on a free bearing: it winds up when a climber clips it
+          if (kind === "rotor" && FREE_SPIN.has(g.itemId)) g.spin = { extra: 0, vel: 0, cool: 0 };
           return g;
         });
         if (powerUps[0]) {

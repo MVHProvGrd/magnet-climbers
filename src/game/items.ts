@@ -90,7 +90,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "slowmo", name: "Kitchen Timer", family: "pickup", power: "slowmo", description: "Temporarily slows the action." },
   { id: "reach", name: "Reach Badge", family: "pickup", power: "reach", description: "Temporarily stretches how far you can reach for your next hold." },
   { id: "candy", name: "Candy Drop", family: "pickup", power: "candy", description: "Cooper stops for a sweet: the red line crawls for a while." },
-  { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Climb the steel beside it or its silver handle." },
+  { id: "dispenser", name: "Water Station", family: "surface", kind: "glass", description: "Slippery dispenser. Take the steel lane beside it." },
   { id: "calendar", name: "Busy Month", family: "surface", kind: "sticker", grips: true, description: "A big paper calendar on its own magnet. Climb it like the door." },
   { id: "ice-tray", name: "Ice Cube Alley", family: "surface", kind: "trim", description: "Plastic ice tray: no grip. The exposed door around it is safe." },
   { id: "handle", name: "Silver Handle", family: "surface", kind: "void", metal: true, description: "A real metal hold over slippery panels. Hands and feet can catch here." },
@@ -109,7 +109,7 @@ export const FRIDGE_ITEMS: readonly FridgeItem[] = [
   { id: "plastic", name: "Plastic Trim", family: "surface", kind: "trim", description: "Plastic offers no magnetic hold. Cross in flight or use a metal island." },
   { id: "gap", name: "Door Gap", family: "surface", kind: "void", description: "Nothing to stick to here. Fling across or land on a metal handle." },
   { id: "seam", name: "Centre Seam", family: "surface", kind: "void", description: "The groove between the two doors runs the whole way up. No grip in it; cross it in flight." },
-  { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Jump across or use the steel sides." },
+  { id: "vent", name: "Cold Air Vent", family: "surface", kind: "trim", description: "Non-magnetic plastic grille. Hop the steel between the bands, or take the sides." },
   ...TOY_LABELS.map((label, i): FridgeItem => ({
     id: `bumper-${i}`, name: TOY_NAMES[i],
     family: "bumper", label, hue: [332, 45, 200, 125, 280, 175, 48, 4, 52, 205, 28, 350, 320][i],

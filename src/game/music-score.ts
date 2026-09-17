@@ -26,6 +26,7 @@ export const TOY_VOICE: Record<string, string> = {
   "bumper-0": "bell", "bumper-1": "squeak", "bumper-2": "blip", "bumper-3": "roar",
   "bumper-5": "bell", "bumper-6": "taxi", "bumper-7": "revv", "bumper-8": "boing",
   "bumper-9": "whoosh", "bumper-10": "clack", "bumper-11": "tick", "bumper-12": "boing",
+  "rotor-fidget-spinner": "whirr", "rotor-pinwheel": "flutter",
   "swing-keys": "keys", "swing-bottle-opener": "clink", "swing-disco-ball": "chime",
   "swing-rubber-duck": "squeak", "swing-bead-lanyard": "rattle", "swing-carabiner-whistle": "whistleToot",
   "swing-wind-chime": "chime", "swing-baby-shoe": "bell", "swing-scissors": "snip",
@@ -94,6 +95,17 @@ export const EFFECTS: Record<string, readonly Voice[]> = {
     { frequency: 600, endFrequency: 1500, duration: 0.2, gain: 0.035, type: "noise" },
   ],
   /** space shuttle: a rising rush of air */
+  /** a fidget spinner let go: bearings singing, fading as it coasts down */
+  whirr: [
+    { frequency: 900, endFrequency: 1500, duration: 0.12, gain: 0.035, type: "noise" },
+    { frequency: 1500, endFrequency: 600, duration: 0.5, delay: 0.1, gain: 0.03, type: "noise" },
+    { frequency: 220, endFrequency: 150, duration: 0.45, delay: 0.08, gain: 0.025, type: "triangle" },
+  ],
+  /** a paper pinwheel: no bearing, just air in the vanes */
+  flutter: [
+    { frequency: 600, endFrequency: 1200, duration: 0.3, gain: 0.03, type: "noise" },
+    { frequency: 1100, endFrequency: 500, duration: 0.3, delay: 0.22, gain: 0.022, type: "noise" },
+  ],
   whoosh: [
     { frequency: 400, endFrequency: 2600, duration: 0.3, gain: 0.07, type: "noise" },
     { frequency: 180, endFrequency: 320, duration: 0.28, gain: 0.05, type: "sine" },

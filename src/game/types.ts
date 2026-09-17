@@ -77,7 +77,9 @@ export interface Gadget extends Vec { id: string; itemId: string; kind: "swing" 
   /** v16: a clipped photo is held by the metal clip in its own art, so it hangs dead still. */
   fixed?: boolean;
   /** v19: radians a clip is tipped because someone is hanging off one end of its bar. */
-  lean?: number }
+  lean?: number;
+  /** A rotor that spins freely (a spinner, a pinwheel) winds up when it is hit, then coasts down. */
+  spin?: { extra: number; vel: number; cool: number } }
 export interface MagneticGrip {
   contacts: MagneticContact[];
   pose: "flat" | "feet" | "hands" | "mixed" | "single";
