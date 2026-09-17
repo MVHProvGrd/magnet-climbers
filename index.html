@@ -41,8 +41,10 @@
   <body>
     <canvas id="menubg" aria-hidden="true"></canvas>
     <div id="app">
-      <canvas id="game"></canvas>
+      <canvas id="game" role="img" aria-label="Magnet Climbers: climb the fridge, avoid the cat's paw and Cooper's hand, outrun the red line. Live updates announce your height, hazards and run outcome."></canvas>
       <div id="ui"></div>
+      <!-- Screen-reader narration for the canvas game: run start, height milestones, death and its cause, run end. Nothing else speaks here, so it never chatters. -->
+      <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     </div>
     <noscript>
       <main style="padding:24px;font-family:system-ui;color:#eee;background:#14171c">
