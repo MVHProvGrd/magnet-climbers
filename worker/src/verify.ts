@@ -9,7 +9,7 @@
  * within seconds of a post rather than making every post wait on the replay.
  */
 import type { Env } from "./index";
-import { verifyDaily, type Verdict } from "./replay";
+import { checkTape, replayDaily, type Verdict } from "./replay";
 
 export interface VerifyJob { playerId: string; day: string; cm: number; tape: unknown; world: number; enforce: boolean }
 
@@ -30,7 +30,10 @@ export class Verifier {
   async fetch(req: Request): Promise<Response> {
     let job: VerifyJob;
     try { job = (await req.json()) as VerifyJob; } catch { return new Response("bad job", { status: 400 }); }
-    const v = verifyDaily(job.tape, job.cm, job.day, job.world);
+    // the claim is not judged here, only climbed: a claim above the replay is cut to it, and
+    // only a tape that will not replay at all counts as a failure
+    const checked = checkTape(job.tape, job.day, job.world);
+    const v: Verdict = "reason" in checked ? { ok: false, reason: checked.reason } : replayDaily(checked.tape);
     await settleVerdict(this.env, job, v);
     return Response.json({ ok: v.ok, cm: v.cm ?? null, reason: v.ok ? null : v.reason });
   }
