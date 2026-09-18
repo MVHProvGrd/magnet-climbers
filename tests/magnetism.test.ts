@@ -953,7 +953,7 @@ test("missions read the run, pay once, and the board tops itself up", () => {
 
   // a per-run goal takes the best run, not a running total: two half-runs do not finish it
   const climb = { id: "climb", n: 1500, pay: 110, at: 0, done: false };
-  const half = { cm: 900, coins: 0, gadgetRides: 0, hits: 0, paints: 0, seconds: 0, daily: 0 };
+  const half = { cm: 900, coins: 0, gadgetRides: 0, hits: 0, paints: 0, seconds: 0, daily: 0, unhurtCm: 900 };
   let one = settle([climb], half);
   assert.equal(one.finished.length, 0);
   assert.equal(one.board[0].at, 900, "progress shows the best run so far");
@@ -965,7 +965,9 @@ test("missions read the run, pay once, and the board tops itself up", () => {
 
   // a hit voids the no-damage mission for that run, whatever height it reached
   const unhurt = { id: "unhurt", n: 600, pay: 80, at: 0, done: false };
-  assert.equal(settle([unhurt], { ...half, cm: 900, hits: 1 }).finished.length, 0);
+  // the feat is the height before the first hit: hit at 300 and the run does not count, hit at 700 and it does
+  assert.equal(settle([unhurt], { ...half, cm: 900, hits: 1, unhurtCm: 300 }).finished.length, 0);
+  assert.equal(settle([unhurt], { ...half, cm: 900, hits: 1, unhurtCm: 700 }).finished.length, 1);
   assert.equal(settle([unhurt], { ...half, cm: 900, hits: 0 }).finished.length, 1);
 
   // the daily mission counts days, so it does add up across runs
@@ -1077,7 +1079,7 @@ test("a day's board is three, rolled once, and finished ones stay put", () => {
 
   // the same day asked again gives the same three, because main.ts only rolls on a new day;
   // what matters here is that finishing one does not evict it
-  const done = settle(board, { cm: 99_999, coins: 999, gadgetRides: 99, hits: 0, paints: 99, seconds: 9999, daily: 1 });
+  const done = settle(board, { cm: 99_999, coins: 999, gadgetRides: 99, hits: 0, paints: 99, seconds: 9999, daily: 1, unhurtCm: 99_999 });
   assert.ok(done.finished.length > 0, "a huge run finishes something");
   assert.equal(done.board.length, 3, "the board stays three");
   assert.ok(done.board.some((m) => m.done), "and keeps the finished one, to show it was earned");

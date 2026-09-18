@@ -497,7 +497,8 @@ function runEvents() {
       }
       // missions read the run that just ended, pay out, and the board tops itself back up
       const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
+        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0,
+        unhurtCm: game.feats.hits === 0 ? game.heightCm : game.feats.unhurtCm ?? 0 };
       const settled = settle(save.missions, tally);
       // banked into the lifetime count above; zeroed only now the tally has read them
       game.feats.hits = 0;
@@ -695,7 +696,8 @@ function updateMissionStrip(dt: number): void {
   // until the first fling, so a mission counting that always ran a few seconds behind the
   // number on screen -- 80/120 under a clock reading 1:23.
   const run: RunTally = { cm: game.heightCm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
+    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0,
+        unhurtCm: game.feats.hits === 0 ? game.heightCm : game.feats.unhurtCm ?? 0 };
 
   // A mission that hits its target has to say so and then get out of the way. Holding the
   // strip on a finished one, as it first did, meant the next mission was never mentioned --

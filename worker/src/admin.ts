@@ -60,15 +60,17 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   }
   if (path === "/player") {
     const id = url.searchParams.get("id") ?? "";
-    const [scores, life, save, msgs, wallet] = await Promise.all([
+    const [scores, life, save, msgs, wallet, tapes] = await Promise.all([
       env.DB.prepare("SELECT mode, cm, name, created_at, seconds FROM scores WHERE player_id = ?").bind(id).all()
         .catch(() => env.DB.prepare("SELECT mode, cm, name, created_at FROM scores WHERE player_id = ?").bind(id).all()),
       env.DB.prepare("SELECT name, cm, runs, updated_at FROM lifetime WHERE player_id = ?").bind(id).first(),
       env.DB.prepare("SELECT rev, updated_at, length(blob) AS bytes FROM saves WHERE player_id = ?").bind(id).first(),
       env.DB.prepare("SELECT id, text, created_at FROM chat WHERE player_id = ? ORDER BY id DESC LIMIT 20").bind(id).all(),
       env.DB.prepare("SELECT coins, updated_at FROM wallet WHERE player_id = ?").bind(id).first().catch(() => null),
+      // the daily replay's verdicts: why a climb "could not be verified", in the owner's own words
+      env.DB.prepare("SELECT day, claimed, replayed, verdict, ms, created_at FROM tapes WHERE player_id = ? ORDER BY day DESC LIMIT 10").bind(id).all().catch(() => ({ results: [] })),
     ]);
-    return json({ scores: scores.results, lifetime: life, save, chat: msgs.results, wallet });
+    return json({ scores: scores.results, lifetime: life, save, chat: msgs.results, wallet, tapes: tapes.results });
   }
   if (req.method !== "POST") return json({ error: "not found" }, 404);
   if (path === "/chat/delete") { await env.DB.prepare("DELETE FROM chat WHERE id = ?").bind(Number(body.id)).run(); return json({ ok: true }); }
