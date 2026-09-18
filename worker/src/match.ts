@@ -57,7 +57,10 @@ export class Match {
   world = 0;
   started = false;
   settled = false;
+  /** how many races this room has dealt, folded into the seed so a rematch in the same millisecond is still a new fridge */
+  private round = 0;
   constructor(private readonly replay: Replay, private readonly random: () => number = Math.random) {}
+  private deal(): number { return (Math.floor(this.random() * 0x7fffffff) ^ (Date.now() & 0xffff) ^ (++this.round * 0x9e3779b1)) >>> 0 || 1; }
 
   /** A third phone: it sees everything and touches nothing. */
   watch(w: Watcher): void {
@@ -81,7 +84,7 @@ export class Match {
     if (!this.seats.every((s) => s.again)) return;
     for (const s of this.seats) { s.done = false; s.tape = undefined; s.claimed = undefined; s.again = false; }
     this.settled = false;
-    this.seed = (Math.floor(this.random() * 0x7fffffff) ^ (Date.now() & 0xffff)) >>> 0 || 1;
+    this.seed = this.deal();
     this.started = true;
     for (const s of this.seats) s.send(this.startFor(s));
     for (const w of this.watchers) w.send(this.startForWatcher(w));
@@ -103,7 +106,7 @@ export class Match {
     this.seats.push({ ...seat, done: false });
     if (this.seats.length < 2) { seat.send({ k: "wait", id: seat.id }); return; }
     this.world = seat.world;
-    this.seed = (Math.floor(this.random() * 0x7fffffff) ^ (Date.now() & 0xffff)) >>> 0 || 1;
+    this.seed = this.deal();
     this.started = true;
     for (const s of this.seats) s.send(this.startFor(s));
     for (const w of this.watchers) w.send(this.startForWatcher(w));
