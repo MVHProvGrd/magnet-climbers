@@ -62,8 +62,8 @@ export interface UiHandlers {
   onTutorial(): void;
   /** Frame-time report for on-device performance QA (see main.ts perfReport). */
   onPerf(): unknown;
-  onShare(c: { mode: "solo"; cm: number }): void;
-  onAcceptChallenge(mode: "solo"): void;
+  onShare(c: { mode: "solo" | "daily"; cm: number }): void;
+  onAcceptChallenge(mode: "solo" | "daily"): void;
   /** Global chat send: the stored message on success, an error string, or null if unreachable. */
   onChat(text: string): Promise<ChatMessage | string | null>;
 }
@@ -1090,18 +1090,24 @@ export class Ui {
     if (s) s.textContent = text;
   }
 
-  showChallenge(c: { mode: "solo"; cm: number; name: string; raceId?: string }) {
+  showChallenge(c: { mode: "solo" | "daily"; cm: number; name: string; raceId?: string; day?: string }) {
     const p = el("div", "panel small");
+    const today = c.mode === "daily" && c.day === todayKey(), stale = c.mode === "daily" && !today;
+    const taken = today && this.save().daily?.day === c.day;
     p.innerHTML = `
-      <div class="story-icon">${c.raceId ? "👻" : "📣"}</div>
-      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : "challenged you"}</h2>
+      <div class="story-icon">${c.raceId ? "👻" : c.mode === "daily" ? "📅" : "📣"}</div>
+      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : c.mode === "daily" ? "climbed today's fridge" : "challenged you"}</h2>
       <div class="big">${c.cm} cm</div>
-      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it." : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
-      <button class="primary" data-a="go">${c.raceId ? "RACE" : "ACCEPT"}</button>
+      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it."
+        : stale ? "That was another day's fridge. Today's is waiting, one go each."
+        : taken ? "You have had today's go. Their height is on today's board."
+        : c.mode === "daily" ? "Same fridge for everyone, one go each. Get above it before midnight Central."
+        : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
+      <button class="primary" data-a="go">${c.raceId ? "RACE" : taken ? "SEE TODAY'S BOARD" : c.mode === "daily" ? "CLIMB TODAY'S" : "ACCEPT"}</button>
       <button class="ghost" data-a="menu">LATER</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
-      if (a === "go") { this.clear(); this.h.onAcceptChallenge(c.mode); }
+      if (a === "go") { if (taken) { this.showBoard("daily"); return; } this.clear(); this.h.onAcceptChallenge(c.mode); }
       if (a === "menu") this.showMenu();
     });
     this.show(p);
@@ -1468,14 +1474,14 @@ export class Ui {
            <button class="go" data-a="board">SEE TODAY'S BOARD</button>`
         : `<button class="go" data-a="again">CLIMB AGAIN</button>`}
       <div class="lost-ghosts">
-        ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
+        ${o.chill ? "" : `<button class="ghost" data-a="share">${o.daily ? "SHARE TODAY'S CLIMB" : "CHALLENGE A FRIEND"}</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
       </div>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
-      if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
+      if (a === "share") this.h.onShare({ mode: o.daily ? "daily" : o.mode, cm: o.cm });
       if (a === "again") this.showQuickKit(() => this.h.onPlay("solo"));
       // the daily is one attempt: there is nothing to climb again, so it offers the board
       if (a === "board") { this.h.onQuitRun(); this.showBoard("daily"); }
@@ -1488,6 +1494,15 @@ export class Ui {
   }
 
   /** Update the rank line on an open game-over panel. */
+  /** One more button on a game-over card, above BACK TO MENU: the live race's "again", for one. */
+  addGameOverAction(panel: HTMLElement, label: string, onTap: () => void): void {
+    if (this.panel !== panel) return;
+    const row = panel.querySelector<HTMLElement>(".lost-ghosts");
+    if (!row || row.querySelector("[data-added]")) return;
+    const b = el("button", "go", label) as HTMLButtonElement; b.dataset.added = "1";
+    b.addEventListener("click", (e) => { e.stopPropagation(); b.disabled = true; b.textContent = "WAITING FOR THEM…"; onTap(); });
+    row.parentElement!.insertBefore(b, row);
+  }
   setGameOverRank(panel: HTMLElement, text: string) {
     if (this.panel !== panel) return;
     const r = panel.querySelector<HTMLElement>(".rank");

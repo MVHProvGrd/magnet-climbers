@@ -231,6 +231,24 @@ async function ownsProfile(env: Env, playerId: string, token: string): Promise<b
   return !owner || owner.token === token;
 }
 
+/**
+ * RETENTION. Nothing that is a best is ever removed: scores, lifetime, wallet. The rest is a
+ * row per period, and each period only ever adds rows, so without this the daily table grows
+ * by a row per player per day for ever. Kept: 90 days of dailies, 26 weeks of league,
+ * 30 days of tapes (the verdict is what an argument needs; the tape itself is what fills the
+ * table), 30 days of shared race tapes, and nothing from the rate-limit buckets past an hour.
+ */
+async function sweepOld(env: Env): Promise<void> {
+  const now = Date.now(), day = 86_400_000;
+  const stmts = [
+    env.DB.prepare("DELETE FROM daily WHERE day < ?").bind(dayKey(now - 90 * day)),
+    env.DB.prepare("DELETE FROM league WHERE week < ?").bind(weekKey(now - 26 * 7 * day)),
+    env.DB.prepare("UPDATE tapes SET tape = NULL WHERE created_at < ? AND tape IS NOT NULL").bind(now - 30 * day),
+    env.DB.prepare("DELETE FROM races WHERE created_at < ?").bind(now - 30 * day),
+  ];
+  for (const s of stmts) await s.run().catch(() => {});
+}
+
 /** Cloudflare's canonical client IP header; falls back to a shared bucket if it is ever
  *  missing (local `wrangler dev`, tests), which just makes the limit apply to everyone at
  *  once rather than not applying at all. */
@@ -394,6 +412,15 @@ export default {
     if (req.method === "GET" && (url.pathname.startsWith("/c/") || url.hostname.startsWith("share."))) {
       const share = await handleShare(req, url, (c: Challenge) => nameIsProfane(c.name), async (c, playerId) => {
         if (!playerId) return { ok: false };
+        if (c.mode === "daily") {
+          // the day's own table says what they climbed and where it stood among everyone that day
+          const day = c.day ?? dayKey();
+          await ensureDaily(env);
+          const row = await env.DB.prepare("SELECT name, cm FROM daily WHERE player_id = ? AND day = ?").bind(playerId, day).first<{ name: string; cm: number }>();
+          if (!row || row.cm < c.cm) return { ok: false };
+          const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM daily WHERE day = ? AND cm > ? AND player_id NOT LIKE 'smoke-%'").bind(day, row.cm).first<{ n: number }>();
+          return { ok: true, name: row.name, rank: (above?.n ?? 0) + 1 };
+        }
         const row = await env.DB.prepare("SELECT name, cm FROM scores WHERE player_id = ? AND mode = ?").bind(playerId, c.mode).first<{ name: string; cm: number }>();
         return row && row.cm >= c.cm ? { ok: true, name: row.name } : { ok: false };
       });
@@ -719,6 +746,10 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/run") {
       if (await rateLimited(env, `run:${clientIp(req)}`, 40, 60_000)) return json({ error: "slow down" }, h, 429);
+      // Housekeeping on a slice of posts. Bests and lifetimes are for ever; the day-by-day and
+      // week-by-week rows are only ever read for the current period and a short tail, and the
+      // tapes only while a verdict might be questioned. See RETENTION in the comments below.
+      if (Math.random() < 0.01) ctx?.waitUntil(sweepOld(env));
       let body: { playerId?: unknown; token?: unknown; mode?: unknown; cm?: unknown; total?: unknown };
       try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
       const cm = Math.floor(Number(body.cm));

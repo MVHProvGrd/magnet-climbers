@@ -8,7 +8,7 @@ import { drawCatPaw, drawScratches } from "./cat-paw";
 import { drawPickupImage } from "./pickup-art";
 import { drawGadget } from "./gadget-art";
 import { drawSurface, drawZone, drawBumper, drawPower } from "./scenery";
-import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion } from "./hud";
+import { drawDock, dockRect, font, roundRect as slabRect, setHudSafeBottom, prefersReducedMotion, redLineCm } from "./hud";
 
 
 let lastRenderTime = 0;
@@ -127,13 +127,16 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   // The ghost draws under the live climbers: it is the run you are chasing, not the one you
   // are steering, so it must never be the thing your eye lands on. Pale, no shadow, no hit
   // pips, no selection ring -- a photograph of a climber rather than a climber.
-  const gh = g.ghost?.climber;
-  if (gh && gh.state !== "lost" && gh.y > top - 80 && gh.y < bottom + 80) {
-    ctx.save();
-    ctx.globalAlpha = 0.34;
-    drawClimber(ctx, gh, false, g.time, appearanceFor(gh));
-    ctx.restore();
-    ctx.globalAlpha = 1;
+  for (const gg of [g.ghost, g.ghost2]) {
+    const gh = gg?.climber;
+    if (gh && gh.state !== "lost" && gh.y > top - 80 && gh.y < bottom + 80) {
+      ctx.save();
+      // a watcher has no toy of their own, so the ghosts are the whole picture and draw solid
+      ctx.globalAlpha = g.spectator ? 0.9 : 0.34;
+      drawClimber(ctx, gh, false, g.time, appearanceFor(gh));
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
@@ -169,6 +172,20 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   // floor / danger line: Cooper's reach, rendered as a rising shadow (absent in chill)
   const fy = g.floorY;
   if (g.chill) { /* no wall */ } else {
+  // The telegraph: as the line closes, the bottom of the screen reddens and a hatched band
+  // climbs ahead of it, so the threat is seen arriving rather than read off a number.
+  const gap = redLineCm(g), near = Math.max(0, Math.min(1, 1 - gap / (CFG.dangerCm * 1.6)));
+  if (near > 0 && g.phase === "running") {
+    const throb = prefersReducedMotion() ? 1 : 0.85 + 0.15 * Math.sin(g.time * (6 + near * 6));
+    const band = 90 + near * 110;
+    const gl = ctx.createLinearGradient(0, fy - band, 0, fy);
+    gl.addColorStop(0, "rgba(255,60,90,0)"); gl.addColorStop(1, `rgba(255,60,90,${0.28 * near * throb})`);
+    ctx.fillStyle = gl; ctx.fillRect(0, fy - band, W, band);
+    ctx.save(); ctx.strokeStyle = `rgba(255,90,120,${0.35 * near * throb})`; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = -band; x < W; x += 18) { ctx.moveTo(x, fy); ctx.lineTo(x + band * 0.6, fy - band * 0.6); }
+    ctx.stroke(); ctx.restore();
+  }
   const grad = ctx.createLinearGradient(0, fy - 60, 0, fy + 40);
   grad.addColorStop(0, "rgba(120,20,40,0)");
   grad.addColorStop(1, "rgba(120,20,40,0.85)");
@@ -248,6 +265,7 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   // HUD (screen space)
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawRail(ctx, g, viewH);
   drawHud(ctx, g, viewH);
   ctx.restore();
 }
@@ -289,13 +307,68 @@ export function setSafeBottom(px: number) {
 let hintLeft: number | null = null;
 export function setHintLeft(v: number | null) { hintLeft = v; }
 
+/**
+ * The race rail. A thin scale down the right edge with everyone on it: you, the ghost you are
+ * racing, the height to beat and the red line. Off-screen rivals are still on the rail, so a
+ * race reads at a glance even when the other climber is a door above or below. Only drawn
+ * when there is something to race.
+ */
+function drawRail(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
+  const ghosts = [g.ghost, g.ghost2].filter((x): x is NonNullable<typeof x> => !!x);
+  if (!ghosts.length && !g.target) return;
+  const me = g.spectator ? null : g.alive[0] ?? null;
+  const cmOf = (y: number) => (g.startY - y) / CFG.pxPerCm;
+  const lineCm = g.chill ? 0 : cmOf(g.floorY);
+  const marks: { cm: number; kind: "me" | "ghost" | "ghost2" | "target" | "line" }[] = [];
+  if (me) marks.push({ cm: cmOf(me.y), kind: "me" });
+  ghosts.forEach((gh, i) => { if (gh.climber) marks.push({ cm: gh.heightCm, kind: i ? "ghost2" : "ghost" }); });
+  if (g.target) marks.push({ cm: g.target.cm, kind: "target" });
+  if (!g.chill) marks.push({ cm: lineCm, kind: "line" });
+  const lo = Math.min(...marks.map((m) => m.cm)), hi = Math.max(...marks.map((m) => m.cm));
+  const span = Math.max(300, hi - lo);
+  const x = W - 10, y0 = 130, y1 = viewH - 150;
+  const yOf = (cm: number) => y1 - ((cm - lo) / span) * (y1 - y0);
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.28)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
+  // a tick every metre, so the gaps read as distances rather than as a bar
+  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1;
+  const step = span > 3000 ? 500 : span > 1200 ? 200 : 100;
+  for (let cm = Math.ceil(lo / step) * step; cm <= lo + span; cm += step) { const y = yOf(cm); ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y); ctx.stroke(); }
+  ctx.font = font(800, 10); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (const m of marks) {
+    const y = yOf(m.cm);
+    if (m.kind === "line") {
+      ctx.strokeStyle = "rgba(255,80,110,.95)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.stroke();
+      continue;
+    }
+    if (m.kind === "target") {
+      ctx.strokeStyle = g.target?.beaten ? "rgba(155,225,93,.95)" : "rgba(255,210,63,.95)"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.stroke(); ctx.setLineDash([]);
+      continue;
+    }
+    const mine = m.kind === "me";
+    ctx.fillStyle = mine ? "#fff" : m.kind === "ghost" ? "rgba(200,210,230,.85)" : "rgba(255,200,120,.85)";
+    ctx.beginPath(); ctx.arc(x, y, mine ? 5 : 4, 0, Math.PI * 2); ctx.fill();
+    if (mine) { ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+  // how far ahead or behind: one number by your own mark, signed, against the nearest rival
+  if (me && ghosts.length) {
+    const myCm = cmOf(me.y), rival = ghosts[0].heightCm, d = Math.round(myCm - rival);
+    ctx.fillStyle = d >= 0 ? "rgba(155,225,93,.95)" : "rgba(255,120,140,.95)";
+    ctx.fillText(`${d >= 0 ? "+" : ""}${d} cm`, x - 10, yOf(myCm));
+  }
+  ctx.restore();
+}
+
 /** One slab above the dock's shoulder, two lines max, with a draining progress bar (handoff 1g). */
 function drawHint(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   if (hintLeft === null || g.phase !== "idle") return;
   const lines = keyboardHints
     ? [tr("Hold SPACE to charge, WASD to aim, release to fling.")]
     : g.rules === "solo"
-      ? [tr("Drag back anywhere, release to fling."), tr("Stick to steel. Outrun the red line.")]
+      ? [tr("Put a finger down, pull DOWN, let go to fling up."), tr("Stick to steel. Outrun the red line.")]
       : [tr("Drag back from a climber, release to fling."), tr("SYNC flings the whole crew. CLIMB crawls to a teammate.")];
   const d = dockRect(viewH);
   const h = 10 + lines.length * 19 + 10;

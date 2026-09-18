@@ -365,7 +365,7 @@ test("a live race starts on the second seat, relays inputs, and settles on repla
   m.join({ id: "D", name: "Dan", world: 27, send: (x) => c.push(x) });
   assert.deepEqual(c[1], { k: "full" });
   m.input("A", { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } });
-  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } } });
+  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } }, from: "A" });
   assert.equal(a.length, 2, "an input never comes back to its sender");
   assert.equal(m.finish("A", { cm: 900 }, 950), true, "waits on the other tape");
   assert.deepEqual(b[2], { k: "ended", id: "A", cm: 950 });
@@ -486,4 +486,41 @@ test("a daily post answers at once and the verifier cuts an inflated claim after
   const p2 = await seedPlayer(e);
   const bad = await worker.fetch(post("/score", { playerId: p2.playerId, token: p2.token, name: "Kid", mode: "daily", cm: 10, tape: { ...tape, chill: true } }), e, ctx);
   assert.equal(bad.status, 422);
+});
+
+
+test("a race can be run again from the same room, and a third phone can watch it", () => {
+  const replay = (tape: unknown) => ({ ok: true, cm: (tape as { cm: number }).cm });
+  const m = new Match(replay, () => 0.3);
+  const a: Message[] = [], b: Message[] = [], w: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, look: { creature: "toy", pattern: "classic" }, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, look: { creature: "dino", pattern: "lemon" }, send: (x) => b.push(x) });
+  m.watch({ id: "W", send: (x) => w.push(x) });
+  assert.equal(w[0].k, "watching"); assert.equal(w[1].k, "start");
+  const ws = w[1] as Extract<Message, { k: "start" }>;
+  assert.deepEqual(ws.players?.map((p) => [p.id, p.look?.creature]), [["A", "toy"], ["B", "dino"]], "a watcher gets both seats, dressed");
+  m.input("B", { t: 1, k: "move", id: 1, to: { x: 5, y: 5 } });
+  assert.deepEqual(w.at(-1), { k: "in", e: { t: 1, k: "move", id: 1, to: { x: 5, y: 5 } }, from: "B" }, "a watcher sees every input");
+  m.input("W", { t: 2, k: "move", id: 1, to: { x: 0, y: 0 } });
+  assert.equal(a.filter((x) => x.k === "in").length, 1, "a watcher's inputs go nowhere");
+  m.finish("A", { cm: 800 }, 800); m.finish("B", { cm: 900 }, 900);
+  assert.equal((w.at(-1) as Extract<Message, { k: "result" }>).winner, "B");
+  const firstSeed = m.seed;
+  m.again("A");
+  assert.deepEqual(b.at(-1), { k: "again", id: "A" }, "the other player hears the ask");
+  assert.equal(m.settled, true, "one ask is not a rematch");
+  m.again("B");
+  assert.equal(m.settled, false); assert.notEqual(m.seed, firstSeed, "a fresh fridge");
+  assert.equal(a.at(-1)!.k, "start"); assert.equal(b.at(-1)!.k, "start"); assert.equal(w.at(-1)!.k, "start", "the watcher comes along");
+  m.finish("A", { cm: 100 }, 100); m.finish("B", { cm: 50 }, 50);
+  assert.equal((a.at(-1) as Extract<Message, { k: "result" }>).winner, "A", "the second race settles on its own tapes");
+});
+
+import { parseCode, cardSvg } from "../worker/src/card";
+test("a daily share card carries its day, rank and streak", () => {
+  const c = parseCode("daily.8287.MLocke");
+  assert.ok(c && c.mode === "daily" && c.cm === 8287);
+  const svg = cardSvg({ ...c!, verified: true, day: "2026-09-18", rank: 3, streak: 2 });
+  assert.match(svg, /DAILY · SEP 18/); assert.match(svg, /#3 that day/); assert.match(svg, /2 days running/);
+  assert.match(cardSvg({ ...c!, verified: true, day: "2026-09-18" }), /Same fridge for everyone/);
 });

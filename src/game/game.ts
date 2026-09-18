@@ -163,6 +163,17 @@ export class Game {
    * finds it. Structural, not the Ghost class, so the sim does not import its own replayer.
    */
   ghost: { climber: Climber | null; heightCm: number; done: boolean } | null = null;
+  /** a second ghost, for watching two people race: drawn like the first, told apart by its look */
+  ghost2: { climber: Climber | null; heightCm: number; done: boolean } | null = null;
+  /** watching a race: nothing here is played, the camera follows the ghosts */
+  spectator = false;
+  /**
+   * A first-ever run's first few flings catch steel from a little further away, so the first
+   * thing a new player learns is that flinging works, not that it can miss. Counted down per
+   * fling; the flight it applies to is marked so a catch mid-air can read it.
+   */
+  forgiveFlings = 0;
+  private forgiveFlight = false;
   /**
    * What this climb has picked up in total, across every revive. `coins` and `gems` are the
    * part not yet paid into the wallet, and a death pays them in and clears them -- which left
@@ -174,7 +185,8 @@ export class Game {
   /** where sound goes: the real module, or nothing at all for a ghost or a server replay */
   private readonly a: GameAudio;
 
-  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; silent?: boolean } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; silent?: boolean; forgiveFlings?: number } = {}) {
+    this.forgiveFlings = opts.forgiveFlings ?? 0;
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     // A ghost is a whole second run of the sim, stepped beside the real one. It must not be
     // heard: every effect it would fire has already been heard, or is about to be.
@@ -272,7 +284,7 @@ export class Game {
   // ---------- input ----------
 
   pointerDown(p: Vec) {
-    if (this.phase === "dead") return;
+    if (this.phase === "dead" || this.spectator) return;
     // finger on an anchored climber → select it and start aiming; elsewhere → nothing
     let best: Climber | null = null;
     let bd = 48;
@@ -383,6 +395,8 @@ export class Game {
     // kicking off a hanging gadget swings it the other way
     for (const k of c.grip?.contacts ?? []) if (k.carrierId) this.world.bumpGadget(k.carrierId, -Math.sign(v.x), 0.7);
     this.tape.fling(this.time, c.id, v);
+    this.forgiveFlight = this.forgiveFlings > 0;
+    if (this.forgiveFlings > 0) this.forgiveFlings--;
     // a fresh fling is a fresh landing: the last panel it slid on is forgotten, so coming
     // back down on the same board sounds again instead of counting as one long slide
     this.slideMaterial.delete(c.id);
@@ -959,7 +973,7 @@ export class Game {
         return;
       }
       // Gentle edge attraction near the apex. No force reaches across a broad glass panel.
-      const candidates = onPanel ? [] : findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius);
+      const candidates = onPanel ? [] : findContacts(c, this.world, CFG.magnetism.attractionRange + this.stats.magnetRadius + (this.forgiveFlight ? 12 : 0));
       const closest = candidates.map((p) => {
         const tip = limbTip(c, p.limb);
         return { dx: p.x - tip.x, dy: p.y - tip.y };
@@ -1087,7 +1101,7 @@ export class Game {
   }
 
   private stick(c: Climber, flat = false): boolean {
-    const radius = CFG.magnetism.snapDistance + this.stats.magnetRadius + (this.effects.superMagnet > 0 ? 30 : 0);
+    const radius = CFG.magnetism.snapDistance + this.stats.magnetRadius + (this.effects.superMagnet > 0 ? 30 : 0) + (this.forgiveFlight ? 16 : 0);
     const contacts = findContacts(c, this.world, radius);
     if (!contacts.length) return false;
     if ((flat || !braceLanding(c, this.world)) && !attachGrip(c, contacts, flat)) return false;
