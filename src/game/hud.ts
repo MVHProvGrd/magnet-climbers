@@ -371,10 +371,13 @@ function drawRedLine(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time
     ctx.fillText(tr(danger ? "RED LINE ▲" : "RED LINE ▼"), d.x + 14, mid);
     ctx.letterSpacing = "0px";
     ctx.font = font(900, 19); ctx.fillStyle = danger ? DANGER : "#fff";
+    // Fixed slots: the number sits in a cell wide enough for four digits, "cm" and the
+    // multiplier in cells of their own, so the gauge never moves when 99 becomes 100.
     const dStr = groupNum(dist);
+    const numW = Math.max(measure(ctx, dStr, 900, 19), measure(ctx, "8 888", 900, 19));
     ctx.fillText(dStr, d.x + 92, mid);
     ctx.font = font(700, 11); ctx.fillStyle = danger ? DANGER : "rgba(255,255,255,.65)";
-    const cmX = d.x + 92 + measure(ctx, dStr, 900, 19) + 3;
+    const cmX = d.x + 92 + numW + 3;
     ctx.fillText(tr("cm"), cmX, mid);
     // How fast the line is climbing right now, as a multiple of its starting pace: it
     // steps up with height and run time, doubles when it is catching you up, and a candy
@@ -386,7 +389,7 @@ function drawRedLine(ctx: CanvasRenderingContext2D, g: Game, viewH: number, time
     ctx.fillStyle = speed >= 3 ? DANGER : speed < 1 ? CHILL : COIN;
     ctx.fillText(sStr, sx, mid);
     // the gauge fills the rest of the strip: full when the wall is on your heels
-    const gx = sx + measure(ctx, sStr, 900, 14) + 12, gw = d.x + d.w - 14 - gx, gy = mid - 2;
+    const gx = sx + measure(ctx, "88.8x", 900, 14) + 12, gw = d.x + d.w - 14 - gx, gy = mid - 2;
     ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(gx, gy, gw, 4);
     const frac = Math.max(0, Math.min(1, 1 - dist / 100));
     if (frac > 0) {

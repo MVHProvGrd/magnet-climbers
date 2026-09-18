@@ -524,3 +524,45 @@ test("a daily share card carries its day, rank and streak", () => {
   assert.match(svg, /DAILY · SEP 18/); assert.match(svg, /#3 that day/); assert.match(svg, /2 days running/);
   assert.match(cardSvg({ ...c!, verified: true, day: "2026-09-18" }), /Same fridge for everyone/);
 });
+
+// Web Push: the VAPID token verifies against the public half, and a payload encrypted to a
+// subscription decrypts with that subscription's keys, the way a browser would.
+import { vapidJwt, encryptPayload } from "../worker/src/push";
+import { dueNotices } from "../worker/src/notices";
+test("a VAPID token verifies and an aes128gcm payload decrypts", async () => {
+  const b64u = (b: ArrayBuffer | Uint8Array) => Buffer.from(b as ArrayBuffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const fromB64u = (s: string) => new Uint8Array(Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64"));
+  const vapid = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const jwt = await vapidJwt(await crypto.subtle.exportKey("jwk", vapid.privateKey), "https://push.example", "mailto:x@y.z");
+  const [h, b, sig] = jwt.split(".");
+  assert.deepEqual(JSON.parse(Buffer.from(h, "base64url").toString()), { typ: "JWT", alg: "ES256" });
+  assert.equal(JSON.parse(Buffer.from(b, "base64url").toString()).aud, "https://push.example");
+  assert.ok(await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, vapid.publicKey, fromB64u(sig), new TextEncoder().encode(`${h}.${b}`)));
+  // the browser's side of a subscription
+  const ua = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const authSecret = crypto.getRandomValues(new Uint8Array(16));
+  const uaPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ua.publicKey));
+  const body = await encryptPayload({ endpoint: "https://push.example/x", p256dh: b64u(uaPublic), auth: b64u(authSecret) }, JSON.stringify({ title: "hi" }));
+  const salt = body.slice(0, 16), rs = new DataView(body.buffer, body.byteOffset + 16, 4).getUint32(0), idlen = body[20], asPublic = body.slice(21, 21 + idlen), cipher = body.slice(21 + idlen);
+  assert.equal(rs, 4096); assert.equal(idlen, 65);
+  const asKey = await crypto.subtle.importKey("raw", asPublic, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: asKey }, ua.privateKey, 256));
+  const enc = new TextEncoder();
+  const cat = (...p: Uint8Array[]) => { const o = new Uint8Array(p.reduce((n, x) => n + x.length, 0)); let a = 0; for (const x of p) { o.set(x, a); a += x.length; } return o; };
+  const hk = async (s: Uint8Array, ikm: Uint8Array, info: Uint8Array, n: number) => new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: s, info }, await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]), n * 8));
+  const ikm = await hk(authSecret, shared, cat(enc.encode("WebPush: info\0"), uaPublic, asPublic), 32);
+  const cek = await hk(salt, ikm, enc.encode("Content-Encoding: aes128gcm\0"), 16), nonce = await hk(salt, ikm, enc.encode("Content-Encoding: nonce\0"), 12);
+  const plain = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["decrypt"]), cipher));
+  assert.equal(plain[plain.length - 1], 2, "the last-record delimiter");
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(plain.slice(0, -1))), { title: "hi" });
+});
+
+test("the reminders fall on the Central hours they are meant for", () => {
+  // 2026-09-18 is a Friday; 6 pm CDT is 23:00Z
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 18, 23, 5)), [{ kind: "daily", key: "2026-09-18" }]);
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 18, 22, 5)), []);
+  // Monday 2026-09-21, 9 am CDT is 14:00Z: the league
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 21, 14, 0)), [{ kind: "league", key: "2026-W39" }]);
+  // the 1st at 9 am: the month, and in October a Thursday, so no league
+  assert.deepEqual(dueNotices(Date.UTC(2026, 9, 1, 14, 0)), [{ kind: "month", key: "2026-10" }]);
+});

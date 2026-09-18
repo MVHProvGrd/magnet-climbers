@@ -19,6 +19,7 @@ import { Ghost, LiveGhost, loadBestTape, saveBestTape } from "./game/ghost";
 import { makeRng, World } from "./game/world";
 import { LiveMatch, createMatch, matchLink, type LiveResultRow } from "./game/live";
 import { accountsEnabled, signIn, signOut, finishRedirect, type AuthResult } from "./game/account";
+import { pushSupported, enableReminders, disableReminders } from "./game/push";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -187,6 +188,21 @@ async function signedIn(r: AuthResult): Promise<void> {
   ui.showMenu();
 }
 
+/** Reminders on or off: the browser's permission, the Worker's list, and the switch in the save. */
+async function toggleReminders(): Promise<void> {
+  if (save.push) {
+    await disableReminders(save.playerId, save.token);
+    save.push = false; persist(); ui.showSettings(); ui.toast("Reminders off"); return;
+  }
+  await cloudSync("push");
+  const r = await enableReminders(save.playerId, save.token);
+  if (r === "on") { save.push = true; persist(); ui.toast("Reminders on: today's fridge at 6, the league on Monday, a new door on the first"); }
+  else if (r === "denied") ui.toast("Notifications are blocked for this site in your browser settings");
+  else if (r === "off") ui.toast("Reminders are not switched on yet");
+  else ui.toast("Could not set up reminders on this device");
+  ui.showSettings();
+}
+
 let syncing = false;
 async function cloudSync(reason: string) {
   if (!leaderboardEnabled || syncing) return;
@@ -322,6 +338,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
+  onToggleReminders: () => { void toggleReminders(); },
   onTogglePlainSteel: () => { save.plainSteel = !save.plainSteel; setPlainSteel(save.plainSteel); backdropDrawn = false; persist(); },
   onSetLang: (l) => { save.lang = l; setLang(l); persist(); },
   onToggleMute: () => {
@@ -555,6 +572,11 @@ function runEvents() {
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.token, save.name, rulesNow, newCm, save.totalCm);
       const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (wasLive) { livePanel = panel; ui.setGameOverRank(panel, `Waiting for ${liveThem || "your friend"}…`); }
+      // once, after a daily: the moment a reminder for tomorrow's makes sense
+      if (dailyRun && !save.push && !save.pushAsked && pushSupported()) {
+        save.pushAsked = true; persist();
+        ui.addGameOverAction(panel, "REMIND ME TOMORROW", () => { void toggleReminders(); });
+      }
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -1157,7 +1179,11 @@ clearChallengeParam();
 // a live race link: straight into the room, the story can wait
 const liveId = new URLSearchParams(location.search).get("m") ?? "";
 if (/^[a-z0-9]{6,16}$/.test(liveId)) { const u = new URL(location.href); u.searchParams.delete("m"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
+const openWhat = new URLSearchParams(location.search).get("open") ?? "";
+if (openWhat) { const u = new URL(location.href); u.searchParams.delete("open"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
 if (/^[a-z0-9]{6,16}$/.test(liveId)) { save.introSeen = true; persist(); joinLive(liveId); }
+else if (openWhat === "daily" && save.introSeen) { ui.showMenu(); if (save.daily?.day === todayKey()) ui.showBoard("daily"); }
+else if (openWhat === "league" && save.introSeen) ui.showBoard("league");
 else if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }
 else if (loadSnapshot()) resumeRun();
 else if (!save.introSeen) {

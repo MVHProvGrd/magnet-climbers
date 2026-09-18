@@ -315,14 +315,18 @@ export function setHintLeft(v: number | null) { hintLeft = v; }
  */
 function drawRail(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   const ghosts = [g.ghost, g.ghost2].filter((x): x is NonNullable<typeof x> => !!x);
-  if (!ghosts.length && !g.target) return;
+  const best = g.best && g.best.cm > 0 ? g.best.cm : 0;
+  // nothing to measure against on a first run with nobody to race: no rail
+  if (!ghosts.length && !g.target && !best) return;
+  if (g.phase !== "running" && !g.spectator) return;
   const me = g.spectator ? null : g.alive[0] ?? null;
   const cmOf = (y: number) => (g.startY - y) / CFG.pxPerCm;
   const lineCm = g.chill ? 0 : cmOf(g.floorY);
-  const marks: { cm: number; kind: "me" | "ghost" | "ghost2" | "target" | "line" }[] = [];
+  const marks: { cm: number; kind: "me" | "ghost" | "ghost2" | "target" | "line" | "best" }[] = [];
   if (me) marks.push({ cm: cmOf(me.y), kind: "me" });
   ghosts.forEach((gh, i) => { if (gh.climber) marks.push({ cm: gh.heightCm, kind: i ? "ghost2" : "ghost" }); });
   if (g.target) marks.push({ cm: g.target.cm, kind: "target" });
+  if (best) marks.push({ cm: best, kind: "best" });
   if (!g.chill) marks.push({ cm: lineCm, kind: "line" });
   const lo = Math.min(...marks.map((m) => m.cm)), hi = Math.max(...marks.map((m) => m.cm));
   const span = Math.max(300, hi - lo);
@@ -343,8 +347,10 @@ function drawRail(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
       ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.stroke();
       continue;
     }
-    if (m.kind === "target") {
-      ctx.strokeStyle = g.target?.beaten ? "rgba(155,225,93,.95)" : "rgba(255,210,63,.95)"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+    if (m.kind === "target" || m.kind === "best") {
+      const beaten = m.kind === "target" ? g.target?.beaten : g.best?.beaten;
+      ctx.strokeStyle = beaten ? "rgba(155,225,93,.95)" : m.kind === "best" ? "rgba(255,255,255,.8)" : "rgba(255,210,63,.95)";
+      ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.stroke(); ctx.setLineDash([]);
       continue;
     }
@@ -354,8 +360,8 @@ function drawRail(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
     if (mine) { ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 1.5; ctx.stroke(); }
   }
   // how far ahead or behind: one number by your own mark, signed, against the nearest rival
-  if (me && ghosts.length) {
-    const myCm = cmOf(me.y), rival = ghosts[0].heightCm, d = Math.round(myCm - rival);
+  if (me && (ghosts.length || best)) {
+    const myCm = cmOf(me.y), rival = ghosts.length ? ghosts[0].heightCm : best, d = Math.round(myCm - rival);
     ctx.fillStyle = d >= 0 ? "rgba(155,225,93,.95)" : "rgba(255,120,140,.95)";
     ctx.fillText(`${d >= 0 ? "+" : ""}${d} cm`, x - 10, yOf(myCm));
   }

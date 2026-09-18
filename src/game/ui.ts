@@ -1,6 +1,7 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { accountsEnabled } from "./account";
 import { nextDayStart } from "./day";
+import { pushSupported } from "./push";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
 import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
@@ -40,6 +41,8 @@ export interface UiHandlers {
   onToggleMusic(): void;
   /** Keep the plain stainless door all year; the month's pattern is still earned. */
   onTogglePlainSteel(): void;
+  /** Reminders: today's fridge at six, the league on Monday, the month's door on the first. */
+  onToggleReminders(): void;
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
@@ -337,7 +340,7 @@ export class Ui {
             // always a tile, portrait or initial, so the two lines start at the same x
             return `<span>${avatarHtml(face, m.name, "calc(20 * var(--px))")}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
         : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
-      const unread = r.messages.filter((m) => m.id > chatSeen()).length;
+      const unread = r.messages.filter((m) => m.id > chatSeen() && m.player_id !== this.save().playerId).length;
       if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
     });
   }
@@ -638,6 +641,11 @@ export class Ui {
     const input = p.querySelector<HTMLInputElement>("input")!;
     let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0, pendingSeq = 0;
     const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
+    // opening the room is reading it: whatever is here counts as seen from now, and the
+    // strip's badge goes at once rather than at its next slow poll
+    const markSeen = (id: number) => { if (id > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(id)); } catch { /* private mode */ } } };
+    markSeen(lastId);
+    const badge = this.chatStrip?.querySelector<HTMLElement>(".badge"); if (badge) badge.hidden = true;
 
     const row = (m: ChatMessage) => {
       const mine = m.player_id === s.playerId;
@@ -738,7 +746,7 @@ export class Ui {
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
       rememberChat(r.messages);
-      if (lastId > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(lastId)); } catch { /* private mode */ } }
+      markSeen(lastId);
       online.textContent = r.online ? `${r.online} chatting lately` : "";
       if (r.messages.length || !seen.size) render();
       if (!seen.size) log.innerHTML = `<p class="how-blurb">Nobody has said anything yet. You could be first.</p>`;
@@ -838,6 +846,7 @@ export class Ui {
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Plain steel door", "Skip the month's tint and keep the stainless door all year. The month's pattern is still yours to earn.", toggle("plain", s.plainSteel, "Plain steel door"))}
+        ${pushSupported() ? row("Reminders", "Today's fridge at 6 pm if you have not climbed it, the league on Monday morning, a new door on the first.", toggle("push", s.push, "Reminders")) : ""}
         <p class="sec-label">App</p>
         ${installRow()}
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
@@ -861,7 +870,7 @@ export class Ui {
       </div>`;
     const syncToggles = () => {
       const now = this.save();
-      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel]] as const) {
+      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push]] as const) {
         const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
         if (!input) continue;
         input.checked = on;
@@ -885,8 +894,8 @@ export class Ui {
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
-      if (a === "sound" || a === "music" || a === "plain") {
-        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel() })[a]();
+      if (a === "sound" || a === "music" || a === "plain" || a === "push") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders() })[a]();
         syncToggles();
         return;
       }

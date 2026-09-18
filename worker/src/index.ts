@@ -31,6 +31,9 @@ import { dayKeyAt, zoned } from "../../src/game/day";
 export { dayKeyAt };
 export { MatchRoom } from "./match";
 export { Verifier } from "./verify";
+import { sendPush, type PushSubscriptionRow } from "./push";
+import { dueNotices, dailyNotice, monthNotice, leagueNotice, type Notice } from "./notices";
+import { FRIDGE_THEMES } from "../../src/game/fridge-theme";
 import { settleVerdict, type VerifyJob } from "./verify";
 import { checkTape } from "./replay";
 import { verifyFirebaseIdToken, type Jwks } from "./auth";
@@ -111,6 +114,10 @@ export interface Env {
   VERIFY?: DurableObjectNamespace;
   /** the Firebase project whose sign-ins are accepted at /auth; accounts are off until it is set */
   FIREBASE_PROJECT_ID?: string;
+  /** Web Push: the VAPID pair (scripts/vapid-keys.mjs) and who is sending; reminders are off until set */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
 }
 
 const MAX_CM = 200_000;
@@ -234,15 +241,16 @@ async function ownsProfile(env: Env, playerId: string, token: string): Promise<b
 /**
  * RETENTION. Nothing that is a best is ever removed: scores, lifetime, wallet. The rest is a
  * row per period, and each period only ever adds rows, so without this the daily table grows
- * by a row per player per day for ever. Kept: 90 days of dailies, 26 weeks of league,
- * 30 days of tapes (the verdict is what an argument needs; the tape itself is what fills the
- * table), 30 days of shared race tapes, and nothing from the rate-limit buckets past an hour.
+ * by a row per player per day for ever. A day's board is that day's: kept a week, for the
+ * share cards still pointing at it. The league keeps three weeks, because Monday's notice
+ * and the new week's seating both read last week. Tapes keep their verdict but lose their
+ * body after 30 days; shared race tapes go after 30.
  */
 async function sweepOld(env: Env): Promise<void> {
   const now = Date.now(), day = 86_400_000;
   const stmts = [
-    env.DB.prepare("DELETE FROM daily WHERE day < ?").bind(dayKey(now - 90 * day)),
-    env.DB.prepare("DELETE FROM league WHERE week < ?").bind(weekKey(now - 26 * 7 * day)),
+    env.DB.prepare("DELETE FROM daily WHERE day < ?").bind(dayKey(now - 7 * day)),
+    env.DB.prepare("DELETE FROM league WHERE week < ?").bind(weekKey(now - 3 * 7 * day)),
     env.DB.prepare("UPDATE tapes SET tape = NULL WHERE created_at < ? AND tape IS NOT NULL").bind(now - 30 * day),
     env.DB.prepare("DELETE FROM races WHERE created_at < ?").bind(now - 30 * day),
   ];
@@ -336,7 +344,6 @@ let dailyReady = false;
 const DAILY_WORLD = new World(1, 0).version;
 
 /** Every daily tape the Worker has been shown, with what replaying it gave. */
-/** Shared runs for the async race, by short id. Created on demand like the rest. */
 /** A signed-in account (Firebase uid) and the player profile it plays as. Created on demand. */
 let accountsReady = false;
 async function ensureAccounts(env: Env): Promise<void> {
@@ -353,6 +360,94 @@ async function ensureAccounts(env: Env): Promise<void> {
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS accounts_player ON accounts (player_id)").run().catch(() => { ok = false; });
   if (ok) accountsReady = true;
 }
+/** Who asked to be reminded, by push endpoint, and what has already gone out. Created on demand. */
+let pushReady = false;
+async function ensurePush(env: Env): Promise<void> {
+  if (pushReady) return;
+  let ok = true;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    last_ok INTEGER
+  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS push_player ON push_subs (player_id)").run().catch(() => { ok = false; });
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS push_log (
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    sent INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    PRIMARY KEY (kind, key)
+  )`).run().catch(() => { ok = false; });
+  if (ok) pushReady = true;
+}
+
+const pushKeys = (env: Env) => {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return null;
+  try { return { publicKey: env.VAPID_PUBLIC_KEY, privateJwk: JSON.parse(env.VAPID_PRIVATE_KEY) as JsonWebKey, subject: env.VAPID_SUBJECT || "mailto:hello@magnetclimbers.com" }; }
+  catch { return null; }
+};
+
+/**
+ * The hourly tick. Each notice goes out once per key (a day, a week, a month), whatever the
+ * cron does; a dead subscription (the browser said 404 or 410) is dropped on the spot.
+ */
+export async function runNotices(env: Env, now = Date.now(), deliver: typeof sendPush = sendPush): Promise<{ kind: string; sent: number }[]> {
+  const keys = pushKeys(env);
+  if (!keys) return [];
+  await ensurePush(env);
+  const out: { kind: string; sent: number }[] = [];
+  for (const due of dueNotices(now)) {
+    const done = await env.DB.prepare("SELECT 1 AS x FROM push_log WHERE kind = ? AND key = ?").bind(due.kind, due.key).first().catch(() => null);
+    if (done) continue;
+    // claim the slot first, so two ticks in the same hour cannot both send
+    await env.DB.prepare("INSERT OR IGNORE INTO push_log (kind, key, sent, at) VALUES (?, ?, 0, ?)").bind(due.kind, due.key, now).run().catch(() => {});
+    const subs = (await env.DB.prepare("SELECT endpoint, player_id, p256dh, auth FROM push_subs").all<PushSubscriptionRow & { player_id: string }>()).results ?? [];
+    let sent = 0;
+    for (const sub of subs) {
+      const notice = await noticeFor(env, due.kind, sub.player_id, now);
+      if (!notice) continue;
+      const r = await deliver(sub, notice, keys);
+      if (r.gone) await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(sub.endpoint).run().catch(() => {});
+      else if (r.ok) { sent++; await env.DB.prepare("UPDATE push_subs SET last_ok = ? WHERE endpoint = ?").bind(now, sub.endpoint).run().catch(() => {}); }
+    }
+    await env.DB.prepare("UPDATE push_log SET sent = ? WHERE kind = ? AND key = ?").bind(sent, due.kind, due.key).run().catch(() => {});
+    out.push({ kind: due.kind, sent });
+  }
+  return out;
+}
+
+async function noticeFor(env: Env, kind: string, playerId: string, now: number): Promise<Notice | null> {
+  if (kind === "daily") {
+    // only to those who have not climbed today's fridge
+    const row = await env.DB.prepare("SELECT 1 AS x FROM daily WHERE player_id = ? AND day = ?").bind(playerId, dayKey(now)).first().catch(() => null);
+    return row ? null : dailyNotice();
+  }
+  if (kind === "month") {
+    const m = zoned(now).m;
+    const theme = FRIDGE_THEMES.find((t) => t.month === m);
+    const month = new Date(Date.UTC(2026, m - 1, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+    return theme ? monthNotice(theme.name, month) : null;
+  }
+  if (kind === "league") {
+    // last week's standing: rank in the bucket, and whether this week's tier is up, down or the same
+    const lastWeek = weekKey(now - 7 * 86_400_000);
+    const last = await env.DB.prepare("SELECT tier, bucket, cm FROM league WHERE player_id = ? AND week = ?")
+      .bind(playerId, lastWeek).first<{ tier: number; bucket: number; cm: number }>().catch(() => null);
+    if (!last) return null;
+    const above = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ? AND cm > ?").bind(lastWeek, last.tier, last.bucket, last.cm).first<{ n: number }>().catch(() => null);
+    const size = await env.DB.prepare("SELECT COUNT(*) AS n FROM league WHERE week = ? AND tier = ? AND bucket = ?").bind(lastWeek, last.tier, last.bucket).first<{ n: number }>().catch(() => null);
+    const rank = (above?.n ?? 0) + 1, members = size?.n ?? 1;
+    const moved = rank <= PROMOTE && last.tier < TIERS.length - 1 ? "up" : members >= PROMOTE + RELEGATE && rank > members - RELEGATE && last.tier > 0 ? "down" : "held";
+    const tier = moved === "up" ? last.tier + 1 : moved === "down" ? last.tier - 1 : last.tier;
+    return leagueNotice(TIERS[tier], rank, members, moved);
+  }
+  return null;
+}
+
+/** Shared runs for the async race, by short id. Created on demand like the rest. */
 let racesReady = false;
 async function ensureRaces(env: Env): Promise<void> {
   if (racesReady) return;
@@ -403,6 +498,10 @@ async function ensureDaily(env: Env): Promise<void> {
 }
 
 export default {
+  /** The hourly cron: which reminders this hour is, and to whom. */
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runNotices(env).catch((err) => console.error("notices", err)));
+  },
   async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
@@ -867,6 +966,32 @@ export default {
       await env.DB.prepare("INSERT INTO accounts (uid, player_id, provider, email, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(who.uid, playerId, who.provider ?? null, who.email ?? null, now, now).run();
       return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+    }
+
+    /** Reminders. The key the browser subscribes with; a subscription, tied to a profile; its removal. */
+    if (req.method === "GET" && url.pathname === "/push/key") {
+      if (!env.VAPID_PUBLIC_KEY) return json({ error: "reminders are not switched on" }, h, 503);
+      return json({ key: env.VAPID_PUBLIC_KEY }, h);
+    }
+    if (req.method === "POST" && (url.pathname === "/push/subscribe" || url.pathname === "/push/unsubscribe")) {
+      if (!env.VAPID_PUBLIC_KEY) return json({ error: "reminders are not switched on" }, h, 503);
+      if (await rateLimited(env, `push:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { playerId?: unknown; token?: unknown; endpoint?: unknown; p256dh?: unknown; auth?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64), token = String(body.token ?? "").slice(0, 64);
+      const endpoint = String(body.endpoint ?? "").slice(0, 1024);
+      if (!playerId || token.length < 16 || !/^https:\/\//.test(endpoint)) return json({ error: "bad request" }, h, 400);
+      if (!(await ownsProfile(env, playerId, token))) return json({ error: "forbidden" }, h, 403);
+      await ensurePush(env);
+      if (url.pathname === "/push/unsubscribe") {
+        await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ? AND player_id = ?").bind(endpoint, playerId).run();
+        return json({ ok: true }, h);
+      }
+      const p256dh = String(body.p256dh ?? ""), auth = String(body.auth ?? "");
+      if (!/^[A-Za-z0-9_-]{80,100}$/.test(p256dh) || !/^[A-Za-z0-9_-]{20,24}$/.test(auth)) return json({ error: "bad keys" }, h, 400);
+      await env.DB.prepare("INSERT OR REPLACE INTO push_subs (endpoint, player_id, p256dh, auth, created_at, last_ok) VALUES (?, ?, ?, ?, ?, NULL)")
+        .bind(endpoint, playerId, p256dh, auth, Date.now()).run();
+      return json({ ok: true }, h);
     }
 
     if (req.method === "POST" && url.pathname === "/match") {
