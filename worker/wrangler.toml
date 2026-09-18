@@ -24,3 +24,13 @@ database_id = "27e2ffee-ec73-4b7a-80a0-b68633ffb132"
 # row; "enforce" refuses a row the replay does not confirm. Flip once the shadow log is clean.
 TAPE_MODE = "shadow"
 ALLOWED_ORIGINS = "https://magnetclimbers.com,https://www.magnetclimbers.com,https://mvhprovgrd.github.io,http://localhost:5180"
+
+# Live races: one Durable Object per match relaying inputs between two phones and settling
+# the result by replaying both tapes. SQLite-backed classes run on the free plan.
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchRoom"]

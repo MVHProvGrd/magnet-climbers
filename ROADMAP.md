@@ -36,9 +36,11 @@ if it agrees. **Async race** — sharing a run sends its tape up under a short
 id; the link brings it down and the sharer's ghost climbs the same fridge
 beside whoever opened it.
 
+**Live ghost race** — a Durable Object per match relays each player's inputs
+to the other phone, where they drive a ghost beside the live toy; both tapes
+are replayed by the room and the result is what the replays say.
+
 ## Now
-12. **Live ghost race:** Durable Object per match relaying inputs over
-    WebSocket; goal height; result settled by server replay.
 14. **Accounts:** Sign in with Google/Apple on top of the current link codes
     (needs OAuth client ids from the owner).
 

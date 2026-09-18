@@ -43,6 +43,8 @@ export interface UiHandlers {
   onToggleAutoKit(on: boolean): void;
   /** Climb the door your best run was recorded on, with that run drawn beside you. */
   onRaceBest(): void;
+  /** Open a live race room and wait for a friend to join by link. */
+  onLiveRace(): void;
   /** Whether there is a tape to race, and how far it got. */
   bestTapeCm(): number | null;
   onSetLang(lang: Lang): void;
@@ -384,6 +386,10 @@ export class Ui {
           <b>RACE YOUR BEST</b><small>same door, you beside you</small>
           <span class="ghost-cm">${groupNum(ghostCm)} CM</span>
         </button>` : ""}
+        <button class="home-row ghost-row" data-a="live">
+          <b>RACE A FRIEND LIVE</b><small>same fridge, same moment, their ghost beside you</small>
+          <span class="ghost-cm">👻</span>
+        </button>
         ${(() => {
           // "Term Starts fridge" was the theme's name with the word fridge stuck on the end,
           // which reads as nonsense rather than as September's door. And once the pattern was
@@ -413,6 +419,7 @@ export class Ui {
       // one door for both errands: what you are wearing, and what you are taking up with you
       if (a === "kit") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
+      if (a === "live") this.h.onLiveRace();
       // the wallet chip is still a way in, and lands on what the coins are for
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "board") this.showBoard("solo");
@@ -1018,6 +1025,31 @@ export class Ui {
   }
 
   /** Landing panel when the app is opened from a challenge link. */
+  /** The live race lobby: the link to send, and a line that says where things stand. */
+  showLiveLobby(o: { link: string; status: string; onShare: () => void; onCancel: () => void }): HTMLElement {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <div class="story-icon">👻</div>
+      <h2>Live race</h2>
+      <p class="tag">Send this link. When your friend opens it you both start on the same fridge, with each other's ghost climbing beside you.</p>
+      <div class="rank" style="word-break:break-all;font-size:12px;opacity:.8">${esc(o.link)}</div>
+      <p class="tag live-status">${esc(o.status)}</p>
+      <button class="primary" data-a="share">SEND THE LINK</button>
+      <button class="ghost" data-a="cancel">CANCEL</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "share") o.onShare();
+      if (a === "cancel") o.onCancel();
+    });
+    this.show(p);
+    return p;
+  }
+  setLiveStatus(panel: HTMLElement, text: string) {
+    if (this.panel !== panel) return;
+    const s = panel.querySelector<HTMLElement>(".live-status");
+    if (s) s.textContent = text;
+  }
+
   showChallenge(c: { mode: "solo"; cm: number; name: string; raceId?: string }) {
     const p = el("div", "panel small");
     p.innerHTML = `

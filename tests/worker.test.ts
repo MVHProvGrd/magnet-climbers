@@ -347,3 +347,49 @@ test("a shared run is kept by id and handed back; a forged post is refused", asy
   const missing = await worker.fetch(new Request("https://x/race?id=nosuchrun"), e);
   assert.equal(missing.status, 404);
 });
+
+// The live race room, with two fake seats and a replay that reads the tape's own number.
+import { Match, type Message } from "../worker/src/match";
+test("a live race starts on the second seat, relays inputs, and settles on replayed tapes", () => {
+  const replay = (tape: unknown) => { const t = tape as { cm: number; bad?: boolean }; return t.bad ? { ok: false, cm: 0, reason: "wrong fridge" } : { ok: true, cm: t.cm }; };
+  const m = new Match(replay, () => 0.5);
+  const a: Message[] = [], b: Message[] = [], c: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  assert.deepEqual(a, [{ k: "wait", id: "A" }]);
+  m.join({ id: "C", name: "Cat", world: 26, send: (x) => c.push(x) });
+  assert.deepEqual(c, [{ k: "update" }], "another build is turned away");
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  assert.equal(a[1].k, "start"); assert.equal(b[0].k, "start");
+  const sa = a[1] as Extract<Message, { k: "start" }>, sb = b[0] as Extract<Message, { k: "start" }>;
+  assert.equal(sa.seed, sb.seed); assert.ok(sa.seed > 0); assert.deepEqual(sa.them, { id: "B", name: "Bob" });
+  m.join({ id: "D", name: "Dan", world: 27, send: (x) => c.push(x) });
+  assert.deepEqual(c[1], { k: "full" });
+  m.input("A", { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } });
+  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } } });
+  assert.equal(a.length, 2, "an input never comes back to its sender");
+  assert.equal(m.finish("A", { cm: 900 }, 950), true, "waits on the other tape");
+  assert.deepEqual(b[2], { k: "ended", id: "A", cm: 950 });
+  assert.equal(m.finish("B", { cm: 700 }, 600), false);
+  const ra = a.at(-1) as Extract<Message, { k: "result" }>;
+  assert.equal(ra.k, "result"); assert.equal(ra.winner, "A");
+  // the claim never rises above the replay, and a claim below it stands
+  assert.deepEqual(ra.rows.map((r) => [r.id, r.cm, r.verified]), [["A", 900, true], ["B", 600, true]]);
+  assert.deepEqual(b.at(-1), ra);
+});
+test("a live race with one tape unverified, or one player gone, still settles", () => {
+  const replay = (tape: unknown) => { const t = tape as { cm: number; bad?: boolean }; return t.bad ? { ok: false, cm: 0, reason: "wrong fridge" } : { ok: true, cm: t.cm }; };
+  const m = new Match(replay, () => 0.1);
+  const a: Message[] = [], b: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  m.finish("A", { cm: 500, bad: true }, 500);
+  m.leave("B");
+  const r = a.at(-1) as Extract<Message, { k: "result" }>;
+  assert.equal(r.k, "result"); assert.equal(r.winner, null, "nobody climbed anything the room believes");
+  assert.deepEqual(r.rows.map((x) => [x.id, x.cm, x.verified, x.reason]), [["A", 0, false, "wrong fridge"], ["B", 0, false, "no tape"]]);
+  // a seat left before the start is simply free again
+  const n = new Match(replay); const c: Message[] = [];
+  n.join({ id: "A", name: "Ann", world: 27, send: () => {} }); n.leave("A");
+  n.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
+  assert.deepEqual(c, [{ k: "wait", id: "B" }]);
+});

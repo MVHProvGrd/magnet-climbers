@@ -89,6 +89,48 @@ export class Ghost {
 }
 
 /**
+ * The live ghost: the other player's run, arriving one input at a time over the wire.
+ *
+ * It is the same second `Game` as the recorded ghost, stepped in lockstep with the live run;
+ * the difference is that its inputs are not known in advance. Each arrives stamped with the
+ * step it was played on. One that is still ahead waits for its step, as on a tape; one that
+ * arrives late (the wire is slower than the sim) is played at once, a few steps after the
+ * fact. The ghost then drifts a little from the true run, which is fine for something drawn
+ * beside you -- the result is settled by replaying both tapes, never from this.
+ */
+export class LiveGhost {
+  private readonly game: Game;
+  private queue: TapeEvent[] = [];
+  private n = 0;
+  /** the other run has ended: the ghost stands where it got to */
+  ended = false;
+
+  constructor(seed: number, world: number, look?: Look) {
+    this.game = new Game({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>, NO_EVENTS, {
+      rules: "solo", seed, worldVersion: world, chill: false, lineup: look ? [look] : [], silent: true,
+    });
+  }
+
+  get climber(): Climber | null { const c = this.game.climbers[0]; return c && !this.done ? c : null; }
+  get heightCm(): number { return this.game.heightCm; }
+  get done(): boolean { return this.ended || this.game.phase === "dead"; }
+
+  feed(e: TapeEvent): void { this.queue.push(e); }
+  end(): void { this.ended = true; }
+
+  step(dt: number): void {
+    if (this.done) return;
+    while (this.queue.length && stepOf(this.queue[0].t) <= this.n) {
+      const e = this.queue.shift()!;
+      const c = this.game.climbers.find((x) => x.id === e.id);
+      if (c && c.state !== "lost") { if (e.k === "fling") this.game.launch(c, e.v as Vec); else this.game.move(c, e.to as Vec); }
+    }
+    this.game.update(dt);
+    this.n++;
+  }
+}
+
+/**
  * The tape of the best climb on this device. Kept under its own key rather than inside the
  * save, because it is a few kilobytes of numbers nobody needs when the save is synced.
  */

@@ -27,6 +27,7 @@ import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
+export { MatchRoom } from "./match";
 import { World } from "../../src/game/world";
 
 /** Server-side mirror of the client name filter — same word list, same leetspeak/Unicode/
@@ -95,6 +96,8 @@ export interface Env {
   TAPE_MODE?: string;
   /** owner key for /admin; set with `npx wrangler secret put ADMIN_KEY` */
   ADMIN_KEY?: string;
+  /** one Durable Object per live race, see match.ts; absent until the binding is deployed */
+  MATCH?: DurableObjectNamespace;
 }
 
 const MAX_CM = 200_000;
@@ -745,6 +748,25 @@ export default {
       let tape: unknown = null;
       try { tape = JSON.parse(row.tape); } catch { return json({ error: "bad tape" }, h, 500); }
       return new Response(JSON.stringify({ id, name: row.name, cm: row.cm, seconds: row.seconds, tape }), { headers: { ...h, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
+    }
+
+    /**
+     * The live race. POST /match deals a room id; each phone then opens a socket on
+     * /match/<id>/ws and the room does the rest (match.ts). No token: the id is the secret,
+     * and a room settles on replayed tapes, so nothing a stranger sends can win it a race.
+     */
+    if (req.method === "POST" && url.pathname === "/match") {
+      if (!env.MATCH) return json({ error: "live races are not switched on" }, h, 503);
+      if (await rateLimited(env, `match:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const id = Array.from(bytes, (b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+      return json({ ok: true, id }, h);
+    }
+    const ws = /^\/match\/([a-z0-9]{6,16})\/ws$/.exec(url.pathname);
+    if (req.method === "GET" && ws) {
+      if (!env.MATCH) return json({ error: "live races are not switched on" }, h, 503);
+      const room = env.MATCH.get(env.MATCH.idFromName(ws[1]));
+      return room.fetch(req);
     }
 
     if (req.method === "GET" && url.pathname === "/chat") {
