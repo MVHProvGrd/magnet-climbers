@@ -178,6 +178,13 @@ select.buy option { background: #1e2229; color: #fff; }
   background: rgba(0,0,0,0.7); padding: 10px 16px; border-radius: 12px; font-weight: 700; transition: all 0.25s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* the race countdown: one word, dead centre, in and out before the next */
+.countdown {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(1.6); opacity: 0;
+  font: 900 calc(84 * var(--px)) var(--display); color: #fff; letter-spacing: 2px;
+  text-shadow: 0 4px 0 #0008, 0 0 24px #000a; pointer-events: none; transition: transform .18s ease-out, opacity .18s;
+}
+.countdown.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 .panel h3 { margin: 6px 0 0; font-size: 14px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
 .guide-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .guide-legend { margin: 0; padding: 12px; border-radius: 12px; background: #253343; font-size: 12px; line-height: 1.6; text-align: left; }
@@ -549,6 +556,7 @@ select.buy option { background: #1e2229; color: #fff; }
 /* missions on the home dock: three sentences with a bar each, never a wall of text */
 .home-missions { text-align: left; display: flex; flex-direction: column; gap: calc(6 * var(--px));
   background: rgba(20,24,30,0.55); border-radius: calc(14 * var(--px)); padding: calc(10 * var(--px)) calc(12 * var(--px)); }
+.mission-head .muted { opacity: .55; font-weight: 600; letter-spacing: 0; }
 .mission-head { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(1.6 * var(--px));
   color: rgba(255,255,255,0.45); }
 .mission { display: grid; grid-template-columns: 1fr auto; gap: calc(2 * var(--px)) calc(10 * var(--px)); align-items: center; }

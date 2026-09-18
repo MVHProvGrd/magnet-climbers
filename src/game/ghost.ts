@@ -37,12 +37,14 @@ export class Ghost {
 
   constructor(readonly tape: Tape, look?: Look) {
     this.events = tape.events;
+    // the look the run was climbed in, when the tape says; otherwise whatever the caller chose
+    const wear = (tape.look as Look | undefined) ?? look;
     this.game = new Game(tape.kit as Record<UpgradeKey, number>, NO_EVENTS, {
       rules: "solo",
       seed: tape.seed,
       worldVersion: tape.world,
       chill: tape.chill,
-      lineup: look ? [look] : [],
+      lineup: wear ? [wear] : [],
       silent: true,
     });
     // The tape counts steps from the moment the door appeared, so the wait before the first
@@ -111,11 +113,23 @@ export class LiveGhost {
     });
   }
 
-  get climber(): Climber | null { const c = this.game.climbers[0]; return c && !this.done ? c : null; }
+  /** Drawn to the end and after it: a friend who finished, or left, stands where they got to. */
+  get climber(): Climber | null { const c = this.game.climbers[0]; return c && c.state !== "lost" ? c : null; }
   get heightCm(): number { return this.game.heightCm; }
   get done(): boolean { return this.ended || this.game.phase === "dead"; }
 
-  feed(e: TapeEvent): void { this.queue.push(e); }
+  /**
+   * An input stamped ahead of where this ghost has got to means the other run is that far
+   * ahead in time -- it started earlier, or this phone sat on the menu. The ghost catches up
+   * to that step now rather than trailing by the difference for the rest of the race. A
+   * second of steps costs a few milliseconds.
+   */
+  feed(e: TapeEvent): void {
+    this.queue.push(e);
+    const at = stepOf(e.t);
+    let guard = 0;
+    while (this.n < at && !this.done && guard++ < 1200) this.step(1 / 120);
+  }
   end(): void { this.ended = true; }
 
   step(dt: number): void {

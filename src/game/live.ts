@@ -9,7 +9,7 @@ export interface LiveResultRow { id: string; name: string; cm: number; verified:
 
 export interface LiveHandlers {
   wait(): void;
-  start(seed: number, world: number, them: { id: string; name: string }): void;
+  start(seed: number, world: number, them: { id: string; name: string; look?: { creature: string; pattern: string } }, countdownMs: number): void;
   input(e: TapeEvent): void;
   ended(cm: number): void;
   left(): void;
@@ -37,7 +37,7 @@ export class LiveMatch {
   private closedByUs = false;
   constructor(readonly id: string, private readonly on: LiveHandlers) {}
 
-  connect(hello: { id: string; name: string; world: number }): void {
+  connect(hello: { id: string; name: string; world: number; look: { creature: string; pattern: string } }): void {
     const url = `${API.replace(/^http/, "ws")}/match/${encodeURIComponent(this.id)}/ws`;
     const ws = new WebSocket(url);
     this.ws = ws;
@@ -46,7 +46,7 @@ export class LiveMatch {
       let m: { k: string } & Record<string, unknown>;
       try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.k === "wait") this.on.wait();
-      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as { id: string; name: string });
+      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as { id: string; name: string }, (m.countdownMs as number) || 3000);
       else if (m.k === "in") this.on.input(m.e as TapeEvent);
       else if (m.k === "ended") this.on.ended(m.cm as number);
       else if (m.k === "left") this.on.left();

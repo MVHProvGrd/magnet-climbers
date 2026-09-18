@@ -339,6 +339,14 @@ export class Ui {
     });
   }
 
+  /** How long until the day turns over: the daily and the missions both run on the UTC date. */
+  private static resetIn(): string {
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const m = Math.max(0, Math.ceil((next - now.getTime()) / 60_000));
+    return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
+  }
+
   showMenu() {
     const s = this.save();
     if (!s.picked && s.runs >= 1) { this.showFirstPick(); return; }
@@ -382,7 +390,7 @@ export class Ui {
             <i>BEST ${groupNum(s.bestSolo)} CM</i>
           </button>
           <button class="mode-tile daily ${done ? "spent" : ""}" data-a="daily">
-            <b>DAILY CLIMB</b><small>${done ? "New one tomorrow." : "One shared fridge, one go."}</small>
+            <b>DAILY CLIMB</b><small>${done ? `New one in <span data-reset>${Ui.resetIn()}</span>.` : "One shared fridge, one go."}</small>
             <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : next.pattern ? "PAYS A PATTERN" : `PAYS $${next.coins}`}${streak ? ` · ${streak}🔥` : ""}</i>
           </button>
         </div>
@@ -404,7 +412,7 @@ export class Ui {
             has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"}</p>`;
         })()}
         ${s.missions.length ? `<div class="home-missions">
-          <span class="mission-head">MISSIONS</span>
+          <span class="mission-head">MISSIONS <span class="muted">· new in <span data-reset>${Ui.resetIn()}</span></span></span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
         </div>` : ""}
         <label class="home-row ${s.chill ? "on" : ""}">
@@ -433,6 +441,12 @@ export class Ui {
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
+    // the clocks on the tile and the missions tick while the menu is up, and stop with it
+    const clock = setInterval(() => {
+      if (!p.isConnected) { clearInterval(clock); return; }
+      const t = Ui.resetIn();
+      p.querySelectorAll<HTMLElement>("[data-reset]").forEach((e) => { e.textContent = t; });
+    }, 30_000);
     this.setChatStripVisible(leaderboardEnabled);
     this.startPreviews(p);
   }
@@ -1485,6 +1499,14 @@ export class Ui {
     this.banner = b;
   }
 
+  /** One big word in the middle of the fridge: 3, 2, 1, GO. Each call replaces the last. */
+  showCountdown(text: string, ms = 700) {
+    this.root.querySelector(".countdown")?.remove();
+    const c = el("div", "countdown", text);
+    this.root.appendChild(c);
+    requestAnimationFrame(() => c.classList.add("show"));
+    setTimeout(() => { if (c.isConnected) c.remove(); }, ms);
+  }
   toast(text: string) {
     const t = el("div", "toast", text);
     this.root.appendChild(t);

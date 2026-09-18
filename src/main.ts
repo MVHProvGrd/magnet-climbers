@@ -261,7 +261,8 @@ const ui = new Ui(uiRoot, () => save, {
   onPlayDaily: () => startRun("solo", false, true),
   onIntroSeen: (key) => { if (!save.intros.includes(key)) { save.intros.push(key); persist(); } },
   onResume: () => { paused = false; },
-  onPause: () => { paused = true; },
+  // a live race has another player in it: the sheet can open, the climb does not stop for it
+  onPause: () => { if (!(live && game?.tape.onEvent)) paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
     // quitting is ending: the height, records, missions and coins bank exactly as they do
@@ -479,7 +480,7 @@ function runEvents() {
       save.hitsTotal += game.feats.hits;
       // the tape of your best climb is kept for the ghost that will draw it; a daily's tape
       // always goes with its score, because the Worker replays it rather than trusting the number
-      const tape = !chill && cm > 0 ? game.sealTape(dailyRun) : null;
+      const tape = !chill && cm > 0 ? game.sealTape(dailyRun, { creature: save.creature, pattern: save.pattern }) : null;
       if (tape && cm >= save.bestSolo) saveBestTape(tape);
       dailyTape = dailyRun ? tape : null;
       lastTape = dailyRun ? null : tape;
@@ -639,16 +640,17 @@ function joinLive(id: string): void {
   const panel = ui.showLiveLobby({ link, status: "Connecting…", onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
   const m = new LiveMatch(id, {
     wait: () => ui.setLiveStatus(panel, "Waiting for a friend to open the link…"),
-    start: (seed, world, them) => { liveThem = them.name; ui.toast(`${them.name} is here. Climb!`); startRun("solo", false, false, null, { seed, world }); },
+    start: (seed, world, them, countdownMs) => { liveThem = them.name; startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs }); },
     input: (e) => { if (ghost instanceof LiveGhost) ghost.feed(e); },
-    ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm`); },
-    left: () => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race`); },
+    // the ghost stops where the friend's run did and stays drawn there, so you can see what you are beating
+    ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · their ghost stays where it got to`); },
+    left: () => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race · their ghost stays where it got to`); },
     result: (rows, winner) => showLiveResult(rows, winner),
     refused: (why) => { ui.toast(why === "full" ? "That race already has two climbers" : "Your friend is on another build; update and try again"); live = null; ui.showMenu(); },
     closed: () => { if (game && live) ui.toast("Lost the race connection"); },
   });
   live = m;
-  m.connect({ id: save.playerId, name: save.name || "a friend", world: WORLD_VERSION });
+  m.connect({ id: save.playerId, name: save.name || "a friend", world: WORLD_VERSION, look: { creature: save.creature, pattern: save.pattern } });
 }
 
 function showLiveResult(rows: LiveResultRow[], winner: string | null): void {
@@ -743,7 +745,21 @@ function ensureDailyMissions(): void {
   persist();
 }
 
-function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number } | null = null) {
+/** 3, 2, 1, GO before a race: the door is up and frozen, then both climbers are let go together. */
+function countdown(ms: number, then?: () => void): void {
+  paused = true;
+  const beat = Math.max(400, Math.floor(ms / 3));
+  let n = 3;
+  const tick = () => {
+    if (!game) return;
+    if (n > 0) { ui.showCountdown(String(n), beat); sfx.tick(); n--; setTimeout(tick, beat); return; }
+    ui.showCountdown("🏁 GO", 900); sfx.bell();
+    paused = false; then?.();
+  };
+  tick();
+}
+
+function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number; look?: { creature: string; pattern: string }; countdownMs?: number } | null = null) {
   ensureDailyMissions();
   void cloudPull(true);
   rulesNow = rules;
@@ -765,8 +781,11 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
     : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
     : { rules, chill: save.chill, lineup });
   // the ghost wears last time's colours so the two climbers are never mistaken for each other
-  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, { creature: save.creature, pattern: save.pattern })
-    : raceTape ? new Ghost(raceTape, { creature: save.creature, pattern: save.pattern }) : null;
+  // the ghost wears the look its run was climbed in (a friend's, from the room or the tape),
+  // or last time's colours for your own best, so the two climbers are never mistaken
+  const mine = { creature: save.creature, pattern: save.pattern };
+  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, (liveRace.look as Look | undefined) ?? mine)
+    : raceTape ? new Ghost(raceTape, mine) : null;
   game.ghost = ghost;
   // every input goes to the room the moment it is played; the other phone's ghost is driven by it
   if (liveRace && live) { const m = live; game.tape.onEvent = (e) => m.input(e); }
@@ -788,6 +807,8 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   game.viewH = viewH;
   ui.setInRun(true);
   backdropDrawn = false; appEl.classList.add("in-run");
+  // every race starts on a count, live or against a tape
+  if (liveRace || raceTape) countdown(liveRace?.countdownMs ?? 3000);
 }
 
 /**
@@ -992,8 +1013,9 @@ function frame(now: number) {
       const simT0 = performance.now();
       while (acc >= STEP) {
         game.update(STEP);
-        // the ghost takes the same step, so a pause or a slow-motion pickup moves both
-        if (ghost && !ghost.done && game.phase === "running") ghost.step(STEP);
+        // the ghost takes the same step, so a pause or a slow-motion pickup moves both; a live
+        // friend does not wait for your first fling, their run is already going
+        if (ghost && !ghost.done && (game.phase === "running" || ghost instanceof LiveGhost)) ghost.step(STEP);
         acc -= STEP;
       }
       simMs = performance.now() - simT0;
