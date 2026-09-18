@@ -401,9 +401,12 @@ export class World {
       // as bare steel to isMetal and quietly turn every other toy into a hold.
       const hanging = this.version >= 22 ? hangs : r() < 0.5;
       const pull = this.version >= 18 && r() < 0.5;
+      // v26 names the toy here rather than in the relabel pass below, which is where the POP!
+      // toy got its bubbles; without them it had nothing to flip and made no sound
+      const pops = toyPick?.id === "bumper-4" ? { pops: 0b0101010101, popCool: 0 } : {};
       if (!blocked(zones, box(toy), 16, true)) zones.push(hanging
-        ? { ...toy, kind: "trim", itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 } }
-        : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}` });
+        ? { ...toy, kind: "trim", itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}`, swing: { angle: 0, vel: 0, cool: 0 }, ...pops }
+        : { ...toy, kind: "repel", power: pull ? -0.2 : 0.2, itemId: toyPick ? toyPick.id : `toy:${Math.floor(r() * 6)}`, ...pops });
     }
     // sliding fridge magnet bumpers
     if (i > 4 && r() < 0.3 + difficulty * 0.5) {

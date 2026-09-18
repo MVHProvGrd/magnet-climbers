@@ -1217,3 +1217,12 @@ test("the wall's ramp, creep and catch-up multipliers cap as a product, not just
   assert.ok(g.wallMult() <= CFG.floorMultCap + 1e-9, "the combined multiplier never exceeds floorMultCap");
   assert.ok(g.wallMult() > CFG.floorCapMult, "the cap still allows more than any single factor alone, just not their full product");
 });
+
+test("a POP! toy placed on a v26+ door has its bubbles", () => {
+  let seen = 0;
+  for (let seed = 1; seed <= 60 && !seen; seed++) {
+    const w = new World(seed, 0); w.generateTo(60);
+    for (const s of w.segments) for (const z of s.zones) if (z.itemId === "bumper-4") { seen++; assert.equal(z.pops, 0b0101010101, `seed ${seed}`); }
+  }
+  assert.ok(seen > 0, "no POP! toy turned up in sixty seeds");
+});
