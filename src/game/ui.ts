@@ -1018,14 +1018,14 @@ export class Ui {
   }
 
   /** Landing panel when the app is opened from a challenge link. */
-  showChallenge(c: { mode: "solo"; cm: number; name: string }) {
+  showChallenge(c: { mode: "solo"; cm: number; name: string; raceId?: string }) {
     const p = el("div", "panel small");
     p.innerHTML = `
-      <div class="story-icon">📣</div>
-      <h2>${esc(c.name)} challenged you</h2>
+      <div class="story-icon">${c.raceId ? "👻" : "📣"}</div>
+      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : "challenged you"}</h2>
       <div class="big">${c.cm} cm</div>
-      <p class="tag">Solo climb. Their height shows as a line on your fridge. Get above it.</p>
-      <button class="primary" data-a="go">ACCEPT</button>
+      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it." : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
+      <button class="primary" data-a="go">${c.raceId ? "RACE" : "ACCEPT"}</button>
       <button class="ghost" data-a="menu">LATER</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;

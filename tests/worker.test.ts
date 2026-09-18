@@ -326,3 +326,24 @@ test("league buckets fill to thirty and then open the next", async () => {
   for (const r of rows.results ?? []) buckets.set(r.bucket, r.n);
   assert.deepEqual([...buckets.entries()].sort(), [[1, 30], [2, 1]]);
 });
+
+// The async race: a run's tape goes up under the player's token and comes back by id.
+test("a shared run is kept by id and handed back; a forged post is refused", async () => {
+  const e = env();
+  const p = await seedPlayer(e);
+  const tape = { v: 1, seed: 7, world: 27, kit: {}, chill: false, daily: false, cm: 1234, seconds: 61, events: [{ t: 0.5, id: 1, k: "fling", v: { x: 10, y: -400 } }] };
+  const forged = await worker.fetch(post("/race", { playerId: p.playerId, token: "x".repeat(20), name: "Kid", tape }), e);
+  assert.equal(forged.status, 403);
+  const bad = await worker.fetch(post("/race", { playerId: p.playerId, token: p.token, name: "Kid", tape: { ...tape, events: [] } }), e);
+  assert.equal(bad.status, 400);
+  const ok = await worker.fetch(post("/race", { playerId: p.playerId, token: p.token, name: "Kid", tape }), e);
+  assert.equal(ok.status, 200);
+  const { id } = (await ok.json()) as { id: string };
+  assert.match(id, /^[a-z0-9]{8}$/);
+  const back = await worker.fetch(new Request(`https://x/race?id=${id}`), e);
+  assert.equal(back.status, 200);
+  const got = (await back.json()) as { name: string; cm: number; tape: typeof tape };
+  assert.equal(got.name, "Kid"); assert.equal(got.cm, 1234); assert.deepEqual(got.tape, tape);
+  const missing = await worker.fetch(new Request("https://x/race?id=nosuchrun"), e);
+  assert.equal(missing.status, 404);
+});

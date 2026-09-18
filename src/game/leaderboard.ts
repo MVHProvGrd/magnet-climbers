@@ -88,6 +88,12 @@ export const leaderboard = {
    * gone for good, and nothing ever reconciled it, so the board drifted quietly below the
    * figure the player reads on their own screen and never caught up.
    */
+  /** The async race: a run's tape goes up under a short id, and a link with that id brings it down. */
+  race: {
+    post: (playerId: string, token: string, name: string, tape: unknown) =>
+      call<{ ok: boolean; id: string }>("/race", { method: "POST", body: JSON.stringify({ playerId, token, name, tape }) }),
+    get: (id: string) => call<{ id: string; name: string; cm: number; seconds: number; tape: unknown }>(`/race?id=${encodeURIComponent(id)}`),
+  },
   run: (playerId: string, token: string, name: string, mode: Mode, cm: number, total: number) =>
     call<{ ok: boolean }>("/run", { method: "POST", body: JSON.stringify({ playerId, token, name, mode, cm, total }) }),
   /** This week's bucket: about thirty players, the ten at the top going up and the ten at the bottom down. */

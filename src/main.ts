@@ -338,13 +338,30 @@ const ui = new Ui(uiRoot, () => save, {
   onTutorial: () => startRun("solo", true),
   onPerf: () => perfReport(),
   onShare: (c) => {
-    const go = () => void shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId }).then((r) => {
-      if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
+    const go = async () => {
+      // the run behind the number: the one just climbed, or the best on this device
+      const best = loadBestTape();
+      const tape = lastTape && lastTape.cm === c.cm ? lastTape : best && best.cm === c.cm ? best : null;
+      const posted = tape && leaderboardEnabled ? await leaderboard.race.post(save.playerId, save.token, save.name || "a friend", tape) : null;
+      const r = await shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId, ...(posted?.id ? { raceId: posted.id } : {}) });
+      if (r === "copied") ui.toast(posted?.id ? "Race link copied. Paste it to a friend." : "Link copied. Paste it to a friend.");
       if (r === "failed") ui.toast("Could not share on this device");
-    });
+    };
     if (!save.name) ui.showNamePrompt(go); else go();
   },
-  onAcceptChallenge: () => startRun("solo"),
+  onAcceptChallenge: async () => {
+    // a race link brings the friend's tape down and their ghost climbs the same fridge; a
+    // tape that cannot be had, or is from another shape of recorder, leaves the line alone
+    const id = pendingChallenge?.raceId;
+    if (id) {
+      ui.toast("Fetching their run…");
+      const r = await leaderboard.race.get(id);
+      const t = r?.tape as Tape | undefined;
+      if (t && t.v === 1 && Array.isArray(t.events) && t.events.length) { startRun("solo", false, false, t); return; }
+      ui.toast("Could not fetch their run; racing the line instead");
+    }
+    startRun("solo");
+  },
   onChat: async (text) => {
     if (!leaderboardEnabled) return "Chat is offline";
     if (save.cloudRev === 0) await cloudSync("chat");
@@ -419,6 +436,7 @@ function runEvents() {
       const tape = !chill && cm > 0 ? game.sealTape(dailyRun) : null;
       if (tape && cm >= save.bestSolo) saveBestTape(tape);
       dailyTape = dailyRun ? tape : null;
+      lastTape = dailyRun ? null : tape;
       // the fridge of the month pays its pattern the first time you finish a climb on it
       const month = monthKey();
       if (save.themeMonth !== month) {
@@ -693,6 +711,8 @@ async function resubmitBests() {
 /** Push the run to the global board (best per player is kept server-side). */
 /** The tape of the daily run that just ended, sealed at game over for the score post. */
 let dailyTape: Tape | null = null;
+/** the tape of the run just finished, so sharing it can send the ghost along with the number */
+let lastTape: Tape | null = null;
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
   const seconds = game ? Math.round(game.runTime) : 0;

@@ -302,6 +302,22 @@ let dailyReady = false;
 const DAILY_WORLD = new World(1, 0).version;
 
 /** Every daily tape the Worker has been shown, with what replaying it gave. */
+/** Shared runs for the async race, by short id. Created on demand like the rest. */
+let racesReady = false;
+async function ensureRaces(env: Env): Promise<void> {
+  if (racesReady) return;
+  let ok = true;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS races (
+    id TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL,
+    seconds INTEGER,
+    tape TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`).run().catch(() => { ok = false; });
+  if (ok) racesReady = true;
+}
 let tapesReady = false;
 async function ensureTapes(env: Env): Promise<void> {
   if (tapesReady) return;
@@ -689,6 +705,46 @@ export default {
         // player's bucket standing stale, but that should never happen silently
         .catch((err) => console.error("league update failed", pid, seat.week, err));
       return json({ ok: true }, h);
+    }
+
+    /**
+     * The async race. A shared run's tape is kept here under a short id and the share link
+     * carries the id; whoever opens the link gets the tape and climbs the same fridge with
+     * the sharer's ghost beside them. The tape is the player's own (token), sized like a daily
+     * tape, and checked for shape only: a ghost that cheats only beats itself.
+     */
+    if (req.method === "POST" && url.pathname === "/race") {
+      if (await rateLimited(env, `race:${clientIp(req)}`, 10, 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { playerId?: unknown; token?: unknown; name?: unknown; tape?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      if (!playerId || token.length < 16 || !(await ownsProfile(env, playerId, token))) return json({ error: "forbidden" }, h, 403);
+      const tape = body.tape as { v?: unknown; seed?: unknown; world?: unknown; events?: unknown; cm?: unknown; seconds?: unknown } | undefined;
+      const cm = Math.floor(Number(tape?.cm));
+      if (!tape || tape.v !== 1 || !Number.isFinite(Number(tape.seed)) || !Number.isFinite(Number(tape.world))
+        || !Array.isArray(tape.events) || !tape.events.length || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad tape" }, h, 400);
+      const text = JSON.stringify(tape);
+      if (text.length > MAX_TAPE_BYTES) return json({ error: "tape too long" }, h, 413);
+      let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "a friend";
+      if (nameIsProfane(name)) name = "a friend";
+      await ensureRaces(env);
+      const bytes = crypto.getRandomValues(new Uint8Array(8));
+      const id = Array.from(bytes, (b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+      const secs = Number.isFinite(Number(tape.seconds)) ? Math.max(0, Math.min(86400, Math.round(Number(tape.seconds)))) : 0;
+      await env.DB.prepare("INSERT INTO races (id, player_id, name, cm, seconds, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, playerId, name, cm, secs, text, Date.now()).run();
+      return json({ ok: true, id }, h);
+    }
+    if (req.method === "GET" && url.pathname === "/race") {
+      const id = url.searchParams.get("id") ?? "";
+      if (!/^[a-z0-9]{6,16}$/.test(id)) return json({ error: "bad id" }, h, 400);
+      await ensureRaces(env);
+      const row = await env.DB.prepare("SELECT name, cm, seconds, tape FROM races WHERE id = ?").bind(id).first<{ name: string; cm: number; seconds: number; tape: string }>();
+      if (!row) return json({ error: "not found" }, h, 404);
+      let tape: unknown = null;
+      try { tape = JSON.parse(row.tape); } catch { return json({ error: "bad tape" }, h, 500); }
+      return new Response(JSON.stringify({ id, name: row.name, cm: row.cm, seconds: row.seconds, tape }), { headers: { ...h, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
     }
 
     if (req.method === "GET" && url.pathname === "/chat") {
