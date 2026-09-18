@@ -40,9 +40,14 @@ beside whoever opened it.
 to the other phone, where they drive a ghost beside the live toy; both tapes
 are replayed by the room and the result is what the replays say.
 
+**Accounts (wired, switched off)** — Google/Apple sign-in through Firebase Auth,
+loaded from Google's CDN only when tapped; the Worker verifies the ID token
+against Google's keys and ties the account to the profile, so signing in on a
+second phone adopts it like a link code. Switch on with `VITE_FIREBASE_CONFIG`
+on the game and `FIREBASE_PROJECT_ID` on the Worker.
+
 ## Now
-14. **Accounts:** Sign in with Google/Apple on top of the current link codes
-    (needs OAuth client ids from the owner).
+Set up the Firebase project and flip accounts on. Then the feel pass.
 
 ## Next — social and progression
 8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10

@@ -28,6 +28,10 @@ import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
 export { MatchRoom } from "./match";
+import { verifyFirebaseIdToken, type Jwks } from "./auth";
+/** swapped in tests for a key the test signed with */
+export let jwksForTests: Jwks | undefined;
+export function setJwksForTests(j: Jwks | undefined): void { jwksForTests = j; }
 import { World } from "../../src/game/world";
 
 /** Server-side mirror of the client name filter — same word list, same leetspeak/Unicode/
@@ -98,6 +102,8 @@ export interface Env {
   ADMIN_KEY?: string;
   /** one Durable Object per live race, see match.ts; absent until the binding is deployed */
   MATCH?: DurableObjectNamespace;
+  /** the Firebase project whose sign-ins are accepted at /auth; accounts are off until it is set */
+  FIREBASE_PROJECT_ID?: string;
 }
 
 const MAX_CM = 200_000;
@@ -306,6 +312,22 @@ const DAILY_WORLD = new World(1, 0).version;
 
 /** Every daily tape the Worker has been shown, with what replaying it gave. */
 /** Shared runs for the async race, by short id. Created on demand like the rest. */
+/** A signed-in account (Firebase uid) and the player profile it plays as. Created on demand. */
+let accountsReady = false;
+async function ensureAccounts(env: Env): Promise<void> {
+  if (accountsReady) return;
+  let ok = true;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS accounts (
+    uid TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    provider TEXT,
+    email TEXT,
+    created_at INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS accounts_player ON accounts (player_id)").run().catch(() => { ok = false; });
+  if (ok) accountsReady = true;
+}
 let racesReady = false;
 async function ensureRaces(env: Env): Promise<void> {
   if (racesReady) return;
@@ -755,6 +777,45 @@ export default {
      * /match/<id>/ws and the room does the rest (match.ts). No token: the id is the secret,
      * and a room settles on replayed tapes, so nothing a stranger sends can win it a race.
      */
+    /**
+     * Sign in. The phone sends the Firebase ID token it just got, plus the profile it is playing
+     * as. The token is checked against Google's keys (auth.ts). An account seen before answers
+     * with its own profile, which the phone adopts the way a link code is claimed; a new one is
+     * tied to the profile the phone brought, which it must own.
+     */
+    if (req.method === "POST" && url.pathname === "/auth") {
+      if (!env.FIREBASE_PROJECT_ID) return json({ error: "accounts are not switched on" }, h, 503);
+      if (await rateLimited(env, `auth:${clientIp(req)}`, 20, 10 * 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { idToken?: unknown; playerId?: unknown; token?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const idToken = String(body.idToken ?? "").slice(0, 4096);
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      let who;
+      try { who = await verifyFirebaseIdToken(idToken, env.FIREBASE_PROJECT_ID, jwksForTests); }
+      catch (err) { return json({ error: "sign-in rejected", reason: String((err as Error).message ?? err).slice(0, 60) }, h, 401); }
+      // the profile the phone brought must be its own and on file, so the account can be tied to it
+      const mine = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!playerId || !mine || mine.token !== token) return json({ error: "save first" }, h, 403);
+      await ensureAccounts(env);
+      const now = Date.now();
+      const known = await env.DB.prepare("SELECT player_id FROM accounts WHERE uid = ?").bind(who.uid).first<{ player_id: string }>();
+      if (known) {
+        await env.DB.prepare("UPDATE accounts SET last_seen = ? WHERE uid = ?").bind(now, who.uid).run().catch(() => {});
+        if (known.player_id === playerId) return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+        const sv = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(known.player_id).first<{ token: string; blob: string; rev: number }>();
+        // the account's profile has gone (an admin wipe); the account follows the phone instead
+        if (!sv) {
+          await env.DB.prepare("UPDATE accounts SET player_id = ?, last_seen = ? WHERE uid = ?").bind(playerId, now, who.uid).run();
+          return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+        }
+        return json({ ok: true, adopted: true, playerId: known.player_id, token: sv.token, blob: sv.blob, rev: sv.rev, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+      }
+      await env.DB.prepare("INSERT INTO accounts (uid, player_id, provider, email, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(who.uid, playerId, who.provider ?? null, who.email ?? null, now, now).run();
+      return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+    }
+
     if (req.method === "POST" && url.pathname === "/match") {
       if (!env.MATCH) return json({ error: "live races are not switched on" }, h, 503);
       if (await rateLimited(env, `match:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);

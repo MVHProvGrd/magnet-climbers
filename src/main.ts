@@ -18,6 +18,7 @@ import { groupNum } from "./game/hud";
 import { Ghost, LiveGhost, loadBestTape, saveBestTape } from "./game/ghost";
 import { makeRng, World } from "./game/world";
 import { LiveMatch, createMatch, matchLink, type LiveResultRow } from "./game/live";
+import { accountsEnabled, signIn, signOut, finishRedirect, type AuthResult } from "./game/account";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -147,6 +148,44 @@ function mergeCloudBlob(blob: string) {
     save.missionsDone = Math.max(save.missionsDone, c.missionsDone ?? 0);
   } catch { /* ignore */ }
 }
+/**
+ * Take over another profile on this phone (a link code, or an account that already plays as
+ * one), folding this phone's progress into it rather than losing it. Returns whether there
+ * was anything here worth folding in.
+ */
+async function adoptProfile(r: { playerId: string; token: string; blob: string; rev: number }): Promise<boolean> {
+  // remember this device's old profile so it can be folded in rather than lost
+  const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
+  save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
+  applyCloudBlob(r.blob);
+  const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
+  if (hadProgress && old.id !== save.playerId) {
+    // wallet and lifetime add; records and upgrades take the higher; skins union
+    save.coins += old.coins; save.gems += old.gems;
+    save.totalCm += old.totalCm; save.runs += old.runs;
+    save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
+    for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
+    save.skins = Array.from(new Set([...save.skins, ...old.skins]));
+    save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
+    save.patterns = Array.from(new Set([...save.patterns, ...old.patterns]));
+    migrateLooks(save);
+    void cloud.merge(old.id, old.token, save.playerId, save.token);
+  }
+  persist();
+  clearSnapshot();
+  await cloudSync("link");
+  return hadProgress && old.id !== save.playerId;
+}
+
+/** A sign-in came back from the Worker: either this profile is now the account's, or the account's profile is now this phone's. */
+async function signedIn(r: AuthResult): Promise<void> {
+  let merged = false;
+  if (r.adopted) merged = await adoptProfile(r);
+  save.account = { uid: r.uid, provider: r.provider, email: r.email }; persist();
+  ui.toast(r.adopted ? (merged ? `Signed in and merged. Welcome back, ${save.name}` : `Signed in. Welcome back, ${save.name}`) : "Signed in. This climber now follows your account.");
+  ui.showMenu();
+}
+
 let syncing = false;
 async function cloudSync(reason: string) {
   if (!leaderboardEnabled || syncing) return;
@@ -306,29 +345,30 @@ const ui = new Ui(uiRoot, () => save, {
     void (async () => {
       const r = await cloud.claim(code);
       if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
-      // remember this device's old profile so it can be folded in rather than lost
-      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
-      save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
-      applyCloudBlob(r.blob);
-      const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
-      if (hadProgress && old.id !== save.playerId) {
-        // wallet and lifetime add; records and upgrades take the higher; skins union
-        save.coins += old.coins; save.gems += old.gems;
-        save.totalCm += old.totalCm; save.runs += old.runs;
-        save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
-        for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
-        save.skins = Array.from(new Set([...save.skins, ...old.skins]));
-        save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
-        save.patterns = Array.from(new Set([...save.patterns, ...old.patterns]));
-        migrateLooks(save);
-        void cloud.merge(old.id, old.token, save.playerId, save.token);
-      }
-      persist();
-      clearSnapshot();
-      await cloudSync("link");
-      ui.toast(hadProgress ? `Linked and merged. Welcome back, ${save.name}` : `Linked. Welcome back, ${save.name}`);
+      const merged = await adoptProfile(r);
+      ui.toast(merged ? `Linked and merged. Welcome back, ${save.name}` : `Linked. Welcome back, ${save.name}`);
       ui.showMenu();
     })();
+  },
+  onSignIn: (provider) => {
+    void (async () => {
+      if (!accountsEnabled) { ui.toast("Accounts are not switched on yet"); return; }
+      try {
+        // the account is tied to the profile on file, so the profile goes up first
+        await cloudSync("auth");
+        ui.toast("Opening sign-in…");
+        const r = await signIn(provider, save.playerId, save.token);
+        if (r) await signedIn(r);
+      } catch (err) {
+        ui.toast(`Sign-in failed: ${String((err as Error).message ?? err).slice(0, 60)}`);
+      }
+    })();
+  },
+  onSignOut: () => {
+    void signOut().catch(() => {});
+    // the profile stays on this phone; only the tie to the account is forgotten here
+    save.account = null; persist(); ui.showSettings();
+    ui.toast("Signed out. Your climber is still here.");
   },
   onSetAvatar: (id) => { save.avatar = id; persist(); void cloudSync("avatar"); },
   onSetName: (name) => {
@@ -1023,6 +1063,8 @@ async function cloudPull(quiet = false) {
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
+// an installed app that left for Google or Apple to sign in lands back here with the result
+void finishRedirect(save.playerId, save.token).then((r) => { if (r) void signedIn(r); }).catch((err) => ui.toast(`Sign-in failed: ${String((err as Error).message ?? err).slice(0, 60)}`));
 void resubmitBests();
 // before anything draws a menu, so the board is today's rather than yesterday's
 ensureDailyMissions();

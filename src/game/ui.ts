@@ -1,4 +1,5 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { accountsEnabled } from "./account";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
 import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
@@ -52,6 +53,9 @@ export interface UiHandlers {
   onSetAvatar(id: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
+  /** Sign in with Google or Apple; the profile follows the account across phones. */
+  onSignIn(provider: "google" | "apple"): void;
+  onSignOut(): void;
   onOpenBoard(): void;
   onEnterCode(code: string): void;
   onTutorial(): void;
@@ -790,6 +794,9 @@ export class Ui {
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         <p class="sec-label">Play on another device</p>
+        ${accountsEnabled ? (s.account
+          ? row("Signed in", `${esc(s.account.email || s.account.provider || "account")} · this profile follows you to any phone you sign in on`, chip("signout", "SIGN OUT"))
+          : row("Sign in", "Google or Apple. Sign in on another phone and this profile is there.", `${chip("google", "GOOGLE")} ${chip("apple", "APPLE")}`)) : ""}
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
         <p class="sec-label">Preferences</p>
@@ -839,6 +846,8 @@ export class Ui {
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
+      if (a === "google" || a === "apple") { this.h.onSignIn(a); return; }
+      if (a === "signout") { this.h.onSignOut(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.

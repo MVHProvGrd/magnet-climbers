@@ -66,6 +66,8 @@ export interface SaveData {
   missionsDay: string;
   /** the daily climb already taken: its UTC day, what it scored, and the streak it continued */
   daily: { day: string; cm: number } | null;
+  /** the signed-in account this profile is tied to, for the settings page; the Worker holds the real mapping */
+  account: { uid: string; provider: string | null; email: string | null } | null;
   /** consecutive days with a daily climb, and the last day counted */
   streak: { days: number; last: string };
   /** the one-time name offer has been shown */
@@ -102,6 +104,7 @@ function defaults(): SaveData {
     missionsDone: 0,
     missionsDay: "",
     daily: null,
+    account: null,
     streak: { days: 0, last: "" },
     sound: true,
     music: true,

@@ -393,3 +393,66 @@ test("a live race with one tape unverified, or one player gone, still settles", 
   n.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
   assert.deepEqual(c, [{ k: "wait", id: "B" }]);
 });
+
+// Accounts: a Firebase ID token signed by a key the test made, verified against that key.
+import { setJwksForTests } from "../worker/src/index";
+import { verifyFirebaseIdToken } from "../worker/src/auth";
+const b64u = (b: ArrayBuffer | Uint8Array | string) => {
+  const bytes = typeof b === "string" ? new TextEncoder().encode(b) : new Uint8Array(b as ArrayBuffer);
+  return Buffer.from(bytes).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+async function firebaseKeys() {
+  const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const kid = "test-kid";
+  const sign = async (claims: Record<string, unknown>) => {
+    const head = b64u(JSON.stringify({ alg: "RS256", kid, typ: "JWT" })), body = b64u(JSON.stringify(claims));
+    const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(`${head}.${body}`));
+    return `${head}.${body}.${b64u(sig)}`;
+  };
+  const jwks = async () => [{ kid, kty: "RSA", alg: "RS256", n: jwk.n!, e: jwk.e! }];
+  return { sign, jwks };
+}
+const claimsFor = (uid: string, project = "mc-test", now = Math.floor(Date.now() / 1000)) => ({
+  iss: `https://securetoken.google.com/${project}`, aud: project, sub: uid, user_id: uid, iat: now - 5, exp: now + 3600, auth_time: now - 5,
+  email: `${uid}@example.com`, firebase: { sign_in_provider: "google.com" },
+});
+
+test("a Firebase ID token is verified on signature and claims alone", async () => {
+  const { sign, jwks } = await firebaseKeys();
+  const who = await verifyFirebaseIdToken(await sign(claimsFor("u1")), "mc-test", jwks);
+  assert.deepEqual(who, { uid: "u1", email: "u1@example.com", provider: "google.com" });
+  await assert.rejects(verifyFirebaseIdToken(await sign(claimsFor("u1", "other-project")), "mc-test", jwks), /another project/);
+  await assert.rejects(verifyFirebaseIdToken(await sign({ ...claimsFor("u1"), exp: Math.floor(Date.now() / 1000) - 10 }), "mc-test", jwks), /expired/);
+  const good = await sign(claimsFor("u1"));
+  const tampered = good.slice(0, -4) + (good.endsWith("AAAA") ? "BBBB" : "AAAA");
+  await assert.rejects(verifyFirebaseIdToken(tampered, "mc-test", jwks), /bad signature/);
+  const other = await firebaseKeys();
+  await assert.rejects(verifyFirebaseIdToken(await other.sign(claimsFor("u1")), "mc-test", jwks), /bad signature|unknown signing key/);
+});
+
+test("/auth ties a new account to the phone's profile and hands a known account's profile to a second phone", async () => {
+  const { sign, jwks } = await firebaseKeys();
+  setJwksForTests(jwks);
+  try {
+    const e = { ...env(), FIREBASE_PROJECT_ID: "mc-test" } as Env;
+    const phoneA = await seedPlayer(e, "acc");
+    const idToken = await sign(claimsFor("uid-42"));
+    const forged = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: "not-the-token" }), e);
+    assert.equal(forged.status, 403);
+    const bad = await worker.fetch(post("/auth", { idToken: "nope", playerId: phoneA.playerId, token: phoneA.token }), e);
+    assert.equal(bad.status, 401);
+    const first = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: phoneA.token }), e);
+    assert.equal(first.status, 200);
+    const j1 = (await first.json()) as { adopted: boolean; playerId: string; uid: string };
+    assert.deepEqual([j1.adopted, j1.playerId, j1.uid], [false, phoneA.playerId, "uid-42"]);
+    // the same account from a second phone: that phone adopts phone A's profile
+    const phoneB = await seedPlayer(e, "acc");
+    const second = await worker.fetch(post("/auth", { idToken: await sign(claimsFor("uid-42")), playerId: phoneB.playerId, token: phoneB.token }), e);
+    const j2 = (await second.json()) as { adopted: boolean; playerId: string; token: string };
+    assert.deepEqual([j2.adopted, j2.playerId, j2.token], [true, phoneA.playerId, phoneA.token]);
+    // and off when the project is not configured
+    const off = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: phoneA.token }), env());
+    assert.equal(off.status, 503);
+  } finally { setJwksForTests(undefined); }
+});
