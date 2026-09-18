@@ -10,7 +10,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from "./game/creatures";
 import { dailyBoard, liveProgress, missionById, missionText, settle, streakReward, type RunTally } from "./game/missions";
-import { monthKey, themeFor } from "./game/fridge-theme";
+import { monthKey, themeFor, setPlainSteel } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -70,6 +70,7 @@ loadPlacement();
 let save = loadSave();
 setSound(save.sound);
 setMusic(save.music);
+setPlainSteel(save.plainSteel);
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
 document.addEventListener("keydown", unlockAudio);
 /** Bring the ledger up to the balance: whatever changed since it last looked is income or spend. */
@@ -321,6 +322,7 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
+  onTogglePlainSteel: () => { save.plainSteel = !save.plainSteel; setPlainSteel(save.plainSteel); backdropDrawn = false; persist(); },
   onSetLang: (l) => { save.lang = l; setLang(l); persist(); },
   onToggleMute: () => {
     const on = !save.sound && !save.music;

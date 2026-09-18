@@ -9,7 +9,7 @@
  */
 import { W } from "./config";
 import type { Bumper, NoStickZone } from "./types";
-import { themeFor } from "./fridge-theme";
+import { doorTheme } from "./fridge-theme";
 import { DOOR_SEAM } from "./world";
 
 // ---------------------------------------------------------------------------
@@ -112,8 +112,9 @@ function grain(ctx: CanvasRenderingContext2D): CanvasPattern {
 /** Base tone + grain baked into one world-locked tile, so a frame is a few blits instead of an overlay blend. */
 let steelTile: { key: string; canvas: HTMLCanvasElement } | null = null;
 function steel(ctx: CanvasRenderingContext2D, scale: number): HTMLCanvasElement {
-  // the door is repainted on the first of the month, so the theme is part of the tile's identity
-  const theme = themeFor();
+  // the door is repainted on the first of the month, so the theme is part of the tile's identity;
+  // a phone that keeps the plain steel gets the stainless tile whatever the month
+  const theme = doorTheme();
   const key = `${scale}@${theme.id}`;
   if (steelTile?.key === key) return steelTile.canvas;
   const c = document.createElement("canvas");

@@ -54,6 +54,12 @@ export const FRIDGE_THEMES: readonly FridgeTheme[] = [
 /** September's brushed stainless is the one the game shipped with, so it is the fallback. */
 export const DEFAULT_THEME = FRIDGE_THEMES[8];
 
+/** The owner of this phone would rather the door stayed stainless; the month still hands out its pattern. */
+let plainSteel = false;
+export function setPlainSteel(on: boolean): void { plainSteel = on; }
+/** What the door is painted: the month's tint, or the plain steel when the phone asked for it. */
+export function doorTheme(at: number | Date = Date.now()): FridgeTheme { return plainSteel ? DEFAULT_THEME : themeFor(at); }
+
 export function themeFor(at: number | Date = Date.now()): FridgeTheme {
   const month = zoned(typeof at === "number" ? at : at.getTime()).m;
   return FRIDGE_THEMES.find((t) => t.month === month) ?? DEFAULT_THEME;
