@@ -879,8 +879,9 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   game.viewH = viewH;
   ui.setInRun(true);
   backdropDrawn = false; appEl.classList.add("in-run");
-  // every race starts on a count, live or against a tape
-  if (liveRace || raceTape) countdown(liveRace?.countdownMs ?? 3000);
+  // every run starts on a count: a full one for a race, a brisk one on your own; the coached
+  // first run skips it so its first bubble is the first thing seen
+  if (!withTutorial) countdown(liveRace?.countdownMs ?? (raceTape ? 3000 : 1800));
 }
 
 /**
