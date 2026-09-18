@@ -27,7 +27,7 @@ ALLOWED_ORIGINS = "https://magnetclimbers.com,https://www.magnetclimbers.com,htt
 # Reminders (Web Push). node scripts/vapid-keys.mjs prints the pair: the public key goes here,
 # the private JWK in:  npx wrangler secret put VAPID_PRIVATE_KEY
 # Empty means reminders are off: /push/key answers 503 and the game offers no toggle.
-VAPID_PUBLIC_KEY = "PASTE_PUBLIC_KEY"
+VAPID_PUBLIC_KEY = "BNUEsGbchXzcyx2w35lmuiQqjWrDNY0q3C4Gw3bEkgT4eUZXDfHE9qLFKVN1Gi0DgsU5uOHFFfVjZyU57VWkpnQ"
 VAPID_SUBJECT = "mailto:hello@magnetclimbers.com"
 
 # Accounts: the Firebase project whose Google/Apple sign-ins /auth accepts. Leave empty and
