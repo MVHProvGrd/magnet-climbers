@@ -407,11 +407,11 @@ export class Ui {
           // earned the line had nothing left to say, so it sat there saying the nonsense.
           const t = themeFor(), month = new Date().toLocaleString("en", { month: "long" });
           const has = s.patterns.includes(t.pattern);
-          return `<p class="home-month">${esc(month)}'s door: <b>${esc(t.name)}</b>${
-            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"}</p>`;
+          return `<div class="home-lines"><button class="home-month" data-a="patterns">${esc(month)}'s door: <b>${esc(t.name)}</b>${
+            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"} \u203a</button>
+        <p class="home-stats">${s.runs.toLocaleString()} runs \u00b7 ${fmtDistance(s.totalCm)} climbed lifetime</p>
+        <p class="home-stats global" hidden></p></div>`;
         })()}
-        <p class="home-stats">${s.runs.toLocaleString()} runs · ${fmtDistance(s.totalCm)} climbed lifetime</p>
-        <p class="home-stats global" hidden></p>
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS <span class="muted">· new in <span data-reset>${Ui.resetIn()}</span></span></span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
@@ -435,6 +435,7 @@ export class Ui {
       if (a === "live") this.h.onLiveRace();
       // the wallet chip is still a way in, and lands on what the coins are for
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
+      if (a === "patterns") this.showCollection("patterns");
       if (a === "board") this.showBoard("solo");
       if (a === "settings") this.showSettings();
       if (a === "tutorial") this.showHowToPlay();
@@ -522,7 +523,14 @@ export class Ui {
           <b>${esc(c.name)}</b><span>${has ? esc(c.blurb) : "🔒 " + esc(unlockText(c.unlock))}</span>${on ? "<i class=\"tick\">WEARING</i>" : ""}
         </button>`; }).join("")}</div>`;
     } else if (tab === "patterns") {
-      body = `<div class="guide-grid">${PATTERNS.map((k) => {
+      const thisMonth = themeFor().id;
+      const calendar = `<p class="sec-label">The year's doors \u00b7 one pattern each, only that month</p>
+        <div class="months">${FRIDGE_THEMES.map((t) => {
+          const k = PATTERNS.find((x) => x.id === t.pattern), own = s.patterns.includes(t.pattern), now = t.id === thisMonth;
+          const mon = new Date(2026, t.month - 1, 1).toLocaleString("en", { month: "short" });
+          return `<div class="month ${now ? "now" : ""} ${own ? "own" : ""}"><i>${mon}</i><b>${esc(t.name)}</b><span class="swatches">${(k?.colors ?? []).slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join("")}</span><small>${own ? "\u2713 yours" : now ? "climb once this month" : ""}</small></div>`;
+        }).join("")}</div>`;
+      body = calendar + `<div class="guide-grid">${PATTERNS.map((k) => {
         const on = s.pattern === k.id, has = s.patterns.includes(k.id);
         return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-p="${k.id}" ${has ? "" : "disabled"}>
           <canvas width="200" height="200" data-look="${has ? s.creature : "toy"}|${k.id}"></canvas>

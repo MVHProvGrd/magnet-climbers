@@ -577,7 +577,17 @@ select.buy option { background: #1e2229; color: #fff; }
 /* The theme name and pattern warning are information, not decoration, so they sit on their
    own scrim chip -- like .home-missions below -- rather than as thin text laid straight over
    whatever photo is behind the dock. */
+.home-lines { display: flex; flex-direction: column; gap: calc(2 * var(--px)); padding: calc(2 * var(--px)) 0; }
 .home-stats { margin: 0; text-align: center; font: 600 calc(12 * var(--px)) var(--display); opacity: .62; }
+.home-month { background: none; border: 0; color: inherit; cursor: pointer; }
+/* the year's doors, on the patterns tab: a strip of twelve, this month lit, the ones you own ticked */
+.months { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(6 * var(--px)); margin: 0 0 calc(10 * var(--px)); }
+.month { display: flex; flex-direction: column; gap: 2px; padding: calc(6 * var(--px)) calc(8 * var(--px)); border-radius: calc(10 * var(--px)); background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); opacity: .8; }
+.month.now { box-shadow: inset 0 0 0 2px var(--chill, #9be15d); opacity: 1; }
+.month.own { opacity: 1; }
+.month i { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: 1px; text-transform: uppercase; opacity: .6; font-style: normal; }
+.month b { font: 800 calc(12 * var(--px)) var(--display); line-height: 1.1; }
+.month small { font-size: calc(10 * var(--px)); opacity: .7; min-height: calc(12 * var(--px)); }
 .home-month { margin: 0; text-align: center; font: 700 calc(13 * var(--px)) var(--display);
   letter-spacing: calc(0.6 * var(--px)); color: rgba(255,255,255,0.85);
   background: rgba(20,24,30,0.55); border-radius: calc(10 * var(--px));
