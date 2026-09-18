@@ -408,6 +408,16 @@ test("a host who steps away before the start keeps the seat; the race starts whe
   n.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
   assert.equal(a.at(-1)?.k, "start"); assert.equal(b.at(-1)?.k, "start");
   assert.equal(n.lobby, null, "nothing to keep once the race is on");
+  // a host who closes the lobby is named to the friend still waiting in it
+  const q = new Match(replay); const c: Message[] = [];
+  q.join({ id: "A", name: "Ann", world: 27, send: () => {} });
+  q.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
+  assert.equal(q.started, true);
+  const r = new Match(replay); const d: Message[] = [];
+  r.join({ id: "A", name: "Ann", world: 27, send: () => {} }); r.away("A");
+  r.join({ id: "B", name: "Bob", world: 27, send: (x) => d.push(x) });
+  r.leave("A");
+  assert.deepEqual(d.slice(1), [{ k: "left", id: "A", name: "Ann" }, { k: "wait", id: "B", others: [] }]);
 });
 
 // Accounts: a Firebase ID token signed by a key the test made, verified against that key.

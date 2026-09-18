@@ -44,7 +44,7 @@ export type Message =
   | { k: "again"; id: string }
   | { k: "watching"; id: string; players: { id: string; name: string }[] }
   | { k: "ended"; id: string; cm: number }
-  | { k: "left"; id: string }
+  | { k: "left"; id: string; name?: string }
   | { k: "result"; rows: { id: string; name: string; cm: number; verified: boolean; reason?: string }[]; winner: string | null };
 
 /** How long the room waits for the second tape once the first is in. */
@@ -176,7 +176,13 @@ export class Match {
     this.watchers = this.watchers.filter((w) => w.id !== id);
     const seat = this.seats.find((s) => s.id === id);
     if (!seat) return;
-    if (!this.started) { this.seats = this.seats.filter((s) => s !== seat); this.sendWait(); return; }
+    if (!this.started) {
+      // gone before the start: the others hear who closed the lobby, then what is left of it
+      this.seats = this.seats.filter((s) => s !== seat);
+      for (const s of this.seats) s.send({ k: "left", id, name: seat.name });
+      this.sendWait();
+      return;
+    }
     for (const s of this.seats) if (s !== seat) s.send({ k: "left", id });
     if (!seat.done) { seat.done = true; if (this.seats.every((s) => s.done)) this.settle(); }
   }
@@ -218,7 +224,8 @@ type Inbound =
   | { k: "hello"; id: string; name: string; world: number; look?: { creature?: unknown; pattern?: unknown }; watch?: boolean }
   | { k: "in"; e: unknown }
   | { k: "done"; tape: unknown; cm: number }
-  | { k: "again" };
+  | { k: "again" }
+  | { k: "bye" };
 
 const NAME_RE = /[^\p{L}\p{N} _.\-!?]/gu;
 
@@ -279,6 +286,8 @@ export class MatchRoom {
     const id = this.who.get(ws);
     if (!id) return;
     if (m.k === "again") this.match.again(id);
+    // the lobby was closed on purpose: no hold, the seat goes now and the other phone is told
+    if (m.k === "bye") { this.who.delete(ws); this.match.leave(id); this.keepLobby(); }
     if (m.k === "in") this.match.input(id, m.e);
     if (m.k === "done") {
       const waiting = this.match.finish(id, m.tape, Math.floor(Number(m.cm)) || 0);

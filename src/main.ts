@@ -678,7 +678,7 @@ function joinLive(id: string, host = false): void {
     try { if (navigator.share) { await navigator.share({ title: "Magnet Climbers", text, url: link }); return; } } catch { /* cancelled */ }
     try { await navigator.clipboard.writeText(`${text} ${link}`); ui.toast("Link copied. Send it to a friend."); } catch { ui.toast("Could not copy the link"); }
   };
-  const panel = ui.showLiveLobby({ link, status: "Connecting…", host, onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
+  const panel = ui.showLiveLobby({ link, status: "Connecting…", host, onShare: () => void share(), onCancel: () => { live?.bye(); live = null; ui.showMenu(); } });
   let liveSeed = 0;
   const m = new LiveMatch(id, {
     // the other seat may be held by a phone that stepped away (off texting the link, say)
@@ -702,7 +702,11 @@ function joinLive(id: string, host = false): void {
     watching: (players) => { liveWatching = players.map((p) => p.id); ui.setLiveStatus(panel, players.length ? `Watching ${players.map((p) => p.name).join(" v ")}…` : "Watching. Waiting for two climbers…"); },
     // the ghost stops where the friend's run did and stays drawn there, so you can see what you are beating
     ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · their ghost stays where it got to`); },
-    left: () => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race · their ghost stays where it got to`); },
+    left: (name) => {
+      // before the start there is no race to leave, only a lobby the other phone closed
+      if (!game) { ui.setLiveStatus(panel, `${name || "Your friend"} closed the race. Send the link back to try again, or cancel.`); return; }
+      if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race · their ghost stays where it got to`);
+    },
     result: (rows, winner) => showLiveResult(rows, winner),
     refused: (why) => {
       // a full room is still worth a look: the phone goes back in as a watcher

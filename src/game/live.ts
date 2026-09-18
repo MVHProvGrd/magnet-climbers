@@ -20,7 +20,8 @@ export interface LiveHandlers {
   /** this phone is watching, not racing */
   watching(players: { id: string; name: string }[]): void;
   ended(cm: number): void;
-  left(): void;
+  /** the other player is gone; `name` comes with it before the start, when nothing else knows them */
+  left(name?: string): void;
   result(rows: LiveResultRow[], winner: string | null): void;
   /** the room refused: full, or the other phone is on another build */
   refused(why: "full" | "update"): void;
@@ -83,7 +84,7 @@ export class LiveMatch {
       else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.players as LivePlayer[] | undefined);
       else if (m.k === "in") this.on.input(m.e as TapeEvent, m.from as string | undefined);
       else if (m.k === "ended") this.on.ended(m.cm as number);
-      else if (m.k === "left") this.on.left();
+      else if (m.k === "left") this.on.left(m.name as string | undefined);
       else if (m.k === "again") this.on.again(m.id as string);
       else if (m.k === "watching") this.on.watching(m.players as { id: string; name: string }[]);
       else if (m.k === "result") this.on.result(m.rows as LiveResultRow[], m.winner as string | null);
@@ -107,6 +108,8 @@ export class LiveMatch {
   again(): void { this.send({ k: "again" }); }
   /** Back into the room as a watcher: the ghosts of both, none of your own. */
   watch(): void { if (this.hello) { this.hello = { ...this.hello, watch: true }; this.close(false); this.open(); } }
+  /** Leave on purpose: the room frees the seat now instead of holding it. */
+  bye(): void { if (this.ws?.readyState === WebSocket.OPEN) { try { this.ws.send(JSON.stringify({ k: "bye" })); } catch { /* gone */ } } this.close(); }
   close(forGood = true): void {
     if (forGood) { this.closedByUs = true; document.removeEventListener("visibilitychange", this.onVisible); }
     if (this.retry) { clearTimeout(this.retry); this.retry = null; }
