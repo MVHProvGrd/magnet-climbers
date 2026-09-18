@@ -1,7 +1,7 @@
 import { appearanceFor } from "./creatures";
 import { CFG, W } from "./config";
 import type { Game } from "./game";
-import { drawClimber, drawClimberShadow, setArmStretch, getArmStretch } from "./climber-render";
+import { drawClimber, drawClimberShadow, drawClimberFaded, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
 import { drawCatPaw, drawScratches } from "./cat-paw";
@@ -130,12 +130,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   for (const gg of [g.ghost, g.ghost2]) {
     const gh = gg?.climber;
     if (gh && gh.state !== "lost" && gh.y > top - 80 && gh.y < bottom + 80) {
-      ctx.save();
-      // a watcher has no toy of their own, so the ghosts are the whole picture and draw solid
-      ctx.globalAlpha = g.spectator ? 0.9 : 0.34;
-      drawClimber(ctx, gh, false, g.time, appearanceFor(gh));
-      ctx.restore();
-      ctx.globalAlpha = 1;
+      // a watcher has no toy of their own, so the ghosts are the whole picture and draw near solid
+      drawClimberFaded(ctx, gh, g.time, appearanceFor(gh), g.spectator ? 0.9 : 0.34);
     }
   }
 
