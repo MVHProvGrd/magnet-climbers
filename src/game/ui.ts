@@ -1,6 +1,7 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { accountsEnabled } from "./account";
 import { nextDayStart } from "./day";
+import { pushSupported } from "./push";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
 import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
@@ -38,6 +39,10 @@ export interface UiHandlers {
   onRevive(method: "token" | "ad" | "gems"): void;
   onToggleSound(): void;
   onToggleMusic(): void;
+  /** Keep the plain stainless door all year; the month's pattern is still earned. */
+  onTogglePlainSteel(): void;
+  /** Reminders: today's fridge at six, the league on Monday, the month's door on the first. */
+  onToggleReminders(): void;
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
@@ -62,8 +67,8 @@ export interface UiHandlers {
   onTutorial(): void;
   /** Frame-time report for on-device performance QA (see main.ts perfReport). */
   onPerf(): unknown;
-  onShare(c: { mode: "solo"; cm: number }): void;
-  onAcceptChallenge(mode: "solo"): void;
+  onShare(c: { mode: "solo" | "daily"; cm: number }): void;
+  onAcceptChallenge(mode: "solo" | "daily"): void;
   /** Global chat send: the stored message on success, an error string, or null if unreachable. */
   onChat(text: string): Promise<ChatMessage | string | null>;
 }
@@ -335,7 +340,7 @@ export class Ui {
             // always a tile, portrait or initial, so the two lines start at the same x
             return `<span>${avatarHtml(face, m.name, "calc(20 * var(--px))")}<b style="color:${nameColor(m.name)}">${esc(m.name)}:</b> ${esc(m.text)}</span>`; }).join("")
         : `<i>${t("Global chat")} · ${r.online} ${t("online")}</i>`;
-      const unread = r.messages.filter((m) => m.id > chatSeen()).length;
+      const unread = r.messages.filter((m) => m.id > chatSeen() && m.player_id !== this.save().playerId).length;
       if (badge) { badge.hidden = !unread; badge.textContent = unread > 99 ? "99+" : String(unread); }
     });
   }
@@ -407,11 +412,11 @@ export class Ui {
           // earned the line had nothing left to say, so it sat there saying the nonsense.
           const t = themeFor(), month = new Date().toLocaleString("en", { month: "long" });
           const has = s.patterns.includes(t.pattern);
-          return `<p class="home-month">${esc(month)}'s door: <b>${esc(t.name)}</b>${
-            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"}</p>`;
+          return `<div class="home-lines"><button class="home-month" data-a="patterns">${esc(month)}'s door: <b>${esc(t.name)}</b>${
+            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"} \u203a</button>
+        <p class="home-stats">${s.runs.toLocaleString()} runs \u00b7 ${fmtDistance(s.totalCm)} climbed lifetime</p>
+        <p class="home-stats global" hidden></p></div>`;
         })()}
-        <p class="home-stats">${s.runs.toLocaleString()} runs · ${fmtDistance(s.totalCm)} climbed lifetime</p>
-        <p class="home-stats global" hidden></p>
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS <span class="muted">· new in <span data-reset>${Ui.resetIn()}</span></span></span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
@@ -435,6 +440,7 @@ export class Ui {
       if (a === "live") this.h.onLiveRace();
       // the wallet chip is still a way in, and lands on what the coins are for
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
+      if (a === "patterns") this.showCollection("patterns");
       if (a === "board") this.showBoard("solo");
       if (a === "settings") this.showSettings();
       if (a === "tutorial") this.showHowToPlay();
@@ -522,7 +528,14 @@ export class Ui {
           <b>${esc(c.name)}</b><span>${has ? esc(c.blurb) : "🔒 " + esc(unlockText(c.unlock))}</span>${on ? "<i class=\"tick\">WEARING</i>" : ""}
         </button>`; }).join("")}</div>`;
     } else if (tab === "patterns") {
-      body = `<div class="guide-grid">${PATTERNS.map((k) => {
+      const thisMonth = themeFor().id;
+      const calendar = `<p class="sec-label">The year's doors \u00b7 one pattern each, only that month</p>
+        <div class="months">${FRIDGE_THEMES.map((t) => {
+          const k = PATTERNS.find((x) => x.id === t.pattern), own = s.patterns.includes(t.pattern), now = t.id === thisMonth;
+          const mon = new Date(2026, t.month - 1, 1).toLocaleString("en", { month: "short" });
+          return `<div class="month ${now ? "now" : ""} ${own ? "own" : ""}"><i>${mon}</i><b>${esc(t.name)}</b><span class="swatches">${(k?.colors ?? []).slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join("")}</span><small>${own ? "\u2713 yours" : now ? "climb once this month" : ""}</small></div>`;
+        }).join("")}</div>`;
+      body = calendar + `<div class="guide-grid">${PATTERNS.map((k) => {
         const on = s.pattern === k.id, has = s.patterns.includes(k.id);
         return `<button class="guide-card look ${on ? "on" : ""} ${has ? "" : "locked"}" data-p="${k.id}" ${has ? "" : "disabled"}>
           <canvas width="200" height="200" data-look="${has ? s.creature : "toy"}|${k.id}"></canvas>
@@ -628,6 +641,11 @@ export class Ui {
     const input = p.querySelector<HTMLInputElement>("input")!;
     let lastId = chatCache.length ? chatCache[chatCache.length - 1].id : 0, pendingSeq = 0;
     const seen = new Map<number, ChatMessage>(chatCache.map((m) => [m.id, m]));
+    // opening the room is reading it: whatever is here counts as seen from now, and the
+    // strip's badge goes at once rather than at its next slow poll
+    const markSeen = (id: number) => { if (id > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(id)); } catch { /* private mode */ } } };
+    markSeen(lastId);
+    const badge = this.chatStrip?.querySelector<HTMLElement>(".badge"); if (badge) badge.hidden = true;
 
     const row = (m: ChatMessage) => {
       const mine = m.player_id === s.playerId;
@@ -728,7 +746,7 @@ export class Ui {
       if (!r || !p.isConnected) return;
       for (const m of r.messages) { seen.set(m.id, m); lastId = Math.max(lastId, m.id); }
       rememberChat(r.messages);
-      if (lastId > chatSeen()) { try { localStorage.setItem("mc-chat-seen", String(lastId)); } catch { /* private mode */ } }
+      markSeen(lastId);
       online.textContent = r.online ? `${r.online} chatting lately` : "";
       if (r.messages.length || !seen.size) render();
       if (!seen.size) log.innerHTML = `<p class="how-blurb">Nobody has said anything yet. You could be first.</p>`;
@@ -827,6 +845,8 @@ export class Ui {
           `<select class="shell-chip" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>`)}
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
+        ${row("Plain steel door", "Skip the month's tint and keep the stainless door all year. The month's pattern is still yours to earn.", toggle("plain", s.plainSteel, "Plain steel door"))}
+        ${pushSupported() ? row("Reminders", "Today's fridge at 6 pm if you have not climbed it, the league on Monday morning, a new door on the first.", toggle("push", s.push, "Reminders")) : ""}
         <p class="sec-label">App</p>
         ${installRow()}
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
@@ -850,7 +870,7 @@ export class Ui {
       </div>`;
     const syncToggles = () => {
       const now = this.save();
-      for (const [key, on] of [["sound", now.sound], ["music", now.music]] as const) {
+      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push]] as const) {
         const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
         if (!input) continue;
         input.checked = on;
@@ -874,8 +894,8 @@ export class Ui {
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
-      if (a === "sound" || a === "music") {
-        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic() })[a]();
+      if (a === "sound" || a === "music" || a === "plain" || a === "push") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders() })[a]();
         syncToggles();
         return;
       }
@@ -1082,18 +1102,24 @@ export class Ui {
     if (s) s.textContent = text;
   }
 
-  showChallenge(c: { mode: "solo"; cm: number; name: string; raceId?: string }) {
+  showChallenge(c: { mode: "solo" | "daily"; cm: number; name: string; raceId?: string; day?: string }) {
     const p = el("div", "panel small");
+    const today = c.mode === "daily" && c.day === todayKey(), stale = c.mode === "daily" && !today;
+    const taken = today && this.save().daily?.day === c.day;
     p.innerHTML = `
-      <div class="story-icon">${c.raceId ? "👻" : "📣"}</div>
-      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : "challenged you"}</h2>
+      <div class="story-icon">${c.raceId ? "👻" : c.mode === "daily" ? "📅" : "📣"}</div>
+      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : c.mode === "daily" ? "climbed today's fridge" : "challenged you"}</h2>
       <div class="big">${c.cm} cm</div>
-      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it." : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
-      <button class="primary" data-a="go">${c.raceId ? "RACE" : "ACCEPT"}</button>
+      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it."
+        : stale ? "That was another day's fridge. Today's is waiting, one go each."
+        : taken ? "You have had today's go. Their height is on today's board."
+        : c.mode === "daily" ? "Same fridge for everyone, one go each. Get above it before midnight Central."
+        : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
+      <button class="primary" data-a="go">${c.raceId ? "RACE" : taken ? "SEE TODAY'S BOARD" : c.mode === "daily" ? "CLIMB TODAY'S" : "ACCEPT"}</button>
       <button class="ghost" data-a="menu">LATER</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;
-      if (a === "go") { this.clear(); this.h.onAcceptChallenge(c.mode); }
+      if (a === "go") { if (taken) { this.showBoard("daily"); return; } this.clear(); this.h.onAcceptChallenge(c.mode); }
       if (a === "menu") this.showMenu();
     });
     this.show(p);
@@ -1460,14 +1486,14 @@ export class Ui {
            <button class="go" data-a="board">SEE TODAY'S BOARD</button>`
         : `<button class="go" data-a="again">CLIMB AGAIN</button>`}
       <div class="lost-ghosts">
-        ${o.chill ? "" : `<button class="ghost" data-a="share">CHALLENGE A FRIEND</button>`}
+        ${o.chill ? "" : `<button class="ghost" data-a="share">${o.daily ? "SHARE TODAY'S CLIMB" : "CHALLENGE A FRIEND"}</button>`}
         <button class="ghost" data-a="quit">BACK TO MENU</button>
       </div>
     `;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
       if (a === "token" || a === "ad" || a === "gems") { this.clear(); this.h.onRevive(a); }
-      if (a === "share") this.h.onShare({ mode: o.mode, cm: o.cm });
+      if (a === "share") this.h.onShare({ mode: o.daily ? "daily" : o.mode, cm: o.cm });
       if (a === "again") this.showQuickKit(() => this.h.onPlay("solo"));
       // the daily is one attempt: there is nothing to climb again, so it offers the board
       if (a === "board") { this.h.onQuitRun(); this.showBoard("daily"); }
@@ -1480,6 +1506,15 @@ export class Ui {
   }
 
   /** Update the rank line on an open game-over panel. */
+  /** One more button on a game-over card, above BACK TO MENU: the live race's "again", for one. */
+  addGameOverAction(panel: HTMLElement, label: string, onTap: () => void): void {
+    if (this.panel !== panel) return;
+    const row = panel.querySelector<HTMLElement>(".lost-ghosts");
+    if (!row || row.querySelector("[data-added]")) return;
+    const b = el("button", "go", label) as HTMLButtonElement; b.dataset.added = "1";
+    b.addEventListener("click", (e) => { e.stopPropagation(); b.disabled = true; b.textContent = "WAITING FOR THEM…"; onTap(); });
+    row.parentElement!.insertBefore(b, row);
+  }
   setGameOverRank(panel: HTMLElement, text: string) {
     if (this.panel !== panel) return;
     const r = panel.querySelector<HTMLElement>(".rank");

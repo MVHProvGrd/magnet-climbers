@@ -10,7 +10,7 @@ import { loadSave, writeSave, migrateLooks } from "./game/save";
 import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from "./game/creatures";
 import { dailyBoard, liveProgress, missionById, missionText, settle, streakReward, type RunTally } from "./game/missions";
-import { monthKey, themeFor } from "./game/fridge-theme";
+import { monthKey, themeFor, setPlainSteel } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
@@ -19,6 +19,7 @@ import { Ghost, LiveGhost, loadBestTape, saveBestTape } from "./game/ghost";
 import { makeRng, World } from "./game/world";
 import { LiveMatch, createMatch, matchLink, type LiveResultRow } from "./game/live";
 import { accountsEnabled, signIn, signOut, finishRedirect, type AuthResult } from "./game/account";
+import { pushSupported, enableReminders, disableReminders } from "./game/push";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -70,6 +71,7 @@ loadPlacement();
 let save = loadSave();
 setSound(save.sound);
 setMusic(save.music);
+setPlainSteel(save.plainSteel);
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
 document.addEventListener("keydown", unlockAudio);
 /** Bring the ledger up to the balance: whatever changed since it last looked is income or spend. */
@@ -186,6 +188,21 @@ async function signedIn(r: AuthResult): Promise<void> {
   ui.showMenu();
 }
 
+/** Reminders on or off: the browser's permission, the Worker's list, and the switch in the save. */
+async function toggleReminders(): Promise<void> {
+  if (save.push) {
+    await disableReminders(save.playerId, save.token);
+    save.push = false; persist(); ui.showSettings(); ui.toast("Reminders off"); return;
+  }
+  await cloudSync("push");
+  const r = await enableReminders(save.playerId, save.token);
+  if (r === "on") { save.push = true; persist(); ui.toast("Reminders on: today's fridge at 6, the league on Monday, a new door on the first"); }
+  else if (r === "denied") ui.toast("Notifications are blocked for this site in your browser settings");
+  else if (r === "off") ui.toast("Reminders are not switched on yet");
+  else ui.toast("Could not set up reminders on this device");
+  ui.showSettings();
+}
+
 let syncing = false;
 async function cloudSync(reason: string) {
   if (!leaderboardEnabled || syncing) return;
@@ -265,6 +282,8 @@ const ui = new Ui(uiRoot, () => save, {
   onPause: () => { if (!(live && game?.tape.onEvent)) paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
+    // leaving for the menu leaves the room too; a rematch needs both phones on the card
+    if (live) { live.close(); live = null; }
     // quitting is ending: the height, records, missions and coins bank exactly as they do
     // when the run ends on its own, then the menu comes up over the summary
     if (game && game.phase !== "dead") game.forceEnd();
@@ -319,6 +338,8 @@ const ui = new Ui(uiRoot, () => save, {
   },
   onToggleSound: () => { save.sound = !save.sound; setSound(save.sound); persist(); },
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
+  onToggleReminders: () => { void toggleReminders(); },
+  onTogglePlainSteel: () => { save.plainSteel = !save.plainSteel; setPlainSteel(save.plainSteel); backdropDrawn = false; persist(); },
   onSetLang: (l) => { save.lang = l; setLang(l); persist(); },
   onToggleMute: () => {
     const on = !save.sound && !save.music;
@@ -386,17 +407,30 @@ const ui = new Ui(uiRoot, () => save, {
   onPerf: () => perfReport(),
   onShare: (c) => {
     const go = async () => {
+      if (c.mode === "daily") {
+        // the day's card: the Worker looks the rank up itself, the streak rides the link
+        const r = await shareChallenge({ mode: "daily", cm: c.cm, name: save.name || "a friend", playerId: save.playerId, day: save.daily?.day ?? todayKey(), streak: save.streak.days });
+        if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
+        if (r === "failed") ui.toast("Could not share on this device");
+        return;
+      }
       // the run behind the number: the one just climbed, or the best on this device
       const best = loadBestTape();
       const tape = lastTape && lastTape.cm === c.cm ? lastTape : best && best.cm === c.cm ? best : null;
       const posted = tape && leaderboardEnabled ? await leaderboard.race.post(save.playerId, save.token, save.name || "a friend", tape) : null;
-      const r = await shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId, ...(posted?.id ? { raceId: posted.id } : {}) });
+      const r = await shareChallenge({ mode: "solo", cm: c.cm, name: save.name || "a friend", playerId: save.playerId, ...(posted?.id ? { raceId: posted.id } : {}) });
       if (r === "copied") ui.toast(posted?.id ? "Race link copied. Paste it to a friend." : "Link copied. Paste it to a friend.");
       if (r === "failed") ui.toast("Could not share on this device");
     };
     if (!save.name) ui.showNamePrompt(go); else go();
   },
-  onAcceptChallenge: async () => {
+  onAcceptChallenge: async (mode) => {
+    // a daily card: today's climb, with their height as the line, if today's is still open
+    if (mode === "daily") {
+      if (save.daily?.day === todayKey()) { pendingChallenge = null; ui.showBoard("daily"); return; }
+      if (pendingChallenge?.day !== todayKey()) pendingChallenge = null;
+      startRun("solo", false, true); return;
+    }
     // a race link brings the friend's tape down and their ghost climbs the same fridge; a
     // tape that cannot be had, or is from another shape of recorder, leaves the line alone
     const id = pendingChallenge?.raceId;
@@ -538,6 +572,11 @@ function runEvents() {
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.token, save.name, rulesNow, newCm, save.totalCm);
       const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (wasLive) { livePanel = panel; ui.setGameOverRank(panel, `Waiting for ${liveThem || "your friend"}…`); }
+      // once, after a daily: the moment a reminder for tomorrow's makes sense
+      if (dailyRun && !save.push && !save.pushAsked && pushSupported()) {
+        save.pushAsked = true; persist();
+        ui.addGameOverAction(panel, "REMIND ME TOMORROW", () => { void toggleReminders(); });
+      }
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -618,6 +657,8 @@ let ghost: Ghost | LiveGhost | null = null;
 /** the live race this phone is in, from the lobby until the result lands */
 let live: LiveMatch | null = null;
 let liveThem = "";
+/** the two seats, in order, when this phone is watching a race rather than in it */
+let liveWatching: string[] = [];
 /** the game-over card of a live run, where the result goes when the room has replayed both tapes */
 let livePanel: HTMLElement | null = null;
 /** the generator's version on this build: both phones in a race must agree, or the fridges differ */
@@ -638,15 +679,31 @@ function joinLive(id: string): void {
     try { await navigator.clipboard.writeText(`${text} ${link}`); ui.toast("Link copied. Send it to a friend."); } catch { ui.toast("Could not copy the link"); }
   };
   const panel = ui.showLiveLobby({ link, status: "Connecting…", onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
+  let liveSeed = 0;
   const m = new LiveMatch(id, {
     wait: () => ui.setLiveStatus(panel, "Waiting for a friend to open the link…"),
-    start: (seed, world, them, countdownMs) => { liveThem = them.name; startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs }); },
-    input: (e) => { if (ghost instanceof LiveGhost) ghost.feed(e); },
+    start: (seed, world, them, countdownMs, players) => {
+      // the room resends the start to a phone that reconnects mid-race: same seed, same run, carry on
+      if (game && seed === liveSeed) return;
+      liveSeed = seed; liveThem = them.name;
+      startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs, watch: players });
+    },
+    input: (e, from) => {
+      const g2 = game?.ghost2;
+      if (game?.spectator && from && liveWatching[1] === from && g2 instanceof LiveGhost) g2.feed(e);
+      else if (ghost instanceof LiveGhost) ghost.feed(e);
+    },
+    again: () => ui.toast(`${liveThem || "Your friend"} wants another go`),
+    watching: (players) => { liveWatching = players.map((p) => p.id); ui.setLiveStatus(panel, players.length ? `Watching ${players.map((p) => p.name).join(" v ")}…` : "Watching. Waiting for two climbers…"); },
     // the ghost stops where the friend's run did and stays drawn there, so you can see what you are beating
     ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · their ghost stays where it got to`); },
     left: () => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race · their ghost stays where it got to`); },
     result: (rows, winner) => showLiveResult(rows, winner),
-    refused: (why) => { ui.toast(why === "full" ? "That race already has two climbers" : "Your friend is on another build; update and try again"); live = null; ui.showMenu(); },
+    refused: (why) => {
+      // a full room is still worth a look: the phone goes back in as a watcher
+      if (why === "full") { ui.setLiveStatus(panel, "Two climbers already. Watching instead…"); m.watch(); return; }
+      ui.toast("Your friend is on another build; update and try again"); live = null; ui.showMenu();
+    },
     closed: () => { if (game && live) ui.toast("Lost the race connection"); },
   });
   live = m;
@@ -661,8 +718,13 @@ function showLiveResult(rows: LiveResultRow[], winner: string | null): void {
     : winner ? `${them.name} won the race · ${theirs} vs ${mine}`
     : `Dead heat · ${mine} each`;
   const note = me && !me.verified ? " · your run could not be verified" : "";
-  if (livePanel) ui.setGameOverRank(livePanel, text + note); else ui.toast(text);
-  live?.close(); live = null; livePanel = null;
+  if (livePanel) {
+    ui.setGameOverRank(livePanel, text + note);
+    // the room stays open for another go; both phones have to ask
+    if (live && !game?.spectator) { const m = live; ui.addGameOverAction(livePanel, "RACE AGAIN", () => m.again()); }
+  } else ui.toast(text);
+  if (game?.spectator) { endRun(); ui.showMenu(); }
+  livePanel = null;
 }
 /**
  * A ghost is only meaningful on the door it was recorded on, so racing one and generating a
@@ -759,7 +821,7 @@ function countdown(ms: number, then?: () => void): void {
   tick();
 }
 
-function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number; look?: { creature: string; pattern: string }; countdownMs?: number } | null = null) {
+function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number; look?: { creature: string; pattern: string }; countdownMs?: number; watch?: { id: string; name: string; look?: { creature: string; pattern: string } }[] } | null = null) {
   ensureDailyMissions();
   void cloudPull(true);
   rulesNow = rules;
@@ -774,21 +836,31 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   dailyRun = daily;
   // everyone climbs the same door with the same gear, so a daily or a live race leaves the kit in the drawer
   const kit = daily || liveRace ? ({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>) : save.kit;
+  // a first-ever run's first three flings catch from a little further: the first lesson is
+  // that flinging works, not that it can miss
+  const forgiveFlings = save.runs === 0 && !liveRace && !raceTape ? 3 : 0;
   game = new Game(kit, runEvents(),
-    withTutorial ? { rules, seed: TUTORIAL_SEED, lineup }
-    : daily ? { rules, seed: dailySeed(), lineup }
-    : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: false, lineup }
+    withTutorial ? { rules, seed: TUTORIAL_SEED, lineup, forgiveFlings }
+    : daily ? { rules, seed: dailySeed(), lineup, forgiveFlings }
+    : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: !!liveRace.watch, lineup }
     : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
-    : { rules, chill: save.chill, lineup });
+    : { rules, chill: save.chill, lineup, forgiveFlings });
   // the ghost wears last time's colours so the two climbers are never mistaken for each other
   // the ghost wears the look its run was climbed in (a friend's, from the room or the tape),
   // or last time's colours for your own best, so the two climbers are never mistaken
   const mine = { creature: save.creature, pattern: save.pattern };
-  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, (liveRace.look as Look | undefined) ?? mine)
+  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, ((liveRace.watch?.[0]?.look ?? liveRace.look) as Look | undefined) ?? mine)
     : raceTape ? new Ghost(raceTape, mine) : null;
   game.ghost = ghost;
+  if (liveRace?.watch) {
+    // watching: the two seats are the two ghosts, nothing here is played, the line is off
+    game.spectator = true;
+    game.ghost2 = new LiveGhost(liveRace.seed, liveRace.world, (liveRace.watch[1]?.look as Look | undefined) ?? mine);
+    liveWatching = liveRace.watch.map((p) => p.id);
+    liveThem = liveRace.watch.map((p) => p.name).join(" v ");
+  }
   // every input goes to the room the moment it is played; the other phone's ghost is driven by it
-  if (liveRace && live) { const m = live; game.tape.onEvent = (e) => m.input(e); }
+  if (liveRace && live && !liveRace.watch) { const m = live; game.tape.onEvent = (e) => m.input(e); }
   if (!liveRace) livePanel = null;
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
@@ -797,7 +869,7 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
     const best = save.bestSolo;
     if (best > 0) game.best = { cm: best, beaten: false };
   }
-  if (pendingChallenge && pendingChallenge.mode === rules) {
+  if (pendingChallenge && (pendingChallenge.mode === rules || (pendingChallenge.mode === "daily" && daily))) {
     game.target = { cm: pendingChallenge.cm, name: pendingChallenge.name, beaten: false };
     pendingChallenge = null;
   }
@@ -1016,6 +1088,14 @@ function frame(now: number) {
         // the ghost takes the same step, so a pause or a slow-motion pickup moves both; a live
         // friend does not wait for your first fling, their run is already going
         if (ghost && !ghost.done && (game.phase === "running" || ghost instanceof LiveGhost)) ghost.step(STEP);
+        const g2 = game.ghost2;
+        if (g2 instanceof LiveGhost && !g2.done) g2.step(STEP);
+        if (game.spectator) {
+          // the toy that is not played sits where the leading ghost is, so the camera follows the race
+          const lead = [game.ghost, g2].map((x) => x?.climber).filter((c): c is NonNullable<typeof c> => !!c).sort((a, b) => a.y - b.y)[0];
+          const me = game.climbers[0];
+          if (lead && me) { me.x = lead.x; me.y = lead.y; game.highestY = Math.min(game.highestY, lead.y); }
+        }
         acc -= STEP;
       }
       simMs = performance.now() - simT0;
@@ -1099,7 +1179,11 @@ clearChallengeParam();
 // a live race link: straight into the room, the story can wait
 const liveId = new URLSearchParams(location.search).get("m") ?? "";
 if (/^[a-z0-9]{6,16}$/.test(liveId)) { const u = new URL(location.href); u.searchParams.delete("m"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
+const openWhat = new URLSearchParams(location.search).get("open") ?? "";
+if (openWhat) { const u = new URL(location.href); u.searchParams.delete("open"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
 if (/^[a-z0-9]{6,16}$/.test(liveId)) { save.introSeen = true; persist(); joinLive(liveId); }
+else if (openWhat === "daily" && save.introSeen) { ui.showMenu(); if (save.daily?.day === todayKey()) ui.showBoard("daily"); }
+else if (openWhat === "league" && save.introSeen) ui.showBoard("league");
 else if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }
 else if (loadSnapshot()) resumeRun();
 else if (!save.introSeen) {

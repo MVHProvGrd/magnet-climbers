@@ -37,6 +37,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // the push handlers ride along in the generated worker (public/push-sw.js)
+        importScripts: ["push-sw.js"],
         // Icon revisions trigger manifest refreshes; serve the same cached PNG offline.
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^icon-v$/],
         // Everything precached downloads the instant the worker installs, competing for the

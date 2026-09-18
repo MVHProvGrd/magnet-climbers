@@ -8,9 +8,13 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
 import cardFont from "../assets/card-font.ttf";
 import cardBase from "../assets/card-base.jpg";
 
-export interface Challenge { mode: "solo" | "crew"; cm: number; name: string; code: string; verified: boolean }
-/** Looks the sharer up on the scoreboard: their best in that mode must cover the claimed height. */
-export type Verify = (c: Challenge, playerId: string | null) => Promise<{ ok: boolean; name?: string }>;
+export interface Challenge {
+  mode: "solo" | "crew" | "daily"; cm: number; name: string; code: string; verified: boolean;
+  /** a daily card: the day it was climbed, where it ranked that day, and the streak it made */
+  day?: string; rank?: number; streak?: number;
+}
+/** Looks the sharer up on the scoreboard: their best in that mode must cover the claimed height. A daily answers with the rank too. */
+export type Verify = (c: Challenge, playerId: string | null) => Promise<{ ok: boolean; name?: string; rank?: number }>;
 
 export const GAME_URL = "https://magnetclimbers.com/";
 
@@ -20,7 +24,7 @@ export function parseCode(raw: string): Challenge | null {
   const [mode, cmS, ...rest] = code.split(".");
   // absurd heights still get a card: verification fails and it reads "Unverified climb"
   const cm = Math.min(Math.floor(Number(cmS)), 999_999_999);
-  if ((mode !== "solo" && mode !== "crew") || !Number.isFinite(cm) || cm <= 0) return null;
+  if ((mode !== "solo" && mode !== "crew" && mode !== "daily") || !Number.isFinite(cm) || cm <= 0) return null;
   const name = (rest.join(".") || "a friend").replace(/[^\p{L}\p{N} _.\-!?]/gu, "").slice(0, 12).trim() || "a friend";
   return { mode, cm, name, code: `${mode}.${cm}.${name}`, verified: false };
 }
@@ -32,13 +36,26 @@ export function isUnfurler(ua: string): boolean {
   return /bot|crawler|spider|preview|facebookexternalhit|discord|slack|telegram|whatsapp|twitter|imessage|skype|linkedin|pinterest|embed|fetch|curl|wget|http/i.test(ua);
 }
 
+/** "Sep 18" from a day key, for the card and the page title. */
+export const prettyDay = (day: string): string => {
+  const [y, m, d] = day.split("-").map(Number);
+  return Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)
+    ? new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : day;
+};
+/** The query a daily card carries on top of its code: the day, and the streak the phone says it made. */
+export const dailyQuery = (c: Challenge): string => c.mode === "daily" && c.day ? `?d=${c.day}${c.streak ? `&st=${c.streak}` : ""}` : "";
+
 export function cardHtml(c: Challenge, origin: string, playerId: string | null = null): string {
-  const title = c.verified ? `${c.name} climbed ${fmt(c.cm)} cm` : `${c.name} shared an unverified climb`;
-  const desc = c.verified
-    ? `${c.mode === "crew" ? "Crew" : "Solo"} climb in Magnet Climbers. Can you get higher? Slingshot rubbery magnet people up an endless fridge.`
-    : "This link's height does not match the scoreboard. Slingshot rubbery magnet people up an endless fridge in Magnet Climbers.";
-  const img = `${origin.replace(/^http:/, "https:")}/c/${encodeURIComponent(c.code)}${playerId ? `/${encodeURIComponent(playerId)}` : ""}.png`;
-  const play = `${GAME_URL}?c=${encodeURIComponent(c.code)}`;
+  const daily = c.mode === "daily";
+  const title = !c.verified ? `${c.name} shared an unverified climb`
+    : daily ? `${c.name} climbed ${fmt(c.cm)} cm on ${prettyDay(c.day ?? "")}'s fridge${c.rank ? ` · #${c.rank} that day` : ""}`
+    : `${c.name} climbed ${fmt(c.cm)} cm`;
+  const desc = !c.verified
+    ? "This link's height does not match the scoreboard. Slingshot rubbery magnet people up an endless fridge in Magnet Climbers."
+    : daily ? `The daily climb in Magnet Climbers: one fridge for everyone, one go each${c.streak ? `, ${c.streak} days running` : ""}. Climb today's before midnight Central.`
+    : `${c.mode === "crew" ? "Crew" : "Solo"} climb in Magnet Climbers. Can you get higher? Slingshot rubbery magnet people up an endless fridge.`;
+  const img = `${origin.replace(/^http:/, "https:")}/c/${encodeURIComponent(c.code)}${playerId ? `/${encodeURIComponent(playerId)}` : ""}.png${dailyQuery(c)}`;
+  const play = `${GAME_URL}?c=${encodeURIComponent(c.code)}${daily && c.day ? `&d=${c.day}` : ""}`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>${esc(title)} · Magnet Climbers</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -70,17 +87,23 @@ let baseUri: string | null = null;
 /** The score card: cover photo + logo (pre-composed in assets/card-base.jpg) with the numbers on top. */
 export function cardSvg(c: Challenge): string {
   if (!baseUri) baseUri = "data:image/jpeg;base64," + b64(cardBase);
-  const mode = c.mode === "crew" ? "CREW CLIMB" : "SOLO CLIMB";
+  const mode = c.mode === "crew" ? "CREW CLIMB" : c.mode === "daily" ? `DAILY \u00b7 ${prettyDay(c.day ?? "").toUpperCase()}` : "SOLO CLIMB";
   const cx = 852;
   const big = c.cm >= 100_000 ? 118 : 140;
   const glow = 'stroke="#000" stroke-opacity="0.55" stroke-width="10" stroke-linejoin="round" paint-order="stroke"';
+  // the daily's second line: where it ranked that day and the streak it made, whichever there are
+  const sub = c.mode === "daily"
+    ? [c.rank ? `#${c.rank} that day` : "", c.streak && c.streak > 1 ? `${c.streak} days running \ud83d\udd25` : ""].filter(Boolean).join(" \u00b7 ") || "Same fridge for everyone"
+    : "Can you get higher?";
+  const pill = c.mode === "crew" ? "#3d7bff" : c.mode === "daily" ? "#7c4dff" : "#f26d1d";
+  const pillW = c.mode === "daily" ? 300 : 236;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Liberation Sans" font-weight="700">
 <image href="${baseUri}" x="0" y="0" width="1200" height="630"/>
 ${c.verified ? `<text x="${cx}" y="330" text-anchor="middle" font-size="46" fill="#ffffff" ${glow}>${esc(c.name)} climbed</text>
 <text x="${cx}" y="460" text-anchor="middle" font-size="${big}" fill="#ffd54a" ${glow}>${fmt(c.cm)}<tspan font-size="56" fill="#ffffff" dx="10">cm</tspan></text>
-<rect x="${cx - 118}" y="492" width="236" height="46" rx="23" fill="${c.mode === "crew" ? "#3d7bff" : "#f26d1d"}"/>
+<rect x="${cx - pillW / 2}" y="492" width="${pillW}" height="46" rx="23" fill="${pill}"/>
 <text x="${cx}" y="524" text-anchor="middle" font-size="25" fill="#fff" letter-spacing="3">${mode}</text>
-<text x="${cx}" y="590" text-anchor="middle" font-size="34" fill="#ffffff" ${glow}>Can you get higher?</text>`
+<text x="${cx}" y="590" text-anchor="middle" font-size="34" fill="#ffffff" ${glow}>${esc(sub)}</text>`
 : `<text x="${cx}" y="345" text-anchor="middle" font-size="46" fill="#ffffff" ${glow}>${esc(c.name)} shared</text>
 <text x="${cx}" y="430" text-anchor="middle" font-size="64" fill="#9aa3ad" ${glow}>Unverified climb</text>
 <rect x="${cx - 190}" y="470" width="380" height="46" rx="23" fill="#555c66"/>
@@ -112,9 +135,16 @@ export async function handleShare(req: Request, url: URL, profane: (c: Challenge
   const playerId = m[2] ? decodeURIComponent(m[2]).slice(0, 40) : null;
   const png = m[3];
   if (!c) return Response.redirect(GAME_URL, 302);
+  if (c.mode === "daily") {
+    const day = url.searchParams.get("d") ?? "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) c.day = day;
+    const st = Math.floor(Number(url.searchParams.get("st") ?? 0));
+    if (st > 0 && st < 10_000) c.streak = st;
+  }
   const v = await verify(c, playerId);
   c.verified = v.ok;
   if (v.ok && v.name) c.name = v.name;
+  if (v.ok && v.rank) c.rank = v.rank;
   if (profane(c)) { c.name = "A climber"; c.code = `${c.mode}.${c.cm}.A climber`; }
   const cache = v.ok ? "public, max-age=86400" : "public, max-age=300";
   if (png) {
@@ -125,7 +155,8 @@ export async function handleShare(req: Request, url: URL, profane: (c: Challenge
     // a race link carries the shared run's id on to the game, which fetches the tape itself
     const race = url.searchParams.get("r") ?? "";
     const r = /^[a-z0-9]{6,16}$/.test(race) ? `&r=${race}` : "";
-    return Response.redirect(`${GAME_URL}?c=${encodeURIComponent(c.code)}${r}`, 302);
+    const d = c.mode === "daily" && c.day ? `&d=${c.day}` : "";
+    return Response.redirect(`${GAME_URL}?c=${encodeURIComponent(c.code)}${r}${d}`, 302);
   }
   return new Response(cardHtml(c, url.origin, playerId), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
 }

@@ -365,7 +365,7 @@ test("a live race starts on the second seat, relays inputs, and settles on repla
   m.join({ id: "D", name: "Dan", world: 27, send: (x) => c.push(x) });
   assert.deepEqual(c[1], { k: "full" });
   m.input("A", { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } });
-  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } } });
+  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } }, from: "A" });
   assert.equal(a.length, 2, "an input never comes back to its sender");
   assert.equal(m.finish("A", { cm: 900 }, 950), true, "waits on the other tape");
   assert.deepEqual(b[2], { k: "ended", id: "A", cm: 950 });
@@ -486,4 +486,83 @@ test("a daily post answers at once and the verifier cuts an inflated claim after
   const p2 = await seedPlayer(e);
   const bad = await worker.fetch(post("/score", { playerId: p2.playerId, token: p2.token, name: "Kid", mode: "daily", cm: 10, tape: { ...tape, chill: true } }), e, ctx);
   assert.equal(bad.status, 422);
+});
+
+
+test("a race can be run again from the same room, and a third phone can watch it", () => {
+  const replay = (tape: unknown) => ({ ok: true, cm: (tape as { cm: number }).cm });
+  const m = new Match(replay, () => 0.3);
+  const a: Message[] = [], b: Message[] = [], w: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, look: { creature: "toy", pattern: "classic" }, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, look: { creature: "dino", pattern: "lemon" }, send: (x) => b.push(x) });
+  m.watch({ id: "W", send: (x) => w.push(x) });
+  assert.equal(w[0].k, "watching"); assert.equal(w[1].k, "start");
+  const ws = w[1] as Extract<Message, { k: "start" }>;
+  assert.deepEqual(ws.players?.map((p) => [p.id, p.look?.creature]), [["A", "toy"], ["B", "dino"]], "a watcher gets both seats, dressed");
+  m.input("B", { t: 1, k: "move", id: 1, to: { x: 5, y: 5 } });
+  assert.deepEqual(w.at(-1), { k: "in", e: { t: 1, k: "move", id: 1, to: { x: 5, y: 5 } }, from: "B" }, "a watcher sees every input");
+  m.input("W", { t: 2, k: "move", id: 1, to: { x: 0, y: 0 } });
+  assert.equal(a.filter((x) => x.k === "in").length, 1, "a watcher's inputs go nowhere");
+  m.finish("A", { cm: 800 }, 800); m.finish("B", { cm: 900 }, 900);
+  assert.equal((w.at(-1) as Extract<Message, { k: "result" }>).winner, "B");
+  const firstSeed = m.seed;
+  m.again("A");
+  assert.deepEqual(b.at(-1), { k: "again", id: "A" }, "the other player hears the ask");
+  assert.equal(m.settled, true, "one ask is not a rematch");
+  m.again("B");
+  assert.equal(m.settled, false); assert.notEqual(m.seed, firstSeed, "a fresh fridge");
+  assert.equal(a.at(-1)!.k, "start"); assert.equal(b.at(-1)!.k, "start"); assert.equal(w.at(-1)!.k, "start", "the watcher comes along");
+  m.finish("A", { cm: 100 }, 100); m.finish("B", { cm: 50 }, 50);
+  assert.equal((a.at(-1) as Extract<Message, { k: "result" }>).winner, "A", "the second race settles on its own tapes");
+});
+
+import { parseCode, cardSvg } from "../worker/src/card";
+test("a daily share card carries its day, rank and streak", () => {
+  const c = parseCode("daily.8287.MLocke");
+  assert.ok(c && c.mode === "daily" && c.cm === 8287);
+  const svg = cardSvg({ ...c!, verified: true, day: "2026-09-18", rank: 3, streak: 2 });
+  assert.match(svg, /DAILY · SEP 18/); assert.match(svg, /#3 that day/); assert.match(svg, /2 days running/);
+  assert.match(cardSvg({ ...c!, verified: true, day: "2026-09-18" }), /Same fridge for everyone/);
+});
+
+// Web Push: the VAPID token verifies against the public half, and a payload encrypted to a
+// subscription decrypts with that subscription's keys, the way a browser would.
+import { vapidJwt, encryptPayload } from "../worker/src/push";
+import { dueNotices } from "../worker/src/notices";
+test("a VAPID token verifies and an aes128gcm payload decrypts", async () => {
+  const b64u = (b: ArrayBuffer | Uint8Array) => Buffer.from(b as ArrayBuffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const fromB64u = (s: string) => new Uint8Array(Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64"));
+  const vapid = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const jwt = await vapidJwt(await crypto.subtle.exportKey("jwk", vapid.privateKey), "https://push.example", "mailto:x@y.z");
+  const [h, b, sig] = jwt.split(".");
+  assert.deepEqual(JSON.parse(Buffer.from(h, "base64url").toString()), { typ: "JWT", alg: "ES256" });
+  assert.equal(JSON.parse(Buffer.from(b, "base64url").toString()).aud, "https://push.example");
+  assert.ok(await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, vapid.publicKey, fromB64u(sig), new TextEncoder().encode(`${h}.${b}`)));
+  // the browser's side of a subscription
+  const ua = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const authSecret = crypto.getRandomValues(new Uint8Array(16));
+  const uaPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ua.publicKey));
+  const body = await encryptPayload({ endpoint: "https://push.example/x", p256dh: b64u(uaPublic), auth: b64u(authSecret) }, JSON.stringify({ title: "hi" }));
+  const salt = body.slice(0, 16), rs = new DataView(body.buffer, body.byteOffset + 16, 4).getUint32(0), idlen = body[20], asPublic = body.slice(21, 21 + idlen), cipher = body.slice(21 + idlen);
+  assert.equal(rs, 4096); assert.equal(idlen, 65);
+  const asKey = await crypto.subtle.importKey("raw", asPublic, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: asKey }, ua.privateKey, 256));
+  const enc = new TextEncoder();
+  const cat = (...p: Uint8Array[]) => { const o = new Uint8Array(p.reduce((n, x) => n + x.length, 0)); let a = 0; for (const x of p) { o.set(x, a); a += x.length; } return o; };
+  const hk = async (s: Uint8Array, ikm: Uint8Array, info: Uint8Array, n: number) => new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: s, info }, await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]), n * 8));
+  const ikm = await hk(authSecret, shared, cat(enc.encode("WebPush: info\0"), uaPublic, asPublic), 32);
+  const cek = await hk(salt, ikm, enc.encode("Content-Encoding: aes128gcm\0"), 16), nonce = await hk(salt, ikm, enc.encode("Content-Encoding: nonce\0"), 12);
+  const plain = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["decrypt"]), cipher));
+  assert.equal(plain[plain.length - 1], 2, "the last-record delimiter");
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(plain.slice(0, -1))), { title: "hi" });
+});
+
+test("the reminders fall on the Central hours they are meant for", () => {
+  // 2026-09-18 is a Friday; 6 pm CDT is 23:00Z
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 18, 23, 5)), [{ kind: "daily", key: "2026-09-18" }]);
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 18, 22, 5)), []);
+  // Monday 2026-09-21, 9 am CDT is 14:00Z: the league
+  assert.deepEqual(dueNotices(Date.UTC(2026, 8, 21, 14, 0)), [{ kind: "league", key: "2026-W39" }]);
+  // the 1st at 9 am: the month, and in October a Thursday, so no league
+  assert.deepEqual(dueNotices(Date.UTC(2026, 9, 1, 14, 0)), [{ kind: "month", key: "2026-10" }]);
 });

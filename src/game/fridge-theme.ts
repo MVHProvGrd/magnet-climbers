@@ -35,13 +35,13 @@ export const FRIDGE_THEMES: readonly FridgeTheme[] = [
     steel: ["#b6a6b2", "#d8cbd6", "#c5b6c2", "#cbbcc8", "#e0d4dd", "#b0a0ac" ] },
   { id: "lemonade", month: 5, name: "Lemonade", pattern: "lemonade",
     steel: ["#b8b49a", "#dcd8bd", "#c8c4aa", "#cecab0", "#e4e0c6", "#b2ae95"] },
-  { id: "seaside", month: 6, name: "Seaside Let", pattern: "seaside",
+  { id: "seaside", month: 6, name: "Beach House", pattern: "seaside",
     steel: ["#9ab4bd", "#c2dbe3", "#aec7d0", "#b4cdd6", "#cde4eb", "#95afb8"] },
-  { id: "picnic", month: 7, name: "Back Garden", pattern: "picnic",
+  { id: "picnic", month: 7, name: "Backyard Picnic", pattern: "picnic",
     steel: ["#bdaf9c", "#e0d3c0", "#ccbfac", "#d2c5b2", "#e8dccb", "#b7a997"] },
-  { id: "sunblock", month: 8, name: "Ice Lolly", pattern: "sunblock",
+  { id: "sunblock", month: 8, name: "Popsicle", pattern: "sunblock",
     steel: ["#b9a9a0", "#e2d2c6", "#cdbdb2", "#d3c3b8", "#eaddd2", "#b3a39a"] },
-  { id: "pencil", month: 9, name: "Term Starts", pattern: "pencil",
+  { id: "pencil", month: 9, name: "Back to School", pattern: "pencil",
     steel: ["#aab3bc", "#c9d0d7", "#b7bfc7", "#bdc5cd", "#d0d6dc", "#a5aeb8"] },
   { id: "harvest", month: 10, name: "Harvest", pattern: "harvest",
     steel: ["#b3a292", "#d9c6b2", "#c5b29e", "#cbb8a4", "#e1cfbc", "#ad9c8c"] },
@@ -53,6 +53,12 @@ export const FRIDGE_THEMES: readonly FridgeTheme[] = [
 
 /** September's brushed stainless is the one the game shipped with, so it is the fallback. */
 export const DEFAULT_THEME = FRIDGE_THEMES[8];
+
+/** The owner of this phone would rather the door stayed stainless; the month still hands out its pattern. */
+let plainSteel = false;
+export function setPlainSteel(on: boolean): void { plainSteel = on; }
+/** What the door is painted: the month's tint, or the plain steel when the phone asked for it. */
+export function doorTheme(at: number | Date = Date.now()): FridgeTheme { return plainSteel ? DEFAULT_THEME : themeFor(at); }
 
 export function themeFor(at: number | Date = Date.now()): FridgeTheme {
   const month = zoned(typeof at === "number" ? at : at.getTime()).m;
