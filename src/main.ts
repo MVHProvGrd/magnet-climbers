@@ -15,8 +15,10 @@ import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSou
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 import { groupNum } from "./game/hud";
-import { Ghost, loadBestTape, saveBestTape } from "./game/ghost";
-import { makeRng } from "./game/world";
+import { Ghost, LiveGhost, loadBestTape, saveBestTape } from "./game/ghost";
+import { makeRng, World } from "./game/world";
+import { LiveMatch, createMatch, matchLink, type LiveResultRow } from "./game/live";
+import { accountsEnabled, signIn, signOut, finishRedirect, type AuthResult } from "./game/account";
 import type { Tape } from "./game/recorder";
 
 /**
@@ -70,11 +72,20 @@ setSound(save.sound);
 setMusic(save.music);
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
 document.addEventListener("keydown", unlockAudio);
-const persist = () => writeSave(save);
+/** Bring the ledger up to the balance: whatever changed since it last looked is income or spend. */
+function settleLedger() {
+  const l = save.ledger;
+  const dc = save.coins - l.coinsSeen, dg = save.gems - l.gemsSeen;
+  if (dc > 0) l.coinsIn += dc; else l.coinsOut -= dc;
+  if (dg > 0) l.gemsIn += dg; else l.gemsOut -= dg;
+  l.coinsSeen = save.coins; l.gemsSeen = save.gems;
+}
+const persist = () => { settleLedger(); writeSave(save); };
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay", "ledger"] as const;
 function cloudBlob(): string {
+  settleLedger();
   const out: Record<string, unknown> = {};
   for (const k of CLOUD_FIELDS) out[k] = save[k];
   return JSON.stringify(out);
@@ -89,8 +100,20 @@ function applyCloudBlob(blob: string) {
 function mergeCloudBlob(blob: string) {
   try {
     const c = JSON.parse(blob) as Partial<typeof save>;
-    save.coins = Math.max(save.coins, c.coins ?? 0);
-    save.gems = Math.max(save.gems, c.gems ?? 0);
+    settleLedger();
+    if (c.ledger) {
+      // both books only ever grow, so the higher figure on each side is what really happened
+      // and the balance is what came in minus what went out: money spent on one phone stays spent
+      const l = save.ledger;
+      l.coinsIn = Math.max(l.coinsIn, c.ledger.coinsIn); l.coinsOut = Math.max(l.coinsOut, c.ledger.coinsOut);
+      l.gemsIn = Math.max(l.gemsIn, c.ledger.gemsIn); l.gemsOut = Math.max(l.gemsOut, c.ledger.gemsOut);
+      save.coins = Math.max(0, l.coinsIn - l.coinsOut); save.gems = Math.max(0, l.gemsIn - l.gemsOut);
+      l.coinsSeen = save.coins; l.gemsSeen = save.gems;
+    } else {
+      // a copy from before the ledger: the higher balance, as before
+      save.coins = Math.max(save.coins, c.coins ?? 0);
+      save.gems = Math.max(save.gems, c.gems ?? 0);
+    }
     save.bestCm = Math.max(save.bestCm, c.bestCm ?? 0);
     save.bestSolo = Math.max(save.bestSolo, c.bestSolo ?? 0);
     save.runs = Math.max(save.runs, c.runs ?? 0);
@@ -125,6 +148,44 @@ function mergeCloudBlob(blob: string) {
     save.missionsDone = Math.max(save.missionsDone, c.missionsDone ?? 0);
   } catch { /* ignore */ }
 }
+/**
+ * Take over another profile on this phone (a link code, or an account that already plays as
+ * one), folding this phone's progress into it rather than losing it. Returns whether there
+ * was anything here worth folding in.
+ */
+async function adoptProfile(r: { playerId: string; token: string; blob: string; rev: number }): Promise<boolean> {
+  // remember this device's old profile so it can be folded in rather than lost
+  const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
+  save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
+  applyCloudBlob(r.blob);
+  const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
+  if (hadProgress && old.id !== save.playerId) {
+    // wallet and lifetime add; records and upgrades take the higher; skins union
+    save.coins += old.coins; save.gems += old.gems;
+    save.totalCm += old.totalCm; save.runs += old.runs;
+    save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
+    for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
+    save.skins = Array.from(new Set([...save.skins, ...old.skins]));
+    save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
+    save.patterns = Array.from(new Set([...save.patterns, ...old.patterns]));
+    migrateLooks(save);
+    void cloud.merge(old.id, old.token, save.playerId, save.token);
+  }
+  persist();
+  clearSnapshot();
+  await cloudSync("link");
+  return hadProgress && old.id !== save.playerId;
+}
+
+/** A sign-in came back from the Worker: either this profile is now the account's, or the account's profile is now this phone's. */
+async function signedIn(r: AuthResult): Promise<void> {
+  let merged = false;
+  if (r.adopted) merged = await adoptProfile(r);
+  save.account = { uid: r.uid, provider: r.provider, email: r.email }; persist();
+  ui.toast(r.adopted ? (merged ? `Signed in and merged. Welcome back, ${save.name}` : `Signed in. Welcome back, ${save.name}`) : "Signed in. This climber now follows your account.");
+  ui.showMenu();
+}
+
 let syncing = false;
 async function cloudSync(reason: string) {
   if (!leaderboardEnabled || syncing) return;
@@ -203,9 +264,11 @@ const ui = new Ui(uiRoot, () => save, {
   onPause: () => { paused = true; },
   onEndRun: () => { if (game) { paused = false; game.forceEnd(); } },
   onQuitRun: () => {
-    void cloudSync("quit");
-    if (game && game.phase !== "dead" && !game.chill) { save.coins += game.coins; save.gems += game.gems; persist(); }
+    // quitting is ending: the height, records, missions and coins bank exactly as they do
+    // when the run ends on its own, then the menu comes up over the summary
+    if (game && game.phase !== "dead") game.forceEnd();
     endRun(); ui.showMenu();
+    void cloudSync("quit");
   },
   onBuy: (key: UpgradeKey) => {
     const def = UPGRADES.find((u) => u.key === key)!;
@@ -263,6 +326,11 @@ const ui = new Ui(uiRoot, () => save, {
   onToggleChill: () => { save.chill = !save.chill; persist(); },
   onToggleAutoKit: (on: boolean) => { save.autoKit = on; persist(); },
   onRaceBest: () => { const tape = loadBestTape(); if (tape) startRun("solo", false, false, tape); },
+  onLiveRace: async () => {
+    const id = await createMatch();
+    if (!id) { ui.toast("Live races are offline right now"); return; }
+    joinLive(id);
+  },
   bestTapeCm: () => { const tape = loadBestTape(); return tape && !tape.chill ? tape.cm : null; },
   onOpenBoard: () => { void resubmitBests(); },
   onLinkDevice: () => {
@@ -277,29 +345,30 @@ const ui = new Ui(uiRoot, () => save, {
     void (async () => {
       const r = await cloud.claim(code);
       if (!r) { ui.showClaimError("Code not found or expired. Codes last 10 minutes."); return; }
-      // remember this device's old profile so it can be folded in rather than lost
-      const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
-      save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
-      applyCloudBlob(r.blob);
-      const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
-      if (hadProgress && old.id !== save.playerId) {
-        // wallet and lifetime add; records and upgrades take the higher; skins union
-        save.coins += old.coins; save.gems += old.gems;
-        save.totalCm += old.totalCm; save.runs += old.runs;
-        save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
-        for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
-        save.skins = Array.from(new Set([...save.skins, ...old.skins]));
-        save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
-        save.patterns = Array.from(new Set([...save.patterns, ...old.patterns]));
-        migrateLooks(save);
-        void cloud.merge(old.id, old.token, save.playerId, save.token);
-      }
-      persist();
-      clearSnapshot();
-      await cloudSync("link");
-      ui.toast(hadProgress ? `Linked and merged. Welcome back, ${save.name}` : `Linked. Welcome back, ${save.name}`);
+      const merged = await adoptProfile(r);
+      ui.toast(merged ? `Linked and merged. Welcome back, ${save.name}` : `Linked. Welcome back, ${save.name}`);
       ui.showMenu();
     })();
+  },
+  onSignIn: (provider) => {
+    void (async () => {
+      if (!accountsEnabled) { ui.toast("Accounts are not switched on yet"); return; }
+      try {
+        // the account is tied to the profile on file, so the profile goes up first
+        await cloudSync("auth");
+        ui.toast("Opening sign-in…");
+        const r = await signIn(provider, save.playerId, save.token);
+        if (r) await signedIn(r);
+      } catch (err) {
+        ui.toast(`Sign-in failed: ${String((err as Error).message ?? err).slice(0, 60)}`);
+      }
+    })();
+  },
+  onSignOut: () => {
+    void signOut().catch(() => {});
+    // the profile stays on this phone; only the tie to the account is forgotten here
+    save.account = null; persist(); ui.showSettings();
+    ui.toast("Signed out. Your climber is still here.");
   },
   onSetAvatar: (id) => { save.avatar = id; persist(); void cloudSync("avatar"); },
   onSetName: (name) => {
@@ -315,13 +384,30 @@ const ui = new Ui(uiRoot, () => save, {
   onTutorial: () => startRun("solo", true),
   onPerf: () => perfReport(),
   onShare: (c) => {
-    const go = () => void shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId }).then((r) => {
-      if (r === "copied") ui.toast("Link copied. Paste it to a friend.");
+    const go = async () => {
+      // the run behind the number: the one just climbed, or the best on this device
+      const best = loadBestTape();
+      const tape = lastTape && lastTape.cm === c.cm ? lastTape : best && best.cm === c.cm ? best : null;
+      const posted = tape && leaderboardEnabled ? await leaderboard.race.post(save.playerId, save.token, save.name || "a friend", tape) : null;
+      const r = await shareChallenge({ ...c, name: save.name || "a friend", playerId: save.playerId, ...(posted?.id ? { raceId: posted.id } : {}) });
+      if (r === "copied") ui.toast(posted?.id ? "Race link copied. Paste it to a friend." : "Link copied. Paste it to a friend.");
       if (r === "failed") ui.toast("Could not share on this device");
-    });
+    };
     if (!save.name) ui.showNamePrompt(go); else go();
   },
-  onAcceptChallenge: () => startRun("solo"),
+  onAcceptChallenge: async () => {
+    // a race link brings the friend's tape down and their ghost climbs the same fridge; a
+    // tape that cannot be had, or is from another shape of recorder, leaves the line alone
+    const id = pendingChallenge?.raceId;
+    if (id) {
+      ui.toast("Fetching their run…");
+      const r = await leaderboard.race.get(id);
+      const t = r?.tape as Tape | undefined;
+      if (t && t.v === 1 && Array.isArray(t.events) && t.events.length) { startRun("solo", false, false, t); return; }
+      ui.toast("Could not fetch their run; racing the line instead");
+    }
+    startRun("solo");
+  },
   onChat: async (text) => {
     if (!leaderboardEnabled) return "Chat is offline";
     if (save.cloudRev === 0) await cloudSync("chat");
@@ -396,6 +482,9 @@ function runEvents() {
       const tape = !chill && cm > 0 ? game.sealTape(dailyRun) : null;
       if (tape && cm >= save.bestSolo) saveBestTape(tape);
       dailyTape = dailyRun ? tape : null;
+      lastTape = dailyRun ? null : tape;
+      const wasLive = !!(live && game.tape.onEvent);
+      if (wasLive) { game.tape.onEvent = null; live!.finish(tape, cm); }
       // the fridge of the month pays its pattern the first time you finish a climb on it
       const month = monthKey();
       if (save.themeMonth !== month) {
@@ -408,7 +497,8 @@ function runEvents() {
       }
       // missions read the run that just ended, pay out, and the board tops itself back up
       const tally: RunTally = { cm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
+        hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0,
+        unhurtCm: game.feats.hits === 0 ? game.heightCm : game.feats.unhurtCm ?? 0 };
       const settled = settle(save.missions, tally);
       // banked into the lifetime count above; zeroed only now the tally has read them
       game.feats.hits = 0;
@@ -446,6 +536,7 @@ function runEvents() {
       if (dailyRun) void cloudSync("daily");
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.token, save.name, rulesNow, newCm, save.totalCm);
       const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      if (wasLive) { livePanel = panel; ui.setGameOverRank(panel, `Waiting for ${liveThem || "your friend"}…`); }
       if (!chill) submitScore(cm, panel);
     },
   };
@@ -522,7 +613,55 @@ let runCoinsTotal = 0;
 /** True while the current run is today's shared climb. */
 let dailyRun = false;
 /** The recorded climb running beside this one, when the player asked to race it. */
-let ghost: Ghost | null = null;
+let ghost: Ghost | LiveGhost | null = null;
+/** the live race this phone is in, from the lobby until the result lands */
+let live: LiveMatch | null = null;
+let liveThem = "";
+/** the game-over card of a live run, where the result goes when the room has replayed both tapes */
+let livePanel: HTMLElement | null = null;
+/** the generator's version on this build: both phones in a race must agree, or the fridges differ */
+const WORLD_VERSION = new World(1, 0).version;
+
+/**
+ * Join a live race room, as its maker or by a friend's link. The lobby stays up until the
+ * room says start; the run then begins on the seed the room dealt, with the other player's
+ * inputs arriving as they happen and driving a ghost beside your own toy.
+ */
+function joinLive(id: string): void {
+  if (!leaderboardEnabled) { ui.toast("Live races are offline"); ui.showMenu(); return; }
+  live?.close();
+  const link = matchLink(id);
+  const share = async () => {
+    const text = `Race me live up the fridge in Magnet Climbers:`;
+    try { if (navigator.share) { await navigator.share({ title: "Magnet Climbers", text, url: link }); return; } } catch { /* cancelled */ }
+    try { await navigator.clipboard.writeText(`${text} ${link}`); ui.toast("Link copied. Send it to a friend."); } catch { ui.toast("Could not copy the link"); }
+  };
+  const panel = ui.showLiveLobby({ link, status: "Connecting…", onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
+  const m = new LiveMatch(id, {
+    wait: () => ui.setLiveStatus(panel, "Waiting for a friend to open the link…"),
+    start: (seed, world, them) => { liveThem = them.name; ui.toast(`${them.name} is here. Climb!`); startRun("solo", false, false, null, { seed, world }); },
+    input: (e) => { if (ghost instanceof LiveGhost) ghost.feed(e); },
+    ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm`); },
+    left: () => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} left the race`); },
+    result: (rows, winner) => showLiveResult(rows, winner),
+    refused: (why) => { ui.toast(why === "full" ? "That race already has two climbers" : "Your friend is on another build; update and try again"); live = null; ui.showMenu(); },
+    closed: () => { if (game && live) ui.toast("Lost the race connection"); },
+  });
+  live = m;
+  m.connect({ id: save.playerId, name: save.name || "a friend", world: WORLD_VERSION });
+}
+
+function showLiveResult(rows: LiveResultRow[], winner: string | null): void {
+  const me = rows.find((r) => r.id === save.playerId), them = rows.find((r) => r.id !== save.playerId);
+  const mine = me ? `${groupNum(me.cm)} cm` : "—", theirs = them ? `${groupNum(them.cm)} cm` : "—";
+  const text = !me || !them ? "Race over"
+    : winner === save.playerId ? `You won the race · ${mine} vs ${theirs}`
+    : winner ? `${them.name} won the race · ${theirs} vs ${mine}`
+    : `Dead heat · ${mine} each`;
+  const note = me && !me.verified ? " · your run could not be verified" : "";
+  if (livePanel) ui.setGameOverRank(livePanel, text + note); else ui.toast(text);
+  live?.close(); live = null; livePanel = null;
+}
 /**
  * A ghost is only meaningful on the door it was recorded on, so racing one and generating a
  * fresh fridge are the same decision: the tape hands over its seed, or there is no ghost.
@@ -557,7 +696,8 @@ function updateMissionStrip(dt: number): void {
   // until the first fling, so a mission counting that always ran a few seconds behind the
   // number on screen -- 80/120 under a clock reading 1:23.
   const run: RunTally = { cm: game.heightCm, coins: runCoinsTotal, gadgetRides: game.feats.gadgetRides,
-    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0 };
+    hits: game.feats.hits, paints: game.feats.paints ?? 0, seconds: Math.floor(game.time), daily: dailyRun ? 1 : 0,
+        unhurtCm: game.feats.hits === 0 ? game.heightCm : game.feats.unhurtCm ?? 0 };
 
   // A mission that hits its target has to say so and then get out of the way. Holding the
   // strip on a finished one, as it first did, meant the next mission was never mentioned --
@@ -603,7 +743,7 @@ function ensureDailyMissions(): void {
   persist();
 }
 
-function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null) {
+function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number } | null = null) {
   ensureDailyMissions();
   void cloudPull(true);
   rulesNow = rules;
@@ -616,16 +756,21 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   paused = false;
   const lineup = lineupFor(rules);
   dailyRun = daily;
-  // everyone climbs the same door with the same gear, so a daily leaves the kit in the drawer
-  const kit = daily ? ({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>) : save.kit;
+  // everyone climbs the same door with the same gear, so a daily or a live race leaves the kit in the drawer
+  const kit = daily || liveRace ? ({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>) : save.kit;
   game = new Game(kit, runEvents(),
     withTutorial ? { rules, seed: TUTORIAL_SEED, lineup }
     : daily ? { rules, seed: dailySeed(), lineup }
+    : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: false, lineup }
     : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
     : { rules, chill: save.chill, lineup });
   // the ghost wears last time's colours so the two climbers are never mistaken for each other
-  ghost = raceTape ? new Ghost(raceTape, { creature: save.creature, pattern: save.pattern }) : null;
+  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, { creature: save.creature, pattern: save.pattern })
+    : raceTape ? new Ghost(raceTape, { creature: save.creature, pattern: save.pattern }) : null;
   game.ghost = ghost;
+  // every input goes to the room the moment it is played; the other phone's ghost is driven by it
+  if (liveRace && live) { const m = live; game.tape.onEvent = (e) => m.input(e); }
+  if (!liveRace) livePanel = null;
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
@@ -670,6 +815,8 @@ async function resubmitBests() {
 /** Push the run to the global board (best per player is kept server-side). */
 /** The tape of the daily run that just ended, sealed at game over for the score post. */
 let dailyTape: Tape | null = null;
+/** the tape of the run just finished, so sharing it can send the ghost along with the number */
+let lastTape: Tape | null = null;
 function submitScore(cm: number, panel: HTMLElement) {
   if (!leaderboardEnabled || cm <= 0) return;
   const seconds = game ? Math.round(game.runTime) : 0;
@@ -682,7 +829,9 @@ function submitScore(cm: number, panel: HTMLElement) {
       if (dailyRun && r.verified === false) { ui.setGameOverRank(panel, r.reason === "no tape" ? "Update the app to post to the daily" : "Climb could not be verified"); return; }
       const rank = await leaderboard.rank(board, save.playerId);
       const where = dailyRun ? "Today" : "Global";
-      ui.setGameOverRank(panel, rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
+      // the Worker is still climbing the tape again; the row stands meanwhile and is cut if the replay disagrees
+      const pending = dailyRun && r.verified === "pending" ? " · being checked" : "";
+      ui.setGameOverRank(panel, (rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent") + pending);
     });
   };
   // every finished run posts; the name is whatever the player has (a guest name if they skipped)
@@ -918,12 +1067,18 @@ async function cloudPull(quiet = false) {
 }
 void cloudPull();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) void cloudPull(); });
+// an installed app that left for Google or Apple to sign in lands back here with the result
+void finishRedirect(save.playerId, save.token).then((r) => { if (r) void signedIn(r); }).catch((err) => ui.toast(`Sign-in failed: ${String((err as Error).message ?? err).slice(0, 60)}`));
 void resubmitBests();
 // before anything draws a menu, so the board is today's rather than yesterday's
 ensureDailyMissions();
 pendingChallenge = parseChallenge();
 clearChallengeParam();
-if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }
+// a live race link: straight into the room, the story can wait
+const liveId = new URLSearchParams(location.search).get("m") ?? "";
+if (/^[a-z0-9]{6,16}$/.test(liveId)) { const u = new URL(location.href); u.searchParams.delete("m"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
+if (/^[a-z0-9]{6,16}$/.test(liveId)) { save.introSeen = true; persist(); joinLive(liveId); }
+else if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }
 else if (loadSnapshot()) resumeRun();
 else if (!save.introSeen) {
   ui.showStory(() => {

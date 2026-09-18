@@ -1,4 +1,5 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
+import { accountsEnabled } from "./account";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
 import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
@@ -43,6 +44,8 @@ export interface UiHandlers {
   onToggleAutoKit(on: boolean): void;
   /** Climb the door your best run was recorded on, with that run drawn beside you. */
   onRaceBest(): void;
+  /** Open a live race room and wait for a friend to join by link. */
+  onLiveRace(): void;
   /** Whether there is a tape to race, and how far it got. */
   bestTapeCm(): number | null;
   onSetLang(lang: Lang): void;
@@ -50,6 +53,9 @@ export interface UiHandlers {
   onSetAvatar(id: string): void;
   onUpdate(): void;
   onLinkDevice(): void;
+  /** Sign in with Google or Apple; the profile follows the account across phones. */
+  onSignIn(provider: "google" | "apple"): void;
+  onSignOut(): void;
   onOpenBoard(): void;
   onEnterCode(code: string): void;
   onTutorial(): void;
@@ -384,6 +390,10 @@ export class Ui {
           <b>RACE YOUR BEST</b><small>same door, you beside you</small>
           <span class="ghost-cm">${groupNum(ghostCm)} CM</span>
         </button>` : ""}
+        <button class="home-row ghost-row" data-a="live">
+          <b>RACE A FRIEND LIVE</b><small>same fridge, same moment, their ghost beside you</small>
+          <span class="ghost-cm">👻</span>
+        </button>
         ${(() => {
           // "Term Starts fridge" was the theme's name with the word fridge stuck on the end,
           // which reads as nonsense rather than as September's door. And once the pattern was
@@ -413,6 +423,7 @@ export class Ui {
       // one door for both errands: what you are wearing, and what you are taking up with you
       if (a === "kit") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
+      if (a === "live") this.h.onLiveRace();
       // the wallet chip is still a way in, and lands on what the coins are for
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "board") this.showBoard("solo");
@@ -783,6 +794,9 @@ export class Ui {
         ${row("Climber name", `${esc(s.name || "not set")} · shown on the scoreboard`, chip("name", "CHANGE"))}
         <div class="shell-row">${avatarHtml(s.avatar, s.name, "calc(40 * var(--px))")}<span class="txt"><b>Avatar</b><small>${esc(avatarById(s.avatar)?.name ?? "Just your initial")} · shown in chat</small></span>${chip("avatar", "PICK")}</div>
         <p class="sec-label">Play on another device</p>
+        ${accountsEnabled ? (s.account
+          ? row("Signed in", `${esc(s.account.email || s.account.provider || "account")} · this profile follows you to any phone you sign in on`, chip("signout", "SIGN OUT"))
+          : row("Sign in", "Google or Apple. Sign in on another phone and this profile is there.", `${chip("google", "GOOGLE")} ${chip("apple", "APPLE")}`)) : ""}
         ${row("Link a new device", "Shows a 6-letter code. Enter it on the other device to carry this profile over.", chip("link", "CODE"))}
         ${row("Enter a link code", "Adopt a profile from another device. Replaces this one.", chip("claim", "ENTER"))}
         <p class="sec-label">Preferences</p>
@@ -832,6 +846,8 @@ export class Ui {
       if (a === "name") { this.showNamePrompt(() => this.showSettings()); return; }
       if (a === "avatar") { this.showAvatarPicker(); return; }
       if (a === "link") { this.h.onLinkDevice(); return; }
+      if (a === "google" || a === "apple") { this.h.onSignIn(a); return; }
+      if (a === "signout") { this.h.onSignOut(); return; }
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
@@ -1018,14 +1034,39 @@ export class Ui {
   }
 
   /** Landing panel when the app is opened from a challenge link. */
-  showChallenge(c: { mode: "solo"; cm: number; name: string }) {
+  /** The live race lobby: the link to send, and a line that says where things stand. */
+  showLiveLobby(o: { link: string; status: string; onShare: () => void; onCancel: () => void }): HTMLElement {
     const p = el("div", "panel small");
     p.innerHTML = `
-      <div class="story-icon">📣</div>
-      <h2>${esc(c.name)} challenged you</h2>
+      <div class="story-icon">👻</div>
+      <h2>Live race</h2>
+      <p class="tag">Send this link. When your friend opens it you both start on the same fridge, with each other's ghost climbing beside you.</p>
+      <div class="rank" style="word-break:break-all;font-size:12px;opacity:.8">${esc(o.link)}</div>
+      <p class="tag live-status">${esc(o.status)}</p>
+      <button class="primary" data-a="share">SEND THE LINK</button>
+      <button class="ghost" data-a="cancel">CANCEL</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "share") o.onShare();
+      if (a === "cancel") o.onCancel();
+    });
+    this.show(p);
+    return p;
+  }
+  setLiveStatus(panel: HTMLElement, text: string) {
+    if (this.panel !== panel) return;
+    const s = panel.querySelector<HTMLElement>(".live-status");
+    if (s) s.textContent = text;
+  }
+
+  showChallenge(c: { mode: "solo"; cm: number; name: string; raceId?: string }) {
+    const p = el("div", "panel small");
+    p.innerHTML = `
+      <div class="story-icon">${c.raceId ? "👻" : "📣"}</div>
+      <h2>${esc(c.name)} ${c.raceId ? "wants a race" : "challenged you"}</h2>
       <div class="big">${c.cm} cm</div>
-      <p class="tag">Solo climb. Their height shows as a line on your fridge. Get above it.</p>
-      <button class="primary" data-a="go">ACCEPT</button>
+      <p class="tag">${c.raceId ? "Same fridge, their ghost climbing beside you. Get above it." : "Solo climb. Their height shows as a line on your fridge. Get above it."}</p>
+      <button class="primary" data-a="go">${c.raceId ? "RACE" : "ACCEPT"}</button>
       <button class="ghost" data-a="menu">LATER</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;

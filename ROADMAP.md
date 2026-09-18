@@ -29,29 +29,33 @@ with the near-miss line** (#7) are all in the game. Also since: per-run kit
 (coins buy a higher jump and a stickier floor for one climb), chat with
 moderation, and the owner's scale bench.
 
-## Now — what the recorder unlocks
-1. **Ghost of your best run** drawn live on the fridge. The tape of your best
-   climb is already kept on the device; this is playback plus a faintly drawn
-   second climber.
-2. **Server-side replay of the daily.** A shared board is the first thing worth
-   cheating. The sim is deterministic and a tape is about a kilobyte, so the
-   Worker can climb it again and keep the row only if it agrees.
-3. **Async race:** race a friend's recorded run as a ghost from a share link.
-   Needs the ghost renderer and the same tape storage the replay check wants.
+## Done in the ghost pass (September)
+**Ghost of your best run** drawn live on the fridge from its tape. **Server-side
+replay of the daily** — the Worker climbs the tape again and keeps the row only
+if it agrees. **Async race** — sharing a run sends its tape up under a short
+id; the link brings it down and the sharer's ghost climbs the same fridge
+beside whoever opened it.
+
+**Live ghost race** — a Durable Object per match relays each player's inputs
+to the other phone, where they drive a ghost beside the live toy; both tapes
+are replayed by the room and the result is what the replays say.
+
+**Accounts (wired, switched off)** — Google/Apple sign-in through Firebase Auth,
+loaded from Google's CDN only when tapped; the Worker verifies the ID token
+against Google's keys and ties the account to the profile, so signing in on a
+second phone adopts it like a link code. Switch on with `VITE_FIREBASE_CONFIG`
+on the game and `FIREBASE_PROJECT_ID` on the Worker.
+
+## Now
+Set up the Firebase project and flip accounts on. Then the feel pass.
 
 ## Next — social and progression
 8. **Weekly league.** Buckets of ~30 players by lifetime metres, top 10
    promote, bottom 10 drop. Tier badge on the scoreboard.
 9. **Input recorder:** log every fling/climb/reserve as `{tick, id, vector}`
    per run. Foundation for replay, ghosts and score validation.
-10. **Ghost of your best run** drawn live on the fridge (uses the recorder).
-11. **Async race:** race a friend's recorded run as a ghost from a share link.
-12. **Live ghost race:** Durable Object per match relaying inputs over
-    WebSocket; goal height; result settled by server replay.
 13. **Themed fridges:** monthly skin of the fridge (stickers, plates, palette)
     with one limited climber skin. Gives each update something to post.
-14. **Accounts:** Sign in with Google/Apple on top of the current link codes
-    (needs OAuth client ids from the owner).
 
 ## Later — platform and money
 15. Capacitor wrap for Android/iOS; AdMob rewarded revive (hook exists in

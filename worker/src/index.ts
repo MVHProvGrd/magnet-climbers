@@ -27,6 +27,14 @@ import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
+export { MatchRoom } from "./match";
+export { Verifier } from "./verify";
+import { settleVerdict, type VerifyJob } from "./verify";
+import { checkTape } from "./replay";
+import { verifyFirebaseIdToken, type Jwks } from "./auth";
+/** swapped in tests for a key the test signed with */
+export let jwksForTests: Jwks | undefined;
+export function setJwksForTests(j: Jwks | undefined): void { jwksForTests = j; }
 import { World } from "../../src/game/world";
 
 /** Server-side mirror of the client name filter — same word list, same leetspeak/Unicode/
@@ -95,6 +103,12 @@ export interface Env {
   TAPE_MODE?: string;
   /** owner key for /admin; set with `npx wrangler secret put ADMIN_KEY` */
   ADMIN_KEY?: string;
+  /** one Durable Object per live race, see match.ts; absent until the binding is deployed */
+  MATCH?: DurableObjectNamespace;
+  /** the daily replay runs here, off the request path (verify.ts); inline when absent, as in tests */
+  VERIFY?: DurableObjectNamespace;
+  /** the Firebase project whose sign-ins are accepted at /auth; accounts are off until it is set */
+  FIREBASE_PROJECT_ID?: string;
 }
 
 const MAX_CM = 200_000;
@@ -285,14 +299,16 @@ async function placeInLeague(env: Env, playerId: string, name: string): Promise<
     if (rank <= PROMOTE) tier = Math.min(TIERS.length - 1, tier + 1);
     else if (members >= PROMOTE + RELEGATE && rank > members - RELEGATE) tier = Math.max(0, tier - 1);
   }
-  // the newest bucket of that tier, or a fresh one when it is full
-  const open = await env.DB.prepare(
-    "SELECT bucket, COUNT(*) AS n FROM league WHERE week = ? AND tier = ? GROUP BY bucket ORDER BY bucket DESC LIMIT 1",
-  ).bind(week, tier).first<{ bucket: number; n: number }>();
-  const bucket = !open ? 1 : open.n >= BUCKET_SIZE ? open.bucket + 1 : open.bucket;
-  await env.DB.prepare("INSERT OR IGNORE INTO league (player_id, week, tier, bucket, name, cm, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?)")
-    .bind(playerId, week, tier, bucket, name, Date.now()).run();
-  return { week, tier, bucket };
+  // The newest bucket of that tier with a seat free, or a fresh one. Chosen and taken in the
+  // one statement, so two players placed at the same moment cannot both count the same open
+  // seat: SQLite runs the statement whole, and the second sees the first already sitting.
+  await env.DB.prepare(`INSERT OR IGNORE INTO league (player_id, week, tier, bucket, name, cm, updated_at)
+    SELECT ?1, ?2, ?3,
+      COALESCE((SELECT bucket FROM league WHERE week = ?2 AND tier = ?3 GROUP BY bucket HAVING COUNT(*) < ?4 ORDER BY bucket DESC LIMIT 1),
+               (SELECT COALESCE(MAX(bucket), 0) + 1 FROM league WHERE week = ?2 AND tier = ?3)),
+      ?5, 0, ?6`).bind(playerId, week, tier, BUCKET_SIZE, name, Date.now()).run();
+  const seat = await env.DB.prepare("SELECT bucket FROM league WHERE player_id = ? AND week = ?").bind(playerId, week).first<{ bucket: number }>();
+  return { week, tier, bucket: seat?.bucket ?? 1 };
 }
 
 let dailyReady = false;
@@ -300,6 +316,38 @@ let dailyReady = false;
 const DAILY_WORLD = new World(1, 0).version;
 
 /** Every daily tape the Worker has been shown, with what replaying it gave. */
+/** Shared runs for the async race, by short id. Created on demand like the rest. */
+/** A signed-in account (Firebase uid) and the player profile it plays as. Created on demand. */
+let accountsReady = false;
+async function ensureAccounts(env: Env): Promise<void> {
+  if (accountsReady) return;
+  let ok = true;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS accounts (
+    uid TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    provider TEXT,
+    email TEXT,
+    created_at INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS accounts_player ON accounts (player_id)").run().catch(() => { ok = false; });
+  if (ok) accountsReady = true;
+}
+let racesReady = false;
+async function ensureRaces(env: Env): Promise<void> {
+  if (racesReady) return;
+  let ok = true;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS races (
+    id TEXT PRIMARY KEY,
+    player_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL,
+    seconds INTEGER,
+    tape TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`).run().catch(() => { ok = false; });
+  if (ok) racesReady = true;
+}
 let tapesReady = false;
 async function ensureTapes(env: Env): Promise<void> {
   if (tapesReady) return;
@@ -335,7 +383,7 @@ async function ensureDaily(env: Env): Promise<void> {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
@@ -445,16 +493,31 @@ export default {
         // confirm never lands. Either way the height that lands is never above the replay's.
         const enforce = (env.TAPE_MODE ?? "shadow") === "enforce";
         const rawTape = (body as { tape?: unknown }).tape;
-        const v = verifyDaily(rawTape, cm, day, DAILY_WORLD);
         await ensureTapes(env);
-        await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-          .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null,
-            rawTape ? JSON.stringify(rawTape).slice(0, MAX_TAPE_BYTES) : null, Date.now()).run().catch(() => {});
-        if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
-        const kept = v.ok ? Math.min(cm, v.cm) : cm;
+        const tapeText = rawTape ? JSON.stringify(rawTape).slice(0, MAX_TAPE_BYTES) : null;
+        // The cheap checks first, on the request. The replay itself takes seconds of CPU a
+        // request does not have, so with the verifier deployed the claim lands now and the
+        // replay runs in the Durable Object, which cuts or drops the row when it disagrees.
+        const checked = checkTape(rawTape, day, DAILY_WORLD);
+        if ("reason" in checked || !env.VERIFY || !ctx) {
+          const v = "reason" in checked ? { ok: false as const, reason: checked.reason } : verifyDaily(rawTape, cm, day, DAILY_WORLD);
+          await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null, tapeText, Date.now()).run().catch(() => {});
+          if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
+          const kept = v.ok ? Math.min(cm, v.cm) : cm;
+          await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(playerId, day, name, kept, secs, Date.now()).run();
+          return json({ ok: true, best: kept, day, verified: v.ok, ...(v.ok ? {} : { reason: v.reason }) }, h);
+        }
+        await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, NULL, 'pending', NULL, ?, ?)")
+          .bind(playerId, day, cm, tapeText, Date.now()).run().catch(() => {});
         await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(playerId, day, name, kept, secs, Date.now()).run();
-        return json({ ok: true, best: kept, day, verified: v.ok, ...(v.ok ? {} : { reason: v.reason }) }, h);
+          .bind(playerId, day, name, cm, secs, Date.now()).run();
+        const job: VerifyJob = { playerId, day, cm, tape: checked.tape, world: DAILY_WORLD, enforce };
+        const verifier = env.VERIFY.get(env.VERIFY.idFromName(`${playerId}:${day}`));
+        ctx.waitUntil(verifier.fetch("https://verify/", { method: "POST", body: JSON.stringify(job) })
+          .catch((err) => settleVerdict(env, job, { ok: false, reason: `verifier failed: ${String((err as Error)?.message ?? err).slice(0, 60)}` })));
+        return json({ ok: true, best: cm, day, verified: "pending" }, h);
       }
       if (!validMode(body.mode)) return json({ error: "bad score" }, h, 400);
       const now = Date.now();
@@ -687,6 +750,104 @@ export default {
         // player's bucket standing stale, but that should never happen silently
         .catch((err) => console.error("league update failed", pid, seat.week, err));
       return json({ ok: true }, h);
+    }
+
+    /**
+     * The async race. A shared run's tape is kept here under a short id and the share link
+     * carries the id; whoever opens the link gets the tape and climbs the same fridge with
+     * the sharer's ghost beside them. The tape is the player's own (token), sized like a daily
+     * tape, and checked for shape only: a ghost that cheats only beats itself.
+     */
+    if (req.method === "POST" && url.pathname === "/race") {
+      if (await rateLimited(env, `race:${clientIp(req)}`, 10, 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { playerId?: unknown; token?: unknown; name?: unknown; tape?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      if (!playerId || token.length < 16 || !(await ownsProfile(env, playerId, token))) return json({ error: "forbidden" }, h, 403);
+      const tape = body.tape as { v?: unknown; seed?: unknown; world?: unknown; events?: unknown; cm?: unknown; seconds?: unknown } | undefined;
+      const cm = Math.floor(Number(tape?.cm));
+      if (!tape || tape.v !== 1 || !Number.isFinite(Number(tape.seed)) || !Number.isFinite(Number(tape.world))
+        || !Array.isArray(tape.events) || !tape.events.length || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad tape" }, h, 400);
+      const text = JSON.stringify(tape);
+      if (text.length > MAX_TAPE_BYTES) return json({ error: "tape too long" }, h, 413);
+      let name = String(body.name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "a friend";
+      if (nameIsProfane(name)) name = "a friend";
+      await ensureRaces(env);
+      const bytes = crypto.getRandomValues(new Uint8Array(8));
+      const id = Array.from(bytes, (b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+      const secs = Number.isFinite(Number(tape.seconds)) ? Math.max(0, Math.min(86400, Math.round(Number(tape.seconds)))) : 0;
+      await env.DB.prepare("INSERT INTO races (id, player_id, name, cm, seconds, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, playerId, name, cm, secs, text, Date.now()).run();
+      return json({ ok: true, id }, h);
+    }
+    if (req.method === "GET" && url.pathname === "/race") {
+      const id = url.searchParams.get("id") ?? "";
+      if (!/^[a-z0-9]{6,16}$/.test(id)) return json({ error: "bad id" }, h, 400);
+      await ensureRaces(env);
+      const row = await env.DB.prepare("SELECT name, cm, seconds, tape FROM races WHERE id = ?").bind(id).first<{ name: string; cm: number; seconds: number; tape: string }>();
+      if (!row) return json({ error: "not found" }, h, 404);
+      let tape: unknown = null;
+      try { tape = JSON.parse(row.tape); } catch { return json({ error: "bad tape" }, h, 500); }
+      return new Response(JSON.stringify({ id, name: row.name, cm: row.cm, seconds: row.seconds, tape }), { headers: { ...h, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" } });
+    }
+
+    /**
+     * The live race. POST /match deals a room id; each phone then opens a socket on
+     * /match/<id>/ws and the room does the rest (match.ts). No token: the id is the secret,
+     * and a room settles on replayed tapes, so nothing a stranger sends can win it a race.
+     */
+    /**
+     * Sign in. The phone sends the Firebase ID token it just got, plus the profile it is playing
+     * as. The token is checked against Google's keys (auth.ts). An account seen before answers
+     * with its own profile, which the phone adopts the way a link code is claimed; a new one is
+     * tied to the profile the phone brought, which it must own.
+     */
+    if (req.method === "POST" && url.pathname === "/auth") {
+      if (!env.FIREBASE_PROJECT_ID) return json({ error: "accounts are not switched on" }, h, 503);
+      if (await rateLimited(env, `auth:${clientIp(req)}`, 20, 10 * 60_000)) return json({ error: "slow down" }, h, 429);
+      let body: { idToken?: unknown; playerId?: unknown; token?: unknown };
+      try { body = await req.json(); } catch { return json({ error: "bad json" }, h, 400); }
+      const idToken = String(body.idToken ?? "").slice(0, 4096);
+      const playerId = String(body.playerId ?? "").slice(0, 64);
+      const token = String(body.token ?? "").slice(0, 64);
+      let who;
+      try { who = await verifyFirebaseIdToken(idToken, env.FIREBASE_PROJECT_ID, jwksForTests); }
+      catch (err) { return json({ error: "sign-in rejected", reason: String((err as Error).message ?? err).slice(0, 60) }, h, 401); }
+      // the profile the phone brought must be its own and on file, so the account can be tied to it
+      const mine = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>();
+      if (!playerId || !mine || mine.token !== token) return json({ error: "save first" }, h, 403);
+      await ensureAccounts(env);
+      const now = Date.now();
+      const known = await env.DB.prepare("SELECT player_id FROM accounts WHERE uid = ?").bind(who.uid).first<{ player_id: string }>();
+      if (known) {
+        await env.DB.prepare("UPDATE accounts SET last_seen = ? WHERE uid = ?").bind(now, who.uid).run().catch(() => {});
+        if (known.player_id === playerId) return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+        const sv = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(known.player_id).first<{ token: string; blob: string; rev: number }>();
+        // the account's profile has gone (an admin wipe); the account follows the phone instead
+        if (!sv) {
+          await env.DB.prepare("UPDATE accounts SET player_id = ?, last_seen = ? WHERE uid = ?").bind(playerId, now, who.uid).run();
+          return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+        }
+        return json({ ok: true, adopted: true, playerId: known.player_id, token: sv.token, blob: sv.blob, rev: sv.rev, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+      }
+      await env.DB.prepare("INSERT INTO accounts (uid, player_id, provider, email, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(who.uid, playerId, who.provider ?? null, who.email ?? null, now, now).run();
+      return json({ ok: true, adopted: false, playerId, uid: who.uid, provider: who.provider ?? null, email: who.email ?? null }, h);
+    }
+
+    if (req.method === "POST" && url.pathname === "/match") {
+      if (!env.MATCH) return json({ error: "live races are not switched on" }, h, 503);
+      if (await rateLimited(env, `match:${clientIp(req)}`, 20, 60_000)) return json({ error: "slow down" }, h, 429);
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const id = Array.from(bytes, (b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+      return json({ ok: true, id }, h);
+    }
+    const ws = /^\/match\/([a-z0-9]{6,16})\/ws$/.exec(url.pathname);
+    if (req.method === "GET" && ws) {
+      if (!env.MATCH) return json({ error: "live races are not switched on" }, h, 503);
+      const room = env.MATCH.get(env.MATCH.idFromName(ws[1]));
+      return room.fetch(req);
     }
 
     if (req.method === "GET" && url.pathname === "/chat") {

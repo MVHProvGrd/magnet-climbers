@@ -312,3 +312,178 @@ test("a score or run posted about another player's profile is refused", async ()
   const again = await e.DB.prepare("SELECT name, cm FROM scores WHERE player_id = ? AND mode = 'solo'").bind(victim.playerId).first<{ name: string; cm: number }>();
   assert.deepEqual([again?.name, again?.cm], ["Me", 500]);
 });
+
+// League seating is one statement: the newest bucket with a seat free, else a fresh one.
+test("league buckets fill to thirty and then open the next", async () => {
+  const e = env();
+  const buckets = new Map<number, number>();
+  for (let i = 0; i < 31; i++) {
+    const p = await seedPlayer(e, "lg");
+    const r = await worker.fetch(post("/run", { playerId: p.playerId, token: p.token, name: "Kid", mode: "solo", cm: 100 + i }), e);
+    assert.equal(r.status, 200);
+  }
+  const rows = await e.DB.prepare("SELECT bucket, COUNT(*) AS n FROM league GROUP BY bucket").all<{ bucket: number; n: number }>();
+  for (const r of rows.results ?? []) buckets.set(r.bucket, r.n);
+  assert.deepEqual([...buckets.entries()].sort(), [[1, 30], [2, 1]]);
+});
+
+// The async race: a run's tape goes up under the player's token and comes back by id.
+test("a shared run is kept by id and handed back; a forged post is refused", async () => {
+  const e = env();
+  const p = await seedPlayer(e);
+  const tape = { v: 1, seed: 7, world: 27, kit: {}, chill: false, daily: false, cm: 1234, seconds: 61, events: [{ t: 0.5, id: 1, k: "fling", v: { x: 10, y: -400 } }] };
+  const forged = await worker.fetch(post("/race", { playerId: p.playerId, token: "x".repeat(20), name: "Kid", tape }), e);
+  assert.equal(forged.status, 403);
+  const bad = await worker.fetch(post("/race", { playerId: p.playerId, token: p.token, name: "Kid", tape: { ...tape, events: [] } }), e);
+  assert.equal(bad.status, 400);
+  const ok = await worker.fetch(post("/race", { playerId: p.playerId, token: p.token, name: "Kid", tape }), e);
+  assert.equal(ok.status, 200);
+  const { id } = (await ok.json()) as { id: string };
+  assert.match(id, /^[a-z0-9]{8}$/);
+  const back = await worker.fetch(new Request(`https://x/race?id=${id}`), e);
+  assert.equal(back.status, 200);
+  const got = (await back.json()) as { name: string; cm: number; tape: typeof tape };
+  assert.equal(got.name, "Kid"); assert.equal(got.cm, 1234); assert.deepEqual(got.tape, tape);
+  const missing = await worker.fetch(new Request("https://x/race?id=nosuchrun"), e);
+  assert.equal(missing.status, 404);
+});
+
+// The live race room, with two fake seats and a replay that reads the tape's own number.
+import { Match, type Message } from "../worker/src/match";
+test("a live race starts on the second seat, relays inputs, and settles on replayed tapes", () => {
+  const replay = (tape: unknown) => { const t = tape as { cm: number; bad?: boolean }; return t.bad ? { ok: false, cm: 0, reason: "wrong fridge" } : { ok: true, cm: t.cm }; };
+  const m = new Match(replay, () => 0.5);
+  const a: Message[] = [], b: Message[] = [], c: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  assert.deepEqual(a, [{ k: "wait", id: "A" }]);
+  m.join({ id: "C", name: "Cat", world: 26, send: (x) => c.push(x) });
+  assert.deepEqual(c, [{ k: "update" }], "another build is turned away");
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  assert.equal(a[1].k, "start"); assert.equal(b[0].k, "start");
+  const sa = a[1] as Extract<Message, { k: "start" }>, sb = b[0] as Extract<Message, { k: "start" }>;
+  assert.equal(sa.seed, sb.seed); assert.ok(sa.seed > 0); assert.deepEqual(sa.them, { id: "B", name: "Bob" });
+  m.join({ id: "D", name: "Dan", world: 27, send: (x) => c.push(x) });
+  assert.deepEqual(c[1], { k: "full" });
+  m.input("A", { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } });
+  assert.deepEqual(b[1], { k: "in", e: { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } } });
+  assert.equal(a.length, 2, "an input never comes back to its sender");
+  assert.equal(m.finish("A", { cm: 900 }, 950), true, "waits on the other tape");
+  assert.deepEqual(b[2], { k: "ended", id: "A", cm: 950 });
+  assert.equal(m.finish("B", { cm: 700 }, 600), false);
+  const ra = a.at(-1) as Extract<Message, { k: "result" }>;
+  assert.equal(ra.k, "result"); assert.equal(ra.winner, "A");
+  // the claim never rises above the replay, and a claim below it stands
+  assert.deepEqual(ra.rows.map((r) => [r.id, r.cm, r.verified]), [["A", 900, true], ["B", 600, true]]);
+  assert.deepEqual(b.at(-1), ra);
+});
+test("a live race with one tape unverified, or one player gone, still settles", () => {
+  const replay = (tape: unknown) => { const t = tape as { cm: number; bad?: boolean }; return t.bad ? { ok: false, cm: 0, reason: "wrong fridge" } : { ok: true, cm: t.cm }; };
+  const m = new Match(replay, () => 0.1);
+  const a: Message[] = [], b: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  m.finish("A", { cm: 500, bad: true }, 500);
+  m.leave("B");
+  const r = a.at(-1) as Extract<Message, { k: "result" }>;
+  assert.equal(r.k, "result"); assert.equal(r.winner, null, "nobody climbed anything the room believes");
+  assert.deepEqual(r.rows.map((x) => [x.id, x.cm, x.verified, x.reason]), [["A", 0, false, "wrong fridge"], ["B", 0, false, "no tape"]]);
+  // a seat left before the start is simply free again
+  const n = new Match(replay); const c: Message[] = [];
+  n.join({ id: "A", name: "Ann", world: 27, send: () => {} }); n.leave("A");
+  n.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
+  assert.deepEqual(c, [{ k: "wait", id: "B" }]);
+});
+
+// Accounts: a Firebase ID token signed by a key the test made, verified against that key.
+import { setJwksForTests } from "../worker/src/index";
+import { verifyFirebaseIdToken } from "../worker/src/auth";
+const b64u = (b: ArrayBuffer | Uint8Array | string) => {
+  const bytes = typeof b === "string" ? new TextEncoder().encode(b) : new Uint8Array(b as ArrayBuffer);
+  return Buffer.from(bytes).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+async function firebaseKeys() {
+  const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const kid = "test-kid";
+  const sign = async (claims: Record<string, unknown>) => {
+    const head = b64u(JSON.stringify({ alg: "RS256", kid, typ: "JWT" })), body = b64u(JSON.stringify(claims));
+    const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(`${head}.${body}`));
+    return `${head}.${body}.${b64u(sig)}`;
+  };
+  const jwks = async () => [{ kid, kty: "RSA", alg: "RS256", n: jwk.n!, e: jwk.e! }];
+  return { sign, jwks };
+}
+const claimsFor = (uid: string, project = "mc-test", now = Math.floor(Date.now() / 1000)) => ({
+  iss: `https://securetoken.google.com/${project}`, aud: project, sub: uid, user_id: uid, iat: now - 5, exp: now + 3600, auth_time: now - 5,
+  email: `${uid}@example.com`, firebase: { sign_in_provider: "google.com" },
+});
+
+test("a Firebase ID token is verified on signature and claims alone", async () => {
+  const { sign, jwks } = await firebaseKeys();
+  const who = await verifyFirebaseIdToken(await sign(claimsFor("u1")), "mc-test", jwks);
+  assert.deepEqual(who, { uid: "u1", email: "u1@example.com", provider: "google.com" });
+  await assert.rejects(verifyFirebaseIdToken(await sign(claimsFor("u1", "other-project")), "mc-test", jwks), /another project/);
+  await assert.rejects(verifyFirebaseIdToken(await sign({ ...claimsFor("u1"), exp: Math.floor(Date.now() / 1000) - 10 }), "mc-test", jwks), /expired/);
+  const good = await sign(claimsFor("u1"));
+  const tampered = good.slice(0, -4) + (good.endsWith("AAAA") ? "BBBB" : "AAAA");
+  await assert.rejects(verifyFirebaseIdToken(tampered, "mc-test", jwks), /bad signature/);
+  const other = await firebaseKeys();
+  await assert.rejects(verifyFirebaseIdToken(await other.sign(claimsFor("u1")), "mc-test", jwks), /bad signature|unknown signing key/);
+});
+
+test("/auth ties a new account to the phone's profile and hands a known account's profile to a second phone", async () => {
+  const { sign, jwks } = await firebaseKeys();
+  setJwksForTests(jwks);
+  try {
+    const e = { ...env(), FIREBASE_PROJECT_ID: "mc-test" } as Env;
+    const phoneA = await seedPlayer(e, "acc");
+    const idToken = await sign(claimsFor("uid-42"));
+    const forged = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: "not-the-token" }), e);
+    assert.equal(forged.status, 403);
+    const bad = await worker.fetch(post("/auth", { idToken: "nope", playerId: phoneA.playerId, token: phoneA.token }), e);
+    assert.equal(bad.status, 401);
+    const first = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: phoneA.token }), e);
+    assert.equal(first.status, 200);
+    const j1 = (await first.json()) as { adopted: boolean; playerId: string; uid: string };
+    assert.deepEqual([j1.adopted, j1.playerId, j1.uid], [false, phoneA.playerId, "uid-42"]);
+    // the same account from a second phone: that phone adopts phone A's profile
+    const phoneB = await seedPlayer(e, "acc");
+    const second = await worker.fetch(post("/auth", { idToken: await sign(claimsFor("uid-42")), playerId: phoneB.playerId, token: phoneB.token }), e);
+    const j2 = (await second.json()) as { adopted: boolean; playerId: string; token: string };
+    assert.deepEqual([j2.adopted, j2.playerId, j2.token], [true, phoneA.playerId, phoneA.token]);
+    // and off when the project is not configured
+    const off = await worker.fetch(post("/auth", { idToken, playerId: phoneA.playerId, token: phoneA.token }), env());
+    assert.equal(off.status, 503);
+  } finally { setJwksForTests(undefined); }
+});
+
+// With the verifier deployed, a daily claim lands at once and the replay runs afterwards:
+// the row is cut to the replayed height when the claim stood above it.
+import { Verifier } from "../worker/src/verify";
+test("a daily post answers at once and the verifier cuts an inflated claim afterwards", async () => {
+  const base = env("enforce");
+  const pending: Promise<unknown>[] = [];
+  const ctx = { waitUntil: (p: Promise<unknown>) => { pending.push(p); }, passThroughOnException: () => {} } as unknown as ExecutionContext;
+  const e = { ...base, VERIFY: {
+    idFromName: (n: string) => n,
+    get: () => ({ fetch: (_u: string, init: RequestInit) => new Verifier({} as DurableObjectState, e).fetch(new Request("https://verify/", init)) }),
+  } } as unknown as Env;
+  const { playerId, token } = await seedPlayer(e);
+  const { tape, cm } = climbToday();
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e, ctx);
+  assert.equal(res.status, 200);
+  const j = await res.json() as { verified: string; best: number };
+  assert.equal(j.verified, "pending"); assert.equal(j.best, cm + 5000);
+  const before = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
+  assert.equal(before?.cm, cm + 5000, "the claim stands until the replay says otherwise");
+  assert.equal(pending.length, 1, "the replay was handed off");
+  await Promise.all(pending);
+  const after = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
+  assert.equal(after?.cm, cm, "cut to what the tape climbs to");
+  const log = await e.DB.prepare("SELECT verdict, replayed FROM tapes WHERE player_id = ?").bind(playerId).first<{ verdict: string; replayed: number }>();
+  assert.deepEqual([log?.verdict, log?.replayed], ["ok", cm]);
+  // a tape the structural checks refuse never waits on the object
+  const p2 = await seedPlayer(e);
+  const bad = await worker.fetch(post("/score", { playerId: p2.playerId, token: p2.token, name: "Kid", mode: "daily", cm: 10, tape: { ...tape, chill: true } }), e, ctx);
+  assert.equal(bad.status, 422);
+});

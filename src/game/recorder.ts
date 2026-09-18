@@ -43,6 +43,8 @@ export class Recorder {
   readonly events: TapeEvent[] = [];
   private full = false;
   private broken = false;
+  /** the live race listens here: every event goes out the moment it is written */
+  onEvent: ((e: TapeEvent) => void) | null = null;
 
   /**
    * A run picked up from a snapshot has already been climbed for a while with nothing recorded,
@@ -59,6 +61,7 @@ export class Recorder {
   private push(e: TapeEvent): void {
     if (this.full) return;
     this.events.push(e);
+    this.onEvent?.(e);
     if (this.events.length >= MAX_EVENTS) this.full = true;
   }
 

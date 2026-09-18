@@ -122,7 +122,10 @@ export async function handleShare(req: Request, url: URL, profane: (c: Challenge
     return new Response(png as BodyInit, { headers: { "Content-Type": "image/png", "Cache-Control": cache, "Content-Length": String(png.byteLength) } });
   }
   if (!isUnfurler(req.headers.get("User-Agent") ?? "")) {
-    return Response.redirect(`${GAME_URL}?c=${encodeURIComponent(c.code)}`, 302);
+    // a race link carries the shared run's id on to the game, which fetches the tape itself
+    const race = url.searchParams.get("r") ?? "";
+    const r = /^[a-z0-9]{6,16}$/.test(race) ? `&r=${race}` : "";
+    return Response.redirect(`${GAME_URL}?c=${encodeURIComponent(c.code)}${r}`, 302);
   }
   return new Response(cardHtml(c, url.origin, playerId), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
 }

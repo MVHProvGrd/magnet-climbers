@@ -60,6 +60,6 @@ test("the lineup dresses the climber, colours come from the pattern, snapshots k
   g.phase = "running"; g.feats.gadgetRides = 2; g.feats.hits = 1;
   const snap = g.snapshot()!;
   const back = Game.restore(levels(), events, snap, undefined, [{ creature: "dino", pattern: "classic" }]);
-  assert.deepEqual(back.feats, { maxChain: 0, gadgetRides: 2, hits: 1, paints: 0 });
+  assert.deepEqual(back.feats, { maxChain: 0, gadgetRides: 2, hits: 1, paints: 0, unhurtCm: 0 });
   assert.equal(back.climbers[0].creature, "gecko", "restored climbers keep the look they were spawned with");
 });

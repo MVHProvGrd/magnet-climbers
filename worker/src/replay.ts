@@ -27,8 +27,10 @@ export function dailySeed(day: string): number {
   return (hash >>> 0) || 1;
 }
 
-/** Longest run a tape may describe: twenty minutes of steps, ~2 s of CPU at the measured rate. */
-export const MAX_STEPS = 20 * 60 * 120;
+/** Longest run a tape may describe: ninety minutes of steps, ~9 s of CPU at the measured rate. */
+export const MAX_STEPS = 90 * 60 * 120;
+/** A replay gives up after this much wall time, well inside a Durable Object's budget. */
+export const REPLAY_BUDGET_MS = 20_000;
 /** A tape on the wire: MAX_EVENTS flings at ~60 bytes each, with headroom. */
 export const MAX_TAPE_BYTES = 300_000;
 /** The daily is climbed with an empty kit, so a tape claiming otherwise did not come from one. */
@@ -40,14 +42,24 @@ export type Verdict =
 
 /** Structural checks, cheap and first. Returns a reason or null. */
 export function checkTape(raw: unknown, day: string, worldVersion: number): { tape: Tape } | { reason: string } {
+  const t = raw as Partial<Tape> | null;
+  if (t && typeof t === "object" && t.v === 1 && !t.daily) return { reason: "not a daily tape" };
+  return checkTapeOn(raw, dailySeed(day), worldVersion, "wrong day");
+}
+
+/** A live race tape: the same shape, on the seed the room dealt rather than the day's. */
+export function checkRaceTape(raw: unknown, seed: number, worldVersion: number): { tape: Tape } | { reason: string } {
+  return checkTapeOn(raw, seed, worldVersion, "wrong fridge");
+}
+
+function checkTapeOn(raw: unknown, seed: number, worldVersion: number, wrongSeed: string): { tape: Tape } | { reason: string } {
   if (!raw || typeof raw !== "object") return { reason: "no tape" };
   const t = raw as Partial<Tape>;
   if (t.v !== 1) return { reason: "tape version" };
   if (!Array.isArray(t.events) || !t.events.length) return { reason: "no events" };
   if (t.events.length > MAX_EVENTS) return { reason: "too many events" };
-  if (!t.daily) return { reason: "not a daily tape" };
   if (t.chill) return { reason: "chill tape" };
-  if (t.seed !== dailySeed(day)) return { reason: "wrong day" };
+  if (t.seed !== seed) return { reason: wrongSeed };
   if (t.world !== worldVersion) return { reason: "wrong world" };
   const kit = t.kit ?? {};
   for (const k of Object.keys(DAILY_KIT) as UpgradeKey[]) if ((kit[k] ?? 0) !== 0) return { reason: "kit on a daily" };
@@ -80,6 +92,8 @@ const NO_EVENTS = { onPower: () => {}, onGameOver: () => {}, onCoins: () => {}, 
  * ends (the climber is lost) or the recorded length runs out, whichever is first, and never
  * past MAX_STEPS.
  */
+export const replayRace = (tape: Tape): Verdict => replayDaily(tape);
+
 export function replayDaily(tape: Tape): Verdict {
   const game = new Game(DAILY_KIT, NO_EVENTS, {
     rules: "solo", seed: tape.seed, worldVersion: tape.world, chill: false, lineup: [], silent: true,
@@ -92,12 +106,19 @@ export function replayDaily(tape: Tape): Verdict {
     if (e.k === "fling") g.launch(c, e.v); else g.move(c, e.to);
   };
   const step = (g: Game, dt: number) => { g.update(dt); steps++; };
-  const done = (g: Game) => g.phase === "dead" || steps >= MAX_STEPS;
+  let overBudget = false;
+  const done = (g: Game) => {
+    if (g.phase === "dead" || steps >= MAX_STEPS) return true;
+    // checked every second of run, not every step: the clock is dearer than a step
+    if (steps % 120 === 0 && Date.now() - t0 > REPLAY_BUDGET_MS) { overBudget = true; return true; }
+    return false;
+  };
   try {
     replay(tape, game, apply, step, done);
   } catch (err) {
     return { ok: false, reason: `replay threw: ${String((err as Error)?.message ?? err).slice(0, 80)}`, steps, ms: Date.now() - t0 };
   }
+  if (overBudget) return { ok: false, reason: "too long to verify", cm: game.heightCm, steps, ms: Date.now() - t0 };
   if (steps >= MAX_STEPS && game.phase !== "dead") return { ok: false, reason: "run too long", cm: game.heightCm, steps, ms: Date.now() - t0 };
   return { ok: true, cm: game.heightCm, steps, ms: Date.now() - t0 };
 }

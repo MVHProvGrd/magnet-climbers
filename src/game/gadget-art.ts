@@ -167,8 +167,11 @@ export function drawGadget(ctx: CanvasRenderingContext2D, g: Gadget, time: numbe
   // chain meeting where it was measured to meet, and reproduces exactly what was judged on
   // the bench -- which used this same model. The hold box in gadgetZone is unchanged, so this
   // moves no collision and needs no world version.
+  // The scale is about the gadget's own anchor. Applied bare, it scaled the anchor's world
+  // position too: a 0.9 thermometer six metres up the door drew sixty centimetres below where
+  // it hung, on somebody else's door, and came and went as its real door scrolled into view.
   const gadgetScale = gadgetDrawScale(g.itemId);
-  if (gadgetScale !== 1) ctx.scale(gadgetScale, gadgetScale);
+  if (gadgetScale !== 1) { ctx.translate(g.x, g.y); ctx.scale(gadgetScale, gadgetScale); ctx.translate(-g.x, -g.y); }
   // by item id, not by theme: a gadget may be any one of the photographed variants
   const assembly = g.kind === "swing" || g.kind === "clip" ? objectArt.get(g.itemId) : undefined;
   const pivot = GADGET_PIVOTS[g.itemId] ?? [KEYCHAIN_PIVOT.x, KEYCHAIN_PIVOT.y];

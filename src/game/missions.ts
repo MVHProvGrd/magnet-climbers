@@ -46,6 +46,8 @@ export interface RunTally {
   paints: number;
   seconds: number;
   daily: number;
+  /** how high the run got before its first hit; the whole run when it took none */
+  unhurtCm: number;
 }
 
 export const MISSIONS: readonly MissionDef[] = [
@@ -64,7 +66,8 @@ export const MISSIONS: readonly MissionDef[] = [
 
 /** A mission's progress after a run: the best single run for a per-run goal, a total for a tally. */
 export function progressFor(def: MissionDef, mission: Mission, run: RunTally): number {
-  if (def.id === "unhurt") return run.hits > 0 ? mission.at : Math.max(mission.at, run.cm);
+  // reaching the height before the first hit is the feat; a hit after that does not undo it
+  if (def.id === "unhurt") return Math.max(mission.at, run.unhurtCm);
   if (def.stat === "daily") return mission.at + run.daily;
   // everything else is "in one run", so a bigger run replaces a smaller one rather than adding
   return Math.max(mission.at, run[def.stat as keyof RunTally]);

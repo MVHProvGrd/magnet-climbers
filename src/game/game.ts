@@ -67,7 +67,11 @@ export interface RunSnapshot {
 }
 
 /** Facts about the run that creature unlocks are checked against. Not gameplay. */
-export interface RunFeats { maxChain: number; gadgetRides: number; hits: number; paints: number }
+export interface RunFeats {
+  maxChain: number; gadgetRides: number; hits: number; paints: number;
+  /** the height reached before the first hit, which is what "without taking a hit" means: a hit later does not take it back */
+  unhurtCm?: number;
+}
 
 export interface RunEvents {
   onPower(kind: PowerUp["kind"], at: Vec): void;
@@ -144,7 +148,7 @@ export class Game {
   palette: string[];
   /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
   lineup: Look[];
-  feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0, paints: 0 };
+  feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0, paints: 0, unhurtCm: 0 };
   /** banked totals from the save, so the HUD can show wallet + this run */
   walletCoins = 0;
   walletGems = 0;
@@ -797,6 +801,7 @@ export class Game {
     }
     for (const c of this.climbers) if (c.iframes > 0) c.iframes = Math.max(0, c.iframes - dt);
     this.stepHand(sdt);
+    if (this.feats.hits === 0) this.feats.unhurtCm = Math.max(this.feats.unhurtCm ?? 0, this.heightCm);
 
     for (const c of this.climbers) c.handsAt = undefined;
     // a toy that is holding on, or gone, is not sliding: forget the panel it last slid on, so
@@ -1350,6 +1355,7 @@ export class Game {
   private damage(c: Climber, quiet = false, cause: DeathCause = "fell", intensity = 1) {
     c.hp = Math.max(0, c.hp - 1);
     c.iframes = CFG.hitIframes;
+    if (this.feats.hits === 0) this.feats.unhurtCm = Math.max(this.feats.unhurtCm ?? 0, this.heightCm);
     this.feats.hits++;
     this.a.sfx.bump(intensity);
     this.shake = 0.6;
