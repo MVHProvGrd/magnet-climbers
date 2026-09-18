@@ -411,6 +411,8 @@ export class Ui {
           return `<p class="home-month">${esc(month)}'s door: <b>${esc(t.name)}</b>${
             has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"}</p>`;
         })()}
+        <p class="home-stats">${s.runs.toLocaleString()} runs · ${fmtDistance(s.totalCm)} climbed lifetime</p>
+        <p class="home-stats global" hidden></p>
         ${s.missions.length ? `<div class="home-missions">
           <span class="mission-head">MISSIONS <span class="muted">· new in <span data-reset>${Ui.resetIn()}</span></span></span>
           ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
@@ -441,6 +443,14 @@ export class Ui {
     });
     p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
+    // everyone's climbing, added up, once the Worker answers; a phone offline just does without
+    if (leaderboardEnabled) void leaderboard.stats().then((st) => {
+      const g = p.querySelector<HTMLElement>(".global");
+      if (!st || !g || !p.isConnected) return;
+      const pl = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
+      g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`;
+      g.hidden = false;
+    });
     // the clocks on the tile and the missions tick while the menu is up, and stop with it
     const clock = setInterval(() => {
       if (!p.isConnected) { clearInterval(clock); return; }

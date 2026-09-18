@@ -577,6 +577,7 @@ select.buy option { background: #1e2229; color: #fff; }
 /* The theme name and pattern warning are information, not decoration, so they sit on their
    own scrim chip -- like .home-missions below -- rather than as thin text laid straight over
    whatever photo is behind the dock. */
+.home-stats { margin: 0; text-align: center; font: 600 calc(12 * var(--px)) var(--display); opacity: .62; }
 .home-month { margin: 0; text-align: center; font: 700 calc(13 * var(--px)) var(--display);
   letter-spacing: calc(0.6 * var(--px)); color: rgba(255,255,255,0.85);
   background: rgba(20,24,30,0.55); border-radius: calc(10 * var(--px));
