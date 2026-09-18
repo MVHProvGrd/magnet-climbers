@@ -19,6 +19,8 @@ export interface Seat {
   world: number;
   look?: { creature: string; pattern: string };
   send: (m: Message) => void;
+  /** a socket is attached; false while the phone is away (backgrounded to send the link, say) */
+  present?: boolean;
   done: boolean;
   tape?: unknown;
   claimed?: number;
@@ -30,7 +32,9 @@ export interface Seat {
 export interface Watcher { id: string; send: (m: Message) => void }
 
 export type Message =
-  | { k: "wait"; id: string }
+  | { k: "wait"; id: string;
+      /** who else holds a seat, and whether their phone is here right now */
+      others?: { id: string; name: string; present: boolean }[] }
   | { k: "full" }
   | { k: "update" }
   | { k: "start"; seed: number; world: number; you: string; them: { id: string; name: string; look?: { creature: string; pattern: string } }; countdownMs: number;
@@ -45,8 +49,13 @@ export type Message =
 
 /** How long the room waits for the second tape once the first is in. */
 export const SETTLE_GRACE_MS = 90_000;
-/** How long a dropped socket has to come back before its seat counts as left. */
+/** How long a dropped socket has to come back before its seat counts as left, mid-race. */
 export const LEAVE_GRACE_MS = 20_000;
+/**
+ * Before the start a seat is held far longer: the host backgrounds the game to text the link,
+ * which drops the socket, and the friend may take minutes to open it.
+ */
+export const LOBBY_HOLD_MS = 10 * 60_000;
 
 export type Replay = (tape: unknown, seed: number, world: number) => { ok: boolean; cm: number; reason?: string };
 
@@ -90,26 +99,52 @@ export class Match {
     for (const w of this.watchers) w.send(this.startForWatcher(w));
   }
 
-  /** A player takes a seat. The second one in starts the race; a third finds the room full. */
+  /**
+   * A player takes a seat. The race starts once two seats are held and both phones are here;
+   * a third finds the room full.
+   */
   join(seat: Omit<Seat, "done">): void {
     if (this.settled) { seat.send({ k: "full" }); return; }
     const again = this.seats.find((s) => s.id === seat.id);
     if (again) {
       // the same player back on a fresh socket keeps their seat and, mid-race, their start
-      again.send = seat.send; again.name = seat.name; again.look = seat.look;
-      if (this.started) again.send(this.startFor(again));
-      else again.send({ k: "wait", id: again.id });
-      return;
+      again.send = seat.send; again.name = seat.name; again.look = seat.look; again.present = true;
+      if (this.started) { again.send(this.startFor(again)); return; }
+    } else {
+      if (this.seats.length >= 2) { seat.send({ k: "full" }); return; }
+      if (this.seats.length === 1 && this.seats[0].world !== seat.world) { seat.send({ k: "update" }); return; }
+      this.seats.push({ ...seat, present: true, done: false });
     }
-    if (this.seats.length >= 2) { seat.send({ k: "full" }); return; }
-    if (this.seats.length === 1 && this.seats[0].world !== seat.world) { seat.send({ k: "update" }); return; }
-    this.seats.push({ ...seat, done: false });
-    if (this.seats.length < 2) { seat.send({ k: "wait", id: seat.id }); return; }
+    if (this.seats.length < 2 || !this.seats.every((s) => s.present)) { this.sendWait(); return; }
     this.world = seat.world;
     this.seed = this.deal();
     this.started = true;
     for (const s of this.seats) s.send(this.startFor(s));
     for (const w of this.watchers) w.send(this.startForWatcher(w));
+  }
+
+  /** Everyone seated hears who else is here, so a lobby can say what it is waiting on. */
+  private sendWait(): void {
+    for (const s of this.seats) s.send({ k: "wait", id: s.id, others: this.seats.filter((o) => o !== s).map((o) => ({ id: o.id, name: o.name, present: !!o.present })) });
+  }
+
+  /** A phone dropped before the start: its seat is kept, the other seat is told. */
+  away(id: string): void {
+    const seat = this.seats.find((s) => s.id === id);
+    if (!seat || this.started) return;
+    seat.present = false;
+    this.sendWait();
+  }
+
+  /** The lobby, as something a room can keep across being put to sleep. */
+  get lobby(): { id: string; name: string; world: number; look?: Seat["look"] }[] | null {
+    if (this.started) return null;
+    return this.seats.map((s) => ({ id: s.id, name: s.name, world: s.world, ...(s.look ? { look: s.look } : {}) }));
+  }
+  /** Seats put back from storage: held, absent, and mute until their phone reconnects. */
+  restore(seats: { id: string; name: string; world: number; look?: Seat["look"] }[]): void {
+    if (this.started || this.seats.length) return;
+    this.seats = seats.map((s) => ({ ...s, send: () => {}, present: false, done: false }));
   }
 
   private startFor(s: Seat): Message {
@@ -141,7 +176,7 @@ export class Match {
     this.watchers = this.watchers.filter((w) => w.id !== id);
     const seat = this.seats.find((s) => s.id === id);
     if (!seat) return;
-    if (!this.started) { this.seats = this.seats.filter((s) => s !== seat); return; }
+    if (!this.started) { this.seats = this.seats.filter((s) => s !== seat); this.sendWait(); return; }
     for (const s of this.seats) if (s !== seat) s.send({ k: "left", id });
     if (!seat.done) { seat.done = true; if (this.seats.every((s) => s.done)) this.settle(); }
   }
@@ -194,7 +229,19 @@ const NAME_RE = /[^\p{L}\p{N} _.\-!?]/gu;
 export class MatchRoom {
   private readonly match = new Match(roomReplay);
   private readonly who = new Map<WebSocket, string>();
-  constructor(private readonly state: DurableObjectState) {}
+  constructor(private readonly state: DurableObjectState) {
+    // a room with no socket open can be put to sleep; the lobby comes back from storage so a
+    // host who went off to send the link still holds their seat when the friend opens it
+    void state.blockConcurrencyWhile(async () => {
+      const lobby = await state.storage.get<{ id: string; name: string; world: number }[]>("lobby");
+      if (lobby?.length) this.match.restore(lobby);
+    });
+  }
+  private keepLobby(): void {
+    const lobby = this.match.lobby;
+    if (lobby) void this.state.storage.put("lobby", lobby);
+    else void this.state.storage.delete("lobby");
+  }
 
   async fetch(req: Request): Promise<Response> {
     if (req.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
@@ -226,6 +273,7 @@ export class MatchRoom {
       const seated = this.match.seats.some((s) => s.id === id);
       if (m.watch || (!seated && this.match.seats.length >= 2)) { this.match.watch({ id, send }); return; }
       this.match.join({ id, name, world, look, send });
+      this.keepLobby();
       return;
     }
     const id = this.who.get(ws);
@@ -244,8 +292,11 @@ export class MatchRoom {
     this.who.delete(ws);
     if (!id || [...this.who.values()].includes(id)) return;
     // a reconnect swaps the socket under the same id; a phone that drops gets a moment to come
-    // back before the room counts it as gone, and coming back cancels the count
-    const t = setTimeout(() => { if (![...this.who.values()].includes(id)) this.match.leave(id); }, LEAVE_GRACE_MS);
+    // back before the room counts it as gone, and coming back cancels the count. Before the
+    // start the seat is held much longer and the other seat is told the phone stepped away.
+    const started = this.match.started;
+    if (!started) this.match.away(id);
+    const t = setTimeout(() => { if (![...this.who.values()].includes(id)) { this.match.leave(id); this.keepLobby(); } }, started ? LEAVE_GRACE_MS : LOBBY_HOLD_MS);
     this.leaving.set(id, t);
   }
   private readonly leaving = new Map<string, ReturnType<typeof setTimeout>>();

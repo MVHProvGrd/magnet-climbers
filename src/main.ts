@@ -351,7 +351,7 @@ const ui = new Ui(uiRoot, () => save, {
   onLiveRace: async () => {
     const id = await createMatch();
     if (!id) { ui.toast("Live races are offline right now"); return; }
-    joinLive(id);
+    joinLive(id, true);
   },
   bestTapeCm: () => { const tape = loadBestTape(); return tape && !tape.chill ? tape.cm : null; },
   onOpenBoard: () => { void resubmitBests(); },
@@ -669,7 +669,7 @@ const WORLD_VERSION = new World(1, 0).version;
  * room says start; the run then begins on the seed the room dealt, with the other player's
  * inputs arriving as they happen and driving a ghost beside your own toy.
  */
-function joinLive(id: string): void {
+function joinLive(id: string, host = false): void {
   if (!leaderboardEnabled) { ui.toast("Live races are offline"); ui.showMenu(); return; }
   live?.close();
   const link = matchLink(id);
@@ -678,10 +678,15 @@ function joinLive(id: string): void {
     try { if (navigator.share) { await navigator.share({ title: "Magnet Climbers", text, url: link }); return; } } catch { /* cancelled */ }
     try { await navigator.clipboard.writeText(`${text} ${link}`); ui.toast("Link copied. Send it to a friend."); } catch { ui.toast("Could not copy the link"); }
   };
-  const panel = ui.showLiveLobby({ link, status: "Connecting…", onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
+  const panel = ui.showLiveLobby({ link, status: "Connecting…", host, onShare: () => void share(), onCancel: () => { live?.close(); live = null; ui.showMenu(); } });
   let liveSeed = 0;
   const m = new LiveMatch(id, {
-    wait: () => ui.setLiveStatus(panel, "Waiting for a friend to open the link…"),
+    // the other seat may be held by a phone that stepped away (off texting the link, say)
+    wait: (others) => {
+      const o = others[0];
+      ui.setLiveStatus(panel, !o ? (host ? "Waiting for a friend to open the link…" : "Nobody else here yet. Waiting…")
+        : o.present ? `${o.name} is here. Starting…` : `Waiting for ${o.name} to come back to the game…`);
+    },
     start: (seed, world, them, countdownMs, players) => {
       // the room resends the start to a phone that reconnects mid-race: same seed, same run, carry on
       if (game && seed === liveSeed) return;
@@ -1182,7 +1187,7 @@ const liveId = new URLSearchParams(location.search).get("m") ?? "";
 if (/^[a-z0-9]{6,16}$/.test(liveId)) { const u = new URL(location.href); u.searchParams.delete("m"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
 const openWhat = new URLSearchParams(location.search).get("open") ?? "";
 if (openWhat) { const u = new URL(location.href); u.searchParams.delete("open"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
-if (/^[a-z0-9]{6,16}$/.test(liveId)) { save.introSeen = true; persist(); joinLive(liveId); }
+if (/^[a-z0-9]{6,16}$/.test(liveId)) { save.introSeen = true; persist(); joinLive(liveId, false); }
 else if (openWhat === "daily" && save.introSeen) { ui.showMenu(); if (save.daily?.day === todayKey()) ui.showBoard("daily"); }
 else if (openWhat === "league" && save.introSeen) ui.showBoard("league");
 else if (pendingChallenge) { save.introSeen = true; persist(); ui.showChallenge(pendingChallenge); }

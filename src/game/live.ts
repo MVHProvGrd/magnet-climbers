@@ -8,8 +8,10 @@ import type { Tape, TapeEvent } from "./recorder";
 export interface LiveResultRow { id: string; name: string; cm: number; verified: boolean; reason?: string }
 
 export type LivePlayer = { id: string; name: string; look?: { creature: string; pattern: string } };
+export type LiveOther = { id: string; name: string; present: boolean };
 export interface LiveHandlers {
-  wait(): void;
+  /** seated and waiting; `others` are the other seats and whether their phone is here */
+  wait(others: LiveOther[]): void;
   /** `players` is set for a watcher: both seats, in order */
   start(seed: number, world: number, them: LivePlayer, countdownMs: number, players?: LivePlayer[]): void;
   input(e: TapeEvent, from?: string): void;
@@ -48,7 +50,16 @@ export class LiveMatch {
   private outbox: unknown[] = [];
   private retries = 0;
   private retry: ReturnType<typeof setTimeout> | null = null;
-  constructor(readonly id: string, private readonly on: LiveHandlers) {}
+  constructor(readonly id: string, private readonly on: LiveHandlers) {
+    // back from the messaging app: straight back in, not at the end of a backed-off timer
+    document.addEventListener("visibilitychange", this.onVisible);
+  }
+  private readonly onVisible = () => {
+    if (document.hidden || this.closedByUs || !this.hello || this.connected) return;
+    if (this.retry) { clearTimeout(this.retry); this.retry = null; }
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
+    this.open();
+  };
 
   connect(hello: Hello): void {
     this.hello = hello;
@@ -68,7 +79,7 @@ export class LiveMatch {
     ws.onmessage = (ev) => {
       let m: { k: string } & Record<string, unknown>;
       try { m = JSON.parse(String(ev.data)); } catch { return; }
-      if (m.k === "wait") this.on.wait();
+      if (m.k === "wait") this.on.wait((m.others as LiveOther[] | undefined) ?? []);
       else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.players as LivePlayer[] | undefined);
       else if (m.k === "in") this.on.input(m.e as TapeEvent, m.from as string | undefined);
       else if (m.k === "ended") this.on.ended(m.cm as number);
@@ -79,11 +90,12 @@ export class LiveMatch {
       else if (m.k === "full" || m.k === "update") this.on.refused(m.k);
     };
     // The room keeps the seat for a while; the phone tries to get back into it, a little
-    // slower each time, and only gives up after a run's worth of tries.
+    // slower each time, says so after a run's worth of tries, and keeps trying every few
+    // seconds after that: a host off texting the link comes back to a seat, not a dead panel.
     ws.onclose = () => {
       if (this.closedByUs || this.ws !== ws) return;
-      if (this.retries >= 6) { this.on.closed(); return; }
-      const wait = 800 * 2 ** this.retries++;
+      if (this.retries === 6) this.on.closed();
+      const wait = Math.min(8000, 800 * 2 ** this.retries++);
       this.retry = setTimeout(() => { if (!this.closedByUs) this.open(); }, wait);
     };
     ws.onerror = () => { /* onclose follows */ };
@@ -96,7 +108,7 @@ export class LiveMatch {
   /** Back into the room as a watcher: the ghosts of both, none of your own. */
   watch(): void { if (this.hello) { this.hello = { ...this.hello, watch: true }; this.close(false); this.open(); } }
   close(forGood = true): void {
-    if (forGood) this.closedByUs = true;
+    if (forGood) { this.closedByUs = true; document.removeEventListener("visibilitychange", this.onVisible); }
     if (this.retry) { clearTimeout(this.retry); this.retry = null; }
     const ws = this.ws; this.ws = null;
     try { ws?.close(); } catch { /* already */ }
