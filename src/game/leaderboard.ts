@@ -1,4 +1,5 @@
 /** Thin client for the leaderboard Worker. Silent no-op when no API URL is configured. */
+import { dayKeyAt } from "./day";
 export interface ScoreRow {
   name: string;
   cm: number;
@@ -12,11 +13,11 @@ export type Mode = "crew" | "solo";
 export type BoardMode = Mode | "lifetime" | "coins" | "daily" | "league";
 
 /**
- * The daily climb: one fridge for everybody for a UTC day. The seed comes from the date alone,
+ * The daily climb: one fridge for everybody for a Central day. The seed comes from the date alone,
  * so every device generates the same door without asking the server for it, and the board the
  * Worker keeps is the same day's.
  */
-export const todayKey = (at = Date.now()): string => new Date(at).toISOString().slice(0, 10);
+export const todayKey = (at = Date.now()): string => dayKeyAt(at);
 export function dailySeed(day = todayKey()): number {
   let hash = 2166136261;
   for (let i = 0; i < day.length; i++) hash = Math.imul(hash ^ day.charCodeAt(i), 16777619);

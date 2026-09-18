@@ -1,5 +1,6 @@
 import { SHOP_ENABLED, UPGRADES, statsFor, upgradeCost, type UpgradeKey } from "./config";
 import { accountsEnabled } from "./account";
+import { nextDayStart } from "./day";
 import { sfx } from "./audio";
 import { missionText, streakReward, type Mission } from "./missions";
 import { FRIDGE_THEMES, themeFor } from "./fridge-theme";
@@ -339,11 +340,9 @@ export class Ui {
     });
   }
 
-  /** How long until the day turns over: the daily and the missions both run on the UTC date. */
+  /** How long until the day turns over: the daily and the missions both run on the Central date. */
   private static resetIn(): string {
-    const now = new Date();
-    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-    const m = Math.max(0, Math.ceil((next - now.getTime()) / 60_000));
+    const m = Math.max(0, Math.ceil((nextDayStart() - Date.now()) / 60_000));
     return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
   }
 
@@ -1457,7 +1456,7 @@ export class Ui {
         ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
       </div>`}
       ${o.daily
-        ? `<p class="lost-banked"><i>That was today's climb \u2014 one go each, no second life, same fridge for everyone. A new one at midnight UTC.</i></p>
+        ? `<p class="lost-banked"><i>That was today's climb \u2014 one go each, no second life, same fridge for everyone. A new one at midnight Central.</i></p>
            <button class="go" data-a="board">SEE TODAY'S BOARD</button>`
         : `<button class="go" data-a="again">CLIMB AGAIN</button>`}
       <div class="lost-ghosts">

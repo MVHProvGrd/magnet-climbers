@@ -3,7 +3,7 @@
  * Locked with the ADMIN_KEY secret:  npx wrangler secret put ADMIN_KEY
  * The page keeps the key in localStorage and sends it as a Bearer token.
  */
-import { ensureCensors, ensureReports, ensureScoreResets, TIERS, type Env } from "./index";
+import { ensureCensors, ensureReports, ensureScoreResets, TIERS, dayKeyAt, type Env } from "./index";
 import { weekKey } from "./week";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -30,8 +30,8 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
   if (path === "/overview") {
     // both tables are created on demand, so make sure they exist before a join reads them
     await Promise.all([ensureReports(env), ensureCensors(env)]);
-    // the same day and week the game's boards run on: UTC calendar day, weekKey() for the league
-    const today = new Date().toISOString().slice(0, 10), week = weekKey();
+    // the same day and week the game's boards run on: the Central date, weekKey() for the league
+    const today = dayKeyAt(), week = weekKey();
     const [chatRows, mutes, stats, players, crew, solo, coins, reports, daily, league, lifetime] = await Promise.all([
       env.DB.prepare("SELECT id, player_id, name, text, created_at FROM chat ORDER BY id DESC LIMIT 80").all(),
       env.DB.prepare("SELECT player_id, until FROM chat_mutes").all(),

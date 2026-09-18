@@ -1,3 +1,5 @@
+import { dayKeyAt, nextDayStart } from "../src/game/day";
+import { weekKey } from "../worker/src/week";
 import assert from "node:assert/strict";
 import "./audio.test";
 import "./creatures.test";
@@ -941,9 +943,9 @@ test("the daily climb is one fridge a day, the same for everyone", () => {
   assert.deepEqual(a.segments, b.segments);
   const other = new World(dailySeed("2026-09-18"), 0); other.ensure(-4000);
   assert.notDeepEqual(a.segments, other.segments);
-  // the day rolls at UTC midnight
-  assert.equal(todayKey(Date.parse("2026-09-17T23:59:00Z")), "2026-09-17");
-  assert.equal(todayKey(Date.parse("2026-09-18T00:01:00Z")), "2026-09-18");
+  // the day rolls at midnight Central: 04:59Z is still the 17th in Chicago in September
+  assert.equal(todayKey(Date.parse("2026-09-18T04:59:00Z")), "2026-09-17");
+  assert.equal(todayKey(Date.parse("2026-09-18T05:01:00Z")), "2026-09-18");
 });
 
 test("missions read the run, pay once, and the board tops itself up", () => {
@@ -1099,11 +1101,11 @@ test("a streak pays more each day and a pattern on the seventh", () => {
   assert.equal(streakReward(0).pattern, false);
 });
 
-test("the league week rolls on a Monday, UTC", () => {
-  // ISO weeks: the Thursday decides the year, and Monday starts the week
+test("the league week rolls on a Monday, Central", () => {
+  // ISO weeks: the Thursday decides the year, and Monday starts the week, at midnight Chicago
   assert.equal(weekKey(Date.parse("2026-09-17T12:00:00Z")), "2026-W38");
-  assert.equal(weekKey(Date.parse("2026-09-20T23:59:00Z")), "2026-W38", "Sunday is still last week");
-  assert.equal(weekKey(Date.parse("2026-09-21T00:01:00Z")), "2026-W39", "Monday starts a new one");
+  assert.equal(weekKey(Date.parse("2026-09-21T04:59:00Z")), "2026-W38", "Sunday night in Chicago is still last week");
+  assert.equal(weekKey(Date.parse("2026-09-21T05:01:00Z")), "2026-W39", "Monday starts a new one");
   // and the turn of the year lands where ISO says, not where the calendar does
   assert.equal(weekKey(Date.parse("2027-01-01T12:00:00Z")), "2026-W53");
 });
@@ -1119,10 +1121,10 @@ test("every month has a door and a pattern only that month gives out", () => {
     assert.equal(pattern!.limited, t.id, `${t.pattern} should be limited to ${t.id}`);
     assert.equal(pattern!.colors.length, 6);
   }
-  // the door changes on the first, UTC, and September is the stainless the game shipped with
-  assert.equal(themeFor(Date.parse("2026-09-30T23:59:00Z")).id, "pencil");
-  assert.equal(themeFor(Date.parse("2026-10-01T00:01:00Z")).id, "harvest");
-  assert.equal(monthKey(Date.parse("2026-10-01T00:01:00Z")), "2026-10");
+  // the door changes on the first at midnight Central, and September is the stainless the game shipped with
+  assert.equal(themeFor(Date.parse("2026-10-01T04:59:00Z")).id, "pencil");
+  assert.equal(themeFor(Date.parse("2026-10-01T05:01:00Z")).id, "harvest");
+  assert.equal(monthKey(Date.parse("2026-10-01T05:01:00Z")), "2026-10");
 });
 
 test("a tape replays into the same climb it recorded", () => {
@@ -1227,4 +1229,15 @@ test("a POP! toy placed on a v26+ door has its bubbles", () => {
     for (const s of w.segments) for (const z of s.zones) if (z.itemId === "bumper-4") { seen++; assert.equal(z.pops, 0b0101010101, `seed ${seed}`); }
   }
   assert.ok(seen > 0, "no POP! toy turned up in sixty seeds");
+});
+
+test("the game day is the Central date and turns over at midnight Chicago", () => {
+  // 2026-09-18 01:30Z is still the evening of the 17th in Chicago (CDT, UTC-5)
+  assert.equal(dayKeyAt(Date.UTC(2026, 8, 18, 1, 30)), "2026-09-17");
+  assert.equal(dayKeyAt(Date.UTC(2026, 8, 18, 5, 0)), "2026-09-18");
+  assert.equal(nextDayStart(Date.UTC(2026, 8, 18, 1, 30)), Date.UTC(2026, 8, 18, 5, 0));
+  // winter: CST is UTC-6, so the day starts at 06:00Z
+  assert.equal(nextDayStart(Date.UTC(2026, 0, 10, 12)), Date.UTC(2026, 0, 11, 6));
+  assert.equal(weekKey(Date.UTC(2026, 8, 21, 4, 59)), "2026-W38", "Sunday night in Chicago is still week 38");
+  assert.equal(weekKey(Date.UTC(2026, 8, 21, 5, 0)), "2026-W39");
 });

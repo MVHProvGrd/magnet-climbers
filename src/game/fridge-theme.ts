@@ -1,3 +1,4 @@
+import { zoned, dayKeyAt } from "./day";
 /**
  * The fridge of the month.
  *
@@ -9,7 +10,7 @@
  * colour sets rather than drawings, so a limited one costs nothing to make and cannot be bought
  * from the prize machine — turning up is the only way to own it.
  *
- * The month is UTC, like the daily climb and the league week, so everyone changes door together.
+ * The month is Central, like the daily climb and the league week, so everyone changes door together.
  */
 export interface FridgeTheme {
   id: string;
@@ -54,9 +55,9 @@ export const FRIDGE_THEMES: readonly FridgeTheme[] = [
 export const DEFAULT_THEME = FRIDGE_THEMES[8];
 
 export function themeFor(at: number | Date = Date.now()): FridgeTheme {
-  const month = new Date(at).getUTCMonth() + 1;
+  const month = zoned(typeof at === "number" ? at : at.getTime()).m;
   return FRIDGE_THEMES.find((t) => t.month === month) ?? DEFAULT_THEME;
 }
 
 /** "2026-10", the key a save remembers so a month's pattern is only handed over once. */
-export const monthKey = (at: number | Date = Date.now()): string => new Date(at).toISOString().slice(0, 7);
+export const monthKey = (at: number | Date = Date.now()): string => dayKeyAt(typeof at === "number" ? at : at.getTime()).slice(0, 7);

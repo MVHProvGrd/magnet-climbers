@@ -27,6 +27,8 @@ import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
+import { dayKeyAt, zoned } from "../../src/game/day";
+export { dayKeyAt };
 export { MatchRoom } from "./match";
 export { Verifier } from "./verify";
 import { settleVerdict, type VerifyJob } from "./verify";
@@ -240,11 +242,11 @@ const json = (data: unknown, headers: Record<string, string>, status = 200) =>
 const validMode = (m: unknown): m is "crew" | "solo" => m === "crew" || m === "solo";
 
 /**
- * The daily climb: one fridge for everybody, one scored attempt, a fresh board at UTC midnight.
+ * The daily climb: one fridge for everybody, one scored attempt, a fresh board at midnight Central.
  * The day is decided here, never by the client -- otherwise a player could pick the day whose
  * board they like. The client derives the same seed from the same date string.
  */
-const dayKey = (at = Date.now()) => new Date(at).toISOString().slice(0, 10);
+const dayKey = (at = Date.now()) => dayKeyAt(at);
 
 /**
  * The weekly league. Every finished run adds its metres to your week; players sit in buckets of
