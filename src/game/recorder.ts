@@ -34,6 +34,8 @@ export interface Tape {
   /** what the run finished at, for a quick check before anyone replays it */
   cm: number;
   seconds: number;
+  /** the creature and pattern the run was climbed in, so a ghost of it wears them */
+  look?: { creature: string; pattern: string };
 }
 
 /** A tape is capped so a long session cannot grow without limit; a run this long is not a ghost. */

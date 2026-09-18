@@ -664,10 +664,11 @@ export class Game {
   }
 
   /** Seal this run's tape: everything a replay needs to build the same climb again. */
-  sealTape(daily = false) {
+  sealTape(daily = false, look?: { creature: string; pattern: string }) {
     return this.tape.tape({
       seed: this.world.seed, world: this.world.version, kit: { ...this.levels },
       chill: this.chill, daily, cm: this.heightCm, seconds: Math.round(this.runTime),
+      ...(look ? { look } : {}),
     });
   }
 

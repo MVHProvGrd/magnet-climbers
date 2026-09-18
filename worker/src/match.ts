@@ -17,6 +17,7 @@ export interface Seat {
   name: string;
   /** the world generator's version on that phone; both must agree or the fridges differ */
   world: number;
+  look?: { creature: string; pattern: string };
   send: (m: Message) => void;
   done: boolean;
   tape?: unknown;
@@ -27,7 +28,7 @@ export type Message =
   | { k: "wait"; id: string }
   | { k: "full" }
   | { k: "update" }
-  | { k: "start"; seed: number; world: number; you: string; them: { id: string; name: string } }
+  | { k: "start"; seed: number; world: number; you: string; them: { id: string; name: string; look?: { creature: string; pattern: string } }; countdownMs: number }
   | { k: "in"; e: unknown }
   | { k: "ended"; id: string; cm: number }
   | { k: "left"; id: string }
@@ -52,7 +53,7 @@ export class Match {
     const again = this.seats.find((s) => s.id === seat.id);
     if (again) {
       // the same player back on a fresh socket keeps their seat and, mid-race, their start
-      again.send = seat.send; again.name = seat.name;
+      again.send = seat.send; again.name = seat.name; again.look = seat.look;
       if (this.started) again.send(this.startFor(again));
       else again.send({ k: "wait", id: again.id });
       return;
@@ -69,7 +70,7 @@ export class Match {
 
   private startFor(s: Seat): Message {
     const them = this.seats.find((o) => o !== s)!;
-    return { k: "start", seed: this.seed, world: this.world, you: s.id, them: { id: them.id, name: them.name } };
+    return { k: "start", seed: this.seed, world: this.world, you: s.id, them: { id: them.id, name: them.name, ...(them.look ? { look: them.look } : {}) }, countdownMs: 3000 };
   }
 
   /** One input from a player, straight on to the other. Nothing is kept: the tape is the record. */
@@ -130,7 +131,7 @@ export const roomReplay: Replay = (tape, seed, world) => {
 
 /** The wire: one JSON message per frame, small, from a phone that already proved little. */
 type Inbound =
-  | { k: "hello"; id: string; name: string; world: number }
+  | { k: "hello"; id: string; name: string; world: number; look?: { creature?: unknown; pattern?: unknown } }
   | { k: "in"; e: unknown }
   | { k: "done"; tape: unknown; cm: number };
 
@@ -168,7 +169,9 @@ export class MatchRoom {
       const world = Math.floor(Number(m.world));
       if (!id || !Number.isFinite(world)) { send({ k: "full" }); return; }
       this.who.set(ws, id);
-      this.match.join({ id, name, world, send });
+      const look = m.look && typeof m.look.creature === "string" && typeof m.look.pattern === "string"
+        ? { creature: m.look.creature.slice(0, 32), pattern: m.look.pattern.slice(0, 32) } : undefined;
+      this.match.join({ id, name, world, look, send });
       return;
     }
     const id = this.who.get(ws);
