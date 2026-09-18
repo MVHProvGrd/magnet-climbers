@@ -829,7 +829,9 @@ function submitScore(cm: number, panel: HTMLElement) {
       if (dailyRun && r.verified === false) { ui.setGameOverRank(panel, r.reason === "no tape" ? "Update the app to post to the daily" : "Climb could not be verified"); return; }
       const rank = await leaderboard.rank(board, save.playerId);
       const where = dailyRun ? "Today" : "Global";
-      ui.setGameOverRank(panel, rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent");
+      // the Worker is still climbing the tape again; the row stands meanwhile and is cut if the replay disagrees
+      const pending = dailyRun && r.verified === "pending" ? " · being checked" : "";
+      ui.setGameOverRank(panel, (rank?.rank ? `${where} rank #${rank.rank} (${rank.cm} cm)` : "Score sent") + pending);
     });
   };
   // every finished run posts; the name is whatever the player has (a guest name if they skipped)

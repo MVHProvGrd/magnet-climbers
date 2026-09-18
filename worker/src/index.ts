@@ -28,6 +28,9 @@ import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
 export { MatchRoom } from "./match";
+export { Verifier } from "./verify";
+import { settleVerdict, type VerifyJob } from "./verify";
+import { checkTape } from "./replay";
 import { verifyFirebaseIdToken, type Jwks } from "./auth";
 /** swapped in tests for a key the test signed with */
 export let jwksForTests: Jwks | undefined;
@@ -102,6 +105,8 @@ export interface Env {
   ADMIN_KEY?: string;
   /** one Durable Object per live race, see match.ts; absent until the binding is deployed */
   MATCH?: DurableObjectNamespace;
+  /** the daily replay runs here, off the request path (verify.ts); inline when absent, as in tests */
+  VERIFY?: DurableObjectNamespace;
   /** the Firebase project whose sign-ins are accepted at /auth; accounts are off until it is set */
   FIREBASE_PROJECT_ID?: string;
 }
@@ -378,7 +383,7 @@ async function ensureDaily(env: Env): Promise<void> {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
@@ -488,16 +493,31 @@ export default {
         // confirm never lands. Either way the height that lands is never above the replay's.
         const enforce = (env.TAPE_MODE ?? "shadow") === "enforce";
         const rawTape = (body as { tape?: unknown }).tape;
-        const v = verifyDaily(rawTape, cm, day, DAILY_WORLD);
         await ensureTapes(env);
-        await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-          .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null,
-            rawTape ? JSON.stringify(rawTape).slice(0, MAX_TAPE_BYTES) : null, Date.now()).run().catch(() => {});
-        if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
-        const kept = v.ok ? Math.min(cm, v.cm) : cm;
+        const tapeText = rawTape ? JSON.stringify(rawTape).slice(0, MAX_TAPE_BYTES) : null;
+        // The cheap checks first, on the request. The replay itself takes seconds of CPU a
+        // request does not have, so with the verifier deployed the claim lands now and the
+        // replay runs in the Durable Object, which cuts or drops the row when it disagrees.
+        const checked = checkTape(rawTape, day, DAILY_WORLD);
+        if ("reason" in checked || !env.VERIFY || !ctx) {
+          const v = "reason" in checked ? { ok: false as const, reason: checked.reason } : verifyDaily(rawTape, cm, day, DAILY_WORLD);
+          await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null, tapeText, Date.now()).run().catch(() => {});
+          if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
+          const kept = v.ok ? Math.min(cm, v.cm) : cm;
+          await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(playerId, day, name, kept, secs, Date.now()).run();
+          return json({ ok: true, best: kept, day, verified: v.ok, ...(v.ok ? {} : { reason: v.reason }) }, h);
+        }
+        await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, NULL, 'pending', NULL, ?, ?)")
+          .bind(playerId, day, cm, tapeText, Date.now()).run().catch(() => {});
         await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(playerId, day, name, kept, secs, Date.now()).run();
-        return json({ ok: true, best: kept, day, verified: v.ok, ...(v.ok ? {} : { reason: v.reason }) }, h);
+          .bind(playerId, day, name, cm, secs, Date.now()).run();
+        const job: VerifyJob = { playerId, day, cm, tape: checked.tape, world: DAILY_WORLD, enforce };
+        const verifier = env.VERIFY.get(env.VERIFY.idFromName(`${playerId}:${day}`));
+        ctx.waitUntil(verifier.fetch("https://verify/", { method: "POST", body: JSON.stringify(job) })
+          .catch((err) => settleVerdict(env, job, { ok: false, reason: `verifier failed: ${String((err as Error)?.message ?? err).slice(0, 60)}` })));
+        return json({ ok: true, best: cm, day, verified: "pending" }, h);
       }
       if (!validMode(body.mode)) return json({ error: "bad score" }, h, 400);
       const now = Date.now();

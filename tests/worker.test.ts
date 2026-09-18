@@ -456,3 +456,34 @@ test("/auth ties a new account to the phone's profile and hands a known account'
     assert.equal(off.status, 503);
   } finally { setJwksForTests(undefined); }
 });
+
+// With the verifier deployed, a daily claim lands at once and the replay runs afterwards:
+// the row is cut to the replayed height when the claim stood above it.
+import { Verifier } from "../worker/src/verify";
+test("a daily post answers at once and the verifier cuts an inflated claim afterwards", async () => {
+  const base = env("enforce");
+  const pending: Promise<unknown>[] = [];
+  const ctx = { waitUntil: (p: Promise<unknown>) => { pending.push(p); }, passThroughOnException: () => {} } as unknown as ExecutionContext;
+  const e = { ...base, VERIFY: {
+    idFromName: (n: string) => n,
+    get: () => ({ fetch: (_u: string, init: RequestInit) => new Verifier({} as DurableObjectState, e).fetch(new Request("https://verify/", init)) }),
+  } } as unknown as Env;
+  const { playerId, token } = await seedPlayer(e);
+  const { tape, cm } = climbToday();
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e, ctx);
+  assert.equal(res.status, 200);
+  const j = await res.json() as { verified: string; best: number };
+  assert.equal(j.verified, "pending"); assert.equal(j.best, cm + 5000);
+  const before = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
+  assert.equal(before?.cm, cm + 5000, "the claim stands until the replay says otherwise");
+  assert.equal(pending.length, 1, "the replay was handed off");
+  await Promise.all(pending);
+  const after = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
+  assert.equal(after?.cm, cm, "cut to what the tape climbs to");
+  const log = await e.DB.prepare("SELECT verdict, replayed FROM tapes WHERE player_id = ?").bind(playerId).first<{ verdict: string; replayed: number }>();
+  assert.deepEqual([log?.verdict, log?.replayed], ["ok", cm]);
+  // a tape the structural checks refuse never waits on the object
+  const p2 = await seedPlayer(e);
+  const bad = await worker.fetch(post("/score", { playerId: p2.playerId, token: p2.token, name: "Kid", mode: "daily", cm: 10, tape: { ...tape, chill: true } }), e, ctx);
+  assert.equal(bad.status, 422);
+});

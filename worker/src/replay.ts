@@ -27,8 +27,10 @@ export function dailySeed(day: string): number {
   return (hash >>> 0) || 1;
 }
 
-/** Longest run a tape may describe: twenty minutes of steps, ~2 s of CPU at the measured rate. */
-export const MAX_STEPS = 20 * 60 * 120;
+/** Longest run a tape may describe: ninety minutes of steps, ~9 s of CPU at the measured rate. */
+export const MAX_STEPS = 90 * 60 * 120;
+/** A replay gives up after this much wall time, well inside a Durable Object's budget. */
+export const REPLAY_BUDGET_MS = 20_000;
 /** A tape on the wire: MAX_EVENTS flings at ~60 bytes each, with headroom. */
 export const MAX_TAPE_BYTES = 300_000;
 /** The daily is climbed with an empty kit, so a tape claiming otherwise did not come from one. */
@@ -104,12 +106,19 @@ export function replayDaily(tape: Tape): Verdict {
     if (e.k === "fling") g.launch(c, e.v); else g.move(c, e.to);
   };
   const step = (g: Game, dt: number) => { g.update(dt); steps++; };
-  const done = (g: Game) => g.phase === "dead" || steps >= MAX_STEPS;
+  let overBudget = false;
+  const done = (g: Game) => {
+    if (g.phase === "dead" || steps >= MAX_STEPS) return true;
+    // checked every second of run, not every step: the clock is dearer than a step
+    if (steps % 120 === 0 && Date.now() - t0 > REPLAY_BUDGET_MS) { overBudget = true; return true; }
+    return false;
+  };
   try {
     replay(tape, game, apply, step, done);
   } catch (err) {
     return { ok: false, reason: `replay threw: ${String((err as Error)?.message ?? err).slice(0, 80)}`, steps, ms: Date.now() - t0 };
   }
+  if (overBudget) return { ok: false, reason: "too long to verify", cm: game.heightCm, steps, ms: Date.now() - t0 };
   if (steps >= MAX_STEPS && game.phase !== "dead") return { ok: false, reason: "run too long", cm: game.heightCm, steps, ms: Date.now() - t0 };
   return { ok: true, cm: game.heightCm, steps, ms: Date.now() - t0 };
 }

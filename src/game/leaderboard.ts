@@ -104,7 +104,7 @@ export const leaderboard = {
   /** A daily post carries the run's tape: the Worker climbs it again and that height is the score. */
   /** The token says the post is the player's own; the Worker refuses a post about someone else. */
   submit: (playerId: string, token: string, name: string, mode: Mode | "daily", cm: number, seconds?: number, at?: number, tape?: unknown) =>
-    call<{ ok: boolean; best: number; taken?: boolean; day?: string; verified?: boolean; reason?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, token, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}), ...(tape ? { tape } : {}) }) }),
+    call<{ ok: boolean; best: number; taken?: boolean; day?: string; verified?: boolean | "pending"; reason?: string }>("/score", { method: "POST", body: JSON.stringify({ playerId, token, name, mode, cm, ...(seconds ? { seconds } : {}), ...(at ? { at } : {}), ...(tape ? { tape } : {}) }) }),
 };
 
 export interface LeagueStanding {

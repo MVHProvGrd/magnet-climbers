@@ -34,6 +34,16 @@ FIREBASE_PROJECT_ID = ""
 name = "MATCH"
 class_name = "MatchRoom"
 
+# The daily replay: a request has milliseconds of CPU, a replay needs seconds, so the tape is
+# handed to this object and the verdict written back after the score has already landed.
+[[durable_objects.bindings]]
+name = "VERIFY"
+class_name = "Verifier"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["MatchRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Verifier"]
