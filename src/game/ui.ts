@@ -1078,15 +1078,18 @@ export class Ui {
 
   /** Landing panel when the app is opened from a challenge link. */
   /** The live race lobby: the link to send, and a line that says where things stand. */
-  showLiveLobby(o: { link: string; status: string; onShare: () => void; onCancel: () => void }): HTMLElement {
+  /** The lobby: the host is told to send the link, a friend who opened one is told who they wait on. */
+  showLiveLobby(o: { link: string; status: string; host: boolean; onShare: () => void; onCancel: () => void }): HTMLElement {
     const p = el("div", "panel small");
     p.innerHTML = `
       <div class="story-icon">👻</div>
       <h2>Live race</h2>
-      <p class="tag">Send this link. When your friend opens it you both start on the same fridge, with each other's ghost climbing beside you.</p>
+      <p class="tag">${o.host
+        ? "Send this link. When your friend opens it you both start on the same fridge, with each other's ghost climbing beside you."
+        : "You are in. The race starts the moment you are both here, on the same fridge, with each other's ghost climbing beside you."}</p>
       <div class="rank" style="word-break:break-all;font-size:12px;opacity:.8">${esc(o.link)}</div>
       <p class="tag live-status">${esc(o.status)}</p>
-      <button class="primary" data-a="share">SEND THE LINK</button>
+      <button class="${o.host ? "primary" : "ghost"}" data-a="share">${o.host ? "SEND THE LINK" : "SEND THE LINK BACK"}</button>
       <button class="ghost" data-a="cancel">CANCEL</button>`;
     p.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).dataset.a;

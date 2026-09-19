@@ -355,7 +355,7 @@ test("a live race starts on the second seat, relays inputs, and settles on repla
   const m = new Match(replay, () => 0.5);
   const a: Message[] = [], b: Message[] = [], c: Message[] = [];
   m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
-  assert.deepEqual(a, [{ k: "wait", id: "A" }]);
+  assert.deepEqual(a, [{ k: "wait", id: "A", others: [] }]);
   m.join({ id: "C", name: "Cat", world: 26, send: (x) => c.push(x) });
   assert.deepEqual(c, [{ k: "update" }], "another build is turned away");
   m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
@@ -391,7 +391,33 @@ test("a live race with one tape unverified, or one player gone, still settles", 
   const n = new Match(replay); const c: Message[] = [];
   n.join({ id: "A", name: "Ann", world: 27, send: () => {} }); n.leave("A");
   n.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
-  assert.deepEqual(c, [{ k: "wait", id: "B" }]);
+  assert.deepEqual(c, [{ k: "wait", id: "B", others: [] }]);
+});
+test("a host who steps away before the start keeps the seat; the race starts when both are here", () => {
+  const replay = () => ({ ok: true, cm: 1 });
+  const m = new Match(replay, () => 0.4);
+  const a: Message[] = [], b: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  m.away("A");
+  // the room is put to sleep and comes back from what it kept
+  const n = new Match(replay, () => 0.4);
+  n.restore(m.lobby!);
+  n.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  assert.deepEqual(b, [{ k: "wait", id: "B", others: [{ id: "A", name: "Ann", present: false }] }], "the joiner is told who it waits on");
+  assert.equal(n.started, false);
+  n.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  assert.equal(a.at(-1)?.k, "start"); assert.equal(b.at(-1)?.k, "start");
+  assert.equal(n.lobby, null, "nothing to keep once the race is on");
+  // a host who closes the lobby is named to the friend still waiting in it
+  const q = new Match(replay); const c: Message[] = [];
+  q.join({ id: "A", name: "Ann", world: 27, send: () => {} });
+  q.join({ id: "B", name: "Bob", world: 27, send: (x) => c.push(x) });
+  assert.equal(q.started, true);
+  const r = new Match(replay); const d: Message[] = [];
+  r.join({ id: "A", name: "Ann", world: 27, send: () => {} }); r.away("A");
+  r.join({ id: "B", name: "Bob", world: 27, send: (x) => d.push(x) });
+  r.leave("A");
+  assert.deepEqual(d.slice(1), [{ k: "left", id: "A", name: "Ann" }, { k: "wait", id: "B", others: [] }]);
 });
 
 // Accounts: a Firebase ID token signed by a key the test made, verified against that key.

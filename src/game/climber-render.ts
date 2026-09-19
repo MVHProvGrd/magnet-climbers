@@ -65,20 +65,18 @@ function tube(ctx: CanvasRenderingContext2D, start: Vec, middle: Vec, end: Vec) 
 // down once, at the shadow's opacity, and the overlaps vanish into it. Only the toy's own
 // patch of the scratch is cleared and copied, so a full crew costs no more than before.
 let scratch: HTMLCanvasElement | null = null;
-export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t = 0, appearance: CreatureAppearance = {}) {
-  const shape = geometry(c, appearance);
-  const style = creatureStyle(c, appearance);
-  // higher toys get a softer, wider shadow
-  const opacity = Math.max(0.05, 0.2 - shape.lift * 0.0035);
+
+/**
+ * Paint something solid onto the scratch canvas, then lay it on `ctx` once at `alpha`. Only
+ * the patch of screen around the toy is cleared and copied, so a full crew costs no more
+ * than painting straight on. `pts` are the world points the drawing can reach.
+ */
+function composite(ctx: CanvasRenderingContext2D, pts: Vec[], alpha: number, paint: (sc: CanvasRenderingContext2D) => void): void {
   const m = ctx.getTransform();
   const cw = ctx.canvas.width, ch = ctx.canvas.height;
   if (!scratch) scratch = document.createElement("canvas");
   if (scratch.width !== cw || scratch.height !== ch) { scratch.width = cw; scratch.height = ch; }
   const sc = scratch.getContext("2d")!;
-  // the patch of screen this shadow can reach: the origin and every limb, with room for the body and the stroke
-  const pts = [project({ x: c.x, y: c.y, z: shape.lift }, true)];
-  for (const limb of shape.limbs) pts.push(project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-  if (style.id === "human") pts.push(project(shape.head, true), project(shape.shoulder, true), project(shape.hip, true));
   const scale = Math.hypot(m.a, m.b), pad = 44 * scale + 4;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of pts) {
@@ -90,27 +88,56 @@ export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t =
   if (bw <= 0 || bh <= 0) return;
   sc.setTransform(1, 0, 0, 1, 0, 0); sc.clearRect(bx, by, bw, bh);
   sc.setTransform(m);
-  // No canvas shadowBlur here: a blur pass per climber per frame was the main cost with a full crew.
-  // A wider stroke reads the same at game scale.
-  sc.strokeStyle = sc.fillStyle = "#1f2530";
-  sc.lineCap = "round"; sc.lineWidth = style.limb + 1 + shape.lift * 0.12;
-  if (style.id !== "human") {
-    const origin = project({ x: c.x, y: c.y, z: shape.lift }, true);
-    sc.save(); sc.translate(origin.x, origin.y); sc.rotate(c.angle);
-    drawCreatureDecorations(sc, c, style, t, true);
-    drawCreatureBody(sc, style, "", true); sc.restore();
-    for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-  } else {
-    for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
-    sc.lineWidth = 9;
-    tube(sc, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
-    const head = project(shape.head, true);
-    sc.beginPath(); sc.arc(head.x, head.y, 7, 0, Math.PI * 2); sc.fill();
-  }
+  sc.save(); paint(sc); sc.restore();
   sc.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = opacity;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
   ctx.drawImage(scratch, bx, by, bw, bh, bx, by, bw, bh);
   ctx.restore();
+}
+
+/** Every point a toy's drawing can reach, projected as body or as shadow. */
+function reach(c: Climber, shape: ReturnType<typeof geometry>, human: boolean, shadow: boolean): Vec[] {
+  const pts = [project({ x: c.x, y: c.y, z: shape.lift }, shadow)];
+  for (const limb of shape.limbs) pts.push(project(limb.start, shadow), project(limb.middle, shadow), project(limb.end, shadow));
+  if (human) pts.push(project(shape.head, shadow), project(shape.shoulder, shadow), project(shape.hip, shadow));
+  return pts;
+}
+
+export function drawClimberShadow(ctx: CanvasRenderingContext2D, c: Climber, t = 0, appearance: CreatureAppearance = {}) {
+  const shape = geometry(c, appearance);
+  const style = creatureStyle(c, appearance);
+  // higher toys get a softer, wider shadow
+  const opacity = Math.max(0.05, 0.2 - shape.lift * 0.0035);
+  composite(ctx, reach(c, shape, style.id === "human", true), opacity, (sc) => {
+    // No canvas shadowBlur here: a blur pass per climber per frame was the main cost with a full crew.
+    // A wider stroke reads the same at game scale.
+    sc.strokeStyle = sc.fillStyle = "#1f2530";
+    sc.lineCap = "round"; sc.lineWidth = style.limb + 1 + shape.lift * 0.12;
+    if (style.id !== "human") {
+      const origin = project({ x: c.x, y: c.y, z: shape.lift }, true);
+      sc.save(); sc.translate(origin.x, origin.y); sc.rotate(c.angle);
+      drawCreatureDecorations(sc, c, style, t, true);
+      drawCreatureBody(sc, style, "", true); sc.restore();
+      for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+    } else {
+      for (const limb of shape.limbs) tube(sc, project(limb.start, true), project(limb.middle, true), project(limb.end, true));
+      sc.lineWidth = 9;
+      tube(sc, project(shape.shoulder, true), project(shape.hip, true), project(shape.hip, true));
+      const head = project(shape.head, true);
+      sc.beginPath(); sc.arc(head.x, head.y, 7, 0, Math.PI * 2); sc.fill();
+    }
+  });
+}
+
+/**
+ * A ghost: the whole toy at one opacity. Drawn straight on at a third of full, every limb
+ * crossing the body came out darker than the rest and the ghost had joints; painted solid
+ * to the scratch and laid down once, it is one pale toy.
+ */
+export function drawClimberFaded(ctx: CanvasRenderingContext2D, c: Climber, t: number, appearance: CreatureAppearance, alpha: number) {
+  const shape = geometry(c, appearance);
+  const style = creatureStyle(c, appearance);
+  composite(ctx, reach(c, shape, style.id === "human", false), alpha, (sc) => drawClimber(sc, c, false, t, appearance));
 }
 
 /** Blend a hex colour toward another (0 = colour, 1 = target). Non-hex input passes through. */
