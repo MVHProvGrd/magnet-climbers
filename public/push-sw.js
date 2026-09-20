@@ -9,7 +9,8 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     tag: data.tag || "magnet-climbers",
     icon: "./icons/toy-icon-192.png",
-    badge: "./icons/toy-icon-192.png",
+    // Android draws the badge as a white mask on the status bar: a full-colour icon there is a blank square
+    badge: "./icons/badge-96.png",
     data: { url: data.url || "./" },
     renotify: false,
   }));
