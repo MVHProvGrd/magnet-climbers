@@ -6,7 +6,7 @@
  *   POST /run    { playerId, name?, mode, cm } → { ok }   adds to the global and the player's lifetime totals
  *   POST /rename { playerId, name }           → { ok, name }  renames every board row for that player
  *   POST /save   { playerId, token, blob, rev } → { ok, rev } | 409 { rev, blob }   cloud save (token = per-player secret)
- *   GET  /save?player=&token=                  → { blob, rev } | 404
+ *   GET  /save?player=  (X-Save-Token header)  → { blob, rev } | 404
  *   POST /link   { playerId, token }            → { code, expiresAt }   6-char code, 10 minutes
  *   POST /claim  { code }                       → { playerId, token, blob, rev }   adopt that player on this device
  *   POST /merge  { fromId, fromToken, toId, toToken } → { ok }  fold an old device profile into the linked one
@@ -134,12 +134,79 @@ function cors(req: Request, env: Env): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0],
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Save-Token",
     "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
   };
 }
+
+/** DDL for the tables created on demand below rather than in schema.sql, so nothing has to be
+ *  migrated by hand. Exported so the test harness (tests/worker-db.ts) builds the exact same
+ *  schema instead of a hand-copied one that can drift from what the Worker actually creates. */
+export const DDL = {
+  chatCensors: `CREATE TABLE IF NOT EXISTS chat_censors (
+    player_id TEXT PRIMARY KEY,
+    n INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`,
+  scoreResets: `CREATE TABLE IF NOT EXISTS score_resets (
+    player_id TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    at INTEGER NOT NULL,
+    cm INTEGER,
+    PRIMARY KEY (player_id, mode)
+  )`,
+  chatReports: `CREATE TABLE IF NOT EXISTS chat_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    reporter_id TEXT NOT NULL,
+    message_id INTEGER,
+    text TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+  chatReportsOnce: "CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))",
+  rateLimits: `CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT NOT NULL,
+    bucket INTEGER NOT NULL,
+    n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, bucket)
+  )`,
+  league: `CREATE TABLE IF NOT EXISTS league (
+    player_id TEXT NOT NULL,
+    week TEXT NOT NULL,
+    tier INTEGER NOT NULL,
+    bucket INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, week)
+  )`,
+  leagueBucket: "CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC)",
+  tapes: `CREATE TABLE IF NOT EXISTS tapes (
+    player_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    claimed INTEGER NOT NULL,
+    replayed INTEGER,
+    verdict TEXT NOT NULL,
+    ms INTEGER,
+    tape TEXT,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, day)
+  )`,
+  daily: `CREATE TABLE IF NOT EXISTS daily (
+    player_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    name TEXT NOT NULL,
+    cm INTEGER NOT NULL,
+    seconds INTEGER,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, day)
+  )`,
+  dailyBoard: "CREATE INDEX IF NOT EXISTS daily_board ON daily (day, cm DESC)",
+} as const;
 
 /** How many times each player has had a word starred out of their chat. Created on demand. */
 // A ready flag is only latched once the statements actually ran: a transient D1 error on the
@@ -148,11 +215,7 @@ let censorsReady = false;
 export async function ensureCensors(env: Env): Promise<void> {
   if (censorsReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_censors (
-    player_id TEXT PRIMARY KEY,
-    n INTEGER NOT NULL DEFAULT 0,
-    updated_at INTEGER NOT NULL
-  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.chatCensors).run().catch(() => { ok = false; });
   if (ok) censorsReady = true;
 }
 /** Strikes before a player's own words start going to the owner for review. */
@@ -164,13 +227,7 @@ let resetsReady = false;
 export async function ensureScoreResets(env: Env): Promise<void> {
   if (resetsReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS score_resets (
-    player_id TEXT NOT NULL,
-    mode TEXT NOT NULL,
-    at INTEGER NOT NULL,
-    cm INTEGER,
-    PRIMARY KEY (player_id, mode)
-  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.scoreResets).run().catch(() => { ok = false; });
   // the column arrived after the table; D1 tolerates the failed ALTER when it is already there
   await env.DB.prepare("ALTER TABLE score_resets ADD COLUMN cm INTEGER").run().catch(() => {});
   if (ok) resetsReady = true;
@@ -181,18 +238,9 @@ let reportsReady = false;
 export async function ensureReports(env: Env): Promise<void> {
   if (reportsReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS chat_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind TEXT NOT NULL,
-    target_id TEXT NOT NULL,
-    target_name TEXT NOT NULL,
-    reporter_id TEXT NOT NULL,
-    message_id INTEGER,
-    text TEXT,
-    created_at INTEGER NOT NULL
-  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.chatReports).run().catch(() => { ok = false; });
   // one row per reporter, target and message: tapping report twice is not two reports
-  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS chat_reports_once ON chat_reports(kind, reporter_id, target_id, IFNULL(message_id, 0))").run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.chatReportsOnce).run().catch(() => { ok = false; });
   if (ok) reportsReady = true;
 }
 
@@ -201,12 +249,7 @@ let rateLimitsReady = false;
 async function ensureRateLimits(env: Env): Promise<void> {
   if (rateLimitsReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
-    key TEXT NOT NULL,
-    bucket INTEGER NOT NULL,
-    n INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (key, bucket)
-  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.rateLimits).run().catch(() => { ok = false; });
   if (ok) rateLimitsReady = true;
 }
 
@@ -230,12 +273,18 @@ async function rateLimited(env: Env, key: string, limit: number, windowMs: numbe
 /**
  * Whether a post about a player comes from that player. A profile with a cloud save has a
  * token, and a post that does not carry it is somebody else's: without this, anyone could
- * rename or pad another player's board rows from the public player id. A player who has
- * never synced has no token yet, and their first posts are taken on trust as before.
+ * rename or pad another player's board rows from the public player id.
+ *
+ * `/score` and `/run` pass `strict`: a player id with no `saves` row yet is rejected rather
+ * than trusted, since the client posts a cloud save on every boot before it plays -- a real
+ * first-time player's post that loses that race is simply retried by resubmitBests() next
+ * boot, same as one lost to a dead connection. Without `strict`, a player id that never syncs
+ * (a dropped `/save`, or one never taken at all) would trust any token about it forever.
  */
-async function ownsProfile(env: Env, playerId: string, token: string): Promise<boolean> {
+async function ownsProfile(env: Env, playerId: string, token: string, strict = false): Promise<boolean> {
   const owner = await env.DB.prepare("SELECT token FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string }>().catch(() => null);
-  return !owner || owner.token === token;
+  if (!owner) return !strict;
+  return owner.token === token;
 }
 
 /**
@@ -291,17 +340,8 @@ let leagueReady = false;
 async function ensureLeague(env: Env): Promise<void> {
   if (leagueReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS league (
-    player_id TEXT NOT NULL,
-    week TEXT NOT NULL,
-    tier INTEGER NOT NULL,
-    bucket INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    cm INTEGER NOT NULL DEFAULT 0,
-    updated_at INTEGER NOT NULL,
-    PRIMARY KEY (player_id, week)
-  )`).run().catch(() => { ok = false; });
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS league_bucket ON league (week, tier, bucket, cm DESC)").run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.league).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.leagueBucket).run().catch(() => { ok = false; });
   if (ok) leagueReady = true;
 }
 
@@ -467,33 +507,15 @@ let tapesReady = false;
 async function ensureTapes(env: Env): Promise<void> {
   if (tapesReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS tapes (
-    player_id TEXT NOT NULL,
-    day TEXT NOT NULL,
-    claimed INTEGER NOT NULL,
-    replayed INTEGER,
-    verdict TEXT NOT NULL,
-    ms INTEGER,
-    tape TEXT,
-    created_at INTEGER NOT NULL,
-    PRIMARY KEY (player_id, day)
-  )`).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.tapes).run().catch(() => { ok = false; });
   if (ok) tapesReady = true;
 }
 
 async function ensureDaily(env: Env): Promise<void> {
   if (dailyReady) return;
   let ok = true;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily (
-    player_id TEXT NOT NULL,
-    day TEXT NOT NULL,
-    name TEXT NOT NULL,
-    cm INTEGER NOT NULL,
-    seconds INTEGER,
-    created_at INTEGER NOT NULL,
-    PRIMARY KEY (player_id, day)
-  )`).run().catch(() => { ok = false; });
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS daily_board ON daily (day, cm DESC)").run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.daily).run().catch(() => { ok = false; });
+  await env.DB.prepare(DDL.dailyBoard).run().catch(() => { ok = false; });
   if (ok) dailyReady = true;
 }
 
@@ -607,7 +629,7 @@ export default {
       const cm = Math.floor(Number(body.cm));
       const secs = Number.isFinite(Number(body.seconds)) && Number(body.seconds) > 0 ? Math.min(86400, Math.round(Number(body.seconds))) : null;
       if (!playerId || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad score" }, h, 400);
-      if (!(await ownsProfile(env, playerId, String(body.token ?? "").slice(0, 64)))) return json({ error: "forbidden" }, h, 403);
+      if (!(await ownsProfile(env, playerId, String(body.token ?? "").slice(0, 64), true))) return json({ error: "forbidden" }, h, 403);
       // The daily climb is one attempt on one shared fridge: the first score of the day stands,
       // whatever a later one says, and the day is this server's, not the caller's.
       if (body.mode === "daily") {
@@ -760,7 +782,8 @@ export default {
 
     if (req.method === "GET" && url.pathname === "/save") {
       const playerId = url.searchParams.get("player") ?? "";
-      const token = url.searchParams.get("token") ?? "";
+      // the credential travels as a header, not a query param, so it does not sit in request logs
+      const token = req.headers.get("X-Save-Token") ?? url.searchParams.get("token") ?? "";
       if (!playerId || !token) return json({ error: "bad request" }, h, 400);
       const cur = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string; blob: string; rev: number }>();
       if (!cur) return json({ error: "none" }, h, 404);
@@ -863,7 +886,7 @@ export default {
         return json({ error: "bad run" }, h, 400);
       }
       if (pid.startsWith("smoke-")) return json({ ok: true }, h);
-      if (!(await ownsProfile(env, pid, String(body.token ?? "").slice(0, 64)))) return json({ error: "forbidden" }, h, 403);
+      if (!(await ownsProfile(env, pid, String(body.token ?? "").slice(0, 64), true))) return json({ error: "forbidden" }, h, 403);
       let name = String((body as { name?: unknown }).name ?? "").replace(NAME_RE, "").trim().slice(0, 12) || "climber";
       if (nameIsProfane(name)) name = "climber";
       const now = Date.now();

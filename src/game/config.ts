@@ -169,11 +169,3 @@ export function statsFor(levels: Record<UpgradeKey, number>) {
   };
 }
 
-
-export interface SkinDef { key: string; name: string; cost: number; colors: string[] }
-export const SKINS: SkinDef[] = [
-  { key: "classic", name: "Classic", cost: 0, colors: CLIMBER_COLORS },
-  { key: "glow", name: "Glow in the dark", cost: 250, colors: ["#c8ff5a", "#9bff8a", "#e6ffb0", "#7cf0c8", "#d4ff3d", "#b8ffe0"] },
-  { key: "candy", name: "Candy", cost: 400, colors: ["#ff9ad5", "#ffd1a1", "#a1e3ff", "#d3a1ff", "#a1ffb8", "#fff3a1"] },
-  { key: "stealth", name: "Stealth", cost: 600, colors: ["#3a3f47", "#5b6470", "#8a94a1", "#2c3036", "#b0b8c2", "#6f7986"] },
-];

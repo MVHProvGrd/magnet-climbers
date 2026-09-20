@@ -24,11 +24,9 @@ export function dailySeed(day = todayKey()): number {
   return (hash >>> 0) || 1;
 }
 
-const DEFAULT_API = "https://magnet-climbers-api.magnetclimbers.workers.dev";
-/** Override with VITE_LEADERBOARD_URL; set it to "off" to disable the board. */
+/** Set VITE_LEADERBOARD_URL to the deployed Worker URL to enable the board; leave unset to play without one. */
 const envUrl = ((import.meta.env.VITE_LEADERBOARD_URL as string | undefined) ?? "").trim();
-const raw = envUrl || DEFAULT_API;
-export const API = raw === "off" ? "" : raw.replace(/\/$/, "");
+export const API = envUrl === "off" ? "" : envUrl.replace(/\/$/, "");
 
 export const leaderboardEnabled = API.length > 0;
 /** Where the Worker lives, for the owner's admin panel. Empty when the board is off. */
@@ -69,7 +67,8 @@ export const cloud = {
       return { ok: true, rev: j.rev };
     } catch { return null; }
   },
-  pull: (playerId: string, token: string) => call<CloudSave>(`/save?player=${encodeURIComponent(playerId)}&token=${encodeURIComponent(token)}`),
+  pull: (playerId: string, token: string) =>
+    call<CloudSave>(`/save?player=${encodeURIComponent(playerId)}`, { headers: { "X-Save-Token": token } }),
   link: (playerId: string, token: string) => call<{ code: string; expiresAt: number }>("/link", { method: "POST", body: JSON.stringify({ playerId, token }) }),
   merge: (fromId: string, fromToken: string, toId: string, toToken: string) =>
     call<{ ok: boolean }>("/merge", { method: "POST", body: JSON.stringify({ fromId, fromToken, toId, toToken }) }),

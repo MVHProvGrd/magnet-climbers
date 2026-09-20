@@ -85,7 +85,7 @@ function settleLedger() {
 const persist = () => { settleLedger(); writeSave(save); };
 
 /** Fields that travel between devices. Device-local prefs (sound, chill) stay put. */
-const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestSolo", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay", "ledger"] as const;
+const CLOUD_FIELDS = ["coins", "gems", "bestCm", "bestCmAt", "bestCmSeconds", "bestSolo", "bestSoloAt", "bestSoloSeconds", "runs", "totalCm", "upgrades", "skin", "skins", "creature", "pattern", "creatures", "patterns", "picked", "hitsTotal", "spins", "intros", "name", "avatar", "introSeen", "tutorialDone", "namePrompted", "daily", "streak", "missions", "missionsDone", "missionsDay", "ledger"] as const;
 function cloudBlob(): string {
   settleLedger();
   const out: Record<string, unknown> = {};
@@ -116,8 +116,10 @@ function mergeCloudBlob(blob: string) {
       save.coins = Math.max(save.coins, c.coins ?? 0);
       save.gems = Math.max(save.gems, c.gems ?? 0);
     }
-    save.bestCm = Math.max(save.bestCm, c.bestCm ?? 0);
-    save.bestSolo = Math.max(save.bestSolo, c.bestSolo ?? 0);
+    // the height, its date and its duration are one record: take all three from whichever
+    // side actually holds the taller climb, never the height from one and the time from the other
+    if ((c.bestCm ?? 0) > save.bestCm) { save.bestCm = c.bestCm!; save.bestCmAt = c.bestCmAt; save.bestCmSeconds = c.bestCmSeconds; }
+    if ((c.bestSolo ?? 0) > save.bestSolo) { save.bestSolo = c.bestSolo!; save.bestSoloAt = c.bestSoloAt; save.bestSoloSeconds = c.bestSoloSeconds; }
     save.runs = Math.max(save.runs, c.runs ?? 0);
     save.totalCm = Math.max(save.totalCm, c.totalCm ?? 0);
     for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], c.upgrades?.[k] ?? 0);
@@ -157,7 +159,7 @@ function mergeCloudBlob(blob: string) {
  */
 async function adoptProfile(r: { playerId: string; token: string; blob: string; rev: number }): Promise<boolean> {
   // remember this device's old profile so it can be folded in rather than lost
-  const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestSolo: save.bestSolo, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
+  const old = { id: save.playerId, token: save.token, coins: save.coins, gems: save.gems, bestCm: save.bestCm, bestCmAt: save.bestCmAt, bestCmSeconds: save.bestCmSeconds, bestSolo: save.bestSolo, bestSoloAt: save.bestSoloAt, bestSoloSeconds: save.bestSoloSeconds, totalCm: save.totalCm, runs: save.runs, upgrades: { ...save.upgrades }, skins: [...save.skins], creatures: [...save.creatures], patterns: [...save.patterns] };
   save.playerId = r.playerId; save.token = r.token; save.cloudRev = r.rev;
   applyCloudBlob(r.blob);
   const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
@@ -165,7 +167,8 @@ async function adoptProfile(r: { playerId: string; token: string; blob: string; 
     // wallet and lifetime add; records and upgrades take the higher; skins union
     save.coins += old.coins; save.gems += old.gems;
     save.totalCm += old.totalCm; save.runs += old.runs;
-    save.bestCm = Math.max(save.bestCm, old.bestCm); save.bestSolo = Math.max(save.bestSolo, old.bestSolo);
+    if (old.bestCm > save.bestCm) { save.bestCm = old.bestCm; save.bestCmAt = old.bestCmAt; save.bestCmSeconds = old.bestCmSeconds; }
+    if (old.bestSolo > save.bestSolo) { save.bestSolo = old.bestSolo; save.bestSoloAt = old.bestSoloAt; save.bestSoloSeconds = old.bestSoloSeconds; }
     for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
     save.skins = Array.from(new Set([...save.skins, ...old.skins]));
     save.creatures = Array.from(new Set([...save.creatures, ...old.creatures]));
@@ -471,7 +474,7 @@ function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: 
     const raw = localStorage.getItem(SNAP_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed?.snap?.v === 1 ? parsed : null;
+    return parsed?.snap?.v === 2 ? parsed : null;
   } catch { return null; }
 }
 setInterval(saveSnapshot, 2000);
@@ -489,7 +492,8 @@ function runEvents() {
       clearSnapshot();
       // the kit was bought for this climb and this climb is over. The run keeps the stats it
       // started with (they were read once, at the top), so a revive still climbs with the gear.
-      for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
+      // a daily or live race never wore the kit (fairness, above) so it stays in the drawer for a normal climb.
+      if (!dailyRun && !liveRaceRun) for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
       const cm = game.heightCm;
       const chill = game.chill;
       const bestKey = rulesNow === "solo" ? "bestSolo" : "bestCm";
@@ -652,6 +656,8 @@ let pendingChallenge: ReturnType<typeof parseChallenge> = null;
 let runCoinsTotal = 0;
 /** True while the current run is today's shared climb. */
 let dailyRun = false;
+/** True while the current run is a live race: kit is forced off for a fair fight, so it must not be spent by it. */
+let liveRaceRun = false;
 /** The recorded climb running beside this one, when the player asked to race it. */
 let ghost: Ghost | LiveGhost | null = null;
 /** the live race this phone is in, from the lobby until the result lands */
@@ -765,7 +771,7 @@ let missionTick = 0;
 const missionHit = new Set<string>();
 let missionCheer = 0;
 let missionCheerId = "";
-export function resetMissionStrip(): void { missionHit.clear(); missionCheer = 0; missionCheerId = ""; }
+function resetMissionStrip(): void { missionHit.clear(); missionCheer = 0; missionCheerId = ""; }
 
 function updateMissionStrip(dt: number): void {
   if (!game) return;
@@ -853,6 +859,7 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   paused = false;
   const lineup = lineupFor(rules);
   dailyRun = daily;
+  liveRaceRun = !!liveRace;
   // everyone climbs the same door with the same gear, so a daily or a live race leaves the kit in the drawer
   const kit = daily || liveRace ? ({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>) : save.kit;
   // a first-ever run's first three flings catch from a little further: the first lesson is
@@ -956,8 +963,9 @@ function endRun() {
   ghost = null;
   ui.setMissionStrip(null);
   resetMissionStrip();
-  // the kit was for that climb: it is used up whether it carried you far or not
-  for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
+  // the kit was for that climb: it is used up whether it carried you far or not.
+  // a daily or live race never wore it, so it stays in the drawer for a normal climb.
+  if (!dailyRun && !liveRaceRun) for (const k of Object.keys(save.kit) as UpgradeKey[]) save.kit[k] = 0;
   persist();
   if (updateReady) setTimeout(applyUpdate, 400);
   tutorial = null;
@@ -984,8 +992,10 @@ const hit = (p: { x: number; y: number }, r: { x: number; y: number; w: number; 
 canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
   const sp = toScreen(e);
-  for (const r of teamTapRects(game, viewH)) {
-    if (hit(sp, r)) { game.select(r.id); return; }
+  if (game.rules === "crew") {
+    for (const r of teamTapRects(game, viewH)) {
+      if (hit(sp, r)) { game.select(r.id); return; }
+    }
   }
   for (const m of offscreenMarkers(game, viewH)) {
     if (Math.abs(m.x - sp.x) < 28 && Math.abs(m.y - sp.y) < 20) { game.select(m.id); return; }

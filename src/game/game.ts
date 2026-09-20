@@ -18,9 +18,12 @@ const TIP_ANGLE = 0.22;
 /** How a climber was lost. The lost card turns this into a line of prose. */
 export type DeathCause = "redline" | "fell" | "paw" | "hand" | "bumper" | "flings";
 
-/** Everything needed to resume a run after the page is closed or reloaded. */
+/** Everything needed to resume a run after the page is closed or reloaded.
+ *  Bump `v` whenever a field is added or changes shape; loadSnapshot drops anything that
+ *  doesn't match the current version instead of trying to restore it half-shaped. Losing an
+ *  in-progress climb across an app update is cheap -- the save itself is untouched. */
 export interface RunSnapshot {
-  v: 1;
+  v: 2;
   rules: "solo" | "crew";
   chill?: boolean;
   seed: number;
@@ -695,7 +698,7 @@ export class Game {
       seg.bumpers.forEach((b, i) => bumpers.push({ y: seg.y, i, x: b.x, vx: b.vx, by: b.y, vy: b.vy }));
     }
     return {
-      v: 1, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated, runTime: this.runTime,
+      v: 2, rules: this.rules, chill: this.chill, seed: this.world.seed, worldVersion: this.world.version, generated: this.world.generated, runTime: this.runTime,
       climbers: this.climbers.map((c) => ({ ...c, grip: cloneGrip(c.grip), ragdoll: cloneRagdoll(c.ragdoll) })), nextId: this.nextId,
       floorY: this.floorY, highestY: this.highestY, camY: this.camY,
       coins: this.coins, gems: this.gems, reserves: this.reserves, revivesLeft: this.revivesLeft,

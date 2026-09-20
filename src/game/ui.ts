@@ -549,7 +549,7 @@ export class Ui {
       ${body}
       <button class="ghost" data-a="back">BACK</button>`;
     p.addEventListener("click", (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-c],[data-p],[data-a]");
+      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-k],[data-c],[data-p],[data-a]");
       if (!t) return;
       if (t.dataset.tab) { this.showCollection(t.dataset.tab as "creatures"); return; }
       if (t.dataset.k) { this.h.onBuy(t.dataset.k as UpgradeKey); this.showCollection("kit"); return; }

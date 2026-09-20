@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && node scripts/paper-aspect.mjs && node scripts/element-map.mjs && node scripts/art-archive-page.mjs && node scripts/roadmap-page.mjs && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "typecheck:worker": "tsc -p worker/tsconfig.json --noEmit",
     "elements": "node scripts/element-map.mjs",
     "archive": "node scripts/art-archive-page.mjs",
     "aspects": "node scripts/paper-aspect.mjs"

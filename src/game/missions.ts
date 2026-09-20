@@ -105,7 +105,7 @@ export function dailyBoard(done: number, roll: () => number = Math.random): Miss
 export function refill(current: Mission[], done: number, roll: () => number = Math.random): Mission[] {
   const out = current.filter((m) => !m.done);
   for (let guard = 0; out.length < 3 && guard < 20; guard++) {
-    const next = rollMission(out.map((m) => m.id), done + guard, roll);
+    const next = rollMission(out.map((m) => m.id), done, roll);
     if (!next) break;
     out.push(next);
   }
@@ -132,10 +132,12 @@ export function settle(board: Mission[], run: RunTally): { board: Mission[]; fin
  * the seventh day in a row pays a pattern instead of coins. A missed day starts again at one:
  * the point is the habit, so the reward has to be worth protecting rather than worth grinding.
  */
-export const STREAK_PAY = [40, 60, 80, 110, 150, 200, 0] as const;
+export const STREAK_PAY = [40, 60, 80, 110, 150, 200] as const;
 export const STREAK_PATTERN_DAY = 7;
 export function streakReward(days: number): { coins: number; pattern: boolean } {
   if (days <= 0) return { coins: 0, pattern: false };
+  // the 7th day (and every 7th after) pays a pattern instead of coins, so this only ever
+  // sees days 1-6, 8-13, ... -- (days - 1) % 7 is always within STREAK_PAY's own 6 entries
   if (days % STREAK_PATTERN_DAY === 0) return { coins: 0, pattern: true };
-  return { coins: STREAK_PAY[Math.min(STREAK_PAY.length - 2, (days - 1) % STREAK_PATTERN_DAY)], pattern: false };
+  return { coins: STREAK_PAY[(days - 1) % STREAK_PATTERN_DAY], pattern: false };
 }

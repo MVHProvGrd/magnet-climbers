@@ -14,7 +14,6 @@ import { sizeOf } from "../src/game/item-sizes";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
 import { replay, tapeBytes } from "../src/game/recorder";
 import { Ghost } from "../src/game/ghost";
-import { weekKey } from "../worker/src/week";
 import { attachGrip, braceLanding, findContacts, limbTip, LIMB_TIPS, rotate, stepGrip } from "../src/game/magnetism";
 import { flightLimb, LIMB_ROOTS, resetRagdoll, stepRagdoll } from "../src/game/ragdoll";
 import { FRIDGE_ITEMS, BUMPER_ITEMS, TOY_HOOKS, toyHook, itemZone, PAPER_ASPECT } from "../src/game/items";

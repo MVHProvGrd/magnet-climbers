@@ -150,8 +150,8 @@ function mix(hex: string, target: string, amount: number): string {
 
 // Toy material gradients are cheap to cache: every one of them is built from a colour
 // (the climber's or creature's skin tone) mixed toward fixed tints at fixed stops, so the
-// same colour always produces the same gradient. The skin catalog (config.ts SKINS, plus
-// the handful of built-in creature colours) is a small fixed list shipped with the game,
+// same colour always produces the same gradient. The colour catalog (config.ts CLIMBER_COLORS,
+// plus the handful of built-in creature colours) is a small fixed list shipped with the game,
 // never grown at runtime, so keying these caches by colour string stays bounded for the
 // life of the process instead of growing with how long a run lasts.
 // The position-dependent ones (limb material, metal tips, the human head gloss) are built
