@@ -17,3 +17,13 @@ design_handoff_hud_menus/
 /public/elements/index.html
 /public/roadmap/index.html
 /public/roadmap/artifact.html
+
+# Art masters live in the magnet-art repo (moved 2026-09-20). Only small text/json/index files stay tracked here.
+art/archive/**/*.png
+art/archive/**/*.webp
+art/archive/**/*.jpg
+art/archive/**/*.jpeg
+art/archive/**/*.gif
+art/archive/**/*.wav
+art/archive/**/*.mp3
+art/archive/**/*.mp4

@@ -24,7 +24,7 @@ Scoreboard API: Cloudflare Worker + D1 in `worker/` (see `worker/README.md`).
 - Push straight to `main`; Pages deploys it. No PRs needed unless asked.
 
 ## Docs and handoffs (keep the hot files small)
-- `ART_REFRESH_HANDOFF.md` is the Claude ↔ Codex mailbox: live sections only, newest on top, under ~8 KB. Retire superseded sections VERBATIM into `art/HANDOFF_LOG.md` in the same commit. Per-pack prompts/QC live in `art/archive/<pack>/HANDOFF.md`.
+- `ART_REFRESH_HANDOFF.md` is the Claude ↔ Codex mailbox: live sections only, newest on top, under ~8 KB. Retire superseded sections VERBATIM into `art/HANDOFF_LOG.md` in the same commit. Per-pack prompts/QC live in `art/archive/<pack>/HANDOFF.md`. Art MASTERS (every binary) live in the sibling repo `MVHProvGrd/magnet-art` at `C:\Users\micha\magnet-art`; this repo gitignores them and the install scripts take `ART_ARCHIVE=../magnet-art`.
 - Dated feature-pass write-ups go in `docs/handoffs/YYYY-MM-DD-topic.md`, not the repo root. `DESIGN.md`, `ROADMAP.md`, `CREW_DESIGN.md` stay at root.
 - Don't paste file contents or long status into chat or into this file; point at the file. This file is auto-loaded every turn — keep it to commands, layout, rules.
 

@@ -23,9 +23,10 @@ mkdirSync(OUT, { recursive: true });
 // quietly go back into the precache
 for (const f of readdirSync(OUT).filter((f) => f.endsWith(".wav"))) rmSync(join(OUT, f));
 
+const ARCHIVE = process.env.ART_ARCHIVE || "art/archive";
 let masters = 0, before = 0, after = 0;
 for (const pack of PACKS) {
-  const dir = `art/archive/${pack}/ready`;
+  const dir = `${ARCHIVE}/${pack}/ready`;
   if (!existsSync(dir)) { console.log("missing", dir); continue; }
   for (const f of readdirSync(dir).filter((f) => f.endsWith(".wav"))) {
     const src = join(dir, f), dst = join(OUT, f.replace(/\.wav$/, ".mp3"));

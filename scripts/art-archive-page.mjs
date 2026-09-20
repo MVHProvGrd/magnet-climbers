@@ -2,8 +2,8 @@
 // Deliberately NOT under public/ — this is a reference gallery for the owner and Codex, not part of the shipped game.
 import { readdir, readFile, writeFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-const RAW = "https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/main/art/archive/";
-const root = "art/archive";
+const RAW = "https://raw.githubusercontent.com/MVHProvGrd/magnet-art/main/";
+const root = process.env.ART_ARCHIVE || "art/archive"; // masters repo: MVHProvGrd/magnet-art (private; raw links need a signed-in browser)
 const readme = await readFile(join(root, "README.md"), "utf8");
 const notes = Object.fromEntries([...readme.matchAll(/^\| `([^`]+)\/` \| (.+?) \| (.+?) \| (.+?) \|$/gm)].map((m) => [m[1], { what: m[2], from: m[3], live: m[4] }]));
 async function walk(dir) {

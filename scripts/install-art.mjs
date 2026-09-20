@@ -82,10 +82,11 @@ async function sourcePivot(mode, path, img) {
   return { x: m.cx, y: m.susp };
 }
 
+const ARCHIVE = process.env.ART_ARCHIVE || "art/archive"; // masters live in the magnet-art repo; binaries here are gitignored
 let before = 0, after = 0;
 const pivots = {};
 for (const [src, dst, longest, pivotMode] of JOBS) {
-  const path = `art/archive/${src}`;
+  const path = `${ARCHIVE}/${src}`;
   if (!existsSync(path)) { console.log("missing", path); continue; }
   const raw = readFileSync(path);
   const img = await loadImage(raw);
@@ -149,7 +150,7 @@ const VERBATIM = [
   ["35-clock-layers-v1/ready/clock-minute-hand-v1.webp", "public/art/gadgets/clock-minute-hand.webp", false],
 ];
 for (const [src, dst, recode] of VERBATIM) {
-  const from = `art/archive/${src}`;
+  const from = `${ARCHIVE}/${src}`;
   if (!existsSync(from)) { console.log("missing", from); continue; }
   mkdirSync(dirname(dst), { recursive: true });
   const raw = readFileSync(from);

@@ -8,6 +8,14 @@ do not leave it here. Per-pack detail (prompts, QC, exact filenames) belongs in
 `art/archive/<pack>/HANDOFF.md`, not in this file. Keep this file under ~8 KB.
 Everything before 2026-09-16 is already in the log.
 
+## ART MASTERS MOVED (2026-09-20)
+Generation masters, sources and packs now live in the private repo `MVHProvGrd/magnet-art`
+(local clone `C:\Users\micha\magnet-art`, same `NN-name-vN/` layout). Codex lands new packs THERE,
+not under this repo's `art/archive/`. This repo tracks only the small text/json/index files under
+`art/archive/`; every png/webp/jpg/gif/wav is gitignored (the local copies still work). Install into
+the game with `ART_ARCHIVE=../magnet-art node scripts/install-art.mjs` (same for install-audio).
+Reason: the tracked archive had reached 517 MB, pulled by every clone to produce an 8 MB `public/art`.
+
 ## CURRENT — pack35 clock layers READY (2026-09-17)
 
 Completed Claude's hands-free clock request. art/archive/35-clock-layers-v1/ready contains rotor-clock-faceless-v1.webp plus separate clock-hour-hand-v1.webp and clock-minute-hand-v1.webp. Face remains380x384 with existing pivot(0.501,0.4957); hands128x256 pivot(64,240), draw at0.55 relative to native face. Three alpha checks pass. All originals/takes preserved, no public/art or runtime changes. Claude wires local time; read pack HANDOFF.md before cropping (do NOT crop the fitted frame again).
