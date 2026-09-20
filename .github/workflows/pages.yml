@@ -33,7 +33,8 @@ jobs:
       - run: npm run build
         env:
           # Repo → Settings → Secrets and variables → Actions → Variables → LEADERBOARD_URL
-          VITE_LEADERBOARD_URL: ${{ vars.LEADERBOARD_URL }}
+          # the public Worker URL; the variable overrides it (set it to "off" to build without a board)
+          VITE_LEADERBOARD_URL: ${{ vars.LEADERBOARD_URL || 'https://magnet-climbers-api.magnetclimbers.workers.dev' }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
