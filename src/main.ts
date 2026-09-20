@@ -69,6 +69,10 @@ const uiRoot = document.getElementById("ui")!;
 // owner workbench override, if this device has one saved (see src/placement.ts)
 loadPlacement();
 let save = loadSave();
+// Ask the browser not to evict this origin's storage under pressure -- an installed PWA's save
+// is the only copy on a phone with no cloud sync configured, and iOS Safari will otherwise clear
+// site data it judges unused. Best-effort: the call can reject or simply not exist.
+try { void navigator.storage?.persist?.(); } catch { /* not available */ }
 setSound(save.sound);
 setMusic(save.music);
 setPlainSteel(save.plainSteel);
@@ -164,9 +168,11 @@ async function adoptProfile(r: { playerId: string; token: string; blob: string; 
   applyCloudBlob(r.blob);
   const hadProgress = old.totalCm > 0 || old.coins > 0 || old.runs > 0;
   if (hadProgress && old.id !== save.playerId) {
-    // wallet and lifetime add; records and upgrades take the higher; skins union
-    save.coins += old.coins; save.gems += old.gems;
-    save.totalCm += old.totalCm; save.runs += old.runs;
+    // Same rule as the ongoing cloud-sync merge below: the higher figure wins, never a sum.
+    // A sum here let a device with a little real progress fold its wallet into a link-code
+    // target, then repeat from a fresh throwaway save -- the same coins counted every time.
+    save.coins = Math.max(save.coins, old.coins); save.gems = Math.max(save.gems, old.gems);
+    save.totalCm = Math.max(save.totalCm, old.totalCm); save.runs = Math.max(save.runs, old.runs);
     if (old.bestCm > save.bestCm) { save.bestCm = old.bestCm; save.bestCmAt = old.bestCmAt; save.bestCmSeconds = old.bestCmSeconds; }
     if (old.bestSolo > save.bestSolo) { save.bestSolo = old.bestSolo; save.bestSoloAt = old.bestSoloAt; save.bestSoloSeconds = old.bestSoloSeconds; }
     for (const k of Object.keys(save.upgrades) as (keyof typeof save.upgrades)[]) save.upgrades[k] = Math.max(save.upgrades[k], old.upgrades[k] ?? 0);
@@ -343,6 +349,7 @@ const ui = new Ui(uiRoot, () => save, {
   onToggleMusic: () => { save.music = !save.music; setMusic(save.music); persist(); },
   onToggleReminders: () => { void toggleReminders(); },
   onTogglePlainSteel: () => { save.plainSteel = !save.plainSteel; setPlainSteel(save.plainSteel); backdropDrawn = false; persist(); },
+  onToggleChat: () => { save.chatOptIn = !save.chatOptIn; persist(); },
   onSetLang: (l) => { save.lang = l; setLang(l); persist(); },
   onToggleMute: () => {
     const on = !save.sound && !save.music;
@@ -594,9 +601,12 @@ function lineupFor(_rules: "solo"): Look[] {
 function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
+  // Game.restore() invalidates the tape (the climb up to the reload was never recorded), so a
+  // resumed daily can never verify. Nothing was posted for it yet -- no /score call has happened
+  // -- so dropping it costs the player nothing but a restart, not a lost or rejected climb.
+  if (r.dailyRun) { clearSnapshot(); ui.showMenu(); ui.toast("Your daily climb was interrupted — climb it again to post it"); return; }
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted;
-  // a daily climb reloaded mid-run is still the daily climb: one go, no revives, its own board
-  dailyRun = r.dailyRun ?? false; runCoinsTotal = r.runCoinsTotal ?? 0;
+  runCoinsTotal = r.runCoinsTotal ?? 0;
   ui.clear();
   paused = false;
   game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor("solo"));
@@ -1229,4 +1239,6 @@ else ui.showMenu();
 // Scripted-playtest hook (see CLAUDE.md). `ui` is here so screenshot QA can open a
 // panel directly instead of driving the sim into the state that produces it.
 declare global { interface Window { __mc?: { game: () => Game | null; save: () => unknown; ui: Ui; perf: () => unknown } } }
-window.__mc = { game: () => game, save: () => save, ui, perf: perfReport };
+// A shallow copy with the cloud token blanked out, not the live object: the comment above
+// promises "no secrets", but the token is exactly what authorizes writing to that save.
+window.__mc = { game: () => game, save: () => ({ ...save, token: "[redacted]" }), ui, perf: perfReport };

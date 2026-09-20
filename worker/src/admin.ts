@@ -132,6 +132,34 @@ export async function handleAdmin(req: Request, url: URL, env: Env & { ADMIN_KEY
     await env.DB.prepare("UPDATE lifetime SET cm = ? WHERE player_id = ?").bind(Math.max(0, Math.floor(Number(body.cm ?? 0))), str("playerId")).run();
     return json({ ok: true });
   }
+  if (path === "/player/erase") {
+    // Every table a player id can appear in, so the privacy policy's deletion promise is
+    // actually true and not just the three tables /player happens to show. A table that has
+    // never been created on this database (ensure* runs lazily, on first use) fails its own
+    // DELETE harmlessly -- there is nothing in it to erase either way.
+    const id = str("playerId");
+    if (!id) return json({ error: "bad request" }, 400);
+    const q = (sql: string, ...params: unknown[]) => env.DB.prepare(sql).bind(...params).run().catch(() => {});
+    await Promise.all([
+      q("DELETE FROM scores WHERE player_id = ?", id),
+      q("DELETE FROM lifetime WHERE player_id = ?", id),
+      q("DELETE FROM wallet WHERE player_id = ?", id),
+      q("DELETE FROM chat WHERE player_id = ?", id),
+      q("DELETE FROM chat_mutes WHERE player_id = ?", id),
+      q("DELETE FROM chat_censors WHERE player_id = ?", id),
+      q("DELETE FROM chat_reports WHERE target_id = ? OR reporter_id = ?", id, id),
+      q("DELETE FROM score_resets WHERE player_id = ?", id),
+      q("DELETE FROM daily WHERE player_id = ?", id),
+      q("DELETE FROM league WHERE player_id = ?", id),
+      q("DELETE FROM tapes WHERE player_id = ?", id),
+      q("DELETE FROM races WHERE player_id = ?", id),
+      q("DELETE FROM accounts WHERE player_id = ?", id),
+      q("DELETE FROM push_subs WHERE player_id = ?", id),
+      q("DELETE FROM link_codes WHERE player_id = ?", id),
+      q("DELETE FROM saves WHERE player_id = ?", id),
+    ]);
+    return json({ ok: true });
+  }
   return json({ error: "not found" }, 404);
 }
 
@@ -161,6 +189,7 @@ input{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #333;backg
 <section><h2>Player lookup</h2><div class="row"><input id="pid" placeholder="p-xxxxxxxx" style="flex:1"><button onclick="lookup()">Look up</button></div>
 <div class="row"><input id="newname" placeholder="new name" maxlength="12"><button onclick="rename()">Rename</button><button class="bad" onclick="delScore('')">Delete all scores</button><button class="bad" onclick="delScore('solo')">Delete solo</button></div>
 <div class="row"><input id="lifecm" placeholder="lifetime cm" type="number"><button onclick="setLife()">Set lifetime</button><button class="bad" onclick="mute(0,true)">Mute forever + wipe chat</button><button onclick="mute(24,false)">Mute 24h</button><button onclick="unmute()">Unmute</button></div>
+<div class="row"><button class="bad" onclick="eraseAll()">Erase everything for this id (privacy request)</button></div>
 <div id="out"></div></section>
 <section class="wide"><h2>Flagged</h2><table id="reports"></table></section>
 <section class="board"><h2>Solo board</h2><table id="solo"></table></section>
@@ -175,21 +204,38 @@ const $=(s)=>document.querySelector(s);const key=()=>localStorage.getItem("mc-ad
 function saveKey(){localStorage.setItem("mc-admin-key",$("#key").value.trim());load();}
 async function api(path,body){const r=await fetch("/admin/api"+path,{method:body?"POST":"GET",headers:{"Authorization":"Bearer "+key(),"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});const j=await r.json().catch(()=>({}));if(!r.ok){$("#status").textContent=j.error||r.status;throw new Error(j.error||r.status);}return j;}
 const when=(t)=>new Date(t).toLocaleString("en-US",{timeZone:"America/Chicago",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+// Safe for HTML text AND for a double-quoted attribute value (data-id="…"): entity-decoding
+// an attribute happens before anything reads it, and nothing here ever re-parses that decoded
+// text as code, unlike an onclick="fn('…')" string, which is why every button below is a plain
+// data-act/data-id pair read via .dataset, never a player-controlled value spliced into an
+// inline handler -- HTML-escaping a quote does not stop it becoming a literal quote in JS source
+// once the browser decodes the attribute first.
+const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 // how long the run took, next to when it happened; older rows predate the column
 const took=(s)=>s?\`\${Math.floor(s/60)}m \${String(s%60).padStart(2,"0")}s\`:'<span class="muted">—</span>';
 const pick=(id)=>{$("#pid").value=id;lookup();};
+const idBtn=(id)=>\`<span class="id" data-act="pick" data-id="\${esc(id)}" style="cursor:pointer">\${esc(id)}</span>\`;
+document.addEventListener("click",(e)=>{
+  const t=e.target.closest("[data-act]");if(!t)return;
+  const id=t.dataset.id;
+  if(t.dataset.act==="pick")pick(id);
+  else if(t.dataset.act==="unmute")unmute(id);
+  else if(t.dataset.act==="mute")mute(Number(t.dataset.hours),t.dataset.wipe==="1",id);
+  else if(t.dataset.act==="delchat")delChat(Number(id));
+  else if(t.dataset.act==="delscorefor")delScoreFor(id,t.dataset.mode);
+  else if(t.dataset.act==="clearreport")clearReport(Number(id));
+});
 let load=async function(){$("#status").textContent="…";const d=await api("/overview");$("#status").textContent="ok";
 $("#stats").innerHTML=\`<b>\${(d.stats.total_cm/100).toFixed(1)} m</b> over <b>\${d.stats.runs}</b> runs by <b>\${d.players}</b> climbers\`;
-$("#mutes").innerHTML=d.mutes.length?"Muted: "+d.mutes.map(m=>\`<span class="id">\${esc(m.player_id)}</span> (\${m.until?"until "+when(m.until):"forever"}) <button onclick="unmute('\${esc(m.player_id)}')">unmute</button>\`).join(" · "):"No mutes.";
+$("#mutes").innerHTML=d.mutes.length?"Muted: "+d.mutes.map(m=>\`<span class="id">\${esc(m.player_id)}</span> (\${m.until?"until "+when(m.until):"forever"}) <button data-act="unmute" data-id="\${esc(m.player_id)}">unmute</button>\`).join(" · "):"No mutes.";
 const newest=d.chat[0]?.id||0,fresh=lastSeen&&newest>lastSeen?d.chat.filter(m=>m.id>lastSeen).length:0;
 $("#chatmeta").textContent=\`newest first · \${d.chat.length} shown\${fresh?" · "+fresh+" new":""}\`;
-$("#chat").innerHTML=d.chat.map(m=>\`<div class="msg\${lastSeen&&m.id>lastSeen?" new":""}"><div class="who"><b>\${esc(m.name)}</b><span class="id" onclick="pick('\${esc(m.player_id)}')" style="cursor:pointer">\${esc(m.player_id)}</span><span class="id">\${when(m.created_at)}</span></div><div class="acts"><button class="bad" onclick="delChat(\${m.id})">del</button> <button onclick="mute(24,false,'\${esc(m.player_id)}')">mute 24h</button></div><div class="text">\${esc(m.text)}</div></div>\`).join("")||'<div class="muted">Empty</div>';
+$("#chat").innerHTML=d.chat.map(m=>\`<div class="msg\${lastSeen&&m.id>lastSeen?" new":""}"><div class="who"><b>\${esc(m.name)}</b>\${idBtn(m.player_id)}<span class="id">\${when(m.created_at)}</span></div><div class="acts"><button class="bad" data-act="delchat" data-id="\${m.id}">del</button> <button data-act="mute" data-hours="24" data-wipe="0" data-id="\${esc(m.player_id)}">mute 24h</button></div><div class="text">\${esc(m.text)}</div></div>\`).join("")||'<div class="muted">Empty</div>';
 lastSeen=newest;
-for(const mode of ["solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" onclick="delScoreFor('\${esc(r.player_id)}','\${mode}')">del</button></td></tr>\`).join("");
-$("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":r.kind==="censor"?"CENSORED":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br><span class="id" onclick="pick('\${esc(r.target_id)}')" style="cursor:pointer">\${esc(r.target_id)}</span></td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">\${r.kind==="censor"?"filter · "+(r.strikes||0)+" starred":"by "+esc(r.reporter_id)}</td><td class="n"><button onclick="mute(24,false,'\${esc(r.target_id)}')">mute 24h</button> <button class="bad" onclick="mute(0,true,'\${esc(r.target_id)}')">mute + wipe</button> \${r.message_id?\`<button class="bad" onclick="delChat(\${r.message_id})">del msg</button> \`:""}<button onclick="clearReport(\${r.id})">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
-$("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";
-const who=(r)=>\`<td><b>\${esc(r.name)}</b><br><span class="id" onclick="pick('\${esc(r.player_id)}')" style="cursor:pointer">\${esc(r.player_id)}</span></td>\`;
+for(const mode of ["solo"])$("#"+mode).innerHTML=d[mode].map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br>\${idBtn(r.player_id)}</td><td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td><td><button class="bad" data-act="delscorefor" data-id="\${esc(r.player_id)}" data-mode="\${mode}">del</button></td></tr>\`).join("");
+$("#reports").innerHTML=(d.reports||[]).map(r=>\`<tr><td class="n">\${when(r.created_at)}</td><td class="n"><b>\${r.kind==="block"?"BLOCK":r.kind==="censor"?"CENSORED":"REPORT"}</b> x\${r.tally}</td><td><b>\${esc(r.target_name)}</b><br>\${idBtn(r.target_id)}</td><td>\${r.text?esc(r.text):'<span class="muted">no message, just the player</span>'}</td><td class="id">\${r.kind==="censor"?"filter · "+(r.strikes||0)+" starred":"by "+esc(r.reporter_id)}</td><td class="n"><button data-act="mute" data-hours="24" data-wipe="0" data-id="\${esc(r.target_id)}">mute 24h</button> <button class="bad" data-act="mute" data-hours="0" data-wipe="1" data-id="\${esc(r.target_id)}">mute + wipe</button> \${r.message_id?\`<button class="bad" data-act="delchat" data-id="\${r.message_id}">del msg</button> \`:""}<button data-act="clearreport" data-id="\${r.id}">done</button></td></tr>\`).join("")||'<tr><td class="muted">Nothing flagged.</td></tr>';
+$("#coins").innerHTML=(d.coins||[]).map((r,i)=>\`<tr><td>\${i+1}</td><td><b>\${esc(r.name)}</b><br>\${idBtn(r.player_id)}</td><td class="n">\${r.coins.toLocaleString()} coins</td><td class="n">\${when(r.updated_at)}</td></tr>\`).join("")||"<tr><td>Nobody has banked a coin yet.</td></tr>";
+const who=(r)=>\`<td><b>\${esc(r.name)}</b><br>\${idBtn(r.player_id)}</td>\`;
 $("#dailymeta").textContent=d.today||"";
 $("#daily").innerHTML=(d.daily||[]).map((r,i)=>\`<tr><td>\${i+1}</td>\${who(r)}<td class="n">\${r.cm} cm</td><td class="n">\${took(r.seconds)}</td><td class="n">\${when(r.created_at)}</td></tr>\`).join("")||"<tr><td class=\\"muted\\">Nobody has climbed today's door yet.</td></tr>";
 $("#lifetime").innerHTML=(d.lifetime||[]).map((r,i)=>\`<tr><td>\${i+1}</td>\${who(r)}<td class="n">\${(r.cm/100).toFixed(1)} m</td><td class="n">\${r.runs} runs</td><td class="n">\${r.updated_at?when(r.updated_at):'<span class="muted">—</span>'}</td></tr>\`).join("")||"<tr><td class=\\"muted\\">Empty</td></tr>";
@@ -207,6 +253,7 @@ async function unmute(id){await api("/unmute",{playerId:id||$("#pid").value.trim
 async function delChat(id){await api("/chat/delete",{id});load();}
 async function clearReport(id){await api("/report/clear",{id});load();}
 async function clearChat(){if(!confirm("Delete every chat message?"))return;await api("/chat/clear",{});load();}
+async function eraseAll(){const id=$("#pid").value.trim();if(!id)return;if(!confirm("Erase every row for "+id+"? This cannot be undone."))return;await api("/player/erase",{playerId:id});load();lookup();}
 // The game hands the key over in the link's fragment (never sent to a server), so the
 // owner types it once, in the game, rather than again here on a phone keyboard.
 (function(){const m=/[#&]key=([^&]+)/.exec(location.hash);if(!m)return;

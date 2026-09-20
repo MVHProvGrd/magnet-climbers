@@ -79,6 +79,9 @@ export interface SaveData {
   /** reminders are on for this phone, and whether the one-time offer after a daily has been made */
   push: boolean;
   pushAsked: boolean;
+  /** Public chat is opt-in, off by default: a fridge with a cat and a kid on it plausibly draws
+   *  a young audience, and this stays a device-local switch, never something a cloud sync flips on. */
+  chatOptIn: boolean;
   /**
    * Spend what the kit costs without being asked, every run. Someone who has settled on a
    * kit does not want the shop between them and the next climb, and the kit is per-run, so
@@ -135,6 +138,7 @@ function defaults(): SaveData {
     chill: false,
     plainSteel: false,
     push: false,
+    chatOptIn: false,
     pushAsked: false,
     autoKit: false,
   };

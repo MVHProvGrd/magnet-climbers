@@ -124,6 +124,11 @@ const MAX_CM = 200_000;
 /** A lifetime is many runs deep, so it is capped far above a single climb rather than at it. */
 const MAX_LIFETIME_CM = 2_000_000_000;
 const NAME_RE = /[^\p{L}\p{N} _.\-!?]/gu;
+/** Every real id is "p-" plus the client's base36 random suffix (src/game/save.ts); a synthetic
+ *  uptime check uses "smoke-" and is excluded from every public board already. /save is where an
+ *  id first gets a row, so rejecting anything else here keeps a crafted string out of every
+ *  table an id can reach -- /score, /run, /chat and /rename all already require that row's token. */
+const PLAYER_ID_RE = /^(?:p-[a-z0-9]{1,40}|smoke-[a-z0-9_-]{1,40})$/;
 /** Chat rows kept before the oldest are pruned. Deep enough that scrolling back has somewhere to go. */
 const CHAT_HISTORY = 5000;
 
@@ -628,7 +633,7 @@ export default {
       if (nameIsProfane(name)) name = "climber";
       const cm = Math.floor(Number(body.cm));
       const secs = Number.isFinite(Number(body.seconds)) && Number(body.seconds) > 0 ? Math.min(86400, Math.round(Number(body.seconds))) : null;
-      if (!playerId || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad score" }, h, 400);
+      if (!PLAYER_ID_RE.test(playerId) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) return json({ error: "bad score" }, h, 400);
       if (!(await ownsProfile(env, playerId, String(body.token ?? "").slice(0, 64), true))) return json({ error: "forbidden" }, h, 403);
       // The daily climb is one attempt on one shared fridge: the first score of the day stands,
       // whatever a later one says, and the day is this server's, not the caller's.
@@ -759,7 +764,7 @@ export default {
       const token = String(body.token ?? "").slice(0, 64);
       const blob = typeof body.blob === "string" ? body.blob : JSON.stringify(body.blob ?? null);
       const rev = Math.floor(Number(body.rev ?? 0));
-      if (!playerId || token.length < 16 || blob.length > 64_000) return json({ error: "bad save" }, h, 400);
+      if (!PLAYER_ID_RE.test(playerId) || token.length < 16 || blob.length > 64_000) return json({ error: "bad save" }, h, 400);
       const cur = await env.DB.prepare("SELECT token, blob, rev FROM saves WHERE player_id = ?").bind(playerId).first<{ token: string; blob: string; rev: number }>();
       if (cur && cur.token !== token) return json({ error: "forbidden" }, h, 403);
       if (cur && rev < cur.rev) return json({ error: "conflict", rev: cur.rev, blob: cur.blob }, h, 409);
@@ -882,7 +887,7 @@ export default {
       // Bounded the same way a single run is: a number outside that is simply ignored.
       const claimed = Math.floor(Number(body.total));
       const total = Number.isFinite(claimed) && claimed > 0 && claimed <= MAX_LIFETIME_CM ? claimed : 0;
-      if (!pid || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
+      if (!PLAYER_ID_RE.test(pid) || !validMode(body.mode) || !Number.isFinite(cm) || cm <= 0 || cm > MAX_CM) {
         return json({ error: "bad run" }, h, 400);
       }
       if (pid.startsWith("smoke-")) return json({ ok: true }, h);

@@ -14,32 +14,36 @@ footer{margin-top:40px;font-size:13px;opacity:.7;border-top:1px solid #2b3038;pa
 <div class="top"><img src="/icons/toy-icon-192.png" alt=""><span><a href="/">Magnet Climbers</a> · <a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="/contact/">Contact</a></span></div>
 
 <h1>Privacy Policy</h1>
-<p><em>Last updated September 14, 2026</em></p>
-<p>Magnet Climbers is a free browser game. It has no accounts, no email sign-up, no ads and no tracking pixels. This page explains the little it does keep.</p>
+<p><em>Last updated September 20, 2026</em></p>
+<p>Magnet Climbers is a free browser game. As deployed today it has no accounts, no email sign-up, no real ads and no tracking pixels or analytics. This page explains what it does keep, and it gets updated the day that changes — accounts and ads are both things we may turn on later, and if we do, this page changes in the same commit, not after.</p>
 
 <h2>What the game stores on your device</h2>
 <p>Your progress (coins, upgrades, creatures, best heights, settings) is saved in your browser's local storage. A random player id such as <code>p-k3f9…</code> and a secret token are generated the first time you play; they identify your save and nothing else. Nothing on your device is read besides that save.</p>
 
 <h2>What is sent to our servers</h2>
 <ul>
-<li><b>Scores.</b> Your display name, best heights and total metres climbed, tied to your random player id, so the scoreboards work.</li>
+<li><b>Scores and climbs.</b> Your display name, best heights and total metres climbed, tied to your random player id, so the solo, daily and lifetime boards work.</li>
 <li><b>Cloud save.</b> A copy of your progress so it can follow you to another device via a link code. It is readable only with your token.</li>
-<li><b>Chat.</b> Messages you post in the global chat, with your display name and player id. The chat is public to everyone playing. Messages are filtered for profanity and links, kept for a short while, and can be removed by us at any time.</li>
+<li><b>The daily climb.</b> The day's climb is checked by replaying the inputs that produced it (when and where you flung), so one shared board stays fair. That input recording is kept up to 30 days in case a result needs a second look, then the recording itself is dropped; whether it passed stays on record.</li>
+<li><b>Live races and the weekly league.</b> A live race relays your inputs to whoever you are racing, live, and the two climbs are then checked the same way as a daily. The league places your best climb of the week in a bucket with other climbers near your level.</li>
+<li><b>Chat, off by default.</b> Turned on once, in Settings, it stays on for that device. Once on: messages you post in the global chat, with your display name and player id. The chat is public to everyone who has also turned it on. Messages are filtered for profanity and links, kept for a short while, and can be removed by us at any time.</li>
+<li><b>Push notifications, if you turn them on.</b> Your browser's push address for this device (not your email or phone number), so we can send the reminders you asked for. Turning reminders off removes it.</li>
 <li><b>Share cards.</b> When you share a challenge link, the height and name in it are checked against your scoreboard entry to draw the card.</li>
+<li><b>Abuse prevention.</b> Requests that write to the boards or chat are rate-limited by IP address for a short rolling window, to stop one device from flooding them. That counter is not tied to your player id and is dropped within the hour.</li>
 </ul>
 <p>We do not collect your email, real name, location, contacts or anything from your device beyond the above. Display names are chosen by you; please do not use your full real name.</p>
 
 <h2>Where it lives</h2>
-<p>The game is served by GitHub Pages and the scoreboard, cloud save and chat run on Cloudflare Workers and D1. Those providers keep standard server logs (IP address, browser type, time of request) for security and operations under their own policies: <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub</a>, <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare</a>. We do not use analytics services.</p>
+<p>The game is served by GitHub Pages and the scoreboard, cloud save, chat and live races run on Cloudflare Workers and D1. Those providers keep standard server logs (IP address, browser type, time of request) for security and operations under their own policies: <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub</a>, <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare</a>. Fonts are loaded from Google Fonts on every visit, which sees your IP address the way any font host does; we do not use analytics services.</p>
 
 <h2>Children</h2>
-<p>The game is suitable for all ages and asks for no personal information. The global chat is public: do not post your name, school, phone number, address or links. If you are a parent and want a child's messages or scores removed, email us with the display name shown on the scoreboard.</p>
+<p>The game is suitable for all ages and asks for no personal information. Chat is off until a player deliberately turns it on in Settings; when it is on, it is public: do not post your name, school, phone number, address or links. If you are a parent and want a child's messages or scores removed, email us with the display name shown on the scoreboard, or player-lookup a display name in the game's Settings for the id.</p>
 
 <h2>Cookies</h2>
 <p>None. Local storage holds your save only. Clearing site data in your browser deletes it (use a link code from Settings first if you want to keep it).</p>
 
 <h2>Deleting your data</h2>
-<p>Email <a href="mailto:admin@magnetclimbers.com">admin@magnetclimbers.com</a> with your display name or player id (Settings shows the first characters of it). We will remove your scores, cloud save and chat messages.</p>
+<p>Email <a href="mailto:admin@magnetclimbers.com">admin@magnetclimbers.com</a> with your display name or player id (Settings shows the first characters of it). We will erase every row tied to your player id: scores, lifetime and league standing, coins shown on the coins board, cloud save, chat messages, daily and race history, and any push subscription. Local storage on your own device is yours to clear at any time; we cannot reach that remotely.</p>
 
 <h2>Changes</h2>
 <p>If this policy changes, the date at the top moves and the game's update banner will mention it.</p>

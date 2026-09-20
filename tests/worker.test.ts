@@ -13,9 +13,11 @@ function env(mode: "shadow" | "enforce" = "shadow"): Env {
 }
 
 let nextPlayer = 0;
-/** A fresh player with a cloud save already on file, the way every write route expects. */
-async function seedPlayer(e: Env, prefix = "p"): Promise<{ playerId: string; token: string }> {
-  const playerId = `${prefix}-${++nextPlayer}`;
+/** A fresh player with a cloud save already on file, the way every write route expects.
+ *  The id always looks like a real one (`p-…`) so PLAYER_ID_RE in the Worker accepts it;
+ *  `tag` just keeps different tests' ids visually distinct in failures. */
+async function seedPlayer(e: Env, tag = ""): Promise<{ playerId: string; token: string }> {
+  const playerId = `p-${tag}${++nextPlayer}`;
   const token = "t".repeat(20) + nextPlayer;
   await e.DB.prepare("INSERT INTO saves (player_id, token, blob, rev, updated_at) VALUES (?, ?, '{}', 1, ?)")
     .bind(playerId, token, Date.now()).run();

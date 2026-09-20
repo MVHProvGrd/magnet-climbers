@@ -43,6 +43,8 @@ export interface UiHandlers {
   onTogglePlainSteel(): void;
   /** Reminders: today's fridge at six, the league on Monday, the month's door on the first. */
   onToggleReminders(): void;
+  /** Public chat is opt-in and off by default; this is the only thing that turns it on. */
+  onToggleChat(): void;
   /** HUD speaker button: silences (or restores) both music and effects. */
   onToggleMute(): void;
   onToggleChill(): void;
@@ -462,7 +464,7 @@ export class Ui {
       const t = Ui.resetIn();
       p.querySelectorAll<HTMLElement>("[data-reset]").forEach((e) => { e.textContent = t; });
     }, 30_000);
-    this.setChatStripVisible(leaderboardEnabled);
+    this.setChatStripVisible(leaderboardEnabled && !!s.chatOptIn);
     this.startPreviews(p);
   }
 
@@ -847,12 +849,13 @@ export class Ui {
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Plain steel door", "Skip the month's tint and keep the stainless door all year. The month's pattern is still yours to earn.", toggle("plain", s.plainSteel, "Plain steel door"))}
         ${pushSupported() ? row("Reminders", "Today's fridge at 6 pm if you have not climbed it, the league on Monday morning, a new door on the first.", toggle("push", s.push, "Reminders")) : ""}
+        ${leaderboardEnabled ? row("Public chat", "Off by default. On, other climbers' names and messages show on your fridge and yours on theirs.", toggle("chat", !!s.chatOptIn, "Public chat")) : ""}
         <p class="sec-label">App</p>
         ${installRow()}
         ${row("Check for update", `Build ${__BUILD__}`, chip("update", "REFRESH"))}
         ${adminKey() ? `
         <p class="sec-label">Owner</p>
-        ${row("Admin panel", "Boards, chat, flags and players", `<a class="shell-chip" href="${apiBase}/admin#key=${encodeURIComponent(adminKey())}" target="_blank" rel="noopener">OPEN</a>`)}
+        ${row("Admin panel", "Boards, chat, flags and players", chip("admin", "OPEN"))}
         ${row("Placement workbench", "How often each thing spawns, and how big it is drawn", `<a class="shell-chip" href="${base}placement.html" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Scale bench", "Any object on the real door, next to a climber, at any size", `<a class="shell-chip" href="${base}scale.html" target="_blank" rel="noopener">OPEN</a>`)}
         ${row("Element map", "Every element in the game and what it does to you", `<a class="shell-chip" href="${base}elements/" target="_blank" rel="noopener">OPEN</a>`)}
@@ -870,7 +873,7 @@ export class Ui {
       </div>`;
     const syncToggles = () => {
       const now = this.save();
-      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push]] as const) {
+      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push], ["chat", !!now.chatOptIn]] as const) {
         const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
         if (!input) continue;
         input.checked = on;
@@ -894,8 +897,8 @@ export class Ui {
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
-      if (a === "sound" || a === "music" || a === "plain" || a === "push") {
-        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders() })[a]();
+      if (a === "sound" || a === "music" || a === "plain" || a === "push" || a === "chat") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders(), chat: () => this.h.onToggleChat() })[a]();
         syncToggles();
         return;
       }
@@ -909,6 +912,10 @@ export class Ui {
       }
       if (a === "install-ios") { markInstallAsked(); this.showIosInstall(); return; }
       if (a === "owner-out") { setAdminKey(""); this.toast("Owner tools locked"); this.showSettings(); return; }
+      // Built at the moment of the click, not written into the DOM: a static href carrying the
+      // key would sit in this panel's markup, readable by anything that can inspect it, for as
+      // long as Settings stays open.
+      if (a === "admin") { window.open(`${apiBase}/admin#key=${encodeURIComponent(adminKey())}`, "_blank", "noopener"); return; }
       if (a === "back") this.showMenu();
     });
     // The owner's door: seven taps on the build line, then the key, which the Worker checks.

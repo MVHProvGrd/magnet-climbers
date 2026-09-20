@@ -1,9 +1,14 @@
 # Magnet Climbers
 
-Endless vertical climber. You fling a team of rubbery magnet people (the ones on
-the fridge) up a stainless-steel fridge that never ends. Magnets only stick to
-steel, so glass panels, plastic trim, stickers and gaps have to be crossed by
-flinging over them or by chaining teammates into a ladder.
+Endless vertical climber. You fling a rubbery magnet toy up a stainless-steel
+fridge that never ends. Magnets only stick to steel, so glass panels, plastic
+trim, stickers and gaps have to be crossed by flinging clean over them.
+
+A crew mode once flung a whole team at once, chaining climbers into a ladder
+across the gaps steel alone can't cross. It's archived (`archive/crew/`), not
+deleted, but does not ship — the UI only ever starts solo. Don't describe crew
+as live in anything a player reads (this file, the site's meta tags, the
+in-app how-to); if it comes back, it comes back as its own mode.
 
 Built as a PWA first (installable, offline). The renderer is plain Canvas 2D and
 the menus are plain DOM, so the same bundle drops into a Capacitor WebView for
@@ -28,9 +33,7 @@ Best played on a phone or in a mobile-emulation viewport (portrait).
 - Drag back from anywhere and release to fling the selected climber (dashed ring).
 - Tap an anchored climber to select it. Default selection is the lowest free one (leap-frog).
 - Near the apex, magnetic hands and feet catch steel. Rotation and approach direction produce feet, hands, mixed, single-tip or flat landings. A single tip lets the body swing beneath it.
-- SYNC flings free crew members together, staggered. CLIMB deliberately builds teammate chains; automatic midair teammate grabbing is currently disabled.
-- A climber supporting a teammate is a ladder rung and cannot launch. A bumper can knock it loose and drop the chain.
-- The red danger line rises faster the higher you go. Anything below it is lost. Lose everyone and the run ends.
+- The red danger line rises faster the higher you go. Fall below it and the run ends.
 
 ## Layout
 
@@ -58,7 +61,7 @@ src/game/audio.ts     tiny WebAudio synth for feedback
 
 ## Scoreboard
 
-Global highest-climb board, per mode (crew / solo). Backend is a Cloudflare Worker + D1 in `worker/`; setup steps in `worker/README.md`. Without `VITE_LEADERBOARD_URL` the game still runs and shows local bests only.
+Global highest-climb board. Backend is a Cloudflare Worker + D1 in `worker/`; setup steps in `worker/README.md`. Without `VITE_LEADERBOARD_URL` the game still runs and shows local bests only.
 
 See `DESIGN.md` for mechanics, economy, and the F2P research.
 
