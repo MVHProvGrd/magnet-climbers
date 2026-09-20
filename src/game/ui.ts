@@ -1431,7 +1431,9 @@ export class Ui {
     return this.lastGameOver ? this.showGameOver(this.lastGameOver) : null;
   }
 
-  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; missions?: Mission[]; missionsPaid?: number; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null; daily?: boolean }) {
+  showGameOver(o: { cm: number; best: number; coins: number; tokens: number; gems: number; adUsed: boolean; isRecord: boolean; mode: "solo"; missions?: Mission[]; missionsPaid?: number; ended?: boolean; chill?: boolean; unlocked?: CreatureDef[]; walletCoins?: number; walletGems?: number; cause?: DeathCause | null; daily?: boolean;
+    /** a live race: one go each, no second life, the room decides the rest */
+    race?: boolean }) {
     this.lastGameOver = o;
     // The dock grows upward into this card rather than a centred dialog (handoff 1h).
     const p = el("div", "panel lost-card");
@@ -1479,7 +1481,7 @@ export class Ui {
         <span class="mission-head">${o.missionsPaid ? `MISSIONS · $${groupNum(o.missionsPaid)}` : "MISSIONS"}</span>
         ${o.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
       </div>` : ""}
-      ${o.ended || o.daily ? "" : `
+      ${o.ended || o.daily || o.race ? "" : `
       <span class="lost-label dim">${crew ? "REVIVE THE CREW" : "BACK ON THE DOOR"}</span>
       <div class="revive-row">
         ${revives.map((r) => `<button class="revive-cell ${r.cls}" data-a="${r.a}" ${r.a === "gems" && o.gems < 5 ? "disabled" : ""}><b>${r.top}</b><small>${r.sub}</small></button>`).join("")}
@@ -1487,6 +1489,7 @@ export class Ui {
       ${o.daily
         ? `<p class="lost-banked"><i>That was today's climb \u2014 one go each, no second life, same fridge for everyone. A new one at midnight Central.</i></p>
            <button class="go" data-a="board">SEE TODAY'S BOARD</button>`
+        : o.race ? `<p class="lost-banked"><i>One go each in a race — no second life. The room replays both climbs and calls it.</i></p>`
         : `<button class="go" data-a="again">CLIMB AGAIN</button>`}
       <div class="lost-ghosts">
         ${o.chill ? "" : `<button class="ghost" data-a="share">${o.daily ? "SHARE TODAY'S CLIMB" : "CHALLENGE A FRIEND"}</button>`}

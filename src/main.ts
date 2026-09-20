@@ -570,7 +570,7 @@ function runEvents() {
       // the daily climb is spent for every device the moment it ends, not when this one quits
       if (dailyRun) void cloudSync("daily");
       if (leaderboardEnabled && newCm > 0) void leaderboard.run(save.playerId, save.token, save.name, rulesNow, newCm, save.totalCm);
-      const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
+      const panel = ui.showGameOver({ missions: save.missions, missionsPaid: settled.paid, cm, best: save[bestKey], cause: game.lastCause, coins: earned, tokens: game.revivesLeft, gems: save.gems, adUsed: adUsedThisRun, isRecord, mode: rulesNow, ended: game.ended, chill, daily: dailyRun, race: wasLive, unlocked: earnedCreatures, walletCoins: save.coins, walletGems: save.gems });
       if (wasLive) { livePanel = panel; ui.setGameOverRank(panel, `Waiting for ${liveThem || "your friend"}…`); }
       // once, after a daily: the moment a reminder for tomorrow's makes sense
       if (dailyRun && !save.push && !save.pushAsked && pushSupported()) {
@@ -701,7 +701,17 @@ function joinLive(id: string, host = false): void {
     again: () => ui.toast(`${liveThem || "Your friend"} wants another go`),
     watching: (players) => { liveWatching = players.map((p) => p.id); ui.setLiveStatus(panel, players.length ? `Watching ${players.map((p) => p.name).join(" v ")}…` : "Watching. Waiting for two climbers…"); },
     // the ghost stops where the friend's run did and stays drawn there, so you can see what you are beating
-    ended: (cm) => { if (ghost instanceof LiveGhost) ghost.end(); ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · their ghost stays where it got to`); },
+    ended: (cm) => {
+      if (ghost instanceof LiveGhost) ghost.end();
+      // their climb is over; if you are already above where it ended the race is decided, and
+      // the result comes now rather than after you fall
+      if (game && !game.spectator && game.phase !== "dead" && game.tape.onEvent && game.heightCm > cm) {
+        ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · you are above it`);
+        paused = false; game.forceEnd();
+        return;
+      }
+      ui.toast(`${liveThem} finished at ${groupNum(cm)} cm · their ghost stays where it got to`);
+    },
     left: (name) => {
       // before the start there is no race to leave, only a lobby the other phone closed
       if (!game) { ui.setLiveStatus(panel, `${name || "Your friend"} closed the race. Send the link back to try again, or cancel.`); return; }
