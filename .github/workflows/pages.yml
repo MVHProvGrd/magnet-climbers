@@ -51,28 +51,3 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-
-  deploy-worker:
-    needs: build
-    runs-on: ubuntu-latest
-    # Skips cleanly, not a red X, until the secret exists: Repo → Settings → Secrets and
-    # variables → Actions → Secrets → CLOUDFLARE_API_TOKEN (a token scoped to Workers Scripts
-    # edit + D1 edit on this account is enough; wrangler.toml already names the account's
-    # resources). Until then the Worker stays a manual `npx wrangler deploy` from worker/.
-    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: worker/package-lock.json
-      - run: npm ci
-        working-directory: worker
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: worker
-          command: deploy
