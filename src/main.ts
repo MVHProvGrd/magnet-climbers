@@ -1,7 +1,7 @@
 import "./style.css";
 import { setLang, detectLang } from "./game/i18n";
 import { registerSW } from "virtual:pwa-register";
-import { Game, type RunSnapshot } from "./game/game";
+import { Game, type RunSnapshot, type RunEvents } from "./game/game";
 import { render, setKeyboardHints, teamTapRects, offscreenMarkers, setSafeBottom, setHintLeft } from "./game/render";
 import { renderMenuBackground, renderRunBackdrop } from "./game/menu-background";
 import { Ui } from "./game/ui";
@@ -20,7 +20,7 @@ import { makeRng, World } from "./game/world";
 import { LiveMatch, createMatch, matchLink, type LiveResultRow } from "./game/live";
 import { accountsEnabled, signIn, signOut, finishRedirect, type AuthResult } from "./game/account";
 import { pushSupported, enableReminders, disableReminders } from "./game/push";
-import type { Tape } from "./game/recorder";
+import { stepOf, type Tape, type TapeEvent } from "./game/recorder";
 
 /**
  * Update flow: the service worker checks for a new build every 5 minutes and whenever
@@ -469,14 +469,16 @@ function saveSnapshot() {
   if (!game) return;
   const snap = game.snapshot();
   try {
-    if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted, dailyRun, runCoinsTotal }));
+    // a daily's snapshot carries its tape too: the run is rebuilt by replaying it, so the
+    // climb before the reload is still on the record and the score can still be checked
+    if (snap) localStorage.setItem(SNAP_KEY, JSON.stringify({ snap, adUsedThisRun, bankedCm, runCounted, dailyRun, runCoinsTotal, ...(dailyRun ? { events: game.tape.events } : {}) }));
     else localStorage.removeItem(SNAP_KEY);
   } catch { /* storage unavailable */ }
 }
 function clearSnapshot() {
   try { localStorage.removeItem(SNAP_KEY); } catch { /* ignore */ }
 }
-function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: number; runCounted: boolean; dailyRun?: boolean; runCoinsTotal?: number } | null {
+function loadSnapshot(): { snap: RunSnapshot; adUsedThisRun: boolean; bankedCm: number; runCounted: boolean; dailyRun?: boolean; runCoinsTotal?: number; events?: TapeEvent[] } | null {
   try {
     const raw = localStorage.getItem(SNAP_KEY);
     if (!raw) return null;
@@ -601,15 +603,21 @@ function lineupFor(_rules: "solo"): Look[] {
 function resumeRun() {
   const r = loadSnapshot();
   if (!r) { ui.showMenu(); return; }
-  // Game.restore() invalidates the tape (the climb up to the reload was never recorded), so a
-  // resumed daily can never verify. Nothing was posted for it yet -- no /score call has happened
-  // -- so dropping it costs the player nothing but a restart, not a lost or rejected climb.
-  if (r.dailyRun) { clearSnapshot(); ui.showMenu(); ui.toast("Your daily climb was interrupted — climb it again to post it"); return; }
+  // A restored game has no tape (the climb before the reload was never recorded on it), so a
+  // daily is not restored but replayed: the same seed and the same inputs build the same
+  // climb, tape included, and the score still verifies. A daily saved without its tape
+  // (an older build) cannot be, and is asked for again rather than posted unverifiable.
+  let resumed: Game | null = null;
+  if (r.dailyRun) {
+    resumed = r.events ? replayToSnapshot(r.snap, r.events) : null;
+    if (!resumed) { clearSnapshot(); ui.showMenu(); ui.toast("Your daily climb was interrupted — climb it again to post it"); return; }
+  }
   adUsedThisRun = r.adUsedThisRun; bankedCm = r.bankedCm; runCounted = r.runCounted;
   runCoinsTotal = r.runCoinsTotal ?? 0;
+  dailyRun = !!r.dailyRun;
   ui.clear();
   paused = false;
-  game = Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor("solo"));
+  game = resumed ?? Game.restore(save.kit, runEvents(), r.snap, undefined, lineupFor("solo"));
   if (!game.chill) {
     const best = game.rules === "solo" ? save.bestSolo : save.bestCm;
     if (best > 0) game.best = { cm: best, beaten: game.heightCm > best };
@@ -620,6 +628,38 @@ function resumeRun() {
   ui.setInRun(true);
   backdropDrawn = false; appEl.classList.add("in-run");
   ui.toast("Run resumed");
+}
+
+/**
+ * The daily climb, rebuilt from its own tape up to the moment the snapshot was taken. The
+ * handlers are held back and the sound is off while it runs, so a minute of climbing does
+ * not toast every coin and jingle on the way back to where it was. Null when the replay
+ * ends before then: the tape does not match the run it claims to be, and it is not resumed.
+ */
+function replayToSnapshot(snap: RunSnapshot, events: TapeEvent[]): Game | null {
+  let live = false;
+  const ev = runEvents();
+  const gate: RunEvents = {
+    onPower: () => { if (live) ev.onPower(); }, onGameOver: () => { if (live) ev.onGameOver(); },
+    onCoins: (n) => { if (live) ev.onCoins(n); }, onGems: () => { if (live) ev.onGems(); },
+  };
+  const g = new Game({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>, gate, {
+    rules: "solo", seed: snap.seed, worldVersion: snap.worldVersion, lineup: lineupFor("solo"), forgiveFlings: save.runs === 0 ? 3 : 0,
+  });
+  const steps = stepOf(snap.time);
+  const wasSound = save.sound; setSound(false);
+  let i = 0;
+  for (let n = 0; n < steps && g.phase === "running"; n++) {
+    while (i < events.length && stepOf(events[i].t) <= n) {
+      const e = events[i++];
+      const c = g.climbers.find((x) => x.id === e.id);
+      if (c && c.state !== "lost") { if (e.k === "fling") g.launch(c, e.v); else g.move(c, e.to); }
+    }
+    g.update(STEP);
+  }
+  setSound(wasSound);
+  live = true;
+  return g.phase === "running" ? g : null;
 }
 
 /** Guided first run: a solo run on a fixed seed with coaching tips driven by game state. */
