@@ -439,6 +439,8 @@ export class Ui {
     p.innerHTML = `
       <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>More</h2><span class="shell-spacer"></span></div>
       <div class="shell-body">
+        ${s.missions.length ? `<p class="sec-label">Missions</p>
+        <div class="home-missions">${s.missions.map((m) => missionRow(m)).join("")}</div>` : ""}
         <p class="sec-label">Race</p>
         ${row("Solo board", "See where you rank", chip("board", "OPEN"))}
         ${ghostCm !== null ? row("Race your best", `Same door, you beside you · ${groupNum(ghostCm)} cm`, chip("ghost", "GO")) : ""}
