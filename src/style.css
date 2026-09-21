@@ -555,40 +555,34 @@ select.buy option { background: #1e2229; color: #fff; }
   bottom: calc(var(--safe-px) + var(--dock-lift) * var(--px));
   display: flex; flex-direction: column; gap: calc(8 * var(--px));
 }
-/* Five now, not three: kit and creatures came up out of the dock, so auto-fit rather than a
-   count that has to be edited every time the row gains or loses a tile. */
-.home-icons { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: calc(6 * var(--px)); }
-.home-icon {
-  height: calc(56 * var(--px)); border: 0; border-radius: calc(14 * var(--px));
-  background: var(--slab); box-shadow: var(--slab-shadow); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(3 * var(--px));
-  padding: 0 calc(2 * var(--px)); overflow: hidden;
-}
-.home-icon img { width: calc(24 * var(--px)); height: calc(24 * var(--px)); display: block; }
-/* The climber is posed with air around it inside its box, so at the icons' 24px it reads
-   noticeably lighter than the photographed ones. Drawn larger, it weighs the same. */
-.home-icon canvas { width: calc(32 * var(--px)); height: calc(32 * var(--px)); display: block; margin: calc(-4 * var(--px)) 0; }
-/* At a fifth of the width the labels are close enough to touch, so the tracking comes in and
-   a long one ellipsises rather than wrapping the tile taller than its neighbours. */
-.home-icon span { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: calc(.9 * var(--px)); color: rgba(255,255,255,.8);
-  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-dock {
   padding: calc(8 * var(--px)); border-radius: calc(18 * var(--px));
   background: var(--slab); box-shadow: var(--slab-shadow);
   display: flex; flex-direction: column; gap: calc(6 * var(--px));
 }
-.home-modes { display: grid; grid-template-columns: 1fr 1fr; gap: calc(8 * var(--px)); }
 .mode-tile {
-  height: calc(82 * var(--px)); padding: calc(9 * var(--px)) calc(11 * var(--px)); border: 0; border-radius: calc(14 * var(--px));
+  height: calc(96 * var(--px)); padding: calc(9 * var(--px)) calc(11 * var(--px)); border: 0; border-radius: calc(14 * var(--px));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.35); cursor: pointer; text-align: left; color: var(--ink);
   display: flex; flex-direction: column; gap: calc(2 * var(--px));
 }
+/* The one primary button on the collapsed home (2026-09-21): solo is the whole first
+   screen's job, so it gets the tallest, boldest thing on it -- everything else is a chip. */
+.mode-tile.full { width: 100%; }
 .mode-tile.solo { background: linear-gradient(160deg,#6fd6ff,#2fa9e6); }
-.mode-tile.daily { background: linear-gradient(160deg,#c9a4ff,#8d5bff); }
-.mode-tile.daily.spent { background: linear-gradient(160deg,#5a5f6b,#3d424c); }
-.mode-tile b { font: 900 calc(18 * var(--px)) var(--display); letter-spacing: calc(1 * var(--px)); }
+.mode-tile b { font: 900 calc(20 * var(--px)) var(--display); letter-spacing: calc(1 * var(--px)); }
 .mode-tile small { font: 700 calc(11 * var(--px)) / 1.2 var(--display); opacity: .8; }
 .mode-tile i { margin-top: auto; }
+/* Daily and "more" sit side by side under the primary button: one that makes today's case
+   for itself, one that owns everything the collapse moved off the first screen. */
+.home-chips { display: flex; gap: calc(8 * var(--px)); }
+.chip {
+  height: calc(40 * var(--px)); padding: 0 calc(12 * var(--px)); border: 0; border-radius: calc(12 * var(--px));
+  background: rgba(255,255,255,.06); color: #fff; cursor: pointer;
+  font: 700 calc(11.5 * var(--px)) / 1.15 var(--display);
+}
+.daily-chip { flex: 1 1 auto; text-align: left; background: linear-gradient(160deg,rgba(201,164,255,.35),rgba(141,91,255,.35)); }
+.daily-chip.spent { background: rgba(255,255,255,.045); opacity: .8; }
+.more-chip { flex: 0 0 auto; text-align: center; letter-spacing: calc(1 * var(--px)); }
 
 /* missions on the home dock: three sentences with a bar each, never a wall of text */
 .home-missions { text-align: left; display: flex; flex-direction: column; gap: calc(4 * var(--px));
@@ -611,12 +605,7 @@ select.buy option { background: #1e2229; color: #fff; }
 .mission.done .mission-bar i { background: #9be15d; }
 
 /* league: the ten going up and the ten going down are marked on the row itself */
-/* The theme name and pattern warning are information, not decoration, so they sit on their
-   own scrim chip -- like .home-missions below -- rather than as thin text laid straight over
-   whatever photo is behind the dock. */
-.home-lines { display: flex; flex-direction: column; gap: calc(2 * var(--px)); padding: calc(2 * var(--px)) 0; }
 .home-stats { margin: 0; text-align: center; font: 600 calc(12 * var(--px)) var(--display); opacity: .62; }
-.home-month { background: none; border: 0; color: inherit; cursor: pointer; }
 /* the year's doors, on the patterns tab: a strip of twelve, this month lit, the ones you own ticked */
 .months { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(6 * var(--px)); margin: 0 0 calc(10 * var(--px)); }
 .month { display: flex; flex-direction: column; gap: 2px; padding: calc(6 * var(--px)) calc(8 * var(--px)); border-radius: calc(10 * var(--px)); background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); opacity: .8; }
@@ -625,10 +614,6 @@ select.buy option { background: #1e2229; color: #fff; }
 .month i { font: 800 calc(10 * var(--px)) var(--display); letter-spacing: 1px; text-transform: uppercase; opacity: .6; font-style: normal; }
 .month b { font: 800 calc(12 * var(--px)) var(--display); line-height: 1.1; }
 .month small { font-size: calc(10 * var(--px)); opacity: .7; min-height: calc(12 * var(--px)); }
-.home-month { margin: 0; text-align: center; font: 700 calc(13 * var(--px)) var(--display);
-  letter-spacing: calc(0.6 * var(--px)); color: rgba(255,255,255,0.85);
-  background: rgba(20,24,30,0.55); border-radius: calc(10 * var(--px));
-  padding: calc(6 * var(--px)) calc(10 * var(--px)); }
 .srow.promote { box-shadow: inset calc(3 * var(--px)) 0 0 #9be15d; }
 .srow.relegate { box-shadow: inset calc(3 * var(--px)) 0 0 #ff6b6b; }
 .mode-tile i { margin-top: auto; font: 800 calc(10 * var(--px)) var(--display); font-style: normal; letter-spacing: calc(1.2 * var(--px)); }
@@ -638,23 +623,7 @@ select.buy option { background: #1e2229; color: #fff; }
   display: flex; align-items: center; gap: calc(8 * var(--px));
 }
 .home-row b { font: 800 calc(13 * var(--px)) var(--display); }
-.home-row b.chill { color: var(--chill); }
-/* The ghost row wears the ghost's own washed-out look, so the row reads as what it starts. */
-.ghost-row { background: rgba(255,255,255,.045); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
-.ghost-cm { margin-left: auto; font: 800 calc(12 * var(--px)) var(--display); color: rgba(255,255,255,.62); letter-spacing: .5px; }
 .home-row small { font: 600 calc(11 * var(--px)) var(--display); color: rgba(255,255,255,.6); }
-.home-row input { position: absolute; opacity: 0; width: 0; height: 0; }
-.home-row .toggle {
-  margin-left: auto; width: calc(40 * var(--px)); height: calc(24 * var(--px)); border-radius: calc(12 * var(--px));
-  background: rgba(255,255,255,.18); position: relative; transition: background .15s;
-}
-.home-row .toggle::after {
-  content: ""; position: absolute; top: calc(3 * var(--px)); left: calc(3 * var(--px));
-  width: calc(18 * var(--px)); height: calc(18 * var(--px)); border-radius: 50%; background: #fff; transition: transform .15s;
-}
-.home-row.on .toggle { background: var(--chill); }
-.home-row.on .toggle::after { transform: translateX(calc(16 * var(--px))); background: var(--ink); }
-.home-creature { margin-left: auto; width: calc(34 * var(--px)); height: calc(34 * var(--px)); }
 
 /* ------------------------------------------------- shared panel shell (handoff 3a-3d) */
 /* Header with a back button, a scrolling body under a bottom fade, and a footer. */

@@ -359,21 +359,18 @@ export class Ui {
     // Once, after a few climbs, and never again whatever the answer.
     if (shouldOfferInstall(s.runs)) { this.showInstallOffer(() => this.showMenu()); return; }
     // No full-height panel: the title fridge is the background, a scrim carries the text (handoff 2a).
+    // Collapsed 2026-09-21: solo is the one thing a new thumb needs to find in under a second.
+    // Everything else the old menu put beside it (story, board, kit icon, how-to, both race
+    // rows, the month's door) moved into the "more" sheet or the wallet chip; chill moved to
+    // Settings, where every other device-local preference already lives.
     const p = el("div", "home");
-    const icon = (a: string, art: string, text: string) =>
-      `<button class="home-icon" data-a="${a}"><img src="${import.meta.env.BASE_URL}art/ui/${art}.webp" alt="" /><span>${text}</span></button>`;
-    // Kit and creatures earn a place in the top row rather than a full-width row each at the
-    // bottom of a dock you had to scroll past the missions to reach. Both take their own face
-    // instead of a shared icon: the kit shows what it costs, creatures show who is wearing it.
-    const tile = (a: string, inner: string, text: string) =>
-      `<button class="home-icon" data-a="${a}">${inner}<span>${text}</span></button>`;
     const today = todayKey();
     const done = s.daily?.day === today;
     const streak = s.streak.last === today || s.streak.last === todayKey(Date.now() - 86_400_000) ? s.streak.days : 0;
-    // what taking it right now would pay, so the tile makes the case for itself
+    // what taking it right now would pay, so the chip makes the case for itself
     const next = streakReward(done ? streak : streak + 1);
-    // only offered once there is a tape: a ghost means nothing on a door it never climbed
-    const ghostCm = this.h.bestTapeCm();
+    const missionsDone = s.missions.filter((m) => m.done).length;
+    const missionsPay = s.missions.reduce((sum, m) => sum + (m.done ? m.pay : 0), 0);
     p.innerHTML = `
       <div class="home-top">
         <button class="home-settings" data-a="settings" aria-label="Settings"><img src="${import.meta.env.BASE_URL}art/ui/settings.webp" alt="" /></button>
@@ -383,50 +380,22 @@ export class Ui {
       </div>
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
       <div class="home-bottom">
-      <div class="home-icons">
-        ${icon("story", "story", "STORY")}
-        ${icon("board", "board", "BOARD")}
-        ${tile("kit", `<canvas class="home-creature" width="48" height="48" data-look="${s.creature ?? "human"}|${s.pattern ?? ""}"></canvas>`, "KIT")}
-        ${icon("tutorial", "help", "HOW TO")}
-      </div>
       <div class="home-dock">
-        <div class="home-modes">
-          <button class="mode-tile solo" data-a="solo">
-            <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
-            <i>BEST ${groupNum(s.bestSolo)} CM</i>
-          </button>
-          <button class="mode-tile daily ${done ? "spent" : ""}" data-a="daily">
-            <b>DAILY CLIMB</b><small>${done ? `New one in <span data-reset>${Ui.resetIn()}</span>.` : "One shared fridge, one go."}</small>
-            <i>${done ? `TODAY ${groupNum(s.daily!.cm)} CM` : next.pattern ? "PAYS A PATTERN" : `PAYS $${next.coins}`}${streak ? ` · ${streak}🔥` : ""}</i>
-          </button>
-        </div>
-        ${ghostCm !== null ? `<button class="home-row ghost-row" data-a="ghost">
-          <b>RACE YOUR BEST</b><small>same door, you beside you</small>
-          <span class="ghost-cm">${groupNum(ghostCm)} CM</span>
-        </button>` : ""}
-        <button class="home-row ghost-row" data-a="live">
-          <b>RACE A FRIEND LIVE</b><small>same fridge, same moment, their ghost beside you</small>
-          <span class="ghost-cm">👻</span>
+        <button class="mode-tile solo full" data-a="solo">
+          <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
+          <i>BEST ${groupNum(s.bestSolo)} CM</i>
         </button>
-        ${(() => {
-          // "Term Starts fridge" was the theme's name with the word fridge stuck on the end,
-          // which reads as nonsense rather than as September's door. And once the pattern was
-          // earned the line had nothing left to say, so it sat there saying the nonsense.
-          const t = themeFor(), month = new Date().toLocaleString("en", { month: "long" });
-          const has = s.patterns.includes(t.pattern);
-          return `<div class="home-lines"><button class="home-month" data-a="patterns">${esc(month)}'s door: <b>${esc(t.name)}</b>${
-            has ? " \u00b7 its pattern is yours" : " \u00b7 climb once this month to keep its pattern"} \u203a</button>
-        <p class="home-stats">${s.runs.toLocaleString()} runs \u00b7 ${fmtDistance(s.totalCm)} climbed lifetime</p>
-        <p class="home-stats global" hidden></p></div>`;
-        })()}
-        ${s.missions.length ? `<div class="home-missions">
-          <span class="mission-head">MISSIONS <span class="muted">· new in <span data-reset>${Ui.resetIn()}</span></span></span>
-          ${s.missions.slice(0, 3).map((m) => missionRow(m)).join("")}
-        </div>` : ""}
-        <label class="home-row ${s.chill ? "on" : ""}">
-          <b class="chill">CHILL</b><small>no red line</small>
-          <input type="checkbox" data-a="chill" ${s.chill ? "checked" : ""} aria-label="Chill mode" /><i class="toggle"></i>
-        </label>
+        <div class="home-chips">
+          <button class="chip daily-chip ${done ? "spent" : ""}" data-a="daily">
+            ${done ? `Today's fridge · done (${groupNum(s.daily!.cm)} cm) · new in ${Ui.resetIn()}` : `Today's fridge · pays ${next.pattern ? "a pattern" : `$${next.coins}`}`}${streak ? ` · ${streak}🔥` : ""}
+          </button>
+          <button class="chip more-chip" data-a="more">MORE ›</button>
+        </div>
+        ${s.missions.length ? `<button class="home-row missions-line" data-a="more">
+          <b>MISSIONS</b><small>${missionsDone}/${s.missions.length} · $${missionsPay}</small>
+        </button>` : ""}
+        <p class="home-stats">${s.runs.toLocaleString()} runs · ${fmtDistance(s.totalCm)} climbed lifetime</p>
+        <p class="home-stats global" hidden></p>
       </div>
       </div>
     `;
@@ -436,19 +405,11 @@ export class Ui {
       // the daily is the same climb for everyone, so no kit sheet stands in front of it
       if (a === "daily" && !done) { this.clear(); this.h.onPlayDaily(); }
       if (a === "daily" && done) this.showBoard("daily");
-      // one door for both errands: what you are wearing, and what you are taking up with you
-      if (a === "kit") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
-      if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
-      if (a === "live") this.h.onLiveRace();
       // the wallet chip is still a way in, and lands on what the coins are for
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
-      if (a === "patterns") this.showCollection("patterns");
-      if (a === "board") this.showBoard("solo");
+      if (a === "more") this.showMore();
       if (a === "settings") this.showSettings();
-      if (a === "tutorial") this.showHowToPlay();
-      if (a === "story") this.showStory(() => this.showMenu());
     });
-    p.querySelector<HTMLInputElement>('input[data-a="chill"]')!.addEventListener("change", () => { this.h.onToggleChill(); this.showMenu(); });
     this.show(p);
     // everyone's climbing, added up, once the Worker answers; a phone offline just does without
     if (leaderboardEnabled) void leaderboard.stats().then((st) => {
@@ -458,14 +419,48 @@ export class Ui {
       g.textContent = `🌍 Everyone together: ${fmtDistance(st.total_cm)} over ${pl(st.runs, "run")} by ${pl(st.players, "climber")}`;
       g.hidden = false;
     });
-    // the clocks on the tile and the missions tick while the menu is up, and stop with it
-    const clock = setInterval(() => {
-      if (!p.isConnected) { clearInterval(clock); return; }
-      const t = Ui.resetIn();
-      p.querySelectorAll<HTMLElement>("[data-reset]").forEach((e) => { e.textContent = t; });
-    }, 30_000);
     this.setChatStripVisible(leaderboardEnabled && !!s.chatOptIn);
-    this.startPreviews(p);
+  }
+
+  /**
+   * Everything the collapsed home moved off itself: race, board, story, how-to and this
+   * month's door. One sheet instead of six home-screen destinations, behind a single MORE tap.
+   */
+  showMore() {
+    const s = this.save();
+    const p = el("div", "panel shell more");
+    const row = (title: string, sub: string, control: string) =>
+      `<div class="shell-row"><span class="txt"><b>${title}</b><small>${sub}</small></span>${control}</div>`;
+    const chip = (a: string, text: string) => `<button class="shell-chip" data-a="${a}">${text}</button>`;
+    const ghostCm = this.h.bestTapeCm();
+    const t = themeFor();
+    const month = new Date().toLocaleString("en", { month: "long" });
+    const hasPattern = s.patterns.includes(t.pattern);
+    p.innerHTML = `
+      <div class="shell-head"><button class="shell-back" data-a="back" aria-label="Back">‹</button><h2>More</h2><span class="shell-spacer"></span></div>
+      <div class="shell-body">
+        <p class="sec-label">Race</p>
+        ${row("Solo board", "See where you rank", chip("board", "OPEN"))}
+        ${ghostCm !== null ? row("Race your best", `Same door, you beside you · ${groupNum(ghostCm)} cm`, chip("ghost", "GO")) : ""}
+        ${row("Race a friend live", "Same fridge, same moment, their ghost beside you", chip("live", "GO"))}
+        <p class="sec-label">Learn</p>
+        ${row("How the fridge works", "Every element and what it does", chip("tutorial", "OPEN"))}
+        ${row("Story", "How Cooper's toys ended up on the door", chip("story", "OPEN"))}
+        <p class="sec-label">This month</p>
+        ${row(`${esc(month)}'s door`, `${esc(t.name)}${hasPattern ? " · its pattern is yours" : " · climb once this month to keep its pattern"}`, chip("patterns", "OPEN"))}
+      </div>
+    `;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).closest<HTMLElement>("[data-a]")?.dataset.a;
+      if (a === "back") { this.showMenu(); return; }
+      if (a === "board") this.showBoard("solo");
+      if (a === "ghost") this.showQuickKit(() => this.h.onRaceBest());
+      if (a === "live") this.h.onLiveRace();
+      if (a === "tutorial") this.showHowToPlay();
+      if (a === "story") this.showStory(() => this.showMore());
+      if (a === "patterns") this.showCollection("patterns");
+    });
+    this.show(p);
   }
 
   /** Animated preview canvases: one fake climber per card, idling on the fridge. */
@@ -845,6 +840,7 @@ export class Ui {
         <p class="sec-label">Preferences</p>
         ${row("Language", LANGS.map((l) => l.name).join(" · "),
           `<select class="shell-chip" data-a="lang" aria-label="Language">${LANGS.map((l) => `<option value="${l.id}" ${l.id === lang() ? "selected" : ""}>${l.name}</option>`).join("")}</select>`)}
+        ${row("Chill mode", "No red line, no danger, no rush. Just the climb.", toggle("chill", s.chill, "Chill mode"))}
         ${row("Sound effects", "Rubber twangs, steel clicks and hand swishes", toggle("sound", s.sound, "Sound effects"))}
         ${row("Music", "Original toy-box groove; builds as danger approaches", toggle("music", s.music, "Music"))}
         ${row("Plain steel door", "Skip the month's tint and keep the stainless door all year. The month's pattern is still yours to earn.", toggle("plain", s.plainSteel, "Plain steel door"))}
@@ -873,7 +869,7 @@ export class Ui {
       </div>`;
     const syncToggles = () => {
       const now = this.save();
-      for (const [key, on] of [["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push], ["chat", !!now.chatOptIn]] as const) {
+      for (const [key, on] of [["chill", now.chill], ["sound", now.sound], ["music", now.music], ["plain", now.plainSteel], ["push", now.push], ["chat", !!now.chatOptIn]] as const) {
         const input = p.querySelector<HTMLInputElement>(`input[data-a="${key}"]`);
         if (!input) continue;
         input.checked = on;
@@ -897,8 +893,8 @@ export class Ui {
       if (a === "claim") { this.showClaimPrompt(); return; }
       // Flip the switch where it stands. Rebuilding the whole panel for a toggle threw the
       // list back to the top and flashed, which is a lot of screen for one checkbox.
-      if (a === "sound" || a === "music" || a === "plain" || a === "push" || a === "chat") {
-        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders(), chat: () => this.h.onToggleChat() })[a]();
+      if (a === "sound" || a === "music" || a === "plain" || a === "push" || a === "chat" || a === "chill") {
+        ({ sound: () => this.h.onToggleSound(), music: () => this.h.onToggleMusic(), plain: () => this.h.onTogglePlainSteel(), push: () => this.h.onToggleReminders(), chat: () => this.h.onToggleChat(), chill: () => this.h.onToggleChill() })[a]();
         syncToggles();
         return;
       }
