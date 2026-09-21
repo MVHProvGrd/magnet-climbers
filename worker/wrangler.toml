@@ -27,8 +27,10 @@ database_id = "27e2ffee-ec73-4b7a-80a0-b68633ffb132"
 
 [vars]
 # Daily score replay. "shadow" verifies the tape and records the verdict but keeps every
-# row; "enforce" refuses a row the replay does not confirm. Flip once the shadow log is clean.
-TAPE_MODE = "shadow"
+# row; "enforce" refuses a row the replay does not confirm. Flipped 2026-09-20: 3-row shadow
+# log reviewed (2 stale-cached-client artifacts, 1 explained by the since-fixed resume-loses-
+# tape bug, 0 confirmed fraud) -- see docs/handoffs/2026-09-20-release-audit.md.
+TAPE_MODE = "enforce"
 ALLOWED_ORIGINS = "https://magnetclimbers.com,https://www.magnetclimbers.com,http://localhost:5180"
 # Reminders (Web Push). node scripts/vapid-keys.mjs prints the pair: the public key goes here,
 # the private JWK in:  npx wrangler secret put VAPID_PRIVATE_KEY
