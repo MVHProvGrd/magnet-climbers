@@ -36,10 +36,12 @@ function context(): AudioContext | null {
  */
 let sessionOpened = false;
 function openMediaSession() {
-  if (sessionOpened || typeof Audio === "undefined") return;
+  // typed loosely: this file is also compiled for the Worker, which has no media elements
+  const AudioEl = (globalThis as { Audio?: new (src: string) => { setAttribute(n: string, v: string): void; volume: number; play(): Promise<void> } }).Audio;
+  if (sessionOpened || !AudioEl) return;
   sessionOpened = true;
   try {
-    const a = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+    const a = new AudioEl("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
     a.setAttribute("playsinline", ""); a.volume = 0.01;
     void a.play().catch(() => { sessionOpened = false; });
   } catch { sessionOpened = false; }

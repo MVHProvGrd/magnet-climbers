@@ -1183,7 +1183,7 @@ function frame(now: number) {
         game.update(STEP);
         // a heartbeat with this run's clock, eight times a second, so the ghost of it on the
         // other phone keeps pace between flings instead of waiting on the next one
-        if (live && game.tape.onEvent && ++liveBeat % 15 === 0) live.tick(game.time);
+        if (live && game.tape.onEvent && ++liveBeat % 15 === 0) live.tick(game.time, game.heightCm);
         // the ghost takes the same step, so a pause or a slow-motion pickup moves both; a live
         // friend does not wait for your first fling, their run is already going
         if (ghost && !ghost.done && (game.phase === "running" || ghost instanceof LiveGhost)) ghost.step(STEP);

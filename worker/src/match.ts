@@ -26,6 +26,10 @@ export interface Seat {
   claimed?: number;
   /** asked for another go after the result */
   again?: boolean;
+  /** the height the phone last reported in a heartbeat */
+  cm?: number;
+  /** when the room last told this seat the other run had ended, so a still-climbing phone is reminded, not spammed */
+  toldAt?: number;
 }
 
 /** Someone watching: gets the start, every input from both seats, and the result. */
@@ -112,7 +116,12 @@ export class Match {
       // after the result they keep it too, quietly, so RACE AGAIN races rather than watches
       again.send = seat.send; again.name = seat.name; again.look = seat.look; again.present = true;
       if (this.settled) return;
-      if (this.started) { again.send(this.startFor(again)); return; }
+      if (this.started) {
+        again.send(this.startFor(again));
+        // anything said while the socket was down is said again: a friend who finished meanwhile
+        for (const s of this.seats) if (s !== again && s.done) again.send({ k: "ended", id: s.id, cm: s.claimed ?? 0 });
+        return;
+      }
     } else {
       if (this.settled || this.seats.length >= 2) { seat.send({ k: "full" }); return; }
       if (this.seats.length === 1 && this.seats[0].world !== seat.world) { seat.send({ k: "update" }); return; }
@@ -153,6 +162,22 @@ export class Match {
   private startFor(s: Seat): Message {
     const them = this.seats.find((o) => o !== s)!;
     return { k: "start", seed: this.seed, world: this.world, you: s.id, them: { id: them.id, name: them.name, ...(them.look ? { look: them.look } : {}) }, countdownMs: 3000, side: this.seats.indexOf(s) ? 1 : 0 };
+  }
+
+  /**
+   * A heartbeat's height. Once the other run has ended below it, this phone is told so, and
+   * told again every second it climbs on: the first word can be lost to a dropped socket, and
+   * a race that is already decided should not wait for the leader to fall.
+   */
+  progress(id: string, cm: number, now = Date.now()): void {
+    const seat = this.seats.find((s) => s.id === id);
+    if (!seat || !this.started || this.settled || seat.done) return;
+    seat.cm = cm;
+    const other = this.seats.find((s) => s !== seat && s.done);
+    if (!other || cm <= (other.claimed ?? 0)) return;
+    if (seat.toldAt && now - seat.toldAt < 1000) return;
+    seat.toldAt = now;
+    seat.send({ k: "ended", id: other.id, cm: other.claimed ?? 0 });
   }
 
   /** One input from a player, straight on to the other. Nothing is kept: the tape is the record. */
@@ -291,7 +316,11 @@ export class MatchRoom {
     if (m.k === "again") this.match.again(id);
     // the lobby was closed on purpose: no hold, the seat goes now and the other phone is told
     if (m.k === "bye") { this.who.delete(ws); this.match.leave(id); this.keepLobby(); }
-    if (m.k === "in") this.match.input(id, m.e);
+    if (m.k === "in") {
+      const e = m.e as { k?: unknown; cm?: unknown } | null;
+      if (e && e.k === "tick" && Number.isFinite(Number(e.cm))) this.match.progress(id, Number(e.cm));
+      this.match.input(id, m.e);
+    }
     if (m.k === "done") {
       const waiting = this.match.finish(id, m.tape, Math.floor(Number(m.cm)) || 0);
       // the other tape has this long to arrive; after that the race settles on what is here

@@ -110,7 +110,7 @@ export class LiveMatch {
 
   input(e: TapeEvent): void { this.send({ k: "in", e }); }
   /** A heartbeat with the run's clock, so the other phone's ghost of this run can keep pace between inputs. */
-  tick(t: number): void { if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ k: "in", e: { k: "tick", t } })); }
+  tick(t: number, cm: number): void { if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ k: "in", e: { k: "tick", t, cm } })); }
   finish(tape: Tape | null, cm: number): void { this.send({ k: "done", tape, cm }); }
   /** Ask for another go in the same room; the race restarts when the other phone asks too. */
   again(): void { this.send({ k: "again" }); }

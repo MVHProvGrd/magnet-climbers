@@ -443,6 +443,28 @@ test("a race seats its players on opposite doors, replays each from theirs, and 
   assert.equal(a2.at(-1)?.k, "start", "and the rematch reaches the fresh socket");
   assert.equal((a2.at(-1) as Extract<Message, { k: "start" }>).side, 0);
 });
+test("a race already decided tells the leader so, again if need be, and again on a reconnect", () => {
+  const m = new Match(() => ({ ok: true, cm: 1 }), () => 0.6);
+  const a: Message[] = [], b: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  m.progress("B", 300, 1000);
+  m.finish("A", { cm: 397 }, 397);
+  assert.deepEqual(b.at(-1), { k: "ended", id: "A", cm: 397 }, "the first word");
+  m.progress("B", 380, 1500);
+  assert.equal(b.length, 2, "below the finisher nothing more is said");
+  m.progress("B", 549, 1600);
+  assert.deepEqual(b.at(-1), { k: "ended", id: "A", cm: 397 }, "above it, the reminder");
+  m.progress("B", 560, 1900);
+  assert.equal(b.length, 3, "at most one a second");
+  // the word was lost to a dropped socket: the fresh one hears it with its start
+  const b2: Message[] = [];
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b2.push(x) });
+  assert.deepEqual(b2.map((x) => x.k), ["start", "ended"]);
+  const na = a.length;
+  m.progress("A", 999, 5000);
+  assert.equal(a.length, na, "a finished seat is never told about itself");
+});
 
 // Accounts: a Firebase ID token signed by a key the test made, verified against that key.
 import { setJwksForTests } from "../worker/src/index";
