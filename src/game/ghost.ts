@@ -104,43 +104,54 @@ export class LiveGhost {
   private readonly game: Game;
   private queue: TapeEvent[] = [];
   private n = 0;
+  /**
+   * The furthest step the other phone is known to have reached: every input and heartbeat
+   * carries its step, and the socket keeps them in order, so everything up to here has
+   * arrived. The ghost never steps past it. Played beyond it, a fling that then turned up
+   * late would land on a toy already somewhere else, and the ghost would be climbing a run
+   * of its own from then on; held to it, the ghost trails by the wire's delay and no more.
+   */
+  private heard = 0;
   /** the other run has ended: the ghost stands where it got to */
   ended = false;
 
-  constructor(seed: number, world: number, look?: Look) {
+  constructor(seed: number, world: number, look?: Look, side: 0 | 1 = 0) {
     this.game = new Game({ magnet: 0, power: 0, floor: 0 } as Record<UpgradeKey, number>, NO_EVENTS, {
-      rules: "solo", seed, worldVersion: world, chill: false, lineup: look ? [look] : [], silent: true,
+      rules: "solo", seed, worldVersion: world, chill: false, lineup: look ? [look] : [], silent: true, side,
     });
   }
 
   /** Drawn to the end and after it: a friend who finished, or left, stands where they got to. */
   get climber(): Climber | null { const c = this.game.climbers[0]; return c && c.state !== "lost" ? c : null; }
   get heightCm(): number { return this.game.heightCm; }
-  get done(): boolean { return this.ended || this.game.phase === "dead"; }
+  get done(): boolean { return this.game.phase === "dead" || (this.ended && this.n >= this.heard); }
 
-  /**
-   * An input stamped ahead of where this ghost has got to means the other run is that far
-   * ahead in time -- it started earlier, or this phone sat on the menu. The ghost catches up
-   * to that step now rather than trailing by the difference for the rest of the race. A
-   * second of steps costs a few milliseconds.
-   */
+  /** An input from the other phone, queued for its own step. */
   feed(e: TapeEvent): void {
     this.queue.push(e);
-    const at = stepOf(e.t);
-    let guard = 0;
-    while (this.n < at && !this.done && guard++ < 1200) this.step(1 / 120);
+    this.hear(stepOf(e.t));
   }
+  /** The other phone has got this far (a heartbeat, or an input): the ghost may step up to it. */
+  hear(step: number): void { if (step > this.heard) this.heard = step; }
+  /** The other run is over: the ghost plays out what it has heard and stands where that got it. */
   end(): void { this.ended = true; }
 
+  /**
+   * Called once per step of the live run. The ghost takes as many steps as it is behind what
+   * it has heard, so a late heartbeat is caught up in one go (a second of steps costs a few
+   * milliseconds) and a steady one keeps it a heartbeat behind the other phone.
+   */
   step(dt: number): void {
-    if (this.done) return;
-    while (this.queue.length && stepOf(this.queue[0].t) <= this.n) {
-      const e = this.queue.shift()!;
-      const c = this.game.climbers.find((x) => x.id === e.id);
-      if (c && c.state !== "lost") { if (e.k === "fling") this.game.launch(c, e.v as Vec); else this.game.move(c, e.to as Vec); }
+    let guard = 0;
+    while (this.n < this.heard && !this.done && guard++ < 1200) {
+      while (this.queue.length && stepOf(this.queue[0].t) <= this.n) {
+        const e = this.queue.shift()!;
+        const c = this.game.climbers.find((x) => x.id === e.id);
+        if (c && c.state !== "lost") { if (e.k === "fling") this.game.launch(c, e.v as Vec); else this.game.move(c, e.to as Vec); }
+      }
+      this.game.update(dt);
+      this.n++;
     }
-    this.game.update(dt);
-    this.n++;
   }
 }
 

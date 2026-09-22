@@ -38,6 +38,8 @@ export type Message =
   | { k: "full" }
   | { k: "update" }
   | { k: "start"; seed: number; world: number; you: string; them: { id: string; name: string; look?: { creature: string; pattern: string } }; countdownMs: number;
+      /** which door you start on: seat 0 the left, seat 1 the right */
+      side: 0 | 1;
       /** for a watcher: both seats, in order, so two ghosts can be dressed and told apart */
       players?: { id: string; name: string; look?: { creature: string; pattern: string } }[] }
   | { k: "in"; e: unknown; from?: string }
@@ -57,7 +59,7 @@ export const LEAVE_GRACE_MS = 20_000;
  */
 export const LOBBY_HOLD_MS = 10 * 60_000;
 
-export type Replay = (tape: unknown, seed: number, world: number) => { ok: boolean; cm: number; reason?: string };
+export type Replay = (tape: unknown, seed: number, world: number, side: 0 | 1) => { ok: boolean; cm: number; reason?: string };
 
 export class Match {
   seats: Seat[] = [];
@@ -81,7 +83,7 @@ export class Match {
 
   private startForWatcher(w: Watcher): Message {
     const players = this.seats.map((s) => ({ id: s.id, name: s.name, ...(s.look ? { look: s.look } : {}) }));
-    return { k: "start", seed: this.seed, world: this.world, you: w.id, them: players[0] ?? { id: "", name: "" }, countdownMs: 3000, players };
+    return { k: "start", seed: this.seed, world: this.world, you: w.id, them: players[0] ?? { id: "", name: "" }, countdownMs: 3000, side: 0, players };
   }
 
   /** Both players asked for another go: the same room, a fresh seed, straight back to the count. */
@@ -104,14 +106,15 @@ export class Match {
    * a third finds the room full.
    */
   join(seat: Omit<Seat, "done">): void {
-    if (this.settled) { seat.send({ k: "full" }); return; }
     const again = this.seats.find((s) => s.id === seat.id);
     if (again) {
-      // the same player back on a fresh socket keeps their seat and, mid-race, their start
+      // the same player back on a fresh socket keeps their seat and, mid-race, their start;
+      // after the result they keep it too, quietly, so RACE AGAIN races rather than watches
       again.send = seat.send; again.name = seat.name; again.look = seat.look; again.present = true;
+      if (this.settled) return;
       if (this.started) { again.send(this.startFor(again)); return; }
     } else {
-      if (this.seats.length >= 2) { seat.send({ k: "full" }); return; }
+      if (this.settled || this.seats.length >= 2) { seat.send({ k: "full" }); return; }
       if (this.seats.length === 1 && this.seats[0].world !== seat.world) { seat.send({ k: "update" }); return; }
       this.seats.push({ ...seat, present: true, done: false });
     }
@@ -149,7 +152,7 @@ export class Match {
 
   private startFor(s: Seat): Message {
     const them = this.seats.find((o) => o !== s)!;
-    return { k: "start", seed: this.seed, world: this.world, you: s.id, them: { id: them.id, name: them.name, ...(them.look ? { look: them.look } : {}) }, countdownMs: 3000 };
+    return { k: "start", seed: this.seed, world: this.world, you: s.id, them: { id: them.id, name: them.name, ...(them.look ? { look: them.look } : {}) }, countdownMs: 3000, side: this.seats.indexOf(s) ? 1 : 0 };
   }
 
   /** One input from a player, straight on to the other. Nothing is kept: the tape is the record. */
@@ -196,9 +199,9 @@ export class Match {
   private settle(): void {
     if (this.settled) return;
     this.settled = true;
-    const rows = this.seats.map((s) => {
+    const rows = this.seats.map((s, i) => {
       if (s.tape == null) return { id: s.id, name: s.name, cm: 0, verified: false, reason: "no tape" };
-      const v = this.replay(s.tape, this.seed, this.world);
+      const v = this.replay(s.tape, this.seed, this.world, i ? 1 : 0);
       // a claim above the replay is the replay; a claim below it stood short of the climb and keeps
       const cm = v.ok ? Math.min(v.cm, s.claimed ?? v.cm) : 0;
       return { id: s.id, name: s.name, cm, verified: v.ok, ...(v.ok ? {} : { reason: v.reason ?? "unverified" }) };
@@ -212,10 +215,10 @@ export class Match {
 }
 
 /** The replay a room uses: structural checks, then the sim, on the seed and world the room set. */
-export const roomReplay: Replay = (tape, seed, world) => {
+export const roomReplay: Replay = (tape, seed, world, side) => {
   const checked = checkRaceTape(tape, seed, world);
   if ("reason" in checked) return { ok: false, cm: 0, reason: checked.reason };
-  const v = replayRace(checked.tape);
+  const v = replayRace(checked.tape, side);
   return v.ok ? { ok: true, cm: v.cm } : { ok: false, cm: 0, reason: v.reason };
 };
 

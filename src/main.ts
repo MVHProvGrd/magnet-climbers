@@ -590,7 +590,9 @@ function runEvents() {
         save.pushAsked = true; persist();
         ui.addGameOverAction(panel, "REMIND ME TOMORROW", () => { void toggleReminders(); });
       }
-      if (!chill) submitScore(cm, panel);
+      // a race run is not posted from here: its rank line is the room's verdict, and the
+      // board catches up with any new best on the next boot
+      if (!chill && !wasLive) submitScore(cm, panel);
     },
   };
 }
@@ -712,6 +714,8 @@ let liveRaceRun = false;
 let ghost: Ghost | LiveGhost | null = null;
 /** the live race this phone is in, from the lobby until the result lands */
 let live: LiveMatch | null = null;
+/** steps since the last heartbeat to the room */
+let liveBeat = 0;
 let liveThem = "";
 /** the two seats, in order, when this phone is watching a race rather than in it */
 let liveWatching: string[] = [];
@@ -743,16 +747,21 @@ function joinLive(id: string, host = false): void {
       ui.setLiveStatus(panel, !o ? (host ? "Waiting for a friend to open the link…" : "Nobody else here yet. Waiting…")
         : o.present ? `${o.name} is here. Starting…` : `Waiting for ${o.name} to come back to the game…`);
     },
-    start: (seed, world, them, countdownMs, players) => {
+    start: (seed, world, them, countdownMs, side, players) => {
       // the room resends the start to a phone that reconnects mid-race: same seed, same run, carry on
       if (game && seed === liveSeed) return;
       liveSeed = seed; liveThem = them.name;
-      startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs, watch: players });
+      startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs, side, watch: players });
     },
     input: (e, from) => {
       const g2 = game?.ghost2;
       if (game?.spectator && from && liveWatching[1] === from && g2 instanceof LiveGhost) g2.feed(e);
       else if (ghost instanceof LiveGhost) ghost.feed(e);
+    },
+    tick: (t, from) => {
+      const g2 = game?.ghost2;
+      if (game?.spectator && from && liveWatching[1] === from && g2 instanceof LiveGhost) g2.hear(stepOf(t));
+      else if (ghost instanceof LiveGhost) ghost.hear(stepOf(t));
     },
     again: () => ui.toast(`${liveThem || "Your friend"} wants another go`),
     watching: (players) => { liveWatching = players.map((p) => p.id); ui.setLiveStatus(panel, players.length ? `Watching ${players.map((p) => p.name).join(" v ")}…` : "Watching. Waiting for two climbers…"); },
@@ -896,7 +905,7 @@ function countdown(ms: number, then?: () => void): void {
   tick();
 }
 
-function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number; look?: { creature: string; pattern: string }; countdownMs?: number; watch?: { id: string; name: string; look?: { creature: string; pattern: string } }[] } | null = null) {
+function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: Tape | null = null, liveRace: { seed: number; world: number; look?: { creature: string; pattern: string }; countdownMs?: number; side?: 0 | 1; watch?: { id: string; name: string; look?: { creature: string; pattern: string } }[] } | null = null) {
   ensureDailyMissions();
   void cloudPull(true);
   rulesNow = rules;
@@ -918,20 +927,21 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   game = new Game(kit, runEvents(),
     withTutorial ? { rules, seed: TUTORIAL_SEED, lineup, forgiveFlings }
     : daily ? { rules, seed: dailySeed(), lineup, forgiveFlings }
-    : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: !!liveRace.watch, lineup }
+    : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: !!liveRace.watch, lineup, side: liveRace.side ?? 0 }
     : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
     : { rules, chill: save.chill, lineup, forgiveFlings });
   // the ghost wears last time's colours so the two climbers are never mistaken for each other
   // the ghost wears the look its run was climbed in (a friend's, from the room or the tape),
   // or last time's colours for your own best, so the two climbers are never mistaken
   const mine = { creature: save.creature, pattern: save.pattern };
-  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, ((liveRace.watch?.[0]?.look ?? liveRace.look) as Look | undefined) ?? mine)
+  // in a race the two seats start on opposite doors: your ghost of them climbs from the other one
+  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, ((liveRace.watch?.[0]?.look ?? liveRace.look) as Look | undefined) ?? mine, liveRace.watch ? 0 : liveRace.side ? 0 : 1)
     : raceTape ? new Ghost(raceTape, mine) : null;
   game.ghost = ghost;
   if (liveRace?.watch) {
     // watching: the two seats are the two ghosts, nothing here is played, the line is off
     game.spectator = true;
-    game.ghost2 = new LiveGhost(liveRace.seed, liveRace.world, (liveRace.watch[1]?.look as Look | undefined) ?? mine);
+    game.ghost2 = new LiveGhost(liveRace.seed, liveRace.world, (liveRace.watch[1]?.look as Look | undefined) ?? mine, 1);
     liveWatching = liveRace.watch.map((p) => p.id);
     liveThem = liveRace.watch.map((p) => p.name).join(" v ");
   }
@@ -1165,6 +1175,9 @@ function frame(now: number) {
       const simT0 = performance.now();
       while (acc >= STEP) {
         game.update(STEP);
+        // a heartbeat with this run's clock, eight times a second, so the ghost of it on the
+        // other phone keeps pace between flings instead of waiting on the next one
+        if (live && game.tape.onEvent && ++liveBeat % 15 === 0) live.tick(game.time);
         // the ghost takes the same step, so a pause or a slow-motion pickup moves both; a live
         // friend does not wait for your first fling, their run is already going
         if (ghost && !ghost.done && (game.phase === "running" || ghost instanceof LiveGhost)) ghost.step(STEP);

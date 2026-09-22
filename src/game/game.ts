@@ -188,8 +188,11 @@ export class Game {
   /** where sound goes: the real module, or nothing at all for a ghost or a server replay */
   private readonly a: GameAudio;
 
-  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; silent?: boolean; forgiveFlings?: number } = {}) {
+  constructor(readonly levels: Record<UpgradeKey, number>, private events: RunEvents, opts: { reserves?: number; palette?: string[]; lineup?: Look[]; seed?: number; rules?: "solo" | "crew"; chill?: boolean; worldVersion?: number; silent?: boolean; forgiveFlings?: number;
+    /** which door the team starts on: 0 the left (the default), 1 the right, for the second seat of a race */
+    side?: 0 | 1 } = {}) {
     this.forgiveFlings = opts.forgiveFlings ?? 0;
+    this.side = opts.side ?? 0;
     const seed = opts.seed ?? (Date.now() & 0xffffffff);
     // A ghost is a whole second run of the sim, stepped beside the real one. It must not be
     // heard: every effect it would fire has already been heard, or is about to be.
@@ -211,12 +214,14 @@ export class Game {
     this.relabelSolo();
   }
 
+  /** the door the team starts on; a race puts its two seats on opposite doors */
+  readonly side: 0 | 1;
   private spawnTeam(n: number, y: number) {
     // spawn bunched so everyone is within arm reach of a neighbour
     const gap = Math.min(46, this.stats.reach - 12);
     for (let i = 0; i < n; i++) {
-      // start on the left door, clear of the non-stick seam down the middle
-      const x = W * 0.27 + (i - (n - 1) / 2) * gap;
+      // start on one door, clear of the non-stick seam down the middle
+      const x = W * (this.side ? 0.73 : 0.27) + (i - (n - 1) / 2) * gap;
       this.climbers.push(this.makeClimber(x, y - 40, "stuck"));
     }
     this.pickDefaultSelection();

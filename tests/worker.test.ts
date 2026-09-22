@@ -421,6 +421,28 @@ test("a host who steps away before the start keeps the seat; the race starts whe
   r.leave("A");
   assert.deepEqual(d.slice(1), [{ k: "left", id: "A", name: "Ann" }, { k: "wait", id: "B", others: [] }]);
 });
+test("a race seats its players on opposite doors, replays each from theirs, and keeps a seat across the result", () => {
+  const sides: number[] = [];
+  const replay = (_t: unknown, _s: number, _w: number, side: 0 | 1) => { sides.push(side); return { ok: true, cm: 100 + side }; };
+  const m = new Match(replay, () => 0.2);
+  const a: Message[] = [], b: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a.push(x) });
+  m.join({ id: "B", name: "Bob", world: 27, send: (x) => b.push(x) });
+  assert.equal((a.at(-1) as Extract<Message, { k: "start" }>).side, 0);
+  assert.equal((b.at(-1) as Extract<Message, { k: "start" }>).side, 1);
+  m.finish("A", { cm: 1 }, 1); m.finish("B", { cm: 1 }, 1);
+  assert.deepEqual(sides, [0, 1], "each tape replays from the door its seat started on");
+  // the result panel sits open, the socket idles out and comes back: still a seat, not a watcher
+  const a2: Message[] = [];
+  m.join({ id: "A", name: "Ann", world: 27, send: (x) => a2.push(x) });
+  assert.deepEqual(a2, [], "a seated player back at a settled room is not turned away");
+  const c: Message[] = [];
+  m.join({ id: "C", name: "Cat", world: 27, send: (x) => c.push(x) });
+  assert.deepEqual(c, [{ k: "full" }], "a stranger at a settled room is");
+  m.again("A"); m.again("B");
+  assert.equal(a2.at(-1)?.k, "start", "and the rematch reaches the fresh socket");
+  assert.equal((a2.at(-1) as Extract<Message, { k: "start" }>).side, 0);
+});
 
 // Accounts: a Firebase ID token signed by a key the test made, verified against that key.
 import { setJwksForTests } from "../worker/src/index";

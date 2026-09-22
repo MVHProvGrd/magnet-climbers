@@ -12,9 +12,11 @@ export type LiveOther = { id: string; name: string; present: boolean };
 export interface LiveHandlers {
   /** seated and waiting; `others` are the other seats and whether their phone is here */
   wait(others: LiveOther[]): void;
-  /** `players` is set for a watcher: both seats, in order */
-  start(seed: number, world: number, them: LivePlayer, countdownMs: number, players?: LivePlayer[]): void;
+  /** `players` is set for a watcher: both seats, in order; `side` is the door you start on */
+  start(seed: number, world: number, them: LivePlayer, countdownMs: number, side: 0 | 1, players?: LivePlayer[]): void;
   input(e: TapeEvent, from?: string): void;
+  /** the other phone's clock: it has reached this run time */
+  tick(t: number, from?: string): void;
   /** the other player asked for another go */
   again(id: string): void;
   /** this phone is watching, not racing */
@@ -81,8 +83,12 @@ export class LiveMatch {
       let m: { k: string } & Record<string, unknown>;
       try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.k === "wait") this.on.wait((m.others as LiveOther[] | undefined) ?? []);
-      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.players as LivePlayer[] | undefined);
-      else if (m.k === "in") this.on.input(m.e as TapeEvent, m.from as string | undefined);
+      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.side === 1 ? 1 : 0, m.players as LivePlayer[] | undefined);
+      else if (m.k === "in") {
+        const e = m.e as { k?: string; t?: number };
+        if (e?.k === "tick") this.on.tick(Number(e.t) || 0, m.from as string | undefined);
+        else this.on.input(m.e as TapeEvent, m.from as string | undefined);
+      }
       else if (m.k === "ended") this.on.ended(m.cm as number);
       else if (m.k === "left") this.on.left(m.name as string | undefined);
       else if (m.k === "again") this.on.again(m.id as string);
@@ -103,6 +109,8 @@ export class LiveMatch {
   }
 
   input(e: TapeEvent): void { this.send({ k: "in", e }); }
+  /** A heartbeat with the run's clock, so the other phone's ghost of this run can keep pace between inputs. */
+  tick(t: number): void { if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ k: "in", e: { k: "tick", t } })); }
   finish(tape: Tape | null, cm: number): void { this.send({ k: "done", tape, cm }); }
   /** Ask for another go in the same room; the race restarts when the other phone asks too. */
   again(): void { this.send({ k: "again" }); }

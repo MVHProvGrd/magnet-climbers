@@ -92,11 +92,12 @@ const NO_EVENTS = { onPower: () => {}, onGameOver: () => {}, onCoins: () => {}, 
  * ends (the climber is lost) or the recorded length runs out, whichever is first, and never
  * past MAX_STEPS.
  */
-export const replayRace = (tape: Tape): Verdict => replayDaily(tape);
+/** A race replays from the door the seat started on: the right one for the second seat. */
+export const replayRace = (tape: Tape, side: 0 | 1 = 0): Verdict => replayDaily(tape, side);
 
-export function replayDaily(tape: Tape): Verdict {
+export function replayDaily(tape: Tape, side: 0 | 1 = 0): Verdict {
   const game = new Game(DAILY_KIT, NO_EVENTS, {
-    rules: "solo", seed: tape.seed, worldVersion: tape.world, chill: false, lineup: [], silent: true,
+    rules: "solo", seed: tape.seed, worldVersion: tape.world, chill: false, lineup: [], silent: true, side,
   });
   let steps = 0;
   const t0 = Date.now();
