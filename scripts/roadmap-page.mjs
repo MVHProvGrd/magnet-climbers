@@ -16,42 +16,63 @@ const NOW = [
     size: "small",
   },
   {
-    title: "A plausibility screen on daily posts",
-    line: "Reject the impossible on the request, before the replay ever queues.",
-    why: "The daily replay now runs off the request path in a Durable Object and cuts a claim the tape does not reach, seconds after it lands. A cheap structural screen on the request itself, height per fling, height per second, fling vectors inside the slingshot's reach, refuses a 50,000 cm claim on three flings before it is ever on the board.",
-    touches: ["worker/src/replay.ts checkTape", "worker/src/index.ts /score"],
+    title: "Store prep",
+    line: "The listing decisions, before the wrap.",
+    why: "Pick 13+ or all-ages: it gates the Play \"designed for children\" checkbox and the Apple listing, and chat is off by default either way now. Draft the Play Data Safety form from the real Worker schema. Enrol in the Apple Developer Program. All owner actions; none is code.",
+    touches: ["Play console", "Apple Developer Program", "privacy page"],
+    size: "small",
+  },
+  {
+    title: "Lock the owner benches",
+    line: "/placement, /scale, /art-archive and /elements are noindex, not locked.",
+    why: "Anyone who finds the URL can open them. Move them behind the Worker's existing ADMIN_KEY auth instead of serving them as static Pages.",
+    touches: ["worker/src/admin.ts", "public/placement", "public/scale"],
+    size: "small",
+  },
+  {
+    title: "Worker deploy in CI",
+    line: "Pages deploys the client on every push; the Worker is still by hand.",
+    why: "Every Worker-side fix this week waited on a manual npx wrangler deploy, and a client that shipped ahead of its Worker is how the live race ran on two different sims for an evening. Needs a Cloudflare API token as a GitHub Actions secret, then the deploy step that was reverted can come back.",
+    touches: ["CLOUDFLARE_API_TOKEN secret", ".github/workflows/pages.yml"],
     size: "small",
   },
   {
     title: "Feel pass from phone play",
-    line: "The audit's open loop items, with a phone in hand.",
-    why: "Terrain escalation, seed skeletons, release spin and the speed ceiling are fixed. What is left is felt rather than measured: a first run that forgives its first three flings, a red line that telegraphs, a door that looks like it is going somewhere, and the seed-to-seed variance clamp. Numbers live in config.ts.",
-    touches: ["src/game/config.ts", "src/game/render.ts", "src/game/world.ts"],
+    line: "What is left of the audit's loop items wants a phone, not a plan.",
+    why: "The first run forgives its first three flings, the red line telegraphs, the rail shows every rival, and a run stuck under glass is told to pull all the way. Left: a door that looks like it is going somewhere, and whether the seed-to-seed spread needs a clamp once the bots have measured it.",
+    touches: ["src/game/scenery-materials.ts", "src/game/world.ts", "src/game/config.ts"],
     size: "medium",
   },
 ];
 
 const THEN = [
   {
-    title: "Capacitor, rewarded ads, IAP",
-    line: "Wrap it and let it earn.",
-    why: "The loop brings people back now: a daily climb, a streak worth protecting, missions, a league, races live and by link. Give it a few weeks of daily numbers, then package it. The ad hook for revives already exists in main.ts.",
-    touches: ["Capacitor shell", "AdMob", "store IAP for gems"],
-    size: "large",
-  },
-  {
-    title: "Live race polish",
-    line: "Reconnect, spectate, rematch.",
-    why: "The room keeps a seat for a player whose socket drops, but the phone does not yet try to get back in. A rematch button on the result and a way for a third phone to watch are the next things two people who just raced will ask for.",
-    touches: ["src/game/live.ts", "worker/src/match.ts", "result card"],
+    title: "Solo, lifetime and league: verify or delist",
+    line: "Only the daily is proven by replay; the other boards take a claimed height.",
+    why: "/score and /run take a token and a number. Replaying every mode is weeks of Worker CPU; the lighter road is to stop framing those boards as competitive until they are checked too. The plausibility screen now on daily posts would move across cheaply; the full replay would not. Owner call.",
+    touches: ["worker/src/index.ts /score /run", "board copy"],
     size: "medium",
   },
   {
-    title: "A shareable daily card",
-    line: "Date, rank and streak on the card, not a generic number.",
-    why: "The one run where the whole world climbed the same fridge shares the same card as any other. Rank is already computed; the card renderer already exists.",
-    touches: ["worker/src/card.ts", "src/game/share.ts"],
+    title: "Seed-to-seed variance clamp",
+    line: "Measure it with the bots first.",
+    why: "The September audit saw a fixed-input bot range 73 to 625 cm across ten seeds. The pressure harness can now run fifty seeds in a minute and say how much of a weak run is the door. If the spread is real, an anti-streak rule in generation, on a new world version.",
+    touches: ["tests/pressure.ts", "src/game/world.ts generate"],
+    size: "medium",
+  },
+  {
+    title: "Generation hitches and a screen reader",
+    line: "Two craft items that need no phone.",
+    why: "Four to six millisecond spikes when a new door scrolls in, from sticker retries and bumper path checks done in one frame; spread them. And the canvas has no role, no label and no live region; give it those, and honour reduced motion on the prize reel.",
+    touches: ["src/game/world.ts", "index.html", "src/game/ui.ts"],
     size: "small",
+  },
+  {
+    title: "Capacitor, rewarded ads, IAP",
+    line: "Wrap it and let it earn.",
+    why: "The loop brings people back now: a daily climb, a streak worth protecting, missions, a league, races live and by link, reminders that arrive. Give it a few weeks of daily numbers, then package it. The ad hook for revives already exists in main.ts.",
+    touches: ["Capacitor shell", "AdMob", "store IAP for gems"],
+    size: "large",
   },
 ];
 
@@ -68,8 +89,12 @@ const DECIDE = [
     body: "Accounts are built and switched off. They turn on with a web config on the game and a project id on the Worker, Google first, Apple when the Services ID exists.",
   },
   {
-    q: "Open: how long do the boards keep their rows?",
-    body: "A row per player per day on the daily, per week on the league, a tape per daily post and a tape per shared race. Nothing clears any of them. Fine for months, worth a rule before it is worth a bill.",
+    q: "Answered: daily and weekly rows clear, bests never do",
+    body: "Daily rows go after seven days, league rows after three weeks, tape bodies and shared races after thirty. A best is forever. Swept on one post in a hundred, no cron.",
+  },
+  {
+    q: "Answered: the rules of a race",
+    body: "One go each, no second life. The two seats start on opposite doors. The moment one run ends below where the other already is, the race is decided and both phones hear it. The room replays both tapes and its verdict is the result.",
   },
   {
     q: "Answered: the game's clock is US Central",
@@ -86,6 +111,17 @@ const DECIDE = [
 ];
 
 const SHIPPED = [
+  ["Determinism, proven", "Twenty bot climbers raced five hundred times through the deployed room and caught four ways a phone's run could differ from its own tape: bumpers stepped from when their segment was generated (so a taller screen met them in another phase), raw floats flung where the tape kept two decimals, a run ended mid-flight replayed to its rounded second, and a reconnecting phone missing the friend's inputs. All four fixed; every one of the last two hundred tapes replays to its exact height. The harness stays: scripts/pressure-race.mjs, a hundred races in three minutes."],
+  ["Race polish", "A seat held ten minutes while the host goes off to text the link, and kept in storage across the room sleeping. A joiner told who they wait on. Reconnect the moment the app is back, and the inputs so far handed over so the ghost is rebuilt whole. A ghost that never runs ahead of what it has heard. Opposite doors. The race called the instant it is decided, again each second if the first word was lost. Rematch from the result, a watcher who picks whom to follow, and no second life."],
+  ["Plausibility screen", "A daily claim these inputs could never have climbed is refused on the request: no fling faster than a full pull, no more than 45 cm a fling or 80 a second, a tape sealed no earlier than its last input. Then the replay, now in enforce mode: a row the Worker cannot confirm never lands."],
+  ["Reminders by push", "The daily at six, the league on Monday morning, the month's door on the first, all Central, from the Worker's own cron with VAPID and aes128gcm done in WebCrypto. One ask, after a daily. Android gets a status-bar badge that is a toy."],
+  ["The daily's card", "Date, rank and streak on the share card for the one run everybody climbed, and the link opens today's fridge."],
+  ["Kit parity on a shared race", "A tape carries the gear it wore; accepting a race shows it against yours with the price of matching, or the race as you are."],
+  ["Sound on iPad", "Unlock on a finished touch, a playback session opened so the ring switch does not silence the game, resume after another app takes the speaker."],
+  ["Every run counts down", "3, 2, 1, GO on solo and daily as well as races; the coached first run alone opens straight on its bubble."],
+  ["A daily survives a reload", "Its snapshot carries its tape and the run is rebuilt by replaying it, so the record is intact and the score still checks."],
+  ["First-run forgiveness, the telegraph, the rail, the stall hint", "The first three flings of a first-ever run catch from a little further; the red line shows itself coming; the rail down the right edge carries you, the ghost, the target and your best; a run stuck under glass is told to pull all the way back."],
+  ["Home, tidied", "One primary climb, the dock compressed off the logo, US month names, the month line opening a year of patterns, a plain-steel door toggle, chat opt-in and off by default, the board's five tabs on one row."],
   ["Live ghost race", "A Durable Object per match relays each phone's inputs to the other, where they drive a ghost in the friend's own look beside the live toy. 3, 2, 1, GO; no pausing; a friend who finishes or leaves stays drawn where they got to. Both tapes are replayed by the room and the result is what the replays reach."],
   ["Async race", "Sharing a climb sends its tape up under a short id and the link carries the id; whoever opens it climbs the same fridge with the sharer's ghost beside them and their height as the line."],
   ["Accounts, wired", "Firebase sign-in on the phone, verified on the Worker against Google's keys, tied to the profile. Off until configured: no rows, no SDK fetched, /auth answers 503."],
@@ -126,7 +162,7 @@ const AUDIT = [
     band: "The loop itself",
     note: "Retention machinery is ahead of the thing it retains people for. This is the gap.",
     rows: [
-      ["The fling is not legible in ten seconds", "src/main.ts, src/game/magnetism.ts", "Under scripted play the first run ended at 0 cm before a single successful stick. Everything below this line is infrastructure for a core loop players have not been convinced to love yet. Suggested: quietly forgiving physics for the first three flings of a first-ever run, not another text bubble.", "open"],
+      ["The fling is not legible in ten seconds", "src/main.ts, src/game/magnetism.ts", "Under scripted play the first run ended at 0 cm before a single successful stick. Everything below this line is infrastructure for a core loop players have not been convinced to love yet. Suggested: quietly forgiving physics for the first three flings of a first-ever run, not another text bubble.", "fixed"],
       ["Release adds spin nobody can control", "src/game/game.ts launch", "c.spin takes a noise term worth about four radians a second, keyed to the release frame. Skill cannot overcome it and the player cannot see it.", "fixed"],
       ["Terrain stops getting harder at 1,360 cm", "src/game/world.ts generate", "difficulty is min(1, i/40) and every probability that reads it flatlines there. Measured hazard density is identical from 1,360 cm to 13,600 cm; only the red line still escalates, so most of a strong run is on flat ground.", "fixed"],
       ["Every seed has the same skeleton", "src/game/world.ts generate", "Gadget doors land on i%4 and set pieces on i%5, so across ten seeds they fall in exactly the same columns. Gadget kinds are a literal round robin. Only the contents vary, never the pacing.", "fixed"],
@@ -146,7 +182,7 @@ const AUDIT = [
     band: "Reach",
     note: "The daily is Wordle-shaped mechanically and produces nothing anyone can post.",
     rows: [
-      ["The daily has no shareable artefact", "worker/src/card.ts", "Challenge.mode is solo or crew; there is no daily. So the one run where the whole world climbed the same fridge shares the same generic card as any other: a name, a number, a mode pill. No date, no rank, no streak — and rank is already computed in main.ts.", "open"],
+      ["The daily has no shareable artefact", "worker/src/card.ts", "Challenge.mode is solo or crew; there is no daily. So the one run where the whole world climbed the same fridge shares the same generic card as any other: a name, a number, a mode pill. No date, no rank, no streak — and rank is already computed in main.ts.", "fixed"],
       ["A challenge sends a number, not a door", "src/main.ts startRun, src/game/share.ts", "Accepting a challenge generates a fresh fridge, so the target height came off a course the recipient never sees. The ghost now makes the fix cheap: send the tape's seed.", "fixed"],
       ["The game-over card never mentions the loop", "src/game/ui.ts showGameOver", "No daily, no streak, no league tier at the exact moment attention is highest. The league is two taps deep and opens on a blank body.", "fixed"],
     ],
@@ -155,8 +191,8 @@ const AUDIT = [
     band: "Craft",
     note: "Small, mostly cheap, and each one is somebody's first impression.",
     rows: [
-      ["Five tabs in a four-column grid", "src/style.css .seg", "The board's fifth tab orphans onto a second row.", "open"],
-      ["The red line has no telegraph", "src/game/render.ts, src/game/hud.ts", "One or two pixels and a small bar, for the thing that ends almost every run. Death reads as a number running out rather than a threat arriving.", "open"],
+      ["Five tabs in a four-column grid", "src/style.css .seg", "The board's fifth tab orphans onto a second row.", "fixed"],
+      ["The red line has no telegraph", "src/game/render.ts, src/game/hud.ts", "One or two pixels and a small bar, for the thing that ends almost every run. Death reads as a number running out rather than a threat arriving.", "fixed"],
       ["Climbing higher does not look like going anywhere", "src/game/scenery-materials.ts", "The door is the same texture at 200 cm and at 400 cm; only the props change.", "open"],
       ["Six gradients per climber per frame", "src/game/climber-render.ts", "None cached, though most change only with the climber's colour. Every visible zone rebuilds its gradients and shadows every frame too, despite the file saying it caches them. Measured against a 49.8 ms draw spike in real play.", "fixed"],
       ["Segment generation hitches", "src/game/world.ts generate", "Tail spikes of four to six milliseconds on the frame a new door scrolls in, from sticker placement retries and bumper path checks done all at once.", "open"],
@@ -244,24 +280,24 @@ const BODY = `
 <div class="wrap">
   <p class="eyebrow">Magnet Climbers &middot; plan</p>
   <h1>What to build next</h1>
-  <p class="standfirst">The recorder has cashed in: your own ghost, a friend\u2019s ghost from a link, a friend\u2019s ghost live, and a daily board the Worker climbs again itself. What is left is a switch to flip, a screen to add, and a phone in hand.</p>
+  <p class="standfirst">The recorder has cashed in and been proven: your own ghost, a friend\u2019s ghost from a link, a friend\u2019s ghost live, a daily board the Worker climbs again itself, and five hundred bot races that say the same run happens on every phone. What is left is a config to paste, a listing to decide, and a phone in hand.</p>
 
   <div class="lede-wrap">
     <div class="thesis">
-      <p>Everything the last plan called Now and Then is in the game except packaging. Accounts are built and waiting on a Firebase project; the live race is out and being played; the daily is checked by replay without anyone waiting on it.</p>
-      <p>So the order changes shape: nothing left is a system. It is a config to paste, a cheap screen on one route, and the audit\u2019s felt-not-measured items, which want a phone rather than a plan. Then a few weeks of numbers before the wrap.</p>
+      <p>Everything the last two plans called Now and Then is in the game except packaging. Accounts are built and waiting on a Firebase project; the live race is out, polished and pressure-tested; the daily is screened on the request and enforced by replay; reminders arrive.</p>
+      <p>What is left is owner work and craft: a Firebase config, a store rating, a token so the Worker deploys itself, and the felt-not-measured items that want a phone. Then a few weeks of numbers before the wrap.</p>
     </div>
     <div class="state">
       <h4>Where it stands</h4>
       <dl>
-        <dt>Modes</dt><dd>solo · daily · race (link, live)</dd>
+        <dt>Modes</dt><dd>solo · daily · race (link, live, watched)</dd>
         <dt>World version</dt><dd>27</dd>
         <dt>Items on the door</dt><dd>152, 147 sized</dd>
         <dt>Coin sinks</dt><dd>2, one doubling</dd>
-        <dt>Reasons to return</dt><dd>daily · streak · league · missions · month</dd>
+        <dt>Reasons to return</dt><dd>daily · streak · league · missions · month · reminders</dd>
         <dt>Game clock</dt><dd>midnight Chicago</dd>
         <dt>Accounts</dt><dd>wired, off</dd>
-        <dt>Tests</dt><dd>103 passing</dd>
+        <dt>Tests</dt><dd>113 passing · 500 bot races</dd>
       </dl>
     </div>
   </div>
@@ -284,13 +320,13 @@ const BODY = `
   </section>
 
   <section>
-    <h2>Decisions <span class="count">two open, three settled</span></h2>
+    <h2>Decisions <span class="count">one open, five settled</span></h2>
     ${DECIDE.map((d) => `<div class="ask"><h3>${esc(d.q)}</h3><p>${esc(d.body)}</p></div>`).join("")}
   </section>
 
   <section>
     <h2>Audit <span class="count">22 lanes, September</span></h2>
-    <p class="note">Twenty-two read-only passes over the September build, plus six more this week over movement, sounds, rendering, gadgets, the shell and the Worker. Everything below names the file it lives in; a flag says where it stands now. Twelve of the September findings have been fixed since.</p>
+    <p class="note">Twenty-two read-only passes over the September build, plus six more this week over movement, sounds, rendering, gadgets, the shell and the Worker. Everything below names the file it lives in; a flag says where it stands now. Sixteen of the September findings have been fixed since.</p>
     ${AUDIT.map((b) => `<div class="band"><h3>${esc(b.band)}</h3><p>${esc(b.note)}</p><div class="finds">${
       b.rows.map(([t, where, body, flag]) => `<div class="find"><b>${esc(t)}</b><span class="flag ${flag}">${esc(flag)}</span><code>${esc(where)}</code><p>${esc(body)}</p></div>`).join("")
     }</div></div>`).join("")}
