@@ -74,8 +74,14 @@ export class Recorder {
   }
 }
 
-/** Positions to two decimal places: finer than any input, and it keeps a tape small. */
-const round = (n: number): number => Math.round(n * 100) / 100;
+/**
+ * Positions to two decimal places: finer than any input, and it keeps a tape small. The sim
+ * quantises every fling and move to this before using it, so the run a phone plays and the
+ * run its tape replays into are fed the very same numbers -- with the raw float used live
+ * and the rounded one on replay, a long climb drifted apart by a hold or two.
+ */
+export const quantize = (n: number): number => Math.round(n * 100) / 100;
+const round = quantize;
 /** The fixed step the sim runs at. A tape's clock is counted in these, never in wall time. */
 export const STEP = 1 / 120;
 /**

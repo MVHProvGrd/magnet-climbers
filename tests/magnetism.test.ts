@@ -1160,7 +1160,8 @@ test("a tape replays into the same climb it recorded", () => {
     g.phase = "running";
     for (let i = 0; i < 6; i++) {
       const c = g.climbers[0];
-      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90 : -90, y: -360 });
+      // raw floats, as a finger produces: the tape keeps two decimals, and so must the run
+      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90.123456 : -89.98765, y: -360.4321 });
       for (let k = 0; k < 90; k++) g.update(1 / 120);
     }
     return g;
@@ -1197,7 +1198,8 @@ test("a ghost stepped beside a live run climbs the run it was recorded from", ()
     g.phase = "running";
     for (let i = 0; i < 6; i++) {
       const c = g.climbers[0];
-      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90 : -90, y: -360 });
+      // raw floats, as a finger produces: the tape keeps two decimals, and so must the run
+      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 90.123456 : -89.98765, y: -360.4321 });
       for (let k = 0; k < 90; k++) g.update(1 / 120);
     }
     return g;

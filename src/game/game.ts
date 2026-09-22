@@ -4,7 +4,7 @@ import { silentAudio, type GameAudio } from "./silent-audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { gadgetZone } from "./gadgets";
-import { Recorder } from "./recorder";
+import { Recorder, quantize } from "./recorder";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
@@ -410,7 +410,9 @@ export class Game {
   }
 
   /** Sends a climber flying. Returns false (and spends nothing) when it cannot go: a ladder rung or an unlocked hanger. */
-  launch(c: Climber, v: Vec): boolean {
+  launch(c: Climber, raw: Vec): boolean {
+    // the fling the tape will hold is the fling that happens: same numbers live and on replay
+    const v = { x: quantize(raw.x), y: quantize(raw.y) };
     // recorded before the refusals below, so a tape only ever holds flings that happened
     if (this.isLadder(c)) { this.floats.push({ x: c.x, y: c.y - 34, text: "someone's hanging on you: CLIMB them up", life: 1, color: "#ff6b6b" }); return false; }
     if (c.state === "linked" && !c.locked) { this.floats.push({ x: c.x, y: c.y - 34, text: "CLIMB up first", life: 1, color: "#ff6b6b" }); return false; }
@@ -657,6 +659,8 @@ export class Game {
   move(c: Climber, p: Vec) {
     const t = this.moveTarget(c, p);
     if (!t) { this.floats.push({ x: c.x, y: c.y - 30, text: "out of reach", life: 0.9, color: "#ff6b6b" }); return; }
+    // the spot the tape will hold is the spot taken: same numbers live and on replay
+    t.x = quantize(t.x); t.y = quantize(t.y);
     this.tape.move(this.time, c.id, { x: t.x, y: t.y });
     if (this.phase === "idle") this.phase = "running";
     const was = { x: c.x, y: c.y, grip: c.grip, state: c.state, parent: c.parent, locked: c.locked, angle: c.angle };

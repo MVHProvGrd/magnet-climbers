@@ -91,7 +91,8 @@ class Bot {
   get dead(): boolean { return this.game.phase === "dead"; }
   step(): void {
     const g = this.game;
-    if (g.phase === "dead") return;
+    // the ghost goes on after this run ends, as on a phone: the friend is still climbing
+    if (g.phase === "dead") { this.ghost.step(STEP); return; }
     const c = g.climbers[0];
     this.cool -= STEP;
     if (c && (c.state === "stuck" || c.state === "linked") && this.cool <= 0) {
@@ -143,7 +144,7 @@ async function newRoom(): Promise<string> {
   return ((await r.json()) as { id: string }).id;
 }
 
-interface Seat { t: Tester; ws: WebSocket | null; bot: Bot | null; start: { seed: number; world: number; side: 0 | 1 } | null; msgs: unknown[]; sent: Map<string, number>; diedAt: number | null; restarts: number; endedSeen: number }
+interface Seat { t: Tester; ws: WebSocket | null; bot: Bot | null; start: { seed: number; world: number; side: 0 | 1 } | null; msgs: unknown[]; sent: Map<string, number>; diedAt: number | null; restarts: number; endedSeen: number; flush?: () => void }
 
 async function race(round: number, a: Tester, b: Tester, fault: string | null): Promise<RaceLog> {
   const t0 = Date.now();
@@ -157,7 +158,7 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
       const ws = new WebSocket(`${url}${log.room}/ws`);
       s.ws = ws;
       const timer = setTimeout(() => reject(new Error("socket open timeout")), 10000);
-      ws.onopen = () => { clearTimeout(timer); ws.send(JSON.stringify({ k: "hello", id: s.t.id, name: s.t.name, world: WORLD, look: { creature: "toy", pattern: "solid" } })); resolve(); };
+      ws.onopen = () => { clearTimeout(timer); ws.send(JSON.stringify({ k: "hello", id: s.t.id, name: s.t.name, world: WORLD, look: { creature: "toy", pattern: "solid" } })); s.flush?.(); resolve(); };
       ws.onerror = () => { clearTimeout(timer); reject(new Error("socket error")); };
       ws.onmessage = (ev) => {
         const m = JSON.parse(String(ev.data)) as { k: string } & Record<string, unknown>;
@@ -194,11 +195,15 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
     log.seed = seats[0].start.seed; log.startMs = Date.now() - t0;
     for (const s of seats) {
       const st = s.start!;
+      const outbox: string[] = [];
       const send = (m: unknown) => {
         const e = (m as { e?: { k: string; t: number } }).e;
         if (e) s.sent.set(`${s.t.id}:${e.k}:${e.t}`, Date.now());
-        if (s.ws?.readyState === WebSocket.OPEN) s.ws.send(JSON.stringify(m));
+        const text = JSON.stringify(m);
+        if (s.ws?.readyState === WebSocket.OPEN) { for (const q of outbox.splice(0)) s.ws.send(q); s.ws.send(text); }
+        else if ((m as { k: string }).k !== "in" || !((m as { e: { k: string } }).e.k === "tick")) outbox.push(text);
       };
+      s.flush = () => { if (s.ws?.readyState === WebSocket.OPEN) for (const q of outbox.splice(0)) s.ws.send(q); };
       s.bot = new Bot(s.t, st.seed, st.world, st.side, send, st.seed);
       s.bot.game.phase = "running";
     }
@@ -211,7 +216,7 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
       for (let i = 0; i < perTick; i++) {
         for (const s of seats) {
           const bot = s.bot!;
-          if (bot.dead) continue;
+          if (bot.dead) { bot.step(); continue; }
           bot.step();
           if (bot.dead) { bot.finish(bot.game.lastCause, "death"); s.diedAt = Date.now(); }
         }
