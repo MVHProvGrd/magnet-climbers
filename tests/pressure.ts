@@ -57,6 +57,8 @@ interface RunLog {
   localReplayCm: number | null;
   /** inputs handed over by the room on a mid-race reconnect */
   caughtUp: number | null;
+  /** sockets that dropped on their own, not by injection */
+  dropped: number;
 }
 interface RaceLog { round: number; room: string; seed: number; startMs: number; wallMs: number; winner: string | null; rows: unknown; fault: string | null; error: string | null; runs: RunLog[] }
 
@@ -81,7 +83,7 @@ class Bot {
     this.r = rng(t.seed * 31 + raceSeed);
     const pickups: Record<string, number> = {};
     this.log = { tester: t.name, side, cm: 0, seconds: 0, flings: 0, coins: 0, gems: 0, pickups, hits: [], cause: null, decidedBy: "death",
-      ghostDriftCm: null, roomCm: null, verified: null, inputLatencyMs: [], endedLatencyMs: null, reconnected: false, restartOk: null, endedReplayed: null, localReplayCm: null, caughtUp: null };
+      ghostDriftCm: null, roomCm: null, verified: null, inputLatencyMs: [], endedLatencyMs: null, reconnected: false, restartOk: null, endedReplayed: null, localReplayCm: null, caughtUp: null, dropped: 0 };
     this.game = new Game(KIT, {
       onPower: (k) => { pickups[k] = (pickups[k] ?? 0) + 1; }, onGameOver: () => {},
       onCoins: (n) => { this.log.coins += n; }, onGems: (n) => { this.log.gems += n; },
@@ -147,13 +149,14 @@ async function newRoom(): Promise<string> {
   return ((await r.json()) as { id: string }).id;
 }
 
-interface Seat { t: Tester; ws: WebSocket | null; bot: Bot | null; start: { seed: number; world: number; side: 0 | 1 } | null; msgs: unknown[]; sent: Map<string, number>; diedAt: number | null; restarts: number; endedSeen: number; flush?: () => void }
+interface Seat { t: Tester; ws: WebSocket | null; bot: Bot | null; start: { seed: number; world: number; side: 0 | 1 } | null; msgs: unknown[]; sent: Map<string, number>; diedAt: number | null; restarts: number; endedSeen: number; flush?: () => void; dropped: number }
 
 async function race(round: number, a: Tester, b: Tester, fault: string | null): Promise<RaceLog> {
   const t0 = Date.now();
   const log: RaceLog = { round, room: "", seed: 0, startMs: 0, wallMs: 0, winner: null, rows: null, fault, error: null, runs: [] };
-  const seats: Seat[] = [a, b].map((t) => ({ t, ws: null, bot: null, start: null, msgs: [], sent: new Map(), diedAt: null, restarts: 0, endedSeen: 0 }));
+  const seats: Seat[] = [a, b].map((t) => ({ t, ws: null, bot: null, start: null, msgs: [], sent: new Map(), diedAt: null, restarts: 0, endedSeen: 0, dropped: 0 }));
   let result: { rows: { id: string; cm: number; verified: boolean }[]; winner: string | null } | null = null;
+  let over = false;
   const url = `${API.replace(/^http/, "ws")}/match/`;
   try {
     log.room = await newRoom();
@@ -163,6 +166,8 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
       const timer = setTimeout(() => reject(new Error("socket open timeout")), 10000);
       ws.onopen = () => { clearTimeout(timer); ws.send(JSON.stringify({ k: "hello", id: s.t.id, name: s.t.name, world: WORLD, look: { creature: "toy", pattern: "solid" } })); s.flush?.(); resolve(); };
       ws.onerror = () => { clearTimeout(timer); reject(new Error("socket error")); };
+      // a drop we did not inject: back in half a second, as the phone would; the room keeps the seat
+      ws.onclose = () => { if (s.ws === ws && !over) { s.ws = null; s.dropped++; setTimeout(() => { if (!over) void connect(s).catch(() => {}); }, 500); } };
       ws.onmessage = (ev) => {
         const m = JSON.parse(String(ev.data)) as { k: string } & Record<string, unknown>;
         s.msgs.push(m);
@@ -234,7 +239,7 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
         if (simSteps === faultAt && !faultDone) {
           faultDone = true;
           const s = seats[1]; s.bot!.log.reconnected = true;
-          s.ws?.close(); s.ws = null;
+          const ws = s.ws; s.ws = null; ws?.close();
           setTimeout(() => { void connect(s).catch(() => {}); }, 2000);
         }
       }
