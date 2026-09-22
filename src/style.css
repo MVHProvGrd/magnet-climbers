@@ -185,6 +185,9 @@ select.buy option { background: #1e2229; color: #fff; }
 .coin { color: var(--coin); }
 .gem { color: var(--gem); }
 .kit-list { display: flex; flex-direction: column; gap: 8px; }
+.kit-match { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; text-align: left; }
+.kit-match-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 14px; }
+.kit-match-row .ok { color: #9be15d; } .kit-match-row .short { color: #ffb347; }
 /* Says why the chips are dark, instead of leaving the player to guess. */
 .kit-note { text-align: left; opacity: 0.72; line-height: 1.45; margin: -2px 0 2px; }
 .kit-auto { display: flex; align-items: center; gap: 9px; text-align: left; padding: 2px 2px 0;

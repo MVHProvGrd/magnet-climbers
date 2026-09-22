@@ -1133,6 +1133,33 @@ export class Ui {
     this.show(p);
   }
 
+  /**
+   * A race against a run that wore kit. The gear changes the physics, so the racer is shown
+   * what the other run had and offered the same, or the race as they are.
+   */
+  showKitMatch(o: { name: string; theirs: Record<string, number>; mine: Record<string, number>; cost: number; coins: number; onMatch: () => void; onRace: () => void }) {
+    const p = el("div", "panel small");
+    const rows = UPGRADES.filter((u) => (o.theirs[u.key] ?? 0) > 0).map((u) => {
+      const t = o.theirs[u.key] ?? 0, m = o.mine[u.key] ?? 0;
+      return `<div class="kit-match-row"><span>${esc(u.name)} <b>${t}</b></span><span class="${m >= t ? "ok" : "short"}">${m >= t ? "you have it" : `you have ${m}`}</span></div>`;
+    }).join("");
+    const short = o.coins < o.cost;
+    p.innerHTML = `
+      <div class="story-icon">🧰</div>
+      <h2>${esc(o.name)} climbed with kit</h2>
+      <p class="tag">Gear bought before a climb changes the physics of it. Match theirs and the race is even, or race with what you have.</p>
+      <div class="kit-match">${rows}</div>
+      <button class="primary" data-a="match" ${short ? "disabled" : ""}>MATCH THEIR KIT · $${groupNum(o.cost)}</button>
+      ${short ? `<p class="tag">You have $${groupNum(o.coins)}.</p>` : ""}
+      <button class="ghost" data-a="race">RACE WITH MINE</button>`;
+    p.addEventListener("click", (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      if (a === "match" && !short) { this.clear(); o.onMatch(); }
+      if (a === "race") { this.clear(); o.onRace(); }
+    });
+    this.show(p);
+  }
+
   /** Shows a freshly minted link code. */
   showLinkCode(code: string, expiresAt: number) {
     const p = el("div", "panel small");

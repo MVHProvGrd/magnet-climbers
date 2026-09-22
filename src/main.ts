@@ -453,7 +453,25 @@ const ui = new Ui(uiRoot, () => save, {
       ui.toast("Fetching their run…");
       const r = await leaderboard.race.get(id);
       const t = r?.tape as Tape | undefined;
-      if (t && t.v === 1 && Array.isArray(t.events) && t.events.length) { startRun("solo", false, false, t); return; }
+      if (t && t.v === 1 && Array.isArray(t.events) && t.events.length) {
+        // their run may have worn kit; the racer is told, and offered the same before the door
+        const theirs = t.kit ?? {};
+        let cost = 0;
+        for (const u of UPGRADES) for (let l = save.kit[u.key]; l < Math.min(u.max, theirs[u.key] ?? 0); l++) cost += upgradeCost(u, l);
+        const name = pendingChallenge?.name ?? "Your friend";
+        if (cost > 0) {
+          ui.showKitMatch({
+            name, theirs, mine: save.kit, cost, coins: save.coins,
+            onMatch: () => {
+              for (const u of UPGRADES) { const want = Math.min(u.max, theirs[u.key] ?? 0); while (save.kit[u.key] < want) { save.coins -= upgradeCost(u, save.kit[u.key]); save.kit[u.key]++; } }
+              persist(); startRun("solo", false, false, t);
+            },
+            onRace: () => startRun("solo", false, false, t),
+          });
+          return;
+        }
+        startRun("solo", false, false, t); return;
+      }
       ui.toast("Could not fetch their run; racing the line instead");
     }
     startRun("solo");
@@ -724,6 +742,8 @@ let liveBeat = 0;
 let liveThem = "";
 /** the two seats, in order, when this phone is watching a race rather than in it */
 let liveWatching: string[] = [];
+/** whom a watcher's camera follows: the leader, or one seat by index; a tap on the door cycles it */
+let watchFollow: "lead" | 0 | 1 = "lead";
 /** the game-over card of a live run, where the result goes when the room has replayed both tapes */
 let livePanel: HTMLElement | null = null;
 /** the generator's version on this build: both phones in a race must agree, or the fridges differ */
@@ -950,6 +970,7 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
     game.ghost2 = new LiveGhost(liveRace.seed, liveRace.world, (liveRace.watch[1]?.look as Look | undefined) ?? mine, 1);
     liveWatching = liveRace.watch.map((p) => p.id);
     liveThem = liveRace.watch.map((p) => p.name).join(" v ");
+    watchFollow = "lead";
   }
   // every input goes to the room the moment it is played; the other phone's ghost is driven by it
   if (liveRace && live && !liveRace.watch) { const m = live; game.tape.onEvent = (e) => m.input(e); }
@@ -1057,6 +1078,13 @@ const hit = (p: { x: number; y: number }, r: { x: number; y: number; w: number; 
   p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 canvas.addEventListener("pointerdown", (e) => {
   if (!game || paused) return;
+  if (game.spectator) {
+    // a watcher has nothing to fling; a tap picks whom the camera follows
+    const names = liveThem.split(" v ");
+    watchFollow = watchFollow === "lead" ? 0 : watchFollow === 0 ? 1 : "lead";
+    ui.toast(watchFollow === "lead" ? "Following the leader" : `Following ${names[watchFollow] ?? "seat " + (watchFollow + 1)} · tap to switch`);
+    return;
+  }
   const sp = toScreen(e);
   if (game.rules === "crew") {
     for (const r of teamTapRects(game, viewH)) {
@@ -1190,8 +1218,11 @@ function frame(now: number) {
         const g2 = game.ghost2;
         if (g2 instanceof LiveGhost && !g2.done) g2.step(STEP);
         if (game.spectator) {
-          // the toy that is not played sits where the leading ghost is, so the camera follows the race
-          const lead = [game.ghost, g2].map((x) => x?.climber).filter((c): c is NonNullable<typeof c> => !!c).sort((a, b) => a.y - b.y)[0];
+          // the toy that is not played sits where the followed ghost is, so the camera goes with it:
+          // the leader unless the watcher picked a seat, and the leader again once that seat is gone
+          const seats = [game.ghost, g2].map((x) => x?.climber ?? null);
+          const picked = watchFollow === "lead" ? null : seats[watchFollow];
+          const lead = picked ?? seats.filter((c): c is NonNullable<typeof c> => !!c).sort((a, b) => a.y - b.y)[0];
           const me = game.climbers[0];
           if (lead && me) { me.x = lead.x; me.y = lead.y; game.highestY = Math.min(game.highestY, lead.y); }
         }

@@ -136,7 +136,8 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   }
 
   // climbers (lost ones are gone; ones far off screen are skipped, the markers show them)
-  const visible = g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
+  // a watcher's own toy only carries the camera; the two ghosts are the whole picture
+  const visible = g.spectator ? [] : g.climbers.filter((c) => c.state !== "lost" && c.y > top - 80 && c.y < bottom + 80);
   // one resolve per climber, shared by the shadow pass and the body pass
   const looks = visible.map((c) => appearanceFor(c));
   for (let i = 0; i < visible.length; i++) drawClimberShadow(ctx, visible[i], g.time, looks[i]);
