@@ -29,16 +29,35 @@ function context(): AudioContext | null {
     return ctx;
   } catch { ctx = null; return null; }
 }
+/**
+ * iOS keeps Web Audio under the ring/silent switch until the page has played through a media
+ * element; one silent clip on the first gesture moves the page to the playback session and
+ * the game is heard with the switch down, like any other game.
+ */
+let sessionOpened = false;
+function openMediaSession() {
+  if (sessionOpened || typeof Audio === "undefined") return;
+  sessionOpened = true;
+  try {
+    const a = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+    a.setAttribute("playsinline", ""); a.volume = 0.01;
+    void a.play().catch(() => { sessionOpened = false; });
+  } catch { sessionOpened = false; }
+}
 /** Called by user gestures only; no autoplay workarounds. */
 export function unlockAudio() {
   unlocked = true;
   if (!enabled && !musicEnabled) return;
-  const c = context(); if (c?.state === "suspended") void c.resume().catch(() => {});
+  openMediaSession();
+  // "suspended" before the first gesture; "interrupted" on iOS after a call or another app
+  const c = context(); if (c && c.state !== "running") void c.resume().catch(() => {});
   if (c && enabled) {
     // Gestures first, then warm object sounds in bounded batches, not 99 parallel fetches.
     for (const key of ['rubber-pull', 'rubber-release', ...new Set(Object.values(OBJECT_SAMPLES)), 'pop-in', 'pop-out']) samples?.preload(key);
   }
 }
+/** Back in the foreground: an iOS context left "interrupted" by another app is resumed. */
+export function resumeAudio() { if (ctx && unlocked && ctx.state !== "running") void ctx.resume().catch(() => {}); }
 export function setSound(on: boolean) { enabled = on; if (!on) samples?.stopGroup(); if (ctx) fxBus.gain.setTargetAtTime(on ? 0.7 : 0, ctx.currentTime, 0.015); }
 export function setMusic(on: boolean) { musicEnabled = on; if (ctx && !on) { musicTarget = 0; target(musicBus, 0, ctx.currentTime, .02); } }
 export function silenceAudio() { active = false; samples?.stopGroup(); masterTarget = 0; if (ctx) { target(master, 0, ctx.currentTime, .01); nextNote = ctx.currentTime; } }

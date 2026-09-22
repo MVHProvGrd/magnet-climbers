@@ -11,7 +11,7 @@ import { CFG, UPGRADES, W, upgradeCost, type UpgradeKey } from "./game/config";
 import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from "./game/creatures";
 import { dailyBoard, liveProgress, missionById, missionText, settle, streakReward, type RunTally } from "./game/missions";
 import { monthKey, themeFor, setPlainSteel } from "./game/fridge-theme";
-import { setSound, setMusic, unlockAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
+import { setSound, setMusic, unlockAudio, resumeAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
 import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 import { groupNum } from "./game/hud";
@@ -76,8 +76,13 @@ try { void navigator.storage?.persist?.(); } catch { /* not available */ }
 setSound(save.sound);
 setMusic(save.music);
 setPlainSteel(save.plainSteel);
+// Safari only counts a finished touch or a click as the gesture that may start audio, so the
+// unlock listens for those as well as the pointer-down the rest use
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
+document.addEventListener("touchend", unlockAudio, { passive: true });
+document.addEventListener("click", unlockAudio);
 document.addEventListener("keydown", unlockAudio);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeAudio(); });
 /** Bring the ledger up to the balance: whatever changed since it last looked is income or spend. */
 function settleLedger() {
   const l = save.ledger;
