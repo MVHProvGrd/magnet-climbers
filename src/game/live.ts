@@ -17,6 +17,8 @@ export interface LiveHandlers {
   input(e: TapeEvent, from?: string): void;
   /** the other phone's clock: it has reached this run time */
   tick(t: number, from?: string): void;
+  /** back in a race in progress: that seat's inputs so far, to build its ghost from nothing */
+  catchup(id: string, events: TapeEvent[]): void;
   /** the other player asked for another go */
   again(id: string): void;
   /** this phone is watching, not racing */
@@ -89,6 +91,7 @@ export class LiveMatch {
         if (e?.k === "tick") this.on.tick(Number(e.t) || 0, m.from as string | undefined);
         else this.on.input(m.e as TapeEvent, m.from as string | undefined);
       }
+      else if (m.k === "catchup") this.on.catchup(m.id as string, (m.events as TapeEvent[] | undefined) ?? []);
       else if (m.k === "ended") this.on.ended(m.cm as number);
       else if (m.k === "left") this.on.left(m.name as string | undefined);
       else if (m.k === "again") this.on.again(m.id as string);

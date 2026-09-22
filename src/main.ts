@@ -765,6 +765,7 @@ function joinLive(id: string, host = false): void {
   };
   const panel = ui.showLiveLobby({ link, status: "Connecting…", host, onShare: () => void share(), onCancel: () => { live?.bye(); live = null; ui.showMenu(); } });
   let liveSeed = 0;
+  let liveStart: { seed: number; world: number; side: 0 | 1 | undefined; looks: ({ creature: string; pattern: string } | undefined)[] } | null = null;
   const m = new LiveMatch(id, {
     // the other seat may be held by a phone that stepped away (off texting the link, say)
     wait: (others) => {
@@ -775,8 +776,22 @@ function joinLive(id: string, host = false): void {
     start: (seed, world, them, countdownMs, side, players) => {
       // the room resends the start to a phone that reconnects mid-race: same seed, same run, carry on
       if (game && seed === liveSeed) return;
-      liveSeed = seed; liveThem = them.name;
+      liveSeed = seed; liveThem = them.name; liveStart = { seed, world, side, looks: players ? players.map((p) => p.look) : [them.look] };
       startRun("solo", false, false, null, { seed, world, look: them.look, countdownMs, side, watch: players });
+    },
+    // back mid-race: the ghost of that seat is built again from every input it has made, so the
+    // two seconds the socket was down are not two seconds of its climb missing for good
+    catchup: (id, events) => {
+      if (!game || !liveStart) return;
+      const mine = { creature: save.creature, pattern: save.pattern };
+      const seatIx = game.spectator ? liveWatching.indexOf(id) : 0;
+      if (seatIx < 0) return;
+      const side: 0 | 1 = game.spectator ? (seatIx ? 1 : 0) : liveStart.side ? 0 : 1;
+      const fresh = new LiveGhost(liveStart.seed, liveStart.world, (liveStart.looks[seatIx] as Look | undefined) ?? mine, side);
+      let last = 0;
+      for (const e of events) { fresh.feed(e); last = Math.max(last, stepOf(e.t)); }
+      fresh.hear(last);
+      if (game.spectator && seatIx === 1) game.ghost2 = fresh; else { ghost = fresh; game.ghost = fresh; }
     },
     input: (e, from) => {
       const g2 = game?.ghost2;

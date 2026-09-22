@@ -55,6 +55,8 @@ interface RunLog {
   inputLatencyMs: number[]; endedLatencyMs: number | null; reconnected: boolean; restartOk: boolean | null; endedReplayed: boolean | null;
   /** the tape replayed here, by the sim in this build, so the deployed room's verdict can be told from the sim's */
   localReplayCm: number | null;
+  /** inputs handed over by the room on a mid-race reconnect */
+  caughtUp: number | null;
 }
 interface RaceLog { round: number; room: string; seed: number; startMs: number; wallMs: number; winner: string | null; rows: unknown; fault: string | null; error: string | null; runs: RunLog[] }
 
@@ -79,7 +81,7 @@ class Bot {
     this.r = rng(t.seed * 31 + raceSeed);
     const pickups: Record<string, number> = {};
     this.log = { tester: t.name, side, cm: 0, seconds: 0, flings: 0, coins: 0, gems: 0, pickups, hits: [], cause: null, decidedBy: "death",
-      ghostDriftCm: null, roomCm: null, verified: null, inputLatencyMs: [], endedLatencyMs: null, reconnected: false, restartOk: null, endedReplayed: null, localReplayCm: null };
+      ghostDriftCm: null, roomCm: null, verified: null, inputLatencyMs: [], endedLatencyMs: null, reconnected: false, restartOk: null, endedReplayed: null, localReplayCm: null, caughtUp: null };
     this.game = new Game(KIT, {
       onPower: (k) => { pickups[k] = (pickups[k] ?? 0) + 1; }, onGameOver: () => {},
       onCoins: (n) => { this.log.coins += n; }, onGems: (n) => { this.log.gems += n; },
@@ -174,6 +176,13 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
           const at = other.sent.get(key); if (at != null && s.bot) s.bot.log.inputLatencyMs.push(Date.now() - at);
           if (!s.bot) return;
           if (e.k === "tick") s.bot.ghost.hear(stepOf(e.t)); else s.bot.ghost.feed(e as TapeEvent);
+        } else if (m.k === "catchup") {
+          if (s.bot && s.start) {
+            const fresh = new LiveGhost(s.start.seed, s.start.world, undefined, s.start.side ? 0 : 1);
+            let last = 0;
+            for (const e of m.events as TapeEvent[]) { fresh.feed(e); last = Math.max(last, stepOf(e.t)); }
+            fresh.hear(last); s.bot.ghost = fresh; s.bot.log.caughtUp = (m.events as unknown[]).length;
+          }
         } else if (m.k === "ended") {
           s.endedSeen++;
           if (s.bot && other.diedAt != null && s.bot.log.endedLatencyMs == null) s.bot.log.endedLatencyMs = Date.now() - other.diedAt;
@@ -240,7 +249,7 @@ async function race(round: number, a: Tester, b: Tester, fault: string | null): 
     for (const s of seats) {
       const row = res.rows.find((r) => r.id === s.t.id);
       s.bot!.log.roomCm = row?.cm ?? null; s.bot!.log.verified = row?.verified ?? null;
-      if (s.bot!.log.ghostDriftCm == null) { s.bot!.ghost.end(); s.bot!.ghost.step(STEP); const otherRow = res.rows.find((r) => r.id !== s.t.id); if (otherRow) s.bot!.log.ghostDriftCm = Math.round(s.bot!.ghost.heightCm - otherRow.cm); }
+      if (s.bot!.log.ghostDriftCm == null) { s.bot!.ghost.end(); s.bot!.ghost.step(STEP); const other = seats.find((o) => o !== s)!; s.bot!.log.ghostDriftCm = Math.round(s.bot!.ghost.heightCm - other.bot!.game.heightCm); }
     }
   } catch (e) {
     log.error = String((e as Error)?.message ?? e);

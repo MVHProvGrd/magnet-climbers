@@ -457,10 +457,16 @@ test("a race already decided tells the leader so, again if need be, and again on
   assert.deepEqual(b.at(-1), { k: "ended", id: "A", cm: 397 }, "above it, the reminder");
   m.progress("B", 560, 1900);
   assert.equal(b.length, 3, "at most one a second");
-  // the word was lost to a dropped socket: the fresh one hears it with its start
+  // the word was lost to a dropped socket: the fresh one hears it with its start, and gets
+  // every input the other seat made so far, so the ghost can be built again whole
+  m.input("A", { t: 0.5, k: "fling", id: 1, v: { x: 1, y: -2 } });
   const b2: Message[] = [];
   m.join({ id: "B", name: "Bob", world: 27, send: (x) => b2.push(x) });
-  assert.deepEqual(b2.map((x) => x.k), ["start", "ended"]);
+  assert.deepEqual(b2.map((x) => x.k), ["start", "catchup", "ended"]);
+  assert.deepEqual((b2[1] as Extract<Message, { k: "catchup" }>).events, [], "A's fling after A finished was not an input of the race");
+  const w: Message[] = [];
+  m.watch({ id: "W", send: (x) => w.push(x) });
+  assert.deepEqual(w.map((x) => x.k), ["watching", "start", "catchup", "catchup"], "a late watcher gets both seats' inputs");
   const na = a.length;
   m.progress("A", 999, 5000);
   assert.equal(a.length, na, "a finished seat is never told about itself");

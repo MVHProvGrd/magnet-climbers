@@ -28,6 +28,8 @@ export interface Seat {
   again?: boolean;
   /** the height the phone last reported in a heartbeat */
   cm?: number;
+  /** every input so far this race, for a phone that joins or comes back mid-race to rebuild the ghost from */
+  inputs?: unknown[];
   /** when the room last told this seat the other run had ended, so a still-climbing phone is reminded, not spammed */
   toldAt?: number;
 }
@@ -51,6 +53,8 @@ export type Message =
   | { k: "watching"; id: string; players: { id: string; name: string }[] }
   | { k: "ended"; id: string; cm: number }
   | { k: "left"; id: string; name?: string }
+  /** a seat's inputs so far, for a ghost built from nothing mid-race */
+  | { k: "catchup"; id: string; events: unknown[] }
   | { k: "result"; rows: { id: string; name: string; cm: number; verified: boolean; reason?: string }[]; winner: string | null };
 
 /** How long the room waits for the second tape once the first is in. */
@@ -82,7 +86,11 @@ export class Match {
     this.watchers = this.watchers.filter((x) => x.id !== w.id);
     this.watchers.push(w);
     w.send({ k: "watching", id: w.id, players: this.seats.map((s) => ({ id: s.id, name: s.name })) });
-    if (this.started && !this.settled) w.send(this.startForWatcher(w));
+    if (this.started && !this.settled) {
+      w.send(this.startForWatcher(w));
+      // a late watcher sees the race so far, not two toys at the bottom
+      for (const s of this.seats) w.send({ k: "catchup", id: s.id, events: s.inputs ?? [] });
+    }
   }
 
   private startForWatcher(w: Watcher): Message {
@@ -97,7 +105,7 @@ export class Match {
     seat.again = true;
     for (const s of this.seats) if (s !== seat) s.send({ k: "again", id });
     if (!this.seats.every((s) => s.again)) return;
-    for (const s of this.seats) { s.done = false; s.tape = undefined; s.claimed = undefined; s.again = false; }
+    for (const s of this.seats) { s.done = false; s.tape = undefined; s.claimed = undefined; s.again = false; s.inputs = []; s.cm = 0; s.toldAt = 0; }
     this.settled = false;
     this.seed = this.deal();
     this.started = true;
@@ -118,7 +126,9 @@ export class Match {
       if (this.settled) return;
       if (this.started) {
         again.send(this.startFor(again));
-        // anything said while the socket was down is said again: a friend who finished meanwhile
+        // anything said while the socket was down is said again: the friend's inputs so far,
+        // so their ghost is rebuilt whole, and their finish if it came meanwhile
+        for (const s of this.seats) if (s !== again) again.send({ k: "catchup", id: s.id, events: s.inputs ?? [] });
         for (const s of this.seats) if (s !== again && s.done) again.send({ k: "ended", id: s.id, cm: s.claimed ?? 0 });
         return;
       }
@@ -183,7 +193,10 @@ export class Match {
   /** One input from a player, straight on to the other. Nothing is kept: the tape is the record. */
   input(id: string, e: unknown): void {
     if (!this.started || this.settled) return;
-    if (!this.seats.some((s) => s.id === id)) return; // a watcher's inputs go nowhere
+    const seat = this.seats.find((s) => s.id === id);
+    if (!seat || seat.done) return; // a watcher's inputs go nowhere, and a finished run makes none
+    // heartbeats are not kept; flings and moves are, up to a tape's worth
+    if (!(e && typeof e === "object" && (e as { k?: unknown }).k === "tick")) { (seat.inputs ??= []).push(e); if (seat.inputs.length > 4000) seat.inputs.shift(); }
     for (const s of this.seats) if (s.id !== id) s.send({ k: "in", e, from: id });
     for (const w of this.watchers) w.send({ k: "in", e, from: id });
   }
