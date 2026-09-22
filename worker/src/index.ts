@@ -26,7 +26,7 @@ import { handleShare, type Challenge } from "./card";
 import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
-import { verifyDaily, MAX_TAPE_BYTES } from "./replay";
+import { verifyDaily, MAX_TAPE_BYTES, plausible } from "./replay";
 import { dayKeyAt, zoned } from "../../src/game/day";
 export { dayKeyAt };
 export { MatchRoom } from "./match";
@@ -653,7 +653,11 @@ export default {
         // The cheap checks first, on the request. The replay itself takes seconds of CPU a
         // request does not have, so with the verifier deployed the claim lands now and the
         // replay runs in the Durable Object, which cuts or drops the row when it disagrees.
-        const checked = checkTape(rawTape, day, DAILY_WORLD);
+        // structure first, then physics: a claim these inputs could never have climbed is refused
+        // here, on the request, and never queues a replay
+        const structural = checkTape(rawTape, day, DAILY_WORLD);
+        const implausible = "reason" in structural ? null : plausible(structural.tape, cm);
+        const checked = implausible ? { reason: implausible } : structural;
         if ("reason" in checked || !env.VERIFY || !ctx) {
           const v = "reason" in checked ? { ok: false as const, reason: checked.reason } : verifyDaily(rawTape, cm, day, DAILY_WORLD);
           await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")

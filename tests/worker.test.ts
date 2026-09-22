@@ -206,7 +206,7 @@ test("a claim above what the tape climbs to is refused in enforce mode and never
   const e = env("enforce");
   const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
-  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 40, tape }), e);
   assert.equal(res.status, 422);
   const j = await res.json() as { ok: boolean; verified: boolean; reason: string };
   assert.equal(j.ok, false);
@@ -222,7 +222,7 @@ test("in shadow mode the same bad claim lands, but the verdict is on record for 
   const e = env("shadow");
   const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
-  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 40, tape }), e);
   assert.equal(res.status, 200);
   const j = await res.json() as { verified: boolean; reason: string };
   assert.equal(j.verified, false);
@@ -348,6 +348,29 @@ test("a shared run is kept by id and handed back; a forged post is refused", asy
   assert.equal(got.name, "Kid"); assert.equal(got.cm, 1234); assert.deepEqual(got.tape, tape);
   const missing = await worker.fetch(new Request("https://x/race?id=nosuchrun"), e);
   assert.equal(missing.status, 404);
+});
+
+// The plausibility screen: physics bounds on a daily claim, checked on the request.
+import { plausible, MAX_CM_PER_FLING } from "../worker/src/replay";
+import { Game as SimGame } from "../src/game/game";
+test("a claim the inputs could never have climbed is refused before any replay", () => {
+  const levels = { magnet: 0, power: 0, floor: 0 };
+  const events = { onPower: () => {}, onGameOver: () => {}, onCoins: () => {}, onGems: () => {} };
+  const g = new SimGame(levels, events, { seed: 77, rules: "solo", silent: true });
+  g.phase = "running";
+  for (let i = 0; i < 8; i++) {
+    const c = g.climbers[0];
+    if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 2 ? 80 : -80, y: -600 });
+    for (let k = 0; k < 90; k++) g.update(1 / 120);
+  }
+  const tape = g.sealTape(true)!;
+  assert.equal(plausible(tape, g.heightCm), null, "a real run passes at its own height");
+  assert.equal(plausible(tape, 50_000), "height per fling", "fifty metres on eight flings does not");
+  const fast = { ...tape, events: tape.events.map((e) => e.k === "fling" ? { ...e, v: { x: 0, y: -5000 } } : e) };
+  assert.equal(plausible(fast, g.heightCm), "fling beyond the slingshot");
+  const longRun = { ...tape, events: Array.from({ length: 4000 }, (_, i) => ({ t: Math.round(i * 2 / 120 * 10000) / 10000, k: "fling" as const, id: 1, v: { x: 0, y: -500 } })), steps: 8000 };
+  assert.equal(plausible(longRun, 4000 * MAX_CM_PER_FLING), "height per second", "sixty-seven seconds cannot climb that far however many flings");
+  assert.equal(plausible({ ...tape, steps: 1 }, g.heightCm), "sealed before its last input");
 });
 
 // The live race room, with two fake seats and a replay that reads the tape's own number.
@@ -548,12 +571,12 @@ test("a daily post answers at once and the verifier cuts an inflated claim after
   } } as unknown as Env;
   const { playerId, token } = await seedPlayer(e);
   const { tape, cm } = climbToday();
-  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 5000, tape }), e, ctx);
+  const res = await worker.fetch(post("/score", { playerId, token, name: "Kid", mode: "daily", cm: cm + 40, tape }), e, ctx);
   assert.equal(res.status, 200);
   const j = await res.json() as { verified: string; best: number };
-  assert.equal(j.verified, "pending"); assert.equal(j.best, cm + 5000);
+  assert.equal(j.verified, "pending"); assert.equal(j.best, cm + 40);
   const before = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();
-  assert.equal(before?.cm, cm + 5000, "the claim stands until the replay says otherwise");
+  assert.equal(before?.cm, cm + 40, "the claim stands until the replay says otherwise");
   assert.equal(pending.length, 1, "the replay was handed off");
   await Promise.all(pending);
   const after = await e.DB.prepare("SELECT cm FROM daily WHERE player_id = ?").bind(playerId).first<{ cm: number }>();

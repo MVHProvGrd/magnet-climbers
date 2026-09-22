@@ -17,7 +17,7 @@
  */
 import { Game } from "../../src/game/game";
 import { replay, stepOf, MAX_EVENTS, STEP, type Tape, type TapeEvent } from "../../src/game/recorder";
-import type { UpgradeKey } from "../../src/game/config";
+import { CFG, statsFor, type UpgradeKey } from "../../src/game/config";
 import type { Vec } from "../../src/game/types";
 
 /** The daily's seed: the same FNV-1a over the day key the client uses. Pinned by a test. */
@@ -80,6 +80,34 @@ function checkTapeOn(raw: unknown, seed: number, worldVersion: number, wrongSeed
     else return { reason: "unknown event" };
   }
   return { tape: t as Tape };
+}
+
+/**
+ * The plausibility screen: is the claim something these inputs could possibly have climbed?
+ * Physics, not judgement, and generous with it. A fling cannot leave the slingshot faster than
+ * a full pull; one fling can raise a toy by at most its launch speed squared over twice
+ * gravity, so a run is bounded by its flings; nobody flings more than a few times a second, so
+ * it is bounded by its length too. Bots average eight centimetres a fling and peak at twenty;
+ * every bound here sits well above that and well below what a forged claim looks like. A claim
+ * that fails is refused on the request, before the replay is ever queued.
+ */
+export const MAX_CM_PER_FLING = 45;
+export const MAX_CM_PER_SECOND = 80;
+export const PLAUSIBLE_SLACK_CM = 150;
+export function plausible(tape: Tape, claimedCm: number): string | null {
+  const full = CFG.maxDrag * CFG.launchScale * statsFor({ ...DAILY_KIT, ...(tape.kit as Record<UpgradeKey, number>) }).launchMult * 1.02;
+  let flings = 0, lastStep = 0;
+  for (const e of tape.events) {
+    lastStep = Math.max(lastStep, stepOf(e.t));
+    if (e.k !== "fling") continue;
+    flings++;
+    if (Math.hypot(e.v.x, e.v.y) > full) return "fling beyond the slingshot";
+  }
+  if (tape.steps !== undefined && tape.steps < lastStep) return "sealed before its last input";
+  const seconds = tape.steps !== undefined ? tape.steps * STEP : tape.seconds;
+  if (claimedCm > flings * MAX_CM_PER_FLING + PLAUSIBLE_SLACK_CM) return "height per fling";
+  if (claimedCm > seconds * MAX_CM_PER_SECOND + PLAUSIBLE_SLACK_CM) return "height per second";
+  return null;
 }
 
 const finiteVec = (v: unknown): v is Vec =>
