@@ -934,8 +934,9 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   // the ghost wears the look its run was climbed in (a friend's, from the room or the tape),
   // or last time's colours for your own best, so the two climbers are never mistaken
   const mine = { creature: save.creature, pattern: save.pattern };
-  // in a race the two seats start on opposite doors: your ghost of them climbs from the other one
-  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, ((liveRace.watch?.[0]?.look ?? liveRace.look) as Look | undefined) ?? mine, liveRace.watch ? 0 : liveRace.side ? 0 : 1)
+  // in a race the two seats start on opposite doors: your ghost of them climbs from the other
+  // one. A room that names no side (an older Worker) starts everyone on the left, ghost included.
+  ghost = liveRace ? new LiveGhost(liveRace.seed, liveRace.world, ((liveRace.watch?.[0]?.look ?? liveRace.look) as Look | undefined) ?? mine, liveRace.watch || liveRace.side === undefined ? 0 : liveRace.side ? 0 : 1)
     : raceTape ? new Ghost(raceTape, mine) : null;
   game.ghost = ghost;
   if (liveRace?.watch) {

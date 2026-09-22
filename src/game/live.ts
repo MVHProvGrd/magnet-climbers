@@ -13,7 +13,7 @@ export interface LiveHandlers {
   /** seated and waiting; `others` are the other seats and whether their phone is here */
   wait(others: LiveOther[]): void;
   /** `players` is set for a watcher: both seats, in order; `side` is the door you start on */
-  start(seed: number, world: number, them: LivePlayer, countdownMs: number, side: 0 | 1, players?: LivePlayer[]): void;
+  start(seed: number, world: number, them: LivePlayer, countdownMs: number, side: 0 | 1 | undefined, players?: LivePlayer[]): void;
   input(e: TapeEvent, from?: string): void;
   /** the other phone's clock: it has reached this run time */
   tick(t: number, from?: string): void;
@@ -83,7 +83,7 @@ export class LiveMatch {
       let m: { k: string } & Record<string, unknown>;
       try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.k === "wait") this.on.wait((m.others as LiveOther[] | undefined) ?? []);
-      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.side === 1 ? 1 : 0, m.players as LivePlayer[] | undefined);
+      else if (m.k === "start") this.on.start(m.seed as number, m.world as number, m.them as LivePlayer, (m.countdownMs as number) || 3000, m.side === 1 ? 1 : m.side === 0 ? 0 : undefined, m.players as LivePlayer[] | undefined);
       else if (m.k === "in") {
         const e = m.e as { k?: string; t?: number };
         if (e?.k === "tick") this.on.tick(Number(e.t) || 0, m.from as string | undefined);
