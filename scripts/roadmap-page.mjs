@@ -39,7 +39,7 @@ const NOW = [
   {
     title: "Feel pass from phone play",
     line: "What is left of the audit's loop items wants a phone, not a plan.",
-    why: "The first run forgives its first three flings, the red line telegraphs, the rail shows every rival, and a run stuck under glass is told to pull all the way. Left: a door that looks like it is going somewhere, and whether the seed-to-seed spread needs a clamp once the bots have measured it.",
+    why: "The first run forgives its first three flings, the red line telegraphs, the rail shows every rival, and a run stuck under glass is told to pull all the way. Left: a door that looks like it is going somewhere. The bots measured the seed spread and found the bottle door at its floor, which a full pull clears; no clamp.",
     touches: ["src/game/scenery-materials.ts", "src/game/world.ts", "src/game/config.ts"],
     size: "medium",
   },
@@ -52,20 +52,6 @@ const THEN = [
     why: "/score and /run take a token and a number. Replaying every mode is weeks of Worker CPU; the lighter road is to stop framing those boards as competitive until they are checked too. The plausibility screen now on daily posts would move across cheaply; the full replay would not. Owner call.",
     touches: ["worker/src/index.ts /score /run", "board copy"],
     size: "medium",
-  },
-  {
-    title: "Seed-to-seed variance clamp",
-    line: "Measure it with the bots first.",
-    why: "The September audit saw a fixed-input bot range 73 to 625 cm across ten seeds. The pressure harness can now run fifty seeds in a minute and say how much of a weak run is the door. If the spread is real, an anti-streak rule in generation, on a new world version.",
-    touches: ["tests/pressure.ts", "src/game/world.ts generate"],
-    size: "medium",
-  },
-  {
-    title: "Generation hitches and a screen reader",
-    line: "Two craft items that need no phone.",
-    why: "Four to six millisecond spikes when a new door scrolls in, from sticker retries and bumper path checks done in one frame; spread them. And the canvas has no role, no label and no live region; give it those, and honour reduced motion on the prize reel.",
-    touches: ["src/game/world.ts", "index.html", "src/game/ui.ts"],
-    size: "small",
   },
   {
     title: "Capacitor, rewarded ads, IAP",
@@ -166,7 +152,7 @@ const AUDIT = [
       ["Release adds spin nobody can control", "src/game/game.ts launch", "c.spin takes a noise term worth about four radians a second, keyed to the release frame. Skill cannot overcome it and the player cannot see it.", "fixed"],
       ["Terrain stops getting harder at 1,360 cm", "src/game/world.ts generate", "difficulty is min(1, i/40) and every probability that reads it flatlines there. Measured hazard density is identical from 1,360 cm to 13,600 cm; only the red line still escalates, so most of a strong run is on flat ground.", "fixed"],
       ["Every seed has the same skeleton", "src/game/world.ts generate", "Gadget doors land on i%4 and set pieces on i%5, so across ten seeds they fall in exactly the same columns. Gadget kinds are a literal round robin. Only the contents vary, never the pacing.", "fixed"],
-      ["A weak run is eight times more seed than skill", "src/game/world.ts", "A bot with fixed inputs ranged 73 to 625 cm across ten seeds. Hazard-heavy doors can string together with no anti-streak clamp.", "open"],
+      ["A weak run is eight times more seed than skill", "tests/seed-variance.ts, tests/band-probe.ts", "Measured properly: three fixed policies over sixty seeds. The spread is real (p90 over p10 of 6 to 13 times) but its floor is the first bottle door, which the bots undershoot; a full pull straight up clears every one of them with 50 to 140 px to spare and sticks above. Only two seeds of sixty were bottom-quarter for every policy, and both clear the same way. No clamp; the stall hint instead.", "decided"],
       ["Speed multipliers stack with no ceiling", "src/game/game.ts wallSpeed", "The stepped ramp, the creep and the catch-up multiply with no cap on the product, so a climber who pulls ahead can meet an eleven-times spike rather than an escalation.", "fixed"],
     ],
   },
@@ -195,8 +181,8 @@ const AUDIT = [
       ["The red line has no telegraph", "src/game/render.ts, src/game/hud.ts", "One or two pixels and a small bar, for the thing that ends almost every run. Death reads as a number running out rather than a threat arriving.", "fixed"],
       ["Climbing higher does not look like going anywhere", "src/game/scenery-materials.ts", "The door is the same texture at 200 cm and at 400 cm; only the props change.", "open"],
       ["Six gradients per climber per frame", "src/game/climber-render.ts", "None cached, though most change only with the climber's colour. Every visible zone rebuilds its gradients and shadows every frame too, despite the file saying it caches them. Measured against a 49.8 ms draw spike in real play.", "fixed"],
-      ["Segment generation hitches", "src/game/world.ts generate", "Tail spikes of four to six milliseconds on the frame a new door scrolls in, from sticker placement retries and bumper path checks done all at once.", "open"],
-      ["The canvas is invisible to a screen reader", "src/game/ui.ts, index.html", "No role, no label, no live region, and drag is the only touch input. Push and pull are told apart by hue alone, and the prize reel ignores prefers-reduced-motion.", "open"],
+      ["Segment generation hitches", "tests/gen-timing.ts", "Re-measured over 2,400 segments on forty seeds: p50 0.04 ms, p99 0.29 ms, worst 2.2 ms, none over four. Whatever caused the September spikes is gone.", "fixed"],
+      ["The canvas is invisible to a screen reader", "src/game/ui.ts, index.html", "The canvas has a role and a label, the HUD narrates height, hazards and the run's end into a live region, and the prize reel respects prefers-reduced-motion.", "fixed"],
       ["The app precaches 10.8 MB on install", "vite.config.ts", "188 files, 7.9 MB of it art, downloading against the assets actually on screen.", "fixed"],
     ],
   },
@@ -326,7 +312,7 @@ const BODY = `
 
   <section>
     <h2>Audit <span class="count">22 lanes, September</span></h2>
-    <p class="note">Twenty-two read-only passes over the September build, plus six more this week over movement, sounds, rendering, gadgets, the shell and the Worker. Everything below names the file it lives in; a flag says where it stands now. Sixteen of the September findings have been fixed since.</p>
+    <p class="note">Twenty-two read-only passes over the September build, plus six more this week over movement, sounds, rendering, gadgets, the shell and the Worker. Everything below names the file it lives in; a flag says where it stands now. Eighteen of the September findings have been fixed since, and one measured and closed.</p>
     ${AUDIT.map((b) => `<div class="band"><h3>${esc(b.band)}</h3><p>${esc(b.note)}</p><div class="finds">${
       b.rows.map(([t, where, body, flag]) => `<div class="find"><b>${esc(t)}</b><span class="flag ${flag}">${esc(flag)}</span><code>${esc(where)}</code><p>${esc(body)}</p></div>`).join("")
     }</div></div>`).join("")}

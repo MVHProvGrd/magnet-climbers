@@ -31,8 +31,8 @@ function run(seed: number, p: Profile): { cm: number; s: number; cause: string |
       }
       // no hold in sight: a full pull straight up, which is what clears a glass band
       const tx = (best?.x ?? c.x) + (r() - 0.5) * p.aim, dy = best ? c.y - best.y : 260;
-      let vx = (tx - c.x) * 1.7, vy = best ? -(dy * 1.35 + 260) : -FULL;
-      const len = Math.hypot(vx, vy), cap = FULL * (best ? p.power : 1);
+      let vx = (tx - c.x) * 1.7, vy = best && dy <= 180 ? -(dy * 1.35 + 260) : -FULL;
+      const len = Math.hypot(vx, vy), cap = FULL * (best && dy <= 180 ? p.power : 1);
       if (len > cap) { vx *= cap / len; vy *= cap / len; }
       if (g.launch(c, { x: vx, y: vy })) { flings++; cool = p.reaction * (0.7 + r() * 0.6); } else cool = 0.15;
     }

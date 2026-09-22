@@ -123,8 +123,9 @@ class Bot {
     const tx = (best?.x ?? (x < W / 2 ? W * 0.72 : W * 0.28)) + (this.r() - 0.5) * this.t.aim;
     const dy = best ? y - best.y : this.t.reach;
     // a fling that clears the hold by a little: up hard, across in proportion
-    let vx = (tx - x) * 1.7, vy = -(dy * 1.35 + 260);
-    const len = Math.hypot(vx, vy), cap = FULL * this.t.power;
+    // a hold more than a screen's quarter away wants a full pull: what the stall hint teaches
+    let vx = (tx - x) * 1.7, vy = -(dy > 180 ? FULL : dy * 1.35 + 260);
+    const len = Math.hypot(vx, vy), cap = FULL * (dy > 180 ? 1 : this.t.power);
     if (len > cap) { vx *= cap / len; vy *= cap / len; }
     return { x: vx, y: vy };
   }
