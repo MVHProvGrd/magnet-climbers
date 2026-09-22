@@ -4,7 +4,7 @@ import { silentAudio, type GameAudio } from "./silent-audio";
 import type { ActiveEffects, Climber, NoStickZone, PowerUp, Vec } from "./types";
 import { World, DOOR_SEAM, inRect, makeRng } from "./world";
 import { gadgetZone } from "./gadgets";
-import { Recorder, quantize } from "./recorder";
+import { Recorder, quantize, stepOf } from "./recorder";
 import { attachGrip, braceLanding, cloneGrip, findContacts, limbTip, settleGrip, stepGrip } from "./magnetism";
 import { cloneRagdoll, resetRagdoll, stepRagdoll } from "./ragdoll";
 import { handTouches, handWorldPoint, RECOIL_DURATION, SWIPE_DURATION, type KidHand } from "./kid-hand";
@@ -712,7 +712,7 @@ export class Game {
   sealTape(daily = false, look?: { creature: string; pattern: string }) {
     return this.tape.tape({
       seed: this.world.seed, world: this.world.version, kit: { ...this.levels },
-      chill: this.chill, daily, cm: this.heightCm, seconds: Math.round(this.runTime),
+      chill: this.chill, daily, cm: this.heightCm, seconds: Math.round(this.runTime), steps: stepOf(this.time),
       ...(look ? { look } : {}),
     });
   }

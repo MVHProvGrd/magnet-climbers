@@ -34,6 +34,12 @@ export interface Tape {
   /** what the run finished at, for a quick check before anyone replays it */
   cm: number;
   seconds: number;
+  /**
+   * the sim step the run was sealed on, so a replay runs to that very step. `seconds` is the
+   * player's clock, rounded and slowed by a Kitchen Timer; a run ended mid-flight (the race
+   * was decided) replayed to the rounded second sat a few steps short of its own height.
+   */
+  steps?: number;
   /** the creature and pattern the run was climbed in, so a ghost of it wears them */
   look?: { creature: string; pattern: string };
 }
@@ -123,8 +129,9 @@ export function replay<T>(
     while (n < at) { if (done(game)) return game; step(game, dt); n++; }
     apply(game, e);
   }
-  // and run out whatever was still in the air when the last input happened
-  const end = Math.max(n, Math.ceil(tape.seconds / dt));
+  // and run out whatever was still in the air when the last input happened, to the step the
+  // run was sealed on when the tape says which, else to its rounded second
+  const end = Math.max(n, tape.steps ?? Math.ceil(tape.seconds / dt));
   while (n < end) { if (done(game)) return game; step(game, dt); n++; }
   return game;
 }

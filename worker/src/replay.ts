@@ -61,6 +61,7 @@ function checkTapeOn(raw: unknown, seed: number, worldVersion: number, wrongSeed
   if (t.chill) return { reason: "chill tape" };
   if (t.seed !== seed) return { reason: wrongSeed };
   if (t.world !== worldVersion) return { reason: "wrong world" };
+  if (t.steps !== undefined && (!Number.isFinite(t.steps) || t.steps < 0 || t.steps > MAX_STEPS)) return { reason: "bad steps" };
   const kit = t.kit ?? {};
   for (const k of Object.keys(DAILY_KIT) as UpgradeKey[]) if ((kit[k] ?? 0) !== 0) return { reason: "kit on a daily" };
   if (!Number.isFinite(t.cm) || !Number.isFinite(t.seconds)) return { reason: "bad totals" };
