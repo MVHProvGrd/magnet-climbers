@@ -1067,7 +1067,7 @@ function endRun() {
 const toWorld = (e: PointerEvent) => {
   const r = canvas.getBoundingClientRect();
   const s = W / r.width;
-  return { x: (e.clientX - r.left) * s, y: (e.clientY - r.top) * s + (game?.camY ?? 0) };
+  return { x: (e.clientX - r.left) * s, y: (e.clientY - r.top) * s + (game?.viewCamY(viewH) ?? 0) };
 };
 const toScreen = (e: PointerEvent) => {
   const r = canvas.getBoundingClientRect();

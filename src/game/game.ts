@@ -13,8 +13,25 @@ import { cloneTricks, freshTricks, type TrickState } from "./tricks";
 import { patternColors, type Look } from "./creatures";
 
 export type Phase = "idle" | "running" | "dead";
+/**
+ * The height of the view the sim reasons in. The camera the rules use (what counts as fallen
+ * off the bottom, how far ahead the door exists, where the cat's paw comes down) is built on
+ * this fixed figure, never on the phone's real screen, so two phones of different heights,
+ * and the room replaying their tapes, all run the very same climb. The renderer offsets its
+ * own camera from this one so the toy still sits at the same place on any screen.
+ */
+export const SIM_VIEW_H = 700;
 /** How far a clip tips when a climber hangs off one end of its bar. */
 const TIP_ANGLE = 0.22;
+/** Where something that started at `p0` moving at `v`, bouncing between `lo` and `hi`, is at time `t`, and which way it is going. */
+function bounce(p0: number, v: number, lo: number, hi: number, t: number): { p: number; v: number } {
+  const range = hi - lo;
+  if (range <= 0 || v === 0) return { p: Math.min(hi, Math.max(lo, p0)), v };
+  const period = range * 2;
+  let d = (Math.min(hi, Math.max(lo, p0)) - lo) + v * t;
+  d = ((d % period) + period) % period;
+  return d <= range ? { p: lo + d, v: Math.abs(v) } : { p: hi - (d - range), v: -Math.abs(v) };
+}
 /** How a climber was lost. The lost card turns this into a line of prose. */
 export type DeathCause = "redline" | "fell" | "paw" | "hand" | "bumper" | "flings";
 
@@ -160,6 +177,8 @@ export class Game {
   drops: { x: number; y: number; vx: number; vy: number; spin: number }[] = [];
   floats: { x: number; y: number; text: string; life: number; color: string }[] = [];
   viewH = 700;
+  /** The camera the screen draws from: the sim's, shifted so the toy sits at the same place on a taller or shorter view. */
+  viewCamY(viewH: number): number { return this.camY - (viewH - SIM_VIEW_H) * 0.55; }
   /**
    * A recorded climb running beside this one. The loop that owns the run steps it, so it
    * stays in lockstep through pauses and slow-motion; this field is only how the renderer
@@ -208,9 +227,9 @@ export class Game {
     this.world = new World(seed, 0, opts.worldVersion);
     this.floorY = CFG.floorStartOffset;
     this.highestY = 0;
-    this.camY = -this.viewH * 0.55;
+    this.camY = -SIM_VIEW_H * 0.55;
     this.spawnTeam(1, 0);
-    this.world.ensure(-this.viewH * 2);
+    this.world.ensure(-SIM_VIEW_H * 2);
     this.relabelSolo();
   }
 
@@ -773,7 +792,7 @@ export class Game {
     g.coins = snap.coins; g.gems = snap.gems; g.reserves = snap.reserves; g.revivesLeft = snap.revivesLeft;
     g.effects = { ...snap.effects, candy: snap.effects.candy ?? 0 }; g.time = snap.time; g.sync = snap.sync; g.selectedId = snap.selectedId;
     g.phase = "running";
-    g.world.ensure(g.camY - g.viewH);
+    g.world.ensure(g.camY - SIM_VIEW_H);
     return g;
   }
 
@@ -796,7 +815,7 @@ export class Game {
     }
 
     if (this.phase === "running") { this.runTime += sdt; this.floorY -= this.wallSpeed() * sdt; }
-    if (this.chill) this.floorY = this.camY + this.viewH + 1e6;
+    if (this.chill) this.floorY = this.camY + SIM_VIEW_H + 1e6;
 
     if (this.pendingLaunches.length) {
       const due = this.pendingLaunches.filter((p) => p.at <= this.time);
@@ -809,17 +828,16 @@ export class Game {
       this.selectedId = keep;
     }
 
-    // bumpers: slide, lift or zig-zag inside their box
+    // Bumpers slide, lift or zig-zag inside their box. Their place is a function of the run's
+    // clock, not of how long they have existed: stepped from the moment their segment was
+    // generated, they sat in a different phase on every phone (a taller screen generates the
+    // door sooner) and the replay of a tape met a bumper the run itself had not.
+    const clock = this.world.gadgetTime;
     for (const s of this.world.segments) {
       for (const b of s.bumpers) {
-        b.x += b.vx * sdt;
-        if (b.x < b.minX) { b.x = b.minX; b.vx = Math.abs(b.vx); }
-        if (b.x > b.maxX) { b.x = b.maxX; b.vx = -Math.abs(b.vx); }
-        if (b.vy) {
-          b.y += b.vy * sdt;
-          if (b.y < b.minY) { b.y = b.minY; b.vy = Math.abs(b.vy); }
-          if (b.y > b.maxY) { b.y = b.maxY; b.vy = -Math.abs(b.vy); }
-        }
+        if (b.x0 === undefined) { b.x0 = b.x; b.y0 = b.y; b.vx0 = b.vx; b.vy0 = b.vy; }
+        const px = bounce(b.x0, b.vx0 ?? 0, b.minX, b.maxX, clock); b.x = px.p; b.vx = px.v;
+        if (b.vy0) { const py = bounce(b.y0 ?? b.y, b.vy0, b.minY, b.maxY, clock); b.y = py.p; b.vy = py.v; }
       }
     }
     for (const c of this.climbers) if (c.iframes > 0) c.iframes = Math.max(0, c.iframes - dt);
@@ -857,9 +875,9 @@ export class Game {
     // floor claims
     for (const c of this.climbers) {
       if (c.state !== "lost" && c.y > this.floorY + 10) this.lose(c, "redline");
-      if (c.state === "flying" && c.y > this.camY + this.viewH + 200) this.lose(c, "fell");
+      if (c.state === "flying" && c.y > this.camY + SIM_VIEW_H + 200) this.lose(c, "fell");
       // chill has no wall, so a long fall below the high point is the only way to lose one
-      if (this.chill && c.state === "flying" && c.y > this.highestY + this.viewH * 1.6 + 300) this.lose(c);
+      if (this.chill && c.state === "flying" && c.y > this.highestY + SIM_VIEW_H * 1.6 + 300) this.lose(c);
     }
     // hanging chains whose parent vanished
     for (const c of this.climbers) {
@@ -875,10 +893,10 @@ export class Game {
     // the camera always follows the active climber; there is no hand-panning to escape it
     const sel = this.byId(this.selectedId);
     if (sel) {
-      const target = sel.y - this.viewH * 0.55;
+      const target = sel.y - SIM_VIEW_H * 0.55;
       this.camY += (target - this.camY) * Math.min(1, dt * 5);
     }
-    this.world.ensure(this.camY - this.viewH);
+    this.world.ensure(this.camY - SIM_VIEW_H);
     this.relabelSolo();
 
     // particles / floats
@@ -889,7 +907,7 @@ export class Game {
       if (d.x < 16 || d.x > W - 16) { d.vx = -d.vx * 0.7; d.x = Math.max(16, Math.min(W - 16, d.x)); }
     }
     for (const d of this.drops) if (d.y >= this.floorY + 20) this.a.sfx.munch(); // the kid gets the sweet
-    this.drops = this.drops.filter((d) => d.y < this.floorY + 20 && d.y < this.camY + this.viewH + 200);
+    this.drops = this.drops.filter((d) => d.y < this.floorY + 20 && d.y < this.camY + SIM_VIEW_H + 200);
     this.particles = this.particles.filter((p) => p.life > 0);
     for (const f of this.floats) { f.y -= 40 * dt; f.life -= dt; }
     this.floats = this.floats.filter((f) => f.life > 0);
@@ -1229,7 +1247,7 @@ export class Game {
   private stepPaw(dt: number) {
     const paw = this.paw; if (!paw) return;
     paw.t += dt;
-    const pose = pawPose(paw, this.camY, this.viewH);
+    const pose = pawPose(paw, this.camY, SIM_VIEW_H);
     // each tap leaves four claw marks where it landed (fixed to the door, off the seam), fading on their own
     const marked = paw.marked ?? 0;
     // paw.t includes the warning hold, so the tap times are offset by it

@@ -1126,6 +1126,34 @@ test("every month has a door and a pattern only that month gives out", () => {
   assert.equal(monthKey(Date.parse("2026-10-01T05:01:00Z")), "2026-10");
 });
 
+test("when the door is generated makes no difference to the climb", () => {
+  // a taller screen generates the door sooner; bumpers used to be stepped from the moment
+  // their segment existed, so two phones met them in different phases and diverged
+  const play = (g: Game) => {
+    g.phase = "running";
+    for (let i = 0; i < 40; i++) {
+      const c = g.climbers[0];
+      if (c.state === "stuck" || c.state === "linked") g.launch(c, { x: i % 3 === 0 ? 120 : -90, y: -520 });
+      for (let k = 0; k < 60; k++) g.update(1 / 120);
+      if (g.phase === "dead") break;
+    }
+    return g;
+  };
+  for (const seed of [11, 4242, 90210]) {
+    const early = new Game(levels, events, { seed, rules: "solo" });
+    early.world.ensure(-1500); // a good stretch of door up front, as a taller screen would
+    const late = new Game(levels, events, { seed, rules: "solo" });
+    play(early); play(late);
+    assert.equal(early.heightCm, late.heightCm, `seed ${seed}: same height whenever the door was generated`);
+    assert.deepEqual(early.climbers.map((c) => [Math.round(c.x), Math.round(c.y), c.state]), late.climbers.map((c) => [Math.round(c.x), Math.round(c.y), c.state]));
+    assert.equal(early.feats.hits, late.feats.hits, `seed ${seed}: same hits`);
+  }
+  // and the screen's own height never reaches the sim: only the view camera moves with it
+  const g = new Game(levels, events, { seed: 5, rules: "solo" });
+  g.viewH = 1000;
+  assert.equal(g.viewCamY(1000), g.camY - 300 * 0.55);
+});
+
 test("a tape replays into the same climb it recorded", () => {
   // the whole point of the recorder: seed plus inputs is enough to build the run again
   const play = (g: Game) => {

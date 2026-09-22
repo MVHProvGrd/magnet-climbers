@@ -1,6 +1,6 @@
 import { appearanceFor } from "./creatures";
 import { CFG, W } from "./config";
-import type { Game } from "./game";
+import { SIM_VIEW_H, type Game } from "./game";
 import { drawClimber, drawClimberShadow, drawClimberFaded, setArmStretch, getArmStretch } from "./climber-render";
 import { t as tr } from "./i18n";
 import { drawKidHand } from "./kid-hand";
@@ -29,11 +29,13 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const sx = g.shake > 0 ? (Math.random() - 0.5) * 8 * g.shake : 0;
   const sy = g.shake > 0 ? (Math.random() - 0.5) * 8 * g.shake : 0;
-  ctx.translate(sx, sy - g.camY);
+  // the screen's camera: the sim's, shifted for this screen's height
+  const cam = g.viewCamY(viewH);
+  ctx.translate(sx, sy - cam);
 
   // wider than the tallest overdraw beyond a segment: a keychain's hook sits 45 px above its zone
-  const top = g.camY - 80;
-  const bottom = g.camY + viewH + 80;
+  const top = cam - 80;
+  const bottom = cam + viewH + 80;
 
   drawSurface(ctx, top, bottom);
 
@@ -202,8 +204,9 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, viewH: number, dp
 
   // the kid's hand
   if (g.scratches.length) drawScratches(ctx, g.scratches, g.time);
-  if (g.hand) drawKidHand(ctx, g.hand, g.camY, viewH);
-  if (g.paw) drawCatPaw(ctx, g.paw, g.camY, viewH);
+  if (g.hand) drawKidHand(ctx, g.hand, cam, viewH);
+  // the paw is drawn where the sim has it, from the sim's camera, so what is shaded is what hurts
+  if (g.paw) drawCatPaw(ctx, g.paw, g.camY, SIM_VIEW_H);
 
   // your own best: a quiet line to beat, green once you pass it
   if (g.best && g.best.cm > 0) {
@@ -277,7 +280,7 @@ function drawHud(ctx: CanvasRenderingContext2D, g: Game, viewH: number) {
   // off-screen climbers: coloured arrows at the edge, tappable
   for (const m of offscreenMarkers(g, viewH)) {
     const c = g.byId(m.id)!;
-    const dist = Math.round(Math.abs(c.y - g.camY - viewH / 2) / CFG.pxPerCm);
+    const dist = Math.round(Math.abs(c.y - g.viewCamY(viewH) - viewH / 2) / CFG.pxPerCm);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     roundRect(ctx, m.x - 26, m.y - 16, 52, 32, 10);
     ctx.fill();
@@ -395,7 +398,7 @@ export function offscreenMarkers(g: Game, viewH: number): { id: number; x: numbe
   const out: { id: number; x: number; y: number; dir: "up" | "down" }[] = [];
   for (const c of g.climbers) {
     if (c.state === "lost") continue;
-    const sy = c.y - g.camY;
+    const sy = c.y - g.viewCamY(viewH);
     if (sy > -40 && sy < viewH + 40) continue;
     const x = Math.max(28, Math.min(W - 28, c.x));
     out.push({ id: c.id, x, y: sy < 0 ? 118 : viewH - 128, dir: sy < 0 ? "up" : "down" });

@@ -53,6 +53,8 @@ export interface Bumper {
   vy: number;
   minY: number;
   maxY: number;
+  /** where it started and how it set off; its place at any moment follows from these and the run's clock */
+  x0?: number; y0?: number; vx0?: number; vy0?: number;
 }
 
 export interface Segment {
