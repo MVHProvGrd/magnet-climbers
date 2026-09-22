@@ -704,6 +704,16 @@ function armHint() { hintLeft = HINT_SECONDS; setHintLeft(hintLeft); }
 function cancelHint() { if (hintLeft !== null) { hintLeft = null; setHintLeft(null); } }
 
 let tutorial: { step: number; t: number } | null = null;
+/** the stall hint is one per run: three flings that land no higher, and it says pull all the way */
+let stallHinted = false;
+let stallTipTimer: ReturnType<typeof setTimeout> | null = null;
+function tickStall() {
+  if (!game || tutorial || stallHinted || game.spectator || game.stalls < 3) return;
+  stallHinted = true;
+  ui.showTip("Not getting higher? Pull ALL the way back and aim straight up to clear the glass.");
+  if (stallTipTimer) clearTimeout(stallTipTimer);
+  stallTipTimer = setTimeout(() => { if (!tutorial) ui.hideTip(); }, 5000);
+}
 const keyboardDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches && !("ontouchstart" in window);
 setKeyboardHints(keyboardDevice);
 const tutorialSteps: { tip: string; done: (g: Game, t: number) => boolean }[] = [
@@ -991,6 +1001,7 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   if (liveRace && live && !liveRace.watch) { const m = live; game.tape.onEvent = (e) => m.input(e); }
   if (!liveRace) livePanel = null;
   tutorial = withTutorial ? { step: 0, t: 0 } : null;
+  stallHinted = false;
   // the coached tutorial has its own bubbles; the idle hint would sit on top of them
   if (withTutorial) cancelHint(); else armHint();
   if (!withTutorial && !save.chill && !daily) {
@@ -1245,6 +1256,7 @@ function frame(now: number) {
       }
       simMs = performance.now() - simT0;
       tickTutorial(dt);
+      tickStall();
       updateMissionStrip(dt);
       if (game.phase === "idle") tickHint(dt); else cancelHint();
     }

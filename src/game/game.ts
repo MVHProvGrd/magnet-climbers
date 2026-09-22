@@ -169,6 +169,8 @@ export class Game {
   /** per-slot looks (creature + pattern); climber i wears lineup[i % length] */
   lineup: Look[];
   feats: RunFeats = { maxChain: 0, gadgetRides: 0, hits: 0, paints: 0, unhurtCm: 0 };
+  /** flings in a row that came back down no higher than they left: the run is stuck under something */
+  stalls = 0;
   /** banked totals from the save, so the HUD can show wallet + this run */
   walletCoins = 0;
   walletGems = 0;
@@ -1142,6 +1144,8 @@ export class Game {
     c.parent = null;
     c.vx = 0; c.vy = 0; c.spin = 0;
     c.squash = 1;
+    // a landing no higher than the last hold, again: the sign of a timid pull under a glass band
+    this.stalls = c.launchY != null && c.y >= c.launchY - 20 ? this.stalls + 1 : 0;
     this.a.sfx.stick();
     if (c.grip?.contacts.some((k) => k.carrierId)) this.feats.gadgetRides++;
     if (!flat && c.airTime > 0.18) {

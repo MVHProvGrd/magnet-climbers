@@ -1154,6 +1154,19 @@ test("when the door is generated makes no difference to the climb", () => {
   assert.equal(g.viewCamY(1000), g.camY - 300 * 0.55);
 });
 
+test("flings that come back down no higher count as stalls", () => {
+  const g = new Game(levels, events, { seed: 4242, rules: "solo" });
+  g.phase = "running";
+  const c = g.climbers[0];
+  // a tiny hop straight up lands right back where it left
+  for (let i = 0; i < 3; i++) {
+    g.launch(c, { x: 0, y: -120 });
+    for (let k = 0; k < 120 && c.state === "flying"; k++) g.update(1 / 120);
+  }
+  assert.ok(c.state === "stuck", "back on the door");
+  assert.equal(g.stalls, 3, "three hops that gained nothing");
+});
+
 test("a tape replays into the same climb it recorded", () => {
   // the whole point of the recorder: seed plus inputs is enough to build the run again
   const play = (g: Game) => {
