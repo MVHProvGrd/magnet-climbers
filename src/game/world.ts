@@ -29,6 +29,8 @@ const pick = <T,>(r: Rng, arr: T[]) => arr[Math.floor(r() * arr.length)];
 
 /** Steel kept clear above and below every door seam (v7+), so a climber can always land at a door edge. */
 export const SEAM_MARGIN = 36;
+/** v28: how far a push field must stay from a window's open lane, beyond its own reach: room for a toy to land. */
+export const LANE_CLEARANCE = 60;
 
 /** POP! bubble centres as fractions of the toy image (5 columns x 2 rows) and their radius as a fraction of width. */
 export const POP_BUBBLES: readonly [number, number][] = [[0.158, 0.279], [0.329, 0.279], [0.498, 0.279], [0.666, 0.279], [0.843, 0.279], [0.158, 0.679], [0.329, 0.679], [0.498, 0.679], [0.666, 0.679], [0.843, 0.679]];
@@ -200,7 +202,7 @@ export class World {
   /** last paper card used, so consecutive segments do not repeat it */
   private lastCardId = "";
 
-  constructor(seed: number, startY: number, readonly version = 27) {
+  constructor(seed: number, startY: number, readonly version = 28) {
     this.seed = seed;
     this.rng = makeRng(seed);
     this.topY = startY;
@@ -237,6 +239,7 @@ export class World {
 
   private generate(i: number): Segment {
     const r = this.rng;
+    let laneDoor: 0 | 1 | undefined;
     const y = this.topY - CFG.segmentH;
     const h = CFG.segmentH;
     // v24: 40 segments capped difficulty at ~1360cm, so hazard density flatlined for the rest of
@@ -283,7 +286,17 @@ export class World {
         // glass panel with a usable steel strip (≥ 56px) on at least one side
         // v12: the window fills its door like the set pieces do (176 wide, 12 px in from the edge and the seam)
         const gw = this.version >= 12 ? 176 : this.version >= 8 ? rangeOf(r, 140, 180) : rangeOf(r, 180, 220 + difficulty * 60);
-        const gx = this.version >= 12 ? (r() < 0.5 ? 12 : 212) : this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
+        let gx = this.version >= 12 ? (r() < 0.5 ? 12 : 212) : this.version >= 8 ? onOneDoor(r, gw) : r() < 0.5 ? rangeOf(r, 56, W - gw - 56) : r() < 0.5 ? 0 : W - gw;
+        // v28: a field plate in the segment below whose push reaches up here must not sit on the
+        // lane, so the glass goes on that plate's door; a plate on each door means no window at all
+        if (this.version >= 28) {
+          const below = this.segments[this.segments.length - 1];
+          const reaching = (below?.zones ?? []).filter((z) => z.kind === "repel" && z.y - repelReach(z) - LANE_CLEARANCE < below.y);
+          const doors = new Set(reaching.map((z) => (z.x + z.w / 2 < W / 2 ? 0 : 1)));
+          if (doors.size === 2) break;
+          if (doors.size === 1) gx = doors.has(0) ? 12 : 212;
+        }
+        laneDoor = gx < W / 2 ? 1 : 0;
         zones.push({ x: gx, y: y + 20, w: gw, h: h - 40, kind: "glass" });
         // a handle across the glass now and then, as a mid-way hold (dropped in v13: nothing bolts to a glass door;
         // since v8 the window sits on one door and the other door is the lane)
@@ -333,7 +346,12 @@ export class World {
       const rw = chosen ? chosen[0] : rangeOf(r, 70, 120);
       const rh = chosen ? chosen[1] : rangeOf(r, 70, 110);
       const m = this.version >= 7 ? SEAM_MARGIN : 10;
-      const rx = this.version >= 8 ? onOneDoor(r, rw, 10) : rangeOf(r, 10, W - rw - 10);
+      let rx = this.version >= 8 ? onOneDoor(r, rw, 10) : rangeOf(r, 10, W - rw - 10);
+      // v28: a window just below leaves one door as the only way up; a push field on that door,
+      // reaching down to the window, closed the fridge (seen at 4,513 cm). The plate goes over
+      // the glass door instead, where a field costs the climb nothing.
+      const below = this.segments[this.segments.length - 1];
+      if (this.version >= 28 && below?.laneDoor !== undefined) rx = below.laneDoor === 0 ? rangeOf(r, DOOR_SEAM.x + DOOR_SEAM.w + 8, W - rw - 10) : rangeOf(r, 10, DOOR_SEAM.x - 8 - rw);
       // v9+: plates vary in strength; the odd big one is a slingshot that throws a flier well past its arc
       const big = this.version >= 9 && r() < 0.2;
       const power = this.version >= 9 ? (big ? rangeOf(r, 2, 2.6) : rangeOf(r, 0.6, 1.5)) : 1;
@@ -468,7 +486,7 @@ export class World {
       powerUps.push({ x: px, y: py, kind: kindP, taken: false, bob: r() * 6 });
     }
 
-    const segment: Segment = { y, h, zones, powerUps, bumpers };
+    const segment: Segment = { y, h, zones, powerUps, bumpers, ...(laneDoor !== undefined ? { laneDoor } : {}) };
     if (this.version >= 2) {
       // Separate stream keeps the original world RNG and old saved runs intact.
       const art = makeRng(this.seed ^ Math.imul(i, 2654435761));

@@ -5,8 +5,8 @@ import "./audio.test";
 import "./creatures.test";
 import { test } from "node:test";
 import { Game } from "../src/game/game";
-import { DOOR_SEAM, World } from "../src/game/world";
-import { CFG, SHOP_ENABLED, UPGRADES, statsFor, type UpgradeKey } from "../src/game/config";
+import { DOOR_SEAM, World, repelReach, LANE_CLEARANCE } from "../src/game/world";
+import { CFG, SHOP_ENABLED, UPGRADES, W, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
 import { dailySeed, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, dailyBoard, refill, settle, streakReward } from "../src/game/missions";
@@ -205,7 +205,7 @@ test("old saves retain v1 terrain, new worlds save their generation version", ()
   assert.equal(restored.world.version, 1);
   assert.deepEqual(restored.world.segments, old.world.segments);
   const modern = game(); modern.phase = "running";
-  assert.equal(modern.snapshot()!.worldVersion, 27);
+  assert.equal(modern.snapshot()!.worldVersion, 28);
   assert.ok(modern.world.segments.some((s) => s.zones.some((z) => z.itemId)));
 });
 
@@ -1165,6 +1165,35 @@ test("flings that come back down no higher count as stalls", () => {
   }
   assert.ok(c.state === "stuck", "back on the door");
   assert.equal(g.stalls, 3, "three hops that gained nothing");
+});
+
+test("a window's open lane is never under a push field from the segment above or below", () => {
+  // seen at 4,513 cm: bottle door on the right, a big red plate's field over the left door
+  // just above it, and no steel anywhere a toy could reach
+  let windows = 0;
+  for (let seed = 1; seed <= 150; seed++) {
+    const w = new World(seed, 0);
+    w.ensure(-CFG.segmentH * 60);
+    const segs = w.segments;
+    for (let k = 0; k < segs.length; k++) {
+      const seg = segs[k];
+      if (seg.laneDoor === undefined) continue;
+      windows++;
+      const laneX = seg.laneDoor === 0 ? [W * 0.12, W * 0.38] : [W * 0.62, W * 0.88];
+      for (const other of [segs[k - 1], segs[k + 1]]) {
+        if (!other) continue;
+        for (const z of other.zones) {
+          // the plates, not the keychain toys, whose push is a nudge a toy climbs straight past
+          if (z.kind !== "repel" || Math.abs(z.power ?? 1) < 0.5) continue;
+          const onLane = z.x < laneX[1] && z.x + z.w > laneX[0];
+          const reach = repelReach(z) + LANE_CLEARANCE;
+          const touches = z.y - reach < seg.y + seg.h && z.y + z.h + reach > seg.y;
+          assert.ok(!(onLane && touches), `seed ${seed}: a push field over the open lane of a window (segment at ${seg.y}, plate at ${z.y} h ${z.h} x ${z.x} w ${z.w} power ${z.power} item ${z.itemId} other.y ${other.y})`);
+        }
+      }
+    }
+  }
+  assert.ok(windows > 50, `enough windows to mean it: ${windows}`);
 });
 
 test("a tape replays into the same climb it recorded", () => {

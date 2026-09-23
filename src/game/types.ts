@@ -60,6 +60,8 @@ export interface Bumper {
 export interface Segment {
   /** set once when a solo run has swapped its "+1 friend" pickups for paint buckets */
   soloPainted?: boolean;
+  /** a window segment: the door left open beside the glass (0 left, 1 right), which nothing may block */
+  laneDoor?: 0 | 1;
   gadgets?: Gadget[];
   /** top of segment (smaller y = higher up the fridge) */
   y: number;
