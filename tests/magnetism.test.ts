@@ -8,7 +8,7 @@ import { Game } from "../src/game/game";
 import { DOOR_SEAM, World, repelReach, LANE_CLEARANCE } from "../src/game/world";
 import { CFG, SHOP_ENABLED, UPGRADES, W, statsFor, type UpgradeKey } from "../src/game/config";
 import { prizeCost, PATTERNS } from "../src/game/creatures";
-import { dailySeed, todayKey } from "../src/game/leaderboard";
+import { dailySeed, dailyWorld, todayKey } from "../src/game/leaderboard";
 import { MISSIONS, dailyBoard, refill, settle, streakReward } from "../src/game/missions";
 import { sizeOf } from "../src/game/item-sizes";
 import { FRIDGE_THEMES, monthKey, themeFor } from "../src/game/fridge-theme";
@@ -1194,6 +1194,15 @@ test("a window's open lane is never under a push field from the segment above or
     }
   }
   assert.ok(windows > 50, `enough windows to mean it: ${windows}`);
+});
+
+test("a day's fridge stays on the world it was assigned, and a new world lands at midnight", () => {
+  // the day the plates were kept off window lanes: everyone climbing the 23rd is still on 27
+  assert.equal(dailyWorld("2026-09-23"), 27);
+  assert.equal(dailyWorld("2026-09-24"), 28);
+  assert.equal(dailyWorld("2027-01-01"), 28);
+  // a Worker or phone that cannot build a newer world never claims to
+  assert.equal(dailyWorld("2026-09-24", 27), 27);
 });
 
 test("a tape replays into the same climb it recorded", () => {

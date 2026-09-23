@@ -12,7 +12,7 @@ import { creaturesEarned, drawPrize, patternById, prizeCost, type Look } from ".
 import { dailyBoard, liveProgress, missionById, missionText, settle, streakReward, type RunTally } from "./game/missions";
 import { monthKey, themeFor, setPlainSteel } from "./game/fridge-theme";
 import { setSound, setMusic, unlockAudio, resumeAudio, updateAudio, silenceAudio, stopPullSound, sfx } from "./game/audio";
-import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey } from "./game/leaderboard";
+import { leaderboard, leaderboardEnabled, cloud, chat, dailySeed, todayKey, dailyWorld } from "./game/leaderboard";
 import { parseChallenge, clearChallengeParam, shareChallenge } from "./game/share";
 import { groupNum } from "./game/hud";
 import { Ghost, LiveGhost, loadBestTape, saveBestTape } from "./game/ghost";
@@ -976,7 +976,7 @@ function startRun(rules: "solo", withTutorial = false, daily = false, raceTape: 
   const forgiveFlings = save.runs === 0 && !liveRace && !raceTape ? 3 : 0;
   game = new Game(kit, runEvents(),
     withTutorial ? { rules, seed: TUTORIAL_SEED, lineup, forgiveFlings }
-    : daily ? { rules, seed: dailySeed(), lineup, forgiveFlings }
+    : daily ? { rules, seed: dailySeed(), worldVersion: dailyWorld(todayKey(), WORLD_VERSION), lineup, forgiveFlings }
     : liveRace ? { rules, seed: liveRace.seed, worldVersion: liveRace.world, chill: !!liveRace.watch, lineup, side: liveRace.side ?? 0 }
     : raceTape ? { rules, seed: raceTape.seed, worldVersion: raceTape.world, chill: save.chill, lineup }
     : { rules, chill: save.chill, lineup, forgiveFlings });

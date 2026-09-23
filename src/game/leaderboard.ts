@@ -18,6 +18,7 @@ export type BoardMode = Mode | "lifetime" | "coins" | "daily" | "league";
  * Worker keeps is the same day's.
  */
 export const todayKey = (at = Date.now()): string => dayKeyAt(at);
+export { dailyWorld, WORLD_BY_DAY } from "./day";
 export function dailySeed(day = todayKey()): number {
   let hash = 2166136261;
   for (let i = 0; i < day.length; i++) hash = Math.imul(hash ^ day.charCodeAt(i), 16777619);

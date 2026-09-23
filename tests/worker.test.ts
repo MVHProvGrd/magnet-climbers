@@ -5,7 +5,7 @@ import { makeFakeDB } from "./worker-db";
 import { Game } from "../src/game/game";
 import { World } from "../src/game/world";
 import { dailySeed as workerDailySeed } from "../worker/src/replay";
-import { dailySeed as clientDailySeed, todayKey } from "../src/game/leaderboard";
+import { dailySeed as clientDailySeed, todayKey, dailyWorld } from "../src/game/leaderboard";
 
 function env(mode: "shadow" | "enforce" = "shadow"): Env {
   const { DB } = makeFakeDB();
@@ -168,7 +168,7 @@ const DAILY_KIT = { magnet: 0, power: 0, floor: 0 } as const;
 /** A real daily climb, played through the sim so the recorder writes a genuine tape. */
 function climbToday(flings = 60) {
   const seed = clientDailySeed(todayKey());
-  const game = new Game({ ...DAILY_KIT }, NO_EVENTS, { rules: "solo", seed, worldVersion: new World(1, 0).version, chill: false, lineup: [], silent: true });
+  const game = new Game({ ...DAILY_KIT }, NO_EVENTS, { rules: "solo", seed, worldVersion: dailyWorld(todayKey(), new World(1, 0).version), chill: false, lineup: [], silent: true });
   const dt = 1 / 120;
   let n = 0, done = 0;
   for (let i = 0; i < 37; i++) { game.update(dt); n++; }          // a moment before the first fling, as a player would

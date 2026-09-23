@@ -33,3 +33,17 @@ export function nextDayStart(at = Date.now()): number {
   for (let k = 0; k < 4 && dayKeyAt(t) === today; k++) t += 3600_000;
   return t;
 }
+
+/**
+ * The world version a given day's fridge is built on. A generation change lands at midnight
+ * Central, never mid-day: everyone who climbs today climbs the same door, whichever build
+ * they are on, and tomorrow's is the new one. Older days stay on the version they were
+ * climbed on, so their tapes still replay. `latest` is the newest world the caller can
+ * build; a phone or Worker never claims a world it does not have.
+ */
+export const WORLD_BY_DAY: [string, number][] = [["2026-09-24", 28]];
+export function dailyWorld(day: string, latest = 28): number {
+  let v = 27;
+  for (const [from, world] of WORLD_BY_DAY) if (day >= from) v = world;
+  return Math.min(v, latest);
+}

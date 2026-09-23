@@ -27,7 +27,7 @@ import { handleAdmin } from "./admin";
 import { weekKey } from "./week";
 import { censorChat, nameHasProfanity } from "../../src/game/profanity";
 import { verifyDaily, MAX_TAPE_BYTES, plausible } from "./replay";
-import { dayKeyAt, zoned } from "../../src/game/day";
+import { dayKeyAt, zoned, dailyWorld } from "../../src/game/day";
 export { dayKeyAt };
 export { MatchRoom } from "./match";
 export { Verifier } from "./verify";
@@ -386,7 +386,8 @@ async function placeInLeague(env: Env, playerId: string, name: string): Promise<
 
 let dailyReady = false;
 /** The world version a daily is generated with. A tape from any other version is another climb. */
-const DAILY_WORLD = new World(1, 0).version;
+/** The newest world this Worker can build; a day's fridge is on the version that day is assigned, never newer. */
+const LATEST_WORLD = new World(1, 0).version;
 
 /** Every daily tape the Worker has been shown, with what replaying it gave. */
 /** A signed-in account (Firebase uid) and the player profile it plays as. Created on demand. */
@@ -655,11 +656,12 @@ export default {
         // replay runs in the Durable Object, which cuts or drops the row when it disagrees.
         // structure first, then physics: a claim these inputs could never have climbed is refused
         // here, on the request, and never queues a replay
-        const structural = checkTape(rawTape, day, DAILY_WORLD);
+        const dayWorld = dailyWorld(day, LATEST_WORLD);
+        const structural = checkTape(rawTape, day, dayWorld);
         const implausible = "reason" in structural ? null : plausible(structural.tape, cm);
         const checked = implausible ? { reason: implausible } : structural;
         if ("reason" in checked || !env.VERIFY || !ctx) {
-          const v = "reason" in checked ? { ok: false as const, reason: checked.reason } : verifyDaily(rawTape, cm, day, DAILY_WORLD);
+          const v = "reason" in checked ? { ok: false as const, reason: checked.reason } : verifyDaily(rawTape, cm, day, dayWorld);
           await env.DB.prepare("INSERT OR REPLACE INTO tapes (player_id, day, claimed, replayed, verdict, ms, tape, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(playerId, day, cm, v.cm ?? null, v.ok ? "ok" : v.reason, v.ms ?? null, tapeText, Date.now()).run().catch(() => {});
           if (!v.ok && enforce) return json({ ok: false, verified: false, reason: v.reason, day }, h, 422);
@@ -672,7 +674,7 @@ export default {
           .bind(playerId, day, cm, tapeText, Date.now()).run().catch(() => {});
         await env.DB.prepare("INSERT INTO daily (player_id, day, name, cm, seconds, created_at) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(playerId, day, name, cm, secs, Date.now()).run();
-        const job: VerifyJob = { playerId, day, cm, tape: checked.tape, world: DAILY_WORLD, enforce };
+        const job: VerifyJob = { playerId, day, cm, tape: checked.tape, world: dayWorld, enforce };
         const verifier = env.VERIFY.get(env.VERIFY.idFromName(`${playerId}:${day}`));
         ctx.waitUntil(verifier.fetch("https://verify/", { method: "POST", body: JSON.stringify(job) })
           .catch((err) => settleVerdict(env, job, { ok: false, reason: `verifier failed: ${String((err as Error)?.message ?? err).slice(0, 60)}` })));
