@@ -381,14 +381,15 @@ export class Ui {
       <img class="home-wordmark" src="${import.meta.env.BASE_URL}art/title-logo.webp" alt="Magnet Climbers" width="1100" height="495" fetchpriority="high" />
       <div class="home-bottom">
       <div class="home-dock">
-        <button class="mode-tile solo full" data-a="solo">
-          <b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>
+        <button class="mode-tile solo full ${s.chill ? "chill" : ""}" data-a="solo">
+          ${s.chill ? `<b>CHILL CLIMB</b><small>No red line, no danger. Nothing banks.</small>` : `<b>SOLO CLIMB</b><small>Endless fridge, outrun the line.</small>`}
           <i>BEST ${groupNum(s.bestSolo)} CM</i>
         </button>
         <div class="home-chips">
           <button class="chip daily-chip ${done ? "spent" : ""}" data-a="daily">
             ${done ? `Today's fridge · done (${groupNum(s.daily!.cm)} cm) · new in ${Ui.resetIn()}` : `Today's fridge · pays ${next.pattern ? "a pattern" : `$${next.coins}`}`}${streak ? ` · ${streak}🔥` : ""}
           </button>
+          <button class="chip chill-chip ${s.chill ? "on" : ""}" data-a="chill" aria-pressed="${s.chill ? "true" : "false"}" title="Chill mode: no red line, nothing banks">CHILL ${s.chill ? "ON" : "OFF"}</button>
           <button class="chip more-chip" data-a="more">MORE ›</button>
         </div>
         ${s.missions.length ? `<button class="home-row missions-line" data-a="more">
@@ -409,6 +410,8 @@ export class Ui {
       if (a === "collection") this.showCollection(SHOP_ENABLED ? "kit" : "creatures");
       if (a === "more") this.showMore();
       if (a === "settings") this.showSettings();
+      // chill is a way to climb, not a preference: it is switched where the climb is chosen
+      if (a === "chill") { this.h.onToggleChill(); this.showMenu(); }
     });
     this.show(p);
     // everyone's climbing, added up, once the Worker answers; a phone offline just does without

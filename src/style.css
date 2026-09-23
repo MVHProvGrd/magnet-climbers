@@ -586,6 +586,9 @@ select.buy option { background: #1e2229; color: #fff; }
 .daily-chip { flex: 1 1 auto; text-align: left; background: linear-gradient(160deg,rgba(201,164,255,.35),rgba(141,91,255,.35)); }
 .daily-chip.spent { background: rgba(255,255,255,.045); opacity: .8; }
 .more-chip { flex: 0 0 auto; text-align: center; letter-spacing: calc(1 * var(--px)); }
+.chill-chip { flex: 0 0 auto; letter-spacing: calc(1 * var(--px)); color: rgba(255,255,255,.75); }
+.chill-chip.on { background: linear-gradient(160deg,rgba(155,225,93,.4),rgba(74,122,24,.45)); color: #fff; }
+.mode-tile.solo.chill { background: linear-gradient(160deg,#9be15d,#4a7a18); }
 
 /* missions on the home dock: three sentences with a bar each, never a wall of text */
 .home-missions { text-align: left; display: flex; flex-direction: column; gap: calc(4 * var(--px));
