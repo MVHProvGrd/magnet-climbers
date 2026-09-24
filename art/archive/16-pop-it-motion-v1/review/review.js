@@ -17,7 +17,7 @@
  globalThis.PopItReview={bubbles,state,toggle,draw};
  if(typeof document==='undefined')return;
  const canvas=document.querySelector('canvas'),c=canvas.getContext('2d'),img=new Image();let audio;
- img.src=(location.protocol==='file:'?'../../../art/archive/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/codex/art-ready-pack/art/archive/')+'14-toy-bumper-keychains-v1/ready/bumper-4-v1.webp';
+ img.src=(location.protocol==='file:'?'../../14-toy-bumper-keychains-v1/ready/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/codex/art-ready-pack/art/archive/14-toy-bumper-keychains-v1/ready/')+'bumper-4-v1.webp';
  function sound(i,pressed){
   if(!document.querySelector('#sound').checked)return;
   audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();

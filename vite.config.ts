@@ -52,9 +52,9 @@ export default defineConfig({
           "icons/*.png",
           "art/ui/*.webp", "art/title-logo.webp", "art/title-fridge.webp",
         ],
-        // Owner reference pages, not the game. Everything under public/ is install weight
-        // for every player, and neither of these is reachable from inside the game.
-        globIgnores: ["elements/**", "art-archive/**"],
+        // Toy-keyring art, not the game's own menu flow -- not reachable from inside the
+        // game, so it shouldn't hold up a first launch just because it ships in public/.
+        globIgnores: ["elements/**"],
         runtimeCaching: [
           {
             // Art never changes under a name: a re-cut ships as -v2. So the cache is the
@@ -88,7 +88,7 @@ export default defineConfig({
         // ...but the fallback must not swallow them. Excluding a page from the precache means
         // its navigation falls through to index.html, and the game's index is built with a
         // relative base, so its asset paths resolve under /elements/ and 404: a white page.
-        navigateFallbackDenylist: [/^\/elements\//, /^\/art-archive\//],
+        navigateFallbackDenylist: [/^\/elements\//],
       },
     }),
   ],

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node tests/run.mjs",
     "dev": "vite",
-    "build": "tsc --noEmit && node scripts/paper-aspect.mjs && node scripts/element-map.mjs && node scripts/art-archive-page.mjs && node scripts/roadmap-page.mjs && vite build",
+    "build": "tsc --noEmit && node scripts/paper-aspect.mjs && node scripts/roadmap-page.mjs && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "typecheck:worker": "tsc -p worker/tsconfig.json --noEmit",

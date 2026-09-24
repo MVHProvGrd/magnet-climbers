@@ -1,6 +1,6 @@
 import {createCanvas,loadImage} from '../../../node_modules/.cache/magnet-climbers-visual/node_modules/@napi-rs/canvas/index.js';
 import {writeFile} from 'node:fs/promises';
-import '../../../public/art-archive/pop-it-v1/review.js';
+import './review/review.js';
 const art=await loadImage(new URL('../14-toy-bumper-keychains-v1/ready/bumper-4-v1.webp',import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1'));
 const {draw,toggle,state}=globalThis.PopItReview;
 const sheet=createCanvas(840,936),c=sheet.getContext('2d');draw(c,art,1);

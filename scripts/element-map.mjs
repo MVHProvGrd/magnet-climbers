@@ -221,17 +221,19 @@ addEventListener("keydown", (e) => {
 });
 </script>
 </body></html>`;
-mkdirSync("public/elements", { recursive: true });
-writeFileSync("public/elements/index.html", page);
+// Owner-only reference, not part of the shipped game: every number here is already public
+// in the client bundle anyway (the sim reads it), so gating it would be theater, not security.
+// It stays out of public/ entirely and is only ever handed to the owner as a Claude artifact.
+mkdirSync("node_modules/.cache", { recursive: true });
+writeFileSync("node_modules/.cache/element-map.html", page);
 
 // The same page, minus the document wrapper, for publishing as an artifact. One generator
-// feeds both, so the hosted page under /elements/ and the shared link cannot drift apart.
-// Paths lose their leading slash: an artifact serves its files relative to the page.
+// feeds both, so the local copy and the shared link cannot drift apart. Paths lose their
+// leading slash: an artifact serves its files relative to the page.
 const artifact = page
   .slice(page.indexOf("<title>"), page.indexOf("</body>"))
   .replace(/<\/head><body>/, "")
   .replace(/(src|data-src)="\/(?!\/)/g, '$1="');
-mkdirSync("node_modules/.cache", { recursive: true });
 writeFileSync("node_modules/.cache/element-map-artifact.html", artifact);
 
-console.log(`element map: ${items.length} elements, ${pictures} pictures -> public/elements/index.html`);
+console.log(`element map: ${items.length} elements, ${pictures} pictures -> node_modules/.cache/element-map.html (local/artifact only, not shipped)`);

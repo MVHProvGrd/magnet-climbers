@@ -2,7 +2,7 @@ import {createCanvas,loadImage} from '../../../node_modules/.cache/magnet-climbe
 import {writeFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import '../../../public/art-archive/cat-paw-v2/review.js';
+import './review/review.js';
 const root=dirname(fileURLToPath(import.meta.url));
 const art=await loadImage(join(root,'ready/cat-paw-back-claws-v2.webp'));
 const {draw}=globalThis.CatPawReview;

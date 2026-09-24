@@ -21,19 +21,6 @@
     ctx.fillStyle=steel;ctx.fillRect(0,0,400,480);
     ctx.fillStyle='#42494d';ctx.fillRect(197,0,6,480);
     ctx.fillStyle='#ffffff20';for(let y=0;y<480;y+=3)ctx.fillRect(0,y,400,1);
-    // Scratch positions are frozen at contact, never dragged along with the paw.
-    const cycle=Math.floor(time/duration);
-    for(let n=Math.max(0,cycle-1);n<=cycle;n++)for(const tap of [.48,.87,1.25]){
-      const age=time-(n*duration+tap);if(age<0||age>1.6)continue;
-      const hit=pose(n*duration+tap),grow=Math.min(1,age/.10),fade=Math.pow(1-age/1.6,1.5);
-      // Match the four visible ivory claw tips; keep marks off the door seam.
-      for(const [dx,dy] of [[-36,35],[-8,55],[21,54],[48,31]]){
-        const x=hit.x+dx,y=hit.y+dy;if(x>191&&x<209)continue;
-        ctx.save();ctx.globalAlpha=fade;ctx.lineCap='round';
-        ctx.strokeStyle='#49565d';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x-1,y+9*grow,x-3,y+20*grow);ctx.stroke();
-        ctx.strokeStyle='#ffffff';ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(x+.8,y);ctx.quadraticCurveTo(x-.2,y+9*grow,x-2.2,y+20*grow);ctx.stroke();ctx.restore();
-      }
-    }
     const p=pose(time),scale=.24;
     // Source pad center (510,1080); intentional top crop stays outside viewport.
     ctx.drawImage(art,p.x-510*scale,p.y-1080*scale,1024*scale,1536*scale);
@@ -46,7 +33,7 @@
   globalThis.CatPawReview={draw,pose,duration};
   if(typeof document==='undefined')return;
   const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),art=new Image();
-  art.src=(location.protocol==='file:'?'../../../art/archive/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/codex/art-ready-pack/art/archive/')+'17-cat-paw-claws-v2/ready/cat-paw-back-claws-v2.webp';
+  art.src=(location.protocol==='file:'?'../ready/':'https://raw.githubusercontent.com/MVHProvGrd/magnet-climbers/codex/art-ready-pack/art/archive/15-cat-paw-attack-v1/ready/')+'cat-paw-top-v1-hard.webp';
   let paused=matchMedia('(prefers-reduced-motion: reduce)').matches, time=.87, previous=0;
   document.querySelector('button').onclick=()=>{paused=!paused;document.querySelector('button').textContent=paused?'Play':'Pause';};
   art.onload=()=>{document.querySelector('button').textContent=paused?'Play':'Pause';requestAnimationFrame(function frame(now){if(!paused&&previous)time+=Math.min((now-previous)/1000,.05);previous=now;draw(ctx,time,art);requestAnimationFrame(frame);});};

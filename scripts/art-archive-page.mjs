@@ -1,6 +1,6 @@
 // Builds art/archive/index.html: one page showing every set in art/archive, images served from GitHub raw.
 // Deliberately NOT under public/ — this is a reference gallery for the owner and Codex, not part of the shipped game.
-import { readdir, readFile, writeFile, mkdir, stat } from "node:fs/promises";
+import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 const RAW = "https://raw.githubusercontent.com/MVHProvGrd/magnet-art/main/";
 const root = process.env.ART_ARCHIVE || "art/archive"; // masters repo: MVHProvGrd/magnet-art (private; raw links need a signed-in browser)
@@ -36,7 +36,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 <h1>Art archive</h1><p>Every art style so far. Images load from the GitHub repo (<code>art/archive</code>); click any to open full size. <a href="https://github.com/MVHProvGrd/magnet-climbers/tree/main/art/archive" style="color:#7cc">README with restore steps</a>.</p>
 <p data-local-review><a href="33-object-audio-v1/index.html" style="color:#7cc">Approved object sounds: keychains, toys and rolling spinner bearings</a></p>
 <p data-local-review><a href="34-rubber-launch-v1/index.html" style="color:#7cc">Rubber draw and release thwack: three takes each</a></p>
-<p><a href="cat-paw-v2/" style="color:#7cc">Cat paw v2: corrected back view, claws and fading scratches</a> · <a href="cat-paw-v1/" style="color:#7cc">Old underside study</a> · <a href="pop-it-v1/" style="color:#7cc">POP! magnet: click individual bubbles with sound</a></p>
+<p><a href="17-cat-paw-claws-v2/review/" style="color:#7cc">Cat paw v2: corrected back view, claws and fading scratches</a> · <a href="15-cat-paw-attack-v1/review/" style="color:#7cc">Old underside study</a> · <a href="16-pop-it-motion-v1/review/" style="color:#7cc">POP! magnet: click individual bubbles with sound</a></p>
 <p><a href="motion-v1/" style="color:#7cc">Animation review: bump the lemon, compare arm swipes and reach badges</a></p>
 <p><a href="souvenirs-v1/" style="color:#7cc">New souvenir pack: animated field, compass and split-door review</a></p>
 <nav>${toc}</nav>${sections}<script>
@@ -48,9 +48,4 @@ if(location.protocol==='file:') document.querySelectorAll('[src],[href]').forEac
 </script></body></html>`;
 
 await writeFile("art/archive/index.html", html);
-// The per-pack review pages already ship under public/art-archive/, so the index has to
-// ship with them or magnetclimbers.com/art-archive/ is a 404 that reads as a blank page.
-// The pictures still load from the GitHub repo, so this is one file, not the whole archive.
-await mkdir("public/art-archive", { recursive: true });
-await writeFile("public/art-archive/index.html", html);
-console.log("wrote art/archive/index.html and public/art-archive/index.html", (await stat("art/archive/index.html")).size, "bytes");
+console.log("wrote art/archive/index.html (local only, not shipped)", (await stat("art/archive/index.html")).size, "bytes");
