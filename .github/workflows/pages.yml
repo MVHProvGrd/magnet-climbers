@@ -51,3 +51,32 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-worker:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      # typecheck:worker already ran in the build job this depends on. The `secrets` context
+      # can't be read in an `if:` (that's what broke this workflow's scheduling entirely last
+      # time this was tried), so the skip-when-unset check happens in the shell instead.
+      - name: Deploy Worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "CLOUDFLARE_API_TOKEN not set (Settings -> Secrets and variables -> Actions) -- skipping Worker deploy"
+            exit 0
+          fi
+          npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
