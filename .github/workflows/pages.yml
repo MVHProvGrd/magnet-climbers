@@ -51,3 +51,29 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-worker:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      # typecheck:worker already ran in the build job this depends on.
+      # No CLOUDFLARE_API_TOKEN secret yet (Settings → Secrets and variables → Actions) means
+      # this step is skipped, not failed -- the job still goes green with nothing deployed.
+      # A client build has shipped ahead of its Worker before; this is what closes that gap.
+      - name: Deploy Worker
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
